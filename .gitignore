@@ -1,0 +1,14 @@
+# OS / file explorer
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.vscode/
+.idea/
+*.iml
+
+# Flutter build/cache at repo root (if any)
+build/
+.dart_tool/
+.packages
+
