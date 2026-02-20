@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 
 import '../data/window_catalog.dart';
 import '../models/window_type.dart';
+import '../state/estimate_session_store.dart';
+import '../state/app_settings.dart';
 import '../theme/app_theme.dart';
 import '../widgets/window_navigation_card.dart';
+import 'window_input_screen.dart';
 
 class WindowNavigationScreen extends StatefulWidget {
   final List<WindowType> nodes;
   final List<String> path;
+  final EstimateSessionStore session;
 
   const WindowNavigationScreen({
     super.key,
     required this.nodes,
     required this.path,
+    required this.session,
   });
 
   factory WindowNavigationScreen.root({Key? key}) {
@@ -20,6 +25,9 @@ class WindowNavigationScreen extends StatefulWidget {
       key: key,
       nodes: WindowCatalog.root,
       path: const ['Add Windows'],
+      session: EstimateSessionStore(
+        numberingMode: AppSettings.instance.numberingMode,
+      ),
     );
   }
 
@@ -31,7 +39,6 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
   late final PageController _pageController;
   double _pageValue = 0;
   int _currentIndex = 0;
-  String? _selectedLabel;
 
   @override
   void initState() {
@@ -72,15 +79,17 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
           builder: (_) => WindowNavigationScreen(
             nodes: node.children,
             path: [...widget.path, node.label],
+            session: widget.session,
           ),
         ),
       );
       return;
     }
-
-    setState(() {
-      _selectedLabel = node.label;
-    });
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WindowInputScreen(node: node, session: widget.session),
+      ),
+    );
   }
 
   @override
@@ -192,7 +201,7 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
                                   child: WindowNavigationCard(
                                     node: node,
                                     isFocused: distance < 0.5,
-                                    isSelected: _selectedLabel == node.label,
+                                    isSelected: false,
                                     parallaxShift: parallaxShift,
                                     onTap: () => _onNodeTap(node),
                                   ),

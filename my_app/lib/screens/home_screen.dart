@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/primary_card_button.dart';
 import 'estimation_menu_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -87,7 +88,13 @@ class HomeScreen extends StatelessWidget {
                             title: 'Settings',
                             subtitle: 'App & system configuration',
                             accent: AppTheme.slate,
-                            onTap: () => _showComingSoon(context),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

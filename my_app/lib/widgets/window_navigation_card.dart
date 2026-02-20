@@ -83,15 +83,36 @@ class WindowNavigationCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 16),
+              if (node.codeName != null) ...[
+                const SizedBox(height: 35),
+                Center(
+                  child: Text(
+                    node.codeName!,
+                    key: isFocused ? const Key('focused_code_name') : null,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.deepTeal.withValues(alpha: 0.92),
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 0),
               Expanded(
                 child: Center(
-                  child: WindowLineGraphic(
-                    graphicKey: node.graphicKey,
-                    windowLabel: node.label,
-                    displayIndex: node.displayIndex,
-                    strokeColor: isFocused ? AppTheme.deepTeal : AppTheme.slate,
-                    horizontalShift: parallaxShift,
+                  child: Transform.translate(
+                    offset: Offset(0, node.codeName != null ? -5 : 0),
+                    child: WindowLineGraphic(
+                      graphicKey: node.graphicKey,
+                      windowLabel: node.label,
+                      displayIndex: node.displayIndex,
+                      strokeColor: isFocused
+                          ? AppTheme.deepTeal
+                          : AppTheme.slate,
+                      horizontalShift: parallaxShift,
+                    ),
                   ),
                 ),
               ),
@@ -109,7 +130,9 @@ class WindowNavigationCard extends StatelessWidget {
               const SizedBox(height: 6),
               Center(
                 child: Text(
-                  node.hasChildren ? 'Tap to open options' : 'Tap to select',
+                  node.hasChildren
+                      ? 'Tap to open options'
+                      : 'Tap to open input',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
