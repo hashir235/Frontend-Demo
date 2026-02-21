@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/window_review_item.dart';
-import 'numbering_mode.dart';
+import '../../settings/state/numbering_mode.dart';
 
 class EstimateSessionStore extends ChangeNotifier {
   final List<WindowReviewItem> _items = <WindowReviewItem>[];

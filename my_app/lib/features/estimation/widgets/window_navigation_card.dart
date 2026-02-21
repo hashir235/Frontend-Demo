@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/window_type.dart';
-import '../theme/app_theme.dart';
-import 'window_line_graphic.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/window_line_graphic.dart';
 
 class WindowNavigationCard extends StatelessWidget {
   final WindowType node;

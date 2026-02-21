@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../data/window_catalog.dart';
+import 'input/input_registry.dart';
 import '../models/window_review_item.dart';
 import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
-import '../theme/app_theme.dart';
-import 'window_input_screen.dart';
+import '../../../core/theme/app_theme.dart';
 
 class ReviewListScreen extends StatelessWidget {
   final EstimateSessionStore session;
@@ -24,7 +24,7 @@ class ReviewListScreen extends StatelessWidget {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) =>
-            WindowInputScreen(node: node, session: session, editingItem: item),
+            buildInputScreen(node: node, session: session, editingItem: item),
       ),
     );
   }

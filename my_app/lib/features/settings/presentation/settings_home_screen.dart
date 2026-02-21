@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state/app_settings.dart';
 import '../state/numbering_mode.dart';
-import '../theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -40,10 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Settings'), centerTitle: true),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -59,16 +56,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 'Window Numbering',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTheme.deepTeal,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  color: AppTheme.deepTeal,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Choose how window numbers are assigned in Estimation.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.deepTeal.withValues(alpha: 0.7),
-                    ),
+                  color: AppTheme.deepTeal.withValues(alpha: 0.7),
+                ),
               ),
               const SizedBox(height: 18),
               RadioListTile<NumberingMode>(

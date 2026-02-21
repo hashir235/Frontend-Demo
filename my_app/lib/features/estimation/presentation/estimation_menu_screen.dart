@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
-import '../widgets/primary_card_button.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/primary_card_button.dart';
 import 'window_navigation_screen.dart';
 
 class EstimationMenuScreen extends StatelessWidget {

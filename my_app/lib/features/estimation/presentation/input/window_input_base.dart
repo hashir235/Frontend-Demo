@@ -3,13 +3,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../models/window_review_item.dart';
-import '../models/window_type.dart';
-import '../state/estimate_session_store.dart';
-import '../state/numbering_mode.dart';
-import '../theme/app_theme.dart';
-import '../widgets/sliding_section_overlay.dart';
-import 'review_list_screen.dart';
+import 'window_input_handler.dart';
+import '../../models/window_review_item.dart';
+import '../../models/window_type.dart';
+import '../../state/estimate_session_store.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../settings/state/numbering_mode.dart';
+import '../review_list_screen.dart';
 
 class WindowInputScreen extends StatefulWidget {
   final WindowType node;
@@ -33,14 +33,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   static const int _maxDescriptionLength = 120;
   static const double _collarCardSize = 240;
   static const double _collarViewportFraction = 0.78;
-  static const List<String> _slidingCollar1Sections = <String>[
-    'DC30F',
-    'DC26F',
-    'D29',
-    'M23',
-    'M24',
-    'M28',
-  ];
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _widthController = TextEditingController();
@@ -56,6 +48,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   String? _winNoError;
   String? _heightError;
   String? _widthError;
+  late final WindowInputHandler _handler;
 
   int get _visibleWinNo {
     if (widget.isEditMode) {
@@ -71,6 +64,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   @override
   void initState() {
     super.initState();
+    _handler = handlerForWindow(widget.node);
     _unitMode = widget.editingItem?.unitMode ?? UnitMode.inches;
     _selectedCollar = widget.editingItem?.collarIndex ?? 1;
     _heightController.text = widget.editingItem?.heightValue ?? '';
@@ -123,9 +117,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   void _openSettings() {
     _scaffoldKey.currentState?.openEndDrawer();
   }
-
-  bool get _isSlidingWindowCollar1 =>
-      widget.node.label == 'Sliding Window' && _selectedCollar == 1;
 
   NumberingMode get _numberingMode => widget.session.numberingMode;
 
@@ -395,13 +386,18 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       ),
                     ],
                   ),
-                  child: Stack(
-                    children: [
-                      if (_isSlidingWindowCollar1 && collarIndex == 1)
-                        SlidingSectionOverlay(
-                          selectedSection: _selectedSectionCode,
-                        ),
-                    ],
+                  child: Builder(
+                    builder: (BuildContext context) {
+                      final Widget? overlayWidget = _handler.overlayForCollar(
+                        collarIndex,
+                        _selectedSectionCode,
+                      );
+                      return Stack(
+                        children: [
+                          if (overlayWidget != null) overlayWidget,
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -421,7 +417,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       key: _scaffoldKey,
       endDrawer: Drawer(
         key: const Key('settings_drawer'),
-        width: _isSlidingWindowCollar1
+        width: _handler.showDrawerForCollar(_selectedCollar)
             ? MediaQuery.sizeOf(context).width * 0.38
             : null,
         child: SafeArea(
@@ -440,7 +436,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                 const SizedBox(height: 8),
                 const Divider(),
                 const SizedBox(height: 8),
-                if (_isSlidingWindowCollar1) ...[
+                if (_handler.showDrawerForCollar(_selectedCollar)) ...[
                   Text(
                     'Sections',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -451,10 +447,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                   const SizedBox(height: 8),
                   Expanded(
                     child: ListView.separated(
-                      itemCount: _slidingCollar1Sections.length,
+                      itemCount: _handler
+                          .sectionsForCollar(_selectedCollar)
+                          .length,
                       separatorBuilder: (_, __) => const SizedBox(height: 6),
                       itemBuilder: (BuildContext context, int index) {
-                        final String code = _slidingCollar1Sections[index];
+                        final String code = _handler.sectionsForCollar(
+                          _selectedCollar,
+                        )[index];
                         final bool isSelected = code == _selectedSectionCode;
                         return Material(
                           color: isSelected

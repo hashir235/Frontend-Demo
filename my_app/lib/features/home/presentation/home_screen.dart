@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
-import '../widgets/primary_card_button.dart';
-import 'estimation_menu_screen.dart';
-import 'settings_screen.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/primary_card_button.dart';
+import '../../estimation/presentation/estimation_menu_screen.dart';
+import '../../settings/presentation/settings_home_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

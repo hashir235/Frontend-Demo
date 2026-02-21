@@ -55,15 +55,21 @@ class _WindowLinePainter extends CustomPainter {
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
 
-    final bool isFixWindow19 = displayIndex == 19 && windowLabel == 'Fix Window';
+    final bool isFixWindow19 =
+        displayIndex == 19 && windowLabel == 'Fix Window';
     final bool isOpenable21 = displayIndex == 21 && windowLabel == 'Openable';
     final bool isDoorGateway = displayIndex == null && windowLabel == 'Door';
-    final bool isSingleDoor22 = displayIndex == 22 && windowLabel == 'Single Door';
-    final bool isDoubleDoor23 = displayIndex == 23 && windowLabel == 'Double Door';
+    final bool isSingleDoor22 =
+        displayIndex == 22 && windowLabel == 'Single Door';
+    final bool isDoubleDoor23 =
+        displayIndex == 23 && windowLabel == 'Double Door';
     final bool isArchGateway = displayIndex == null && windowLabel == 'Arch';
-    final bool isRoundArch24 = displayIndex == 24 && windowLabel == 'Round Arch';
-    final bool isRectangleArch25 = displayIndex == 25 && windowLabel == 'Rectangle';
-    final bool isCornerFix20 = displayIndex == 20 && windowLabel == 'Corner Fix';
+    final bool isRoundArch24 =
+        displayIndex == 24 && windowLabel == 'Round Arch';
+    final bool isRectangleArch25 =
+        displayIndex == 25 && windowLabel == 'Rectangle';
+    final bool isCornerFix20 =
+        displayIndex == 20 && windowLabel == 'Corner Fix';
     final Rect frameRect = isFixWindow19
         ? Rect.fromCenter(
             center: Offset(size.width / 2, size.height / 2),
@@ -299,7 +305,11 @@ class _WindowLinePainter extends CustomPainter {
     canvas.drawCircle(handleCenter, radius, innerStrokePaint);
   }
 
-  void _drawDoubleDoorHandles(Canvas canvas, Rect frameRect, Paint strokePaint) {
+  void _drawDoubleDoorHandles(
+    Canvas canvas,
+    Rect frameRect,
+    Paint strokePaint,
+  ) {
     canvas.drawLine(
       Offset(frameRect.center.dx, frameRect.top),
       Offset(frameRect.center.dx, frameRect.bottom),
@@ -490,10 +500,7 @@ class _WindowLinePainter extends CustomPainter {
       canvas.drawLine(rightTopInner, rightBottomInner, strokePaint);
     }
 
-    final _CornerPattern? pattern = _cornerPatternFor(
-      windowLabel,
-      cornerIndex,
-    );
+    final _CornerPattern? pattern = _cornerPatternFor(windowLabel, cornerIndex);
     if (pattern == null) {
       return;
     }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../data/window_catalog.dart';
 import '../models/window_type.dart';
+import '../../settings/state/app_settings.dart';
 import '../state/estimate_session_store.dart';
-import '../state/app_settings.dart';
-import '../theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
+import '../data/window_catalog.dart';
+import 'input/input_registry.dart';
 import '../widgets/window_navigation_card.dart';
-import 'window_input_screen.dart';
 
 class WindowNavigationScreen extends StatefulWidget {
   final List<WindowType> nodes;
@@ -87,7 +87,7 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
     }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => WindowInputScreen(node: node, session: widget.session),
+        builder: (_) => buildInputScreen(node: node, session: widget.session),
       ),
     );
   }
