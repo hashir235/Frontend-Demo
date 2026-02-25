@@ -97,8 +97,71 @@ class SlidingWindowInputHandler extends WindowInputHandler {
         'M24',
         'M28',
       ],
+      8: const <String>[
+        'DC30F',
+        'DC30C',
+        'DC26C',
+        'D29',
+        'M23',
+        'M24',
+        'M28',
+      ],
+      9: const <String>[
+        'DC30F',
+        'DC30C',
+        'DC26C',
+        'D29',
+        'M23',
+        'M24',
+        'M28',
+      ],
+      10: const <String>[
+        'DC30F',
+        'DC30C',
+        'DC26F',
+        'D29',
+        'M23',
+        'M24',
+        'M28',
+      ],
+      11: const <String>[
+        'DC30F',
+        'DC30C',
+        'DC26C',
+        'D29',
+        'M23',
+        'M24',
+        'M28',
+      ],
+      12: const <String>[
+        'DC30F',
+        'DC30C',
+        'DC26C',
+        'D29',
+        'M23',
+        'M24',
+        'M28',
+      ],
+      13: const <String>[
+        'DC30C',
+        'DC26F',
+        'D29',
+        'M23',
+        'M24',
+        'M28',
+      ],
+      14: const <String>[
+        'DC30F',
+        'DC30C',
+        'DC26C',
+        'D29',
+        'M23',
+        'M24',
+        'M28',
+      ],
     };
-    for (int i = 8; i <= 14; i++) {
+    for (int i = 9; i <= 14; i++) {
+      if (map.containsKey(i)) continue;
       map[i] = _baseSections;
     }
     return map;
@@ -115,8 +178,9 @@ class SlidingWindowInputHandler extends WindowInputHandler {
         'DC26F': 'DC26C',
       },
       6: const {},
-      7: const {
-        'DC30F': 'DC30C',
+      7: const {},
+      8: const {
+        'DC26F': 'DC26C',
       },
     };
     for (int i = 3; i <= 14; i++) {
@@ -129,6 +193,26 @@ class SlidingWindowInputHandler extends WindowInputHandler {
   const SlidingWindowInputHandler();
 
   @override
+  List<String> sectionsForCollar(int collarIndex) {
+    if (collarIndex == 9) {
+      return const <String>[
+        'DC30F',
+        'DC30C',
+        'DC26C',
+        'D29',
+        'M23',
+        'M24',
+        'M28',
+      ];
+    }
+    return super.sectionsForCollar(collarIndex);
+  }
+
+  @override
+  bool showDrawerForCollar(int collarIndex) =>
+      sectionsForCollar(collarIndex).isNotEmpty;
+
+  @override
   Map<int, List<String>> get sectionsByCollar => _sections;
 
   @override
@@ -136,7 +220,7 @@ class SlidingWindowInputHandler extends WindowInputHandler {
 
   @override
   Widget? overlayForCollar(int collarIndex, String? selectedSection) {
-    if (!_sections.containsKey(collarIndex)) return null;
+    if (!showDrawerForCollar(collarIndex)) return null;
     return SlidingSectionOverlay(
       selectedSection: selectedSection,
       sectionAliases: aliasesForCollar(collarIndex),
