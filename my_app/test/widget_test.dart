@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/app.dart';
+import 'package:my_app/features/estimation/models/window_type.dart';
+import 'package:my_app/features/estimation/presentation/input/window_input_base.dart';
+import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 
 const Key _pageViewKey = Key('window_page_view');
 const Key _focusedCodeNameKey = Key('focused_code_name');
@@ -65,6 +68,52 @@ void main() {
     expect(find.byKey(const Key('input_window_label')), findsOneWidget);
     expect(find.text('Sliding Window'), findsOneWidget);
     expect(find.byKey(const Key('current_win_no_label')), findsOneWidget);
+  });
+
+  testWidgets('Sliding Window M_Section shows renamed section codes', (
+    WidgetTester tester,
+  ) async {
+    const WindowType mSectionNode = WindowType(
+      label: 'Sliding Window M_Section',
+      graphicKey: 'sliding_basic',
+      children: <WindowType>[],
+      displayIndex: 2,
+      codeName: 'MS_win',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: mSectionNode,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('M30F'), findsOneWidget);
+    expect(find.text('M26F'), findsOneWidget);
+    expect(find.text('D29'), findsNothing);
+
+    Navigator.of(
+      tester.element(find.byKey(const Key('settings_drawer'))),
+    ).pop();
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const Key('collar_page_view')),
+      const Offset(-700, 0),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('M30'), findsOneWidget);
+    expect(find.text('M26'), findsOneWidget);
+    expect(find.text('D29'), findsNothing);
   });
 
   testWidgets('Save with optional description shows it in review list', (
