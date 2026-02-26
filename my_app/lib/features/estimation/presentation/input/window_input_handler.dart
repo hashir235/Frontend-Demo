@@ -4,6 +4,7 @@ import '../../models/window_type.dart';
 import '../../widgets/panel_equal_overlay.dart';
 import '../../widgets/panel_center_fix_overlay.dart';
 import '../../widgets/panel_center_slide_overlay.dart';
+import '../../widgets/sliding_corner_center_fix_overlay.dart';
 import '../../widgets/sliding_m_section_overlay.dart';
 import '../../widgets/sliding_section_overlay.dart';
 
@@ -14,6 +15,7 @@ part 'panel_center_slide_input_handler.dart';
 part 'panel_equal_input_handler.dart';
 part 'panel_sliding_equal_input_handler.dart';
 part 'panel_m_section_input_handlers.dart';
+part 'sliding_corner_center_fix_input_handler.dart';
 
 /// Base class for window-specific input behavior.
 abstract class WindowInputHandler {
@@ -66,6 +68,8 @@ WindowInputHandler handlerForWindow(WindowType node) {
       return const PanelMEqualInputHandler();
     case 'MES3_win':
       return const PanelMSlidingEqualInputHandler();
+    case 'SCF_win':
+      return const SlidingCornerCenterFixInputHandler();
     default:
       return const DefaultInputHandler();
   }

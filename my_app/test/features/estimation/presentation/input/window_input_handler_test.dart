@@ -66,6 +66,13 @@ void main() {
     displayIndex: 10,
     codeName: 'MES3_win',
   );
+  const WindowType scfNode = WindowType(
+    label: 'Sliding Corner Center Fix',
+    graphicKey: 'corner_basic',
+    children: <WindowType>[],
+    displayIndex: 11,
+    codeName: 'SCF_win',
+  );
 
   test('MS_win collar 1 sections include M-codes and exclude D29', () {
     final WindowInputHandler handler = handlerForWindow(mSectionNode);
@@ -228,5 +235,11 @@ void main() {
     expect(mes3C1, containsAll(<String>['M30F', 'M26F', 'M23', 'M24']));
     expect(mes3C1, isNot(contains('M28')));
     expect(mes3C1, isNot(contains('D29')));
+  });
+
+  test('SCF_win routes to SlidingCornerCenterFixInputHandler', () {
+    final WindowInputHandler handler = handlerForWindow(scfNode);
+    expect(handler, isA<SlidingCornerCenterFixInputHandler>());
+    expect(handler.overlayForCollar(1, null), isNotNull);
   });
 }
