@@ -21,6 +21,9 @@ part 'sliding_corner_center_fix_input_handler.dart';
 abstract class WindowInputHandler {
   const WindowInputHandler();
 
+  /// Number of collars available for this window input.
+  int get collarCount => 14;
+
   /// Sections to show in the drawer for a given collar.
   List<String> sectionsForCollar(int collarIndex) =>
       sectionsByCollar[collarIndex] ?? const [];
@@ -69,6 +72,7 @@ WindowInputHandler handlerForWindow(WindowType node) {
     case 'MES3_win':
       return const PanelMSlidingEqualInputHandler();
     case 'SCF_win':
+    case 'MSCF_win':
       return const SlidingCornerCenterFixInputHandler();
     default:
       return const DefaultInputHandler();

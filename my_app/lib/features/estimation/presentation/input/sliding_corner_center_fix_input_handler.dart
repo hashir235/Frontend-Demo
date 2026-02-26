@@ -6,8 +6,11 @@ class SlidingCornerCenterFixInputHandler extends WindowInputHandler {
   const SlidingCornerCenterFixInputHandler();
 
   @override
+  int get collarCount => 2;
+
+  @override
   Widget? overlayForCollar(int collarIndex, String? selectedSection) {
-    if (collarIndex < 1 || collarIndex > 14) return null;
+    if (collarIndex < 1 || collarIndex > collarCount) return null;
     return SlidingCornerCenterFixOverlay(
       interiorAngleDeg: _cornerInteriorAngleDeg,
       collarId: collarIndex,

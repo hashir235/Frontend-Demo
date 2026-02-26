@@ -19,6 +19,7 @@ class SlidingCornerCenterFixOverlay extends StatelessWidget {
     return CustomPaint(
       painter: _SlidingCornerCenterFixPainter(
         interiorAngleDeg: interiorAngleDeg,
+        collarId: collarId,
       ),
       child: const SizedBox.expand(),
     );
@@ -27,9 +28,11 @@ class SlidingCornerCenterFixOverlay extends StatelessWidget {
 
 class _SlidingCornerCenterFixPainter extends CustomPainter {
   final double interiorAngleDeg;
+  final int? collarId;
 
   const _SlidingCornerCenterFixPainter({
     required this.interiorAngleDeg,
+    required this.collarId,
   });
 
   @override
@@ -38,6 +41,11 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..color = AppTheme.deepTeal.withValues(alpha: 0.30);
+    final TextStyle labelStyle = TextStyle(
+      color: basePaint.color,
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+    );
 
     // Tune these 4 numbers for quick visual adjustments.
     final Rect frame = Rect.fromLTWH(
@@ -113,6 +121,17 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       final double t =
           (((p3.dx - p1.dx) * d2y) - ((p3.dy - p1.dy) * d2x)) / cross;
       return Offset(p1.dx + (d1x * t), p1.dy + (d1y * t));
+    }
+
+    Offset mid(Offset a, Offset b) =>
+        Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+
+    void drawLabel(String text, Offset center) {
+      final TextPainter tp = TextPainter(
+        text: TextSpan(text: text, style: labelStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
     }
 
     final Offset nLeft = outwardNormal(topLeftOuter, topApex);
@@ -203,34 +222,40 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       rightSideParallelBottom,
     );
 
-    // Outer V-frame + side edges + center seam.
-    canvas.drawLine(topLeftOuter, topApex, basePaint);
-    canvas.drawLine(topApex, topRightOuter, basePaint);
-    canvas.drawLine(bottomLeftOuter, bottomApex, basePaint);
-    canvas.drawLine(bottomApex, bottomRightOuter, basePaint);
-    canvas.drawLine(leftSideTop, leftSideBottom, basePaint);
-    canvas.drawLine(rightSideTop, rightSideBottom, basePaint);
+    final bool showOuterGeometry = collarId != 2;
+
+    // Center seam is part of inner structure and remains visible.
     canvas.drawLine(topApex, bottomApex, basePaint);
 
-    // Draw second top/side/bottom boundaries as a continuous joined frame.
-    canvas.drawLine(topLeftUpperJoin, topApexUpper, basePaint);
-    canvas.drawLine(topApexUpper, topRightUpperJoin, basePaint);
+    if (showOuterGeometry) {
+      // Outer V-frame + side edges.
+      canvas.drawLine(topLeftOuter, topApex, basePaint);
+      canvas.drawLine(topApex, topRightOuter, basePaint);
+      canvas.drawLine(bottomLeftOuter, bottomApex, basePaint);
+      canvas.drawLine(bottomApex, bottomRightOuter, basePaint);
+      canvas.drawLine(leftSideTop, leftSideBottom, basePaint);
+      canvas.drawLine(rightSideTop, rightSideBottom, basePaint);
 
-    canvas.drawLine(topLeftUpperJoin, bottomLeftLowerJoin, basePaint);
-    canvas.drawLine(topRightUpperJoin, bottomRightLowerJoin, basePaint);
+      // Draw second top/side/bottom boundaries as a continuous joined frame.
+      canvas.drawLine(topLeftUpperJoin, topApexUpper, basePaint);
+      canvas.drawLine(topApexUpper, topRightUpperJoin, basePaint);
 
-    canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, basePaint);
-    canvas.drawLine(bottomApexLower, bottomRightLowerJoin, basePaint);
+      canvas.drawLine(topLeftUpperJoin, bottomLeftLowerJoin, basePaint);
+      canvas.drawLine(topRightUpperJoin, bottomRightLowerJoin, basePaint);
 
-    // Small links between outer and inner corner boundaries.
-    canvas.drawLine(topLeftOuter, topLeftUpperJoin, basePaint);
-    canvas.drawLine(topRightOuter, topRightUpperJoin, basePaint);
-    canvas.drawLine(bottomLeftOuter, bottomLeftLowerJoin, basePaint);
-    canvas.drawLine(bottomRightOuter, bottomRightLowerJoin, basePaint);
+      canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, basePaint);
+      canvas.drawLine(bottomApexLower, bottomRightLowerJoin, basePaint);
 
-    // Center small links (top and bottom).
-    canvas.drawLine(topApex, topApexUpper, basePaint);
-    canvas.drawLine(bottomApex, bottomApexLower, basePaint);
+      // Small links between outer and inner corner boundaries.
+      canvas.drawLine(topLeftOuter, topLeftUpperJoin, basePaint);
+      canvas.drawLine(topRightOuter, topRightUpperJoin, basePaint);
+      canvas.drawLine(bottomLeftOuter, bottomLeftLowerJoin, basePaint);
+      canvas.drawLine(bottomRightOuter, bottomRightLowerJoin, basePaint);
+
+      // Center small links (top and bottom).
+      canvas.drawLine(topApex, topApexUpper, basePaint);
+      canvas.drawLine(bottomApex, bottomApexLower, basePaint);
+    }
 
     // 4-panel split: one inner line per wing + center seam.
     const double panelSplitT = 0.52;
@@ -244,10 +269,132 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
 
     canvas.drawLine(leftInnerTop, leftInnerBottom, basePaint);
     canvas.drawLine(rightInnerTop, rightInnerBottom, basePaint);
+
+    if (showOuterGeometry) {
+      // Outer symbols.
+      final double topLabelGap = size.height * 0.074;
+      final double sideLabelGap = size.width * 0.050;
+      final double bottomLabelGap = size.height * 0.074;
+      final double sideXPush = size.width * 0.015;
+      final double topYPush = size.height * 0.026;
+      final double bottomYPush = size.height * 0.030;
+
+      drawLabel(
+        'WT_L',
+        mid(topLeftOuter, topApex) +
+            (nLeft * topLabelGap) +
+            Offset(0, -topYPush),
+      );
+      drawLabel(
+        'WT_R',
+        mid(topApex, topRightOuter) +
+            (nRight * topLabelGap) +
+            Offset(0, -topYPush),
+      );
+
+      drawLabel(
+        'HL',
+        mid(leftSideTop, leftSideBottom) +
+            (nLeftSide * sideLabelGap) +
+            Offset(-sideXPush, 0),
+      );
+      if (collarId == 1) {
+        // Extra H on inner side-lines near HL/HR.
+        drawLabel(
+          'H',
+          mid(leftSideParallelTop, leftSideParallelBottom) +
+              Offset(size.width * 0.052, 0),
+        );
+        drawLabel(
+          'H',
+          mid(rightSideParallelTop, rightSideParallelBottom) +
+              Offset(-size.width * 0.052, 0),
+        );
+      }
+      drawLabel(
+        'HR',
+        mid(rightSideTop, rightSideBottom) +
+            (nRightSide * sideLabelGap) +
+            Offset(sideXPush, 0),
+      );
+
+      drawLabel(
+        'WB_L',
+        mid(bottomLeftOuter, bottomApex) +
+            (nBottomLeft * bottomLabelGap) +
+            Offset(0, bottomYPush),
+      );
+      drawLabel(
+        'WB_R',
+        mid(bottomApex, bottomRightOuter) +
+            (nBottomRight * bottomLabelGap) +
+            Offset(0, bottomYPush),
+      );
+    }
+
+    // Collar 1: inner symbols.
+    if (collarId == 1) {
+      final double hEdgeGap = size.width * 0.020;
+      final double hCenterGap = size.width * 0.028;
+      final double topInnerY = size.height * 0.048;
+      final double bottomInnerY = size.height * 0.036;
+      final double leftPanelX = size.width * 0.006;
+      final double rightPanelX = size.width * 0.006;
+
+      final Offset leftMid = mid(leftInnerTop, leftInnerBottom);
+      final Offset centerMid = mid(topApex, bottomApex);
+      final Offset rightMid = mid(rightInnerTop, rightInnerBottom);
+
+      // H rules: edge lines and center line labels.
+      drawLabel('H', leftMid + Offset(-hEdgeGap, 0));
+      drawLabel('H', leftMid + Offset(hEdgeGap, 0));
+      drawLabel('H', centerMid + Offset(-hCenterGap, 0));
+      drawLabel('H', centerMid + Offset(hCenterGap, 0));
+      drawLabel('H', rightMid + Offset(-hEdgeGap, 0));
+      drawLabel('H', rightMid + Offset(hEdgeGap, 0));
+
+      // 4-panel WL-WL-WR-WR mapping (top row).
+      drawLabel(
+        'WL',
+        mid(topLeftBase, leftInnerTop) + Offset(-leftPanelX, topInnerY),
+      );
+      drawLabel(
+        'WL',
+        mid(leftInnerTop, topApex) + Offset(-leftPanelX, topInnerY),
+      );
+      drawLabel(
+        'WR',
+        mid(topApex, rightInnerTop) + Offset(rightPanelX, topInnerY),
+      );
+      drawLabel(
+        'WR',
+        mid(rightInnerTop, topRightBase) + Offset(rightPanelX, topInnerY),
+      );
+
+      // 4-panel WL-WL-WR-WR mapping (bottom row).
+      drawLabel(
+        'WL',
+        mid(bottomLeftBase, leftInnerBottom) + Offset(-leftPanelX, -bottomInnerY),
+      );
+      drawLabel(
+        'WL',
+        mid(leftInnerBottom, bottomApex) + Offset(-leftPanelX, -bottomInnerY),
+      );
+      drawLabel(
+        'WR',
+        mid(bottomApex, rightInnerBottom) + Offset(rightPanelX, -bottomInnerY),
+      );
+      drawLabel(
+        'WR',
+        mid(rightInnerBottom, bottomRightBase) +
+            Offset(rightPanelX, -bottomInnerY),
+      );
+    }
   }
 
   @override
   bool shouldRepaint(covariant _SlidingCornerCenterFixPainter oldDelegate) {
-    return oldDelegate.interiorAngleDeg != interiorAngleDeg;
+    return oldDelegate.interiorAngleDeg != interiorAngleDeg ||
+        oldDelegate.collarId != collarId;
   }
 }

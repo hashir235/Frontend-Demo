@@ -116,6 +116,86 @@ void main() {
     expect(find.text('D29'), findsNothing);
   });
 
+  testWidgets('SCF input limits collar cards to 2', (WidgetTester tester) async {
+    const WindowType scfNode = WindowType(
+      label: 'Sliding Corner Center Fix',
+      graphicKey: 'corner_basic',
+      children: <WindowType>[],
+      displayIndex: 11,
+      codeName: 'SCF_win',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: scfNode,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final PageView pageView = tester.widget<PageView>(
+      find.byKey(const Key('collar_page_view')),
+    );
+    final SliverChildBuilderDelegate delegate =
+        pageView.childrenDelegate as SliverChildBuilderDelegate;
+    expect(delegate.childCount, 2);
+  });
+
+  testWidgets('MSCF input limits collar cards to 2', (WidgetTester tester) async {
+    const WindowType mscfNode = WindowType(
+      label: 'Sliding Corner Center Fix (M_Section)',
+      graphicKey: 'corner_basic',
+      children: <WindowType>[],
+      displayIndex: 15,
+      codeName: 'MSCF_win',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: mscfNode,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final PageView pageView = tester.widget<PageView>(
+      find.byKey(const Key('collar_page_view')),
+    );
+    final SliverChildBuilderDelegate delegate =
+        pageView.childrenDelegate as SliverChildBuilderDelegate;
+    expect(delegate.childCount, 2);
+  });
+
+  testWidgets('Non-corner windows keep 14 collar cards', (
+    WidgetTester tester,
+  ) async {
+    const WindowType slidingNode = WindowType(
+      label: 'Sliding Window',
+      graphicKey: 'sliding_basic',
+      children: <WindowType>[],
+      displayIndex: 1,
+      codeName: 'S_win',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: slidingNode,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final PageView pageView = tester.widget<PageView>(
+      find.byKey(const Key('collar_page_view')),
+    );
+    final SliverChildBuilderDelegate delegate =
+        pageView.childrenDelegate as SliverChildBuilderDelegate;
+    expect(delegate.childCount, 14);
+  });
+
   testWidgets('PF3 drawer follows collar-wise S_win section parity', (
     WidgetTester tester,
   ) async {

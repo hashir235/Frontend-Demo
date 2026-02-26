@@ -73,6 +73,13 @@ void main() {
     displayIndex: 11,
     codeName: 'SCF_win',
   );
+  const WindowType mscfNode = WindowType(
+    label: 'Sliding Corner Center Fix (M_Section)',
+    graphicKey: 'corner_basic',
+    children: <WindowType>[],
+    displayIndex: 15,
+    codeName: 'MSCF_win',
+  );
 
   test('MS_win collar 1 sections include M-codes and exclude D29', () {
     final WindowInputHandler handler = handlerForWindow(mSectionNode);
@@ -240,6 +247,18 @@ void main() {
   test('SCF_win routes to SlidingCornerCenterFixInputHandler', () {
     final WindowInputHandler handler = handlerForWindow(scfNode);
     expect(handler, isA<SlidingCornerCenterFixInputHandler>());
+    expect(handler.collarCount, 2);
     expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(2, null), isNotNull);
+    expect(handler.overlayForCollar(3, null), isNull);
+  });
+
+  test('MSCF_win routes to SlidingCornerCenterFixInputHandler', () {
+    final WindowInputHandler handler = handlerForWindow(mscfNode);
+    expect(handler, isA<SlidingCornerCenterFixInputHandler>());
+    expect(handler.collarCount, 2);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(2, null), isNotNull);
+    expect(handler.overlayForCollar(3, null), isNull);
   });
 }

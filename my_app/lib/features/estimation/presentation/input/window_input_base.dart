@@ -31,7 +31,7 @@ class WindowInputScreen extends StatefulWidget {
 
 class _WindowInputScreenState extends State<WindowInputScreen> {
   static const int _maxDescriptionLength = 120;
-  static const double _collarCardSize = 280;
+  static const double _collarCardSize = 258;
   static const double _collarCardWidthFactor = 1.16;
   static const double _collarViewportFraction = 0.78;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -67,7 +67,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     super.initState();
     _handler = handlerForWindow(widget.node);
     _unitMode = widget.editingItem?.unitMode ?? UnitMode.inches;
-    _selectedCollar = widget.editingItem?.collarIndex ?? 1;
+    final int initialCollar = widget.editingItem?.collarIndex ?? 1;
+    if (initialCollar < 1) {
+      _selectedCollar = 1;
+    } else if (initialCollar > _handler.collarCount) {
+      _selectedCollar = _handler.collarCount;
+    } else {
+      _selectedCollar = initialCollar;
+    }
     _heightController.text = widget.editingItem?.heightValue ?? '';
     _widthController.text = widget.editingItem?.widthValue ?? '';
     _descriptionController.text = widget.editingItem?.description ?? '';
@@ -636,7 +643,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       key: const Key('collar_page_view'),
                       controller: _collarPageController,
                       physics: const BouncingScrollPhysics(),
-                      itemCount: 14,
+                      itemCount: _handler.collarCount,
                       onPageChanged: (int index) {
                         setState(() {
                           _selectedCollar = index + 1;
