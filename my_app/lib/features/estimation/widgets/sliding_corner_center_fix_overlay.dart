@@ -222,12 +222,16 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       rightSideParallelBottom,
     );
 
-    final bool showOuterGeometry = collarId != 2;
+    // Collar 2: hide primary outer frame + corner links, keep inner frame.
+    final bool showPrimaryOuterGeometry = collarId != 2;
+    const bool showSecondaryInnerFrame = true;
+    final bool showCornerSmallLinks = collarId != 2;
+    final bool showOuterLabels = true;
 
     // Center seam is part of inner structure and remains visible.
     canvas.drawLine(topApex, bottomApex, basePaint);
 
-    if (showOuterGeometry) {
+    if (showPrimaryOuterGeometry) {
       // Outer V-frame + side edges.
       canvas.drawLine(topLeftOuter, topApex, basePaint);
       canvas.drawLine(topApex, topRightOuter, basePaint);
@@ -235,7 +239,9 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       canvas.drawLine(bottomApex, bottomRightOuter, basePaint);
       canvas.drawLine(leftSideTop, leftSideBottom, basePaint);
       canvas.drawLine(rightSideTop, rightSideBottom, basePaint);
+    }
 
+    if (showSecondaryInnerFrame) {
       // Draw second top/side/bottom boundaries as a continuous joined frame.
       canvas.drawLine(topLeftUpperJoin, topApexUpper, basePaint);
       canvas.drawLine(topApexUpper, topRightUpperJoin, basePaint);
@@ -245,32 +251,43 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
 
       canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, basePaint);
       canvas.drawLine(bottomApexLower, bottomRightLowerJoin, basePaint);
+    }
 
+    if (showCornerSmallLinks) {
       // Small links between outer and inner corner boundaries.
       canvas.drawLine(topLeftOuter, topLeftUpperJoin, basePaint);
       canvas.drawLine(topRightOuter, topRightUpperJoin, basePaint);
       canvas.drawLine(bottomLeftOuter, bottomLeftLowerJoin, basePaint);
       canvas.drawLine(bottomRightOuter, bottomRightLowerJoin, basePaint);
-
-      // Center small links (top and bottom).
-      canvas.drawLine(topApex, topApexUpper, basePaint);
-      canvas.drawLine(bottomApex, bottomApexLower, basePaint);
     }
+
+    // Center small links (top and bottom).
+    canvas.drawLine(topApex, topApexUpper, basePaint);
+    canvas.drawLine(bottomApex, bottomApexLower, basePaint);
 
     // 4-panel split: one inner line per wing + center seam.
     const double panelSplitT = 0.52;
     Offset lerp(Offset a, Offset b, double t) =>
         Offset(a.dx + (b.dx - a.dx) * t, a.dy + (b.dy - a.dy) * t);
 
-    final Offset leftInnerTop = lerp(topApex, topLeftBase, panelSplitT);
-    final Offset leftInnerBottom = lerp(bottomApex, bottomLeftBase, panelSplitT);
-    final Offset rightInnerTop = lerp(topApex, topRightBase, panelSplitT);
-    final Offset rightInnerBottom = lerp(bottomApex, bottomRightBase, panelSplitT);
+    // For collar 2, make inner center lines fully meet the top/bottom inner lines.
+    final Offset leftInnerTop = collarId == 2
+        ? lerp(topApexUpper, topLeftUpperJoin, panelSplitT)
+        : lerp(topApex, topLeftBase, panelSplitT);
+    final Offset leftInnerBottom = collarId == 2
+        ? lerp(bottomApexLower, bottomLeftLowerJoin, panelSplitT)
+        : lerp(bottomApex, bottomLeftBase, panelSplitT);
+    final Offset rightInnerTop = collarId == 2
+        ? lerp(topApexUpper, topRightUpperJoin, panelSplitT)
+        : lerp(topApex, topRightBase, panelSplitT);
+    final Offset rightInnerBottom = collarId == 2
+        ? lerp(bottomApexLower, bottomRightLowerJoin, panelSplitT)
+        : lerp(bottomApex, bottomRightBase, panelSplitT);
 
     canvas.drawLine(leftInnerTop, leftInnerBottom, basePaint);
     canvas.drawLine(rightInnerTop, rightInnerBottom, basePaint);
 
-    if (showOuterGeometry) {
+    if (showOuterLabels) {
       // Outer symbols.
       final double topLabelGap = size.height * 0.074;
       final double sideLabelGap = size.width * 0.050;
@@ -298,7 +315,7 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
             (nLeftSide * sideLabelGap) +
             Offset(-sideXPush, 0),
       );
-      if (collarId == 1) {
+      if (collarId == 1 || collarId == 2) {
         // Extra H on inner side-lines near HL/HR.
         drawLabel(
           'H',
@@ -333,7 +350,7 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
     }
 
     // Collar 1: inner symbols.
-    if (collarId == 1) {
+    if (collarId == 1 || collarId == 2) {
       final double hEdgeGap = size.width * 0.020;
       final double hCenterGap = size.width * 0.028;
       final double topInnerY = size.height * 0.048;
