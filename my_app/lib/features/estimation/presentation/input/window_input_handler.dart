@@ -1,11 +1,19 @@
 import 'package:flutter/widgets.dart';
 
 import '../../models/window_type.dart';
+import '../../widgets/panel_equal_overlay.dart';
+import '../../widgets/panel_center_fix_overlay.dart';
+import '../../widgets/panel_center_slide_overlay.dart';
 import '../../widgets/sliding_m_section_overlay.dart';
 import '../../widgets/sliding_section_overlay.dart';
 
 part 'sliding_window_input_handler.dart';
 part 'sliding_window_m_section_input_handler.dart';
+part 'panel_center_fix_input_handler.dart';
+part 'panel_center_slide_input_handler.dart';
+part 'panel_equal_input_handler.dart';
+part 'panel_sliding_equal_input_handler.dart';
+part 'panel_m_section_input_handlers.dart';
 
 /// Base class for window-specific input behavior.
 abstract class WindowInputHandler {
@@ -42,6 +50,22 @@ WindowInputHandler handlerForWindow(WindowType node) {
       return const SlidingWindowInputHandler();
     case 'MS_win':
       return const SlidingWindowMSectionInputHandler();
+    case 'PF3_win':
+      return const PanelCenterFixInputHandler();
+    case 'PS4_win':
+      return const PanelCenterSlideInputHandler();
+    case 'EF3_win':
+      return const PanelEqualInputHandler();
+    case 'ES3_win':
+      return const PanelSlidingEqualInputHandler();
+    case 'MPF3_win':
+      return const PanelMCenterFixInputHandler();
+    case 'MPS4_win':
+      return const PanelMCenterSlideInputHandler();
+    case 'MEF3_win':
+      return const PanelMEqualInputHandler();
+    case 'MES3_win':
+      return const PanelMSlidingEqualInputHandler();
     default:
       return const DefaultInputHandler();
   }

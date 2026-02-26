@@ -116,6 +116,264 @@ void main() {
     expect(find.text('D29'), findsNothing);
   });
 
+  testWidgets('PF3 drawer follows collar-wise S_win section parity', (
+    WidgetTester tester,
+  ) async {
+    const WindowType pf3Node = WindowType(
+      label: 'Center Fix',
+      graphicKey: 'panel_basic',
+      children: <WindowType>[],
+      displayIndex: 3,
+      codeName: 'PF3_win',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: pf3Node,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+
+    // Collar 1
+    expect(find.text('DC30F'), findsOneWidget);
+    expect(find.text('DC26F'), findsOneWidget);
+    expect(find.text('D29'), findsOneWidget);
+    expect(find.text('M23'), findsOneWidget);
+    expect(find.text('M24'), findsOneWidget);
+    expect(find.text('M28'), findsOneWidget);
+    expect(find.text('DC30C'), findsNothing);
+    expect(find.text('DC26C'), findsNothing);
+
+    Navigator.of(
+      tester.element(find.byKey(const Key('settings_drawer'))),
+    ).pop();
+    await tester.pumpAndSettle();
+
+    // Collar 2
+    await tester.drag(
+      find.byKey(const Key('collar_page_view')),
+      const Offset(-700, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DC30C'), findsOneWidget);
+    expect(find.text('DC26C'), findsOneWidget);
+    expect(find.text('D29'), findsOneWidget);
+    expect(find.text('DC30F'), findsNothing);
+    expect(find.text('DC26F'), findsNothing);
+
+    Navigator.of(
+      tester.element(find.byKey(const Key('settings_drawer'))),
+    ).pop();
+    await tester.pumpAndSettle();
+
+    // Collar 3
+    await tester.drag(
+      find.byKey(const Key('collar_page_view')),
+      const Offset(-700, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DC30F'), findsOneWidget);
+    expect(find.text('DC30C'), findsOneWidget);
+    expect(find.text('DC26F'), findsOneWidget);
+    expect(find.text('D29'), findsOneWidget);
+    expect(find.text('M23'), findsOneWidget);
+    expect(find.text('M24'), findsOneWidget);
+    expect(find.text('M28'), findsOneWidget);
+
+    // tap-smoke
+    for (final String code in const <String>['DC30F', 'DC30C', 'DC26F', 'D29']) {
+      await tester.tap(find.text(code));
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('PS4 drawer collar 2 shows C variants', (WidgetTester tester) async {
+    const WindowType ps4Node = WindowType(
+      label: 'Center Slide',
+      graphicKey: 'panel_basic',
+      children: <WindowType>[],
+      displayIndex: 4,
+      codeName: 'PS4_win',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: ps4Node,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Collar 1
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('DC30F'), findsOneWidget);
+    expect(find.text('DC26F'), findsOneWidget);
+    Navigator.of(
+      tester.element(find.byKey(const Key('settings_drawer'))),
+    ).pop();
+    await tester.pumpAndSettle();
+
+    // Collar 2
+    await tester.drag(
+      find.byKey(const Key('collar_page_view')),
+      const Offset(-700, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DC30C'), findsOneWidget);
+    expect(find.text('DC26C'), findsOneWidget);
+  });
+
+  testWidgets('EF3 drawer collar 2 shows C variants', (WidgetTester tester) async {
+    const WindowType ef3Node = WindowType(
+      label: 'Equal Panel',
+      graphicKey: 'panel_basic',
+      children: <WindowType>[],
+      displayIndex: 5,
+      codeName: 'EF3_win',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: ef3Node,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('DC30F'), findsOneWidget);
+    expect(find.text('DC26F'), findsOneWidget);
+    Navigator.of(
+      tester.element(find.byKey(const Key('settings_drawer'))),
+    ).pop();
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const Key('collar_page_view')),
+      const Offset(-700, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DC30C'), findsOneWidget);
+    expect(find.text('DC26C'), findsOneWidget);
+  });
+
+  testWidgets('ES3 drawer excludes M28 and keeps collar matrix', (
+    WidgetTester tester,
+  ) async {
+    const WindowType es3Node = WindowType(
+      label: 'Sliding Equal Panel',
+      graphicKey: 'panel_basic',
+      children: <WindowType>[],
+      displayIndex: 6,
+      codeName: 'ES3_win',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: es3Node,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DC30F'), findsOneWidget);
+    expect(find.text('DC26F'), findsOneWidget);
+    expect(find.text('M23'), findsOneWidget);
+    expect(find.text('M24'), findsOneWidget);
+    expect(find.text('M28'), findsNothing);
+
+    Navigator.of(
+      tester.element(find.byKey(const Key('settings_drawer'))),
+    ).pop();
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const Key('collar_page_view')),
+      const Offset(-700, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DC30C'), findsOneWidget);
+    expect(find.text('DC26C'), findsOneWidget);
+    expect(find.text('M28'), findsNothing);
+  });
+
+  testWidgets('MPF3 drawer uses M codes and removes D29', (
+    WidgetTester tester,
+  ) async {
+    const WindowType mpf3Node = WindowType(
+      label: 'Center Fix',
+      graphicKey: 'panel_basic',
+      children: <WindowType>[],
+      displayIndex: 7,
+      codeName: 'MPF3_win',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: mpf3Node,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('M30F'), findsOneWidget);
+    expect(find.text('M26F'), findsOneWidget);
+    expect(find.text('D29'), findsNothing);
+
+    Navigator.of(
+      tester.element(find.byKey(const Key('settings_drawer'))),
+    ).pop();
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const Key('collar_page_view')),
+      const Offset(-700, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('M30'), findsOneWidget);
+    expect(find.text('M26'), findsOneWidget);
+    expect(find.text('D29'), findsNothing);
+  });
+
   testWidgets('Save with optional description shows it in review list', (
     WidgetTester tester,
   ) async {

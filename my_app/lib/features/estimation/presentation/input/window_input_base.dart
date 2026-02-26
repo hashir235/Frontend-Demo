@@ -31,7 +31,8 @@ class WindowInputScreen extends StatefulWidget {
 
 class _WindowInputScreenState extends State<WindowInputScreen> {
   static const int _maxDescriptionLength = 120;
-  static const double _collarCardSize = 240;
+  static const double _collarCardSize = 280;
+  static const double _collarCardWidthFactor = 1.16;
   static const double _collarViewportFraction = 0.78;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _heightController = TextEditingController();
@@ -347,7 +348,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       },
       child: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: side, maxHeight: side),
+          constraints: BoxConstraints(
+            maxWidth: side * _collarCardWidthFactor,
+            maxHeight: side,
+          ),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -358,7 +362,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                 child: Center(child: _CollarArchBadge(number: collarIndex)),
               ),
               AspectRatio(
-                aspectRatio: 1,
+                aspectRatio: _collarCardWidthFactor,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeInOutCubic,
