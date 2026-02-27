@@ -73,6 +73,27 @@ void main() {
     displayIndex: 11,
     codeName: 'SCF_win',
   );
+  const WindowType scsNode = WindowType(
+    label: 'Sliding Corner Center Slide',
+    graphicKey: 'corner_basic',
+    children: <WindowType>[],
+    displayIndex: 12,
+    codeName: 'SCS_win',
+  );
+  const WindowType sclNode = WindowType(
+    label: 'Sliding Corner Left Fix',
+    graphicKey: 'corner_basic',
+    children: <WindowType>[],
+    displayIndex: 13,
+    codeName: 'SCL_win',
+  );
+  const WindowType scrNode = WindowType(
+    label: 'Sliding Corner Right Fix',
+    graphicKey: 'corner_basic',
+    children: <WindowType>[],
+    displayIndex: 14,
+    codeName: 'SCR_win',
+  );
   const WindowType mscfNode = WindowType(
     label: 'Sliding Corner Center Fix (M_Section)',
     graphicKey: 'corner_basic',
@@ -255,6 +276,33 @@ void main() {
 
   test('MSCF_win routes to SlidingCornerCenterFixInputHandler', () {
     final WindowInputHandler handler = handlerForWindow(mscfNode);
+    expect(handler, isA<SlidingCornerCenterFixInputHandler>());
+    expect(handler.collarCount, 2);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(2, null), isNotNull);
+    expect(handler.overlayForCollar(3, null), isNull);
+  });
+
+  test('SCS_win routes to SlidingCornerCenterFixInputHandler', () {
+    final WindowInputHandler handler = handlerForWindow(scsNode);
+    expect(handler, isA<SlidingCornerCenterFixInputHandler>());
+    expect(handler.collarCount, 2);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(2, null), isNotNull);
+    expect(handler.overlayForCollar(3, null), isNull);
+  });
+
+  test('SCL_win routes to SlidingCornerCenterFixInputHandler', () {
+    final WindowInputHandler handler = handlerForWindow(sclNode);
+    expect(handler, isA<SlidingCornerCenterFixInputHandler>());
+    expect(handler.collarCount, 2);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(2, null), isNotNull);
+    expect(handler.overlayForCollar(3, null), isNull);
+  });
+
+  test('SCR_win routes to SlidingCornerCenterFixInputHandler', () {
+    final WindowInputHandler handler = handlerForWindow(scrNode);
     expect(handler, isA<SlidingCornerCenterFixInputHandler>());
     expect(handler.collarCount, 2);
     expect(handler.overlayForCollar(1, null), isNotNull);

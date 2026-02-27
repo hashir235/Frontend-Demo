@@ -7,11 +7,15 @@ import '../../../core/theme/app_theme.dart';
 class SlidingCornerCenterFixOverlay extends StatelessWidget {
   final double interiorAngleDeg;
   final int? collarId;
+  final String? windowCode;
+  final String? selectedSection;
 
   const SlidingCornerCenterFixOverlay({
     super.key,
     this.interiorAngleDeg = 26,
     this.collarId,
+    this.windowCode,
+    this.selectedSection,
   });
 
   @override
@@ -20,6 +24,8 @@ class SlidingCornerCenterFixOverlay extends StatelessWidget {
       painter: _SlidingCornerCenterFixPainter(
         interiorAngleDeg: interiorAngleDeg,
         collarId: collarId,
+        windowCode: windowCode,
+        selectedSection: selectedSection,
       ),
       child: const SizedBox.expand(),
     );
@@ -29,10 +35,14 @@ class SlidingCornerCenterFixOverlay extends StatelessWidget {
 class _SlidingCornerCenterFixPainter extends CustomPainter {
   final double interiorAngleDeg;
   final int? collarId;
+  final String? windowCode;
+  final String? selectedSection;
 
   const _SlidingCornerCenterFixPainter({
     required this.interiorAngleDeg,
     required this.collarId,
+    required this.windowCode,
+    required this.selectedSection,
   });
 
   @override
@@ -41,6 +51,11 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..color = AppTheme.deepTeal.withValues(alpha: 0.30);
+    final Paint highlightPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.8
+      ..strokeCap = StrokeCap.round
+      ..color = AppTheme.violet.withValues(alpha: 0.95);
     final TextStyle labelStyle = TextStyle(
       color: basePaint.color,
       fontSize: 11,
@@ -126,9 +141,12 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
     Offset mid(Offset a, Offset b) =>
         Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
 
-    void drawLabel(String text, Offset center) {
+    void drawLabel(String text, Offset center, {Color? color}) {
       final TextPainter tp = TextPainter(
-        text: TextSpan(text: text, style: labelStyle),
+        text: TextSpan(
+          text: text,
+          style: labelStyle.copyWith(color: color ?? labelStyle.color),
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
@@ -228,8 +246,14 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
     final bool showCornerSmallLinks = collarId != 2;
     final bool showOuterLabels = true;
 
-    // Center seam is part of inner structure and remains visible.
-    canvas.drawLine(topApex, bottomApex, basePaint);
+    final bool isScfCollar =
+        windowCode == 'SCF_win' && (collarId == 1 || collarId == 2);
+    final bool showCenterSeam = !isScfCollar;
+
+    // Center seam for applicable variants.
+    if (showCenterSeam) {
+      canvas.drawLine(topApex, bottomApex, basePaint);
+    }
 
     if (showPrimaryOuterGeometry) {
       // Outer V-frame + side edges.
@@ -262,8 +286,10 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
     }
 
     // Center small links (top and bottom).
-    canvas.drawLine(topApex, topApexUpper, basePaint);
-    canvas.drawLine(bottomApex, bottomApexLower, basePaint);
+    if (showCenterSeam) {
+      canvas.drawLine(topApex, topApexUpper, basePaint);
+      canvas.drawLine(bottomApex, bottomApexLower, basePaint);
+    }
 
     // 4-panel split: one inner line per wing + center seam.
     const double panelSplitT = 0.52;
@@ -284,8 +310,23 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
         ? lerp(bottomApexLower, bottomRightLowerJoin, panelSplitT)
         : lerp(bottomApex, bottomRightBase, panelSplitT);
 
-    canvas.drawLine(leftInnerTop, leftInnerBottom, basePaint);
-    canvas.drawLine(rightInnerTop, rightInnerBottom, basePaint);
+    final bool isSclCollar =
+        windowCode == 'SCL_win' && (collarId == 1 || collarId == 2);
+    final bool isScrCollar =
+        windowCode == 'SCR_win' && (collarId == 1 || collarId == 2);
+    final bool isScfCollar1 = windowCode == 'SCF_win' && collarId == 1;
+    final String normalizedSection = selectedSection?.trim().toUpperCase() ?? '';
+    final bool highlightDc30F = isScfCollar1 && normalizedSection == 'DC30F';
+    final bool highlightDc26F = isScfCollar1 && normalizedSection == 'DC26F';
+    final bool highlightM23 = isScfCollar1 && normalizedSection == 'M23';
+    final bool highlightM28 = isScfCollar1 && normalizedSection == 'M28';
+    final bool highlightM24 = isScfCollar1 && normalizedSection == 'M24';
+    if (!isSclCollar) {
+      canvas.drawLine(leftInnerTop, leftInnerBottom, basePaint);
+    }
+    if (!isScrCollar) {
+      canvas.drawLine(rightInnerTop, rightInnerBottom, basePaint);
+    }
 
     if (showOuterLabels) {
       // Outer symbols.
@@ -361,57 +402,284 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       final Offset leftMid = mid(leftInnerTop, leftInnerBottom);
       final Offset centerMid = mid(topApex, bottomApex);
       final Offset rightMid = mid(rightInnerTop, rightInnerBottom);
+      final bool hideLeftMidH = isSclCollar;
+      final bool hideRightMidH = isScrCollar;
+      final bool hideCenterMidH = isScfCollar;
 
       // H rules: edge lines and center line labels.
-      drawLabel('H', leftMid + Offset(-hEdgeGap, 0));
-      drawLabel('H', leftMid + Offset(hEdgeGap, 0));
-      drawLabel('H', centerMid + Offset(-hCenterGap, 0));
-      drawLabel('H', centerMid + Offset(hCenterGap, 0));
-      drawLabel('H', rightMid + Offset(-hEdgeGap, 0));
-      drawLabel('H', rightMid + Offset(hEdgeGap, 0));
+      if (!hideLeftMidH) {
+        drawLabel('H', leftMid + Offset(-hEdgeGap, 0));
+        drawLabel('H', leftMid + Offset(hEdgeGap, 0));
+      }
+      if (!hideCenterMidH) {
+        drawLabel('H', centerMid + Offset(-hCenterGap, 0));
+        drawLabel('H', centerMid + Offset(hCenterGap, 0));
+      }
+      if (!hideRightMidH) {
+        drawLabel('H', rightMid + Offset(-hEdgeGap, 0));
+        drawLabel('H', rightMid + Offset(hEdgeGap, 0));
+      }
 
       // 4-panel WL-WL-WR-WR mapping (top row).
-      drawLabel(
-        'WL',
-        mid(topLeftBase, leftInnerTop) + Offset(-leftPanelX, topInnerY),
-      );
-      drawLabel(
-        'WL',
-        mid(leftInnerTop, topApex) + Offset(-leftPanelX, topInnerY),
-      );
-      drawLabel(
-        'WR',
-        mid(topApex, rightInnerTop) + Offset(rightPanelX, topInnerY),
-      );
-      drawLabel(
-        'WR',
-        mid(rightInnerTop, topRightBase) + Offset(rightPanelX, topInnerY),
-      );
+      if (isSclCollar) {
+        drawLabel(
+          'WL',
+          (collarId == 2
+                  ? mid(topLeftUpperJoin, topApexUpper)
+                  : mid(topLeftBase, topApex)) +
+              Offset(-leftPanelX, topInnerY),
+        );
+      } else {
+        drawLabel(
+          'WL',
+          mid(topLeftBase, leftInnerTop) + Offset(-leftPanelX, topInnerY),
+        );
+        drawLabel(
+          'WL',
+          mid(leftInnerTop, topApex) + Offset(-leftPanelX, topInnerY),
+        );
+      }
+      if (isScrCollar) {
+        drawLabel(
+          'WR',
+          (collarId == 2
+                  ? mid(topApexUpper, topRightUpperJoin)
+                  : mid(topApex, topRightBase)) +
+              Offset(rightPanelX, topInnerY),
+        );
+      } else {
+        drawLabel(
+          'WR',
+          mid(topApex, rightInnerTop) + Offset(rightPanelX, topInnerY),
+        );
+        drawLabel(
+          'WR',
+          mid(rightInnerTop, topRightBase) + Offset(rightPanelX, topInnerY),
+        );
+      }
 
       // 4-panel WL-WL-WR-WR mapping (bottom row).
-      drawLabel(
-        'WL',
-        mid(bottomLeftBase, leftInnerBottom) + Offset(-leftPanelX, -bottomInnerY),
-      );
-      drawLabel(
-        'WL',
-        mid(leftInnerBottom, bottomApex) + Offset(-leftPanelX, -bottomInnerY),
-      );
-      drawLabel(
-        'WR',
-        mid(bottomApex, rightInnerBottom) + Offset(rightPanelX, -bottomInnerY),
-      );
-      drawLabel(
-        'WR',
-        mid(rightInnerBottom, bottomRightBase) +
-            Offset(rightPanelX, -bottomInnerY),
-      );
+      if (isSclCollar) {
+        drawLabel(
+          'WL',
+          (collarId == 2
+                  ? mid(bottomLeftLowerJoin, bottomApexLower)
+                  : mid(bottomLeftBase, bottomApex)) +
+              Offset(-leftPanelX, -bottomInnerY),
+        );
+      } else {
+        drawLabel(
+          'WL',
+          mid(bottomLeftBase, leftInnerBottom) +
+              Offset(-leftPanelX, -bottomInnerY),
+        );
+        drawLabel(
+          'WL',
+          mid(leftInnerBottom, bottomApex) + Offset(-leftPanelX, -bottomInnerY),
+        );
+      }
+      if (isScrCollar) {
+        drawLabel(
+          'WR',
+          (collarId == 2
+                  ? mid(bottomApexLower, bottomRightLowerJoin)
+                  : mid(bottomApex, bottomRightBase)) +
+              Offset(rightPanelX, -bottomInnerY),
+        );
+      } else {
+        drawLabel(
+          'WR',
+          mid(bottomApex, rightInnerBottom) +
+              Offset(rightPanelX, -bottomInnerY),
+        );
+        drawLabel(
+          'WR',
+          mid(rightInnerBottom, bottomRightBase) +
+              Offset(rightPanelX, -bottomInnerY),
+        );
+      }
+    }
+
+    // SCF collar 1 section highlight behavior.
+    if (isScfCollar1) {
+      final Color accent = highlightPaint.color;
+      final double hEdgeGap = size.width * 0.020;
+      final double leftPanelX = size.width * 0.006;
+      final double rightPanelX = size.width * 0.006;
+      final double topInnerY = size.height * 0.048;
+      final double bottomInnerY = size.height * 0.036;
+
+      final Offset leftMid = mid(leftInnerTop, leftInnerBottom);
+      final Offset rightMid = mid(rightInnerTop, rightInnerBottom);
+
+      if (highlightDc30F) {
+        // Top outer + inner rails.
+        canvas.drawLine(topLeftOuter, topApex, highlightPaint);
+        canvas.drawLine(topApex, topRightOuter, highlightPaint);
+        canvas.drawLine(topLeftUpperJoin, topApexUpper, highlightPaint);
+        canvas.drawLine(topApexUpper, topRightUpperJoin, highlightPaint);
+
+        // Left/right outer + inner verticals.
+        canvas.drawLine(leftSideTop, leftSideBottom, highlightPaint);
+        canvas.drawLine(rightSideTop, rightSideBottom, highlightPaint);
+        canvas.drawLine(leftSideParallelTop, leftSideParallelBottom, highlightPaint);
+        canvas.drawLine(rightSideParallelTop, rightSideParallelBottom, highlightPaint);
+
+        // Corner small links.
+        canvas.drawLine(topLeftOuter, topLeftUpperJoin, highlightPaint);
+        canvas.drawLine(topRightOuter, topRightUpperJoin, highlightPaint);
+        canvas.drawLine(bottomLeftOuter, bottomLeftLowerJoin, highlightPaint);
+        canvas.drawLine(bottomRightOuter, bottomRightLowerJoin, highlightPaint);
+
+        drawLabel(
+          'WT_L',
+          mid(topLeftOuter, topApex) +
+              (nLeft * (size.height * 0.074)) +
+              Offset(0, -(size.height * 0.026)),
+          color: accent,
+        );
+        drawLabel(
+          'WT_R',
+          mid(topApex, topRightOuter) +
+              (nRight * (size.height * 0.074)) +
+              Offset(0, -(size.height * 0.026)),
+          color: accent,
+        );
+        drawLabel(
+          'HL',
+          mid(leftSideTop, leftSideBottom) +
+              (nLeftSide * (size.width * 0.050)) +
+              Offset(-(size.width * 0.015), 0),
+          color: accent,
+        );
+        drawLabel(
+          'HR',
+          mid(rightSideTop, rightSideBottom) +
+              (nRightSide * (size.width * 0.050)) +
+              Offset(size.width * 0.015, 0),
+          color: accent,
+        );
+      }
+
+      if (highlightDc26F) {
+        // Bottom outer rails.
+        canvas.drawLine(bottomLeftOuter, bottomApex, highlightPaint);
+        canvas.drawLine(bottomApex, bottomRightOuter, highlightPaint);
+        // Bottom inner rails.
+        canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, highlightPaint);
+        canvas.drawLine(bottomApexLower, bottomRightLowerJoin, highlightPaint);
+        // Bottom corner links.
+        canvas.drawLine(bottomLeftOuter, bottomLeftLowerJoin, highlightPaint);
+        canvas.drawLine(bottomRightOuter, bottomRightLowerJoin, highlightPaint);
+        drawLabel(
+          'WB_L',
+          mid(bottomLeftOuter, bottomApex) +
+              (nBottomLeft * (size.height * 0.074)) +
+              Offset(0, size.height * 0.030),
+          color: accent,
+        );
+        drawLabel(
+          'WB_R',
+          mid(bottomApex, bottomRightOuter) +
+              (nBottomRight * (size.height * 0.074)) +
+              Offset(0, size.height * 0.030),
+          color: accent,
+        );
+      }
+
+      if (highlightM23) {
+        // Only inner side lines.
+        canvas.drawLine(
+          leftSideTop,
+          leftSideBottom,
+          highlightPaint,
+        );
+        canvas.drawLine(
+          rightSideTop,
+          rightSideBottom,
+          highlightPaint,
+        );
+        // |H on left line and H| on right line.
+        drawLabel(
+          'H',
+          mid(leftSideTop, leftSideBottom) + Offset(size.width * 0.022, 0),
+          color: accent,
+        );
+        drawLabel(
+          'H',
+          mid(rightSideTop, rightSideBottom) + Offset(-size.width * 0.022, 0),
+          color: accent,
+        );
+      }
+
+      if (highlightM28) {
+        canvas.drawLine(leftInnerTop, leftInnerBottom, highlightPaint);
+        canvas.drawLine(rightInnerTop, rightInnerBottom, highlightPaint);
+        drawLabel('H', leftMid + Offset(-hEdgeGap, 0), color: accent);
+        drawLabel('H', leftMid + Offset(hEdgeGap, 0), color: accent);
+        drawLabel('H', rightMid + Offset(-hEdgeGap, 0), color: accent);
+        drawLabel('H', rightMid + Offset(hEdgeGap, 0), color: accent);
+      }
+
+      if (highlightM24) {
+        // Only inner top/bottom rails.
+        canvas.drawLine(topLeftOuter, topApex, highlightPaint);
+        canvas.drawLine(topApex, topRightOuter, highlightPaint);
+        canvas.drawLine(bottomLeftOuter, bottomApex, highlightPaint);
+        canvas.drawLine(bottomApex, bottomRightOuter, highlightPaint);
+
+        drawLabel(
+          'WL',
+          mid(topLeftBase, leftInnerTop) + Offset(-leftPanelX, topInnerY),
+          color: accent,
+        );
+        drawLabel(
+          'WL',
+          mid(leftInnerTop, topApex) + Offset(-leftPanelX, topInnerY),
+          color: accent,
+        );
+        drawLabel(
+          'WR',
+          mid(topApex, rightInnerTop) + Offset(rightPanelX, topInnerY),
+          color: accent,
+        );
+        drawLabel(
+          'WR',
+          mid(rightInnerTop, topRightBase) + Offset(rightPanelX, topInnerY),
+          color: accent,
+        );
+        drawLabel(
+          'WL',
+          mid(bottomLeftBase, leftInnerBottom) +
+              Offset(-leftPanelX, -bottomInnerY),
+          color: accent,
+        );
+        drawLabel(
+          'WL',
+          mid(leftInnerBottom, bottomApex) + Offset(-leftPanelX, -bottomInnerY),
+          color: accent,
+        );
+        drawLabel(
+          'WR',
+          mid(bottomApex, rightInnerBottom) +
+              Offset(rightPanelX, -bottomInnerY),
+          color: accent,
+        );
+        drawLabel(
+          'WR',
+          mid(rightInnerBottom, bottomRightBase) +
+              Offset(rightPanelX, -bottomInnerY),
+          color: accent,
+        );
+      }
     }
   }
 
   @override
   bool shouldRepaint(covariant _SlidingCornerCenterFixPainter oldDelegate) {
     return oldDelegate.interiorAngleDeg != interiorAngleDeg ||
-        oldDelegate.collarId != collarId;
+        oldDelegate.collarId != collarId ||
+        oldDelegate.windowCode != windowCode ||
+        oldDelegate.selectedSection != selectedSection;
   }
 }

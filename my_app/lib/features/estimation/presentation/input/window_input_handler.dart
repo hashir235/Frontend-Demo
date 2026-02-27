@@ -72,8 +72,15 @@ WindowInputHandler handlerForWindow(WindowType node) {
     case 'MES3_win':
       return const PanelMSlidingEqualInputHandler();
     case 'SCF_win':
+      return const SlidingCornerCenterFixInputHandler(windowCode: 'SCF_win');
+    case 'SCS_win':
+      return const SlidingCornerCenterFixInputHandler(windowCode: 'SCS_win');
+    case 'SCL_win':
+      return const SlidingCornerCenterFixInputHandler(windowCode: 'SCL_win');
+    case 'SCR_win':
+      return const SlidingCornerCenterFixInputHandler(windowCode: 'SCR_win');
     case 'MSCF_win':
-      return const SlidingCornerCenterFixInputHandler();
+      return const SlidingCornerCenterFixInputHandler(windowCode: 'MSCF_win');
     default:
       return const DefaultInputHandler();
   }
