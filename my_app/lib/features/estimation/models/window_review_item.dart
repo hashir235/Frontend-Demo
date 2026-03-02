@@ -15,6 +15,8 @@ class WindowReviewItem {
   final UnitMode unitMode;
   final String heightValue;
   final String widthValue;
+  final String? rightWidthValue;
+  final String? leftWidthValue;
   final String? description;
 
   const WindowReviewItem({
@@ -26,6 +28,8 @@ class WindowReviewItem {
     required this.unitMode,
     required this.heightValue,
     required this.widthValue,
+    this.rightWidthValue,
+    this.leftWidthValue,
     this.description,
   });
 
@@ -38,8 +42,12 @@ class WindowReviewItem {
     UnitMode? unitMode,
     String? heightValue,
     String? widthValue,
+    String? rightWidthValue,
+    String? leftWidthValue,
     String? description,
     bool clearDescription = false,
+    bool clearRightWidthValue = false,
+    bool clearLeftWidthValue = false,
   }) {
     return WindowReviewItem(
       winNo: winNo ?? this.winNo,
@@ -50,6 +58,12 @@ class WindowReviewItem {
       unitMode: unitMode ?? this.unitMode,
       heightValue: heightValue ?? this.heightValue,
       widthValue: widthValue ?? this.widthValue,
+      rightWidthValue: clearRightWidthValue
+          ? null
+          : (rightWidthValue ?? this.rightWidthValue),
+      leftWidthValue: clearLeftWidthValue
+          ? null
+          : (leftWidthValue ?? this.leftWidthValue),
       description: clearDescription ? null : (description ?? this.description),
     );
   }

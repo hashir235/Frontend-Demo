@@ -82,6 +82,11 @@ class ReviewListScreen extends StatelessWidget {
             separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (BuildContext context, int index) {
               final WindowReviewItem item = items[index];
+              final bool usesSplitWidth =
+                  item.leftWidthValue != null || item.rightWidthValue != null;
+              final String dimensionsLabel = usesSplitWidth
+                  ? 'H: ${item.heightValue}   RW: ${item.rightWidthValue ?? item.widthValue}   LW: ${item.leftWidthValue ?? item.widthValue}'
+                  : 'H: ${item.heightValue}   W: ${item.widthValue}';
               return Container(
                 key: Key('review_item_${item.winNo}'),
                 padding: const EdgeInsets.all(14),
@@ -144,7 +149,7 @@ class ReviewListScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'H: ${item.heightValue}   W: ${item.widthValue}',
+                      dimensionsLabel,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppTheme.deepTeal,
                       ),

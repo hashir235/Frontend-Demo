@@ -101,6 +101,27 @@ void main() {
     displayIndex: 15,
     codeName: 'MSCF_win',
   );
+  const WindowType fixNode = WindowType(
+    label: 'Fix Window',
+    graphicKey: 'fix_basic',
+    children: <WindowType>[],
+    displayIndex: 19,
+    codeName: 'F_win',
+  );
+  const WindowType cornerFixNode = WindowType(
+    label: 'Corner Fix',
+    graphicKey: 'fix_basic',
+    children: <WindowType>[],
+    displayIndex: 20,
+    codeName: 'FC_win',
+  );
+  const WindowType openableNode = WindowType(
+    label: 'Openable',
+    graphicKey: 'fix_basic',
+    children: <WindowType>[],
+    displayIndex: 21,
+    codeName: 'O_win',
+  );
 
   test('MS_win collar 1 sections include M-codes and exclude D29', () {
     final WindowInputHandler handler = handlerForWindow(mSectionNode);
@@ -274,10 +295,15 @@ void main() {
     expect(handler.overlayForCollar(3, null), isNull);
   });
 
-  test('MSCF_win routes to SlidingCornerCenterFixInputHandler', () {
+  test('MSCF_win routes to SlidingCornerMSectionInputHandler', () {
     final WindowInputHandler handler = handlerForWindow(mscfNode);
-    expect(handler, isA<SlidingCornerCenterFixInputHandler>());
+    expect(handler, isA<SlidingCornerMSectionInputHandler>());
     expect(handler.collarCount, 2);
+    expect(handler.usesSplitWidthInputs, isTrue);
+    expect(handler.sectionsForCollar(1), containsAll(<String>['M30F', 'M26F', 'M23', 'M28', 'M24']));
+    expect(handler.sectionsForCollar(1), isNot(contains('D29')));
+    expect(handler.sectionsForCollar(2), containsAll(<String>['M30', 'M26', 'M23', 'M28', 'M24']));
+    expect(handler.sectionsForCollar(2), isNot(contains('D29')));
     expect(handler.overlayForCollar(1, null), isNotNull);
     expect(handler.overlayForCollar(2, null), isNotNull);
     expect(handler.overlayForCollar(3, null), isNull);
@@ -308,5 +334,40 @@ void main() {
     expect(handler.overlayForCollar(1, null), isNotNull);
     expect(handler.overlayForCollar(2, null), isNotNull);
     expect(handler.overlayForCollar(3, null), isNull);
+  });
+
+  test('F_win routes to FixWindowInputHandler and supports collar overlays', () {
+    final WindowInputHandler handler = handlerForWindow(fixNode);
+    expect(handler, isA<FixWindowInputHandler>());
+    expect(handler.collarCount, 14);
+    expect(handler.sectionsForCollar(1), const <String>['D41', 'D54F']);
+    expect(handler.sectionsForCollar(2), const <String>['D41', 'D54A']);
+    expect(handler.sectionsForCollar(14), const <String>['D41', 'D54F', 'D54A']);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(2, null), isNotNull);
+    expect(handler.overlayForCollar(14, null), isNotNull);
+    expect(handler.overlayForCollar(15, null), isNull);
+  });
+
+  test('FC_win routes to CornerFixInputHandler and limits collars to 2', () {
+    final WindowInputHandler handler = handlerForWindow(cornerFixNode);
+    expect(handler, isA<CornerFixInputHandler>());
+    expect(handler.collarCount, 2);
+    expect(handler.usesSplitWidthInputs, isTrue);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(2, null), isNotNull);
+    expect(handler.overlayForCollar(3, null), isNull);
+  });
+
+  test('O_win copies F_win section system with D50 replacing D41', () {
+    final WindowInputHandler handler = handlerForWindow(openableNode);
+    expect(handler, isA<OpenableInputHandler>());
+    expect(handler.collarCount, 14);
+    expect(handler.sectionsForCollar(1), const <String>['D50', 'D54F', 'D54A']);
+    expect(handler.sectionsForCollar(2), const <String>['D50', 'D54A']);
+    expect(handler.sectionsForCollar(14), const <String>['D50', 'D54F', 'D54A']);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(14, null), isNotNull);
+    expect(handler.overlayForCollar(15, null), isNull);
   });
 }

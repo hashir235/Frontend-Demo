@@ -37,6 +37,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _widthController = TextEditingController();
+  final TextEditingController _leftWidthController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _winNoController = TextEditingController();
   final FocusNode _heightFocusNode = FocusNode();
@@ -49,6 +50,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   String? _winNoError;
   String? _heightError;
   String? _widthError;
+  String? _leftWidthError;
   late final WindowInputHandler _handler;
 
   int get _visibleWinNo {
@@ -61,6 +63,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
     return widget.session.nextWinNo;
   }
+
+  bool get _usesSplitWidthInputs => _handler.usesSplitWidthInputs;
 
   @override
   void initState() {
@@ -75,8 +79,16 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     } else {
       _selectedCollar = initialCollar;
     }
-    _heightController.text = widget.editingItem?.heightValue ?? '';
-    _widthController.text = widget.editingItem?.widthValue ?? '';
+    final WindowReviewItem? editingItem = widget.editingItem;
+    _heightController.text = editingItem?.heightValue ?? '';
+    if (_usesSplitWidthInputs) {
+      _widthController.text =
+          editingItem?.rightWidthValue ?? editingItem?.widthValue ?? '';
+      _leftWidthController.text =
+          editingItem?.leftWidthValue ?? editingItem?.widthValue ?? '';
+    } else {
+      _widthController.text = editingItem?.widthValue ?? '';
+    }
     _descriptionController.text = widget.editingItem?.description ?? '';
     if (widget.editingItem != null) {
       _winNoController.text = widget.editingItem!.winNo.toString();
@@ -114,6 +126,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   void dispose() {
     _heightController.dispose();
     _widthController.dispose();
+    _leftWidthController.dispose();
     _descriptionController.dispose();
     _winNoController.dispose();
     _heightFocusNode.dispose();
@@ -173,6 +186,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _unitMode = mode;
       _heightError = _validateDimension(_heightController.text);
       _widthError = _validateDimension(_widthController.text);
+      _leftWidthError = _usesSplitWidthInputs
+          ? _validateDimension(_leftWidthController.text)
+          : null;
     });
   }
 
@@ -238,14 +254,21 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
     final String? heightError = _validateDimension(_heightController.text);
     final String? widthError = _validateDimension(_widthController.text);
+    final String? leftWidthError = _usesSplitWidthInputs
+        ? _validateDimension(_leftWidthController.text)
+        : null;
 
     setState(() {
       _winNoError = winNoError;
       _heightError = heightError;
       _widthError = widthError;
+      _leftWidthError = leftWidthError;
     });
 
-    return winNoError == null && heightError == null && widthError == null;
+    return winNoError == null &&
+        heightError == null &&
+        widthError == null &&
+        leftWidthError == null;
   }
 
   String? _normalizedDescription() {
@@ -260,7 +283,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (!_validateAndShowErrors()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fix Window No. / Height / Width input errors.'),
+          content: Text('Please fix Window No. / dimension input errors.'),
         ),
       );
       return;
@@ -276,6 +299,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
 
     final String? description = _normalizedDescription();
+    final String heightValue = _heightController.text.trim();
+    final String rightWidthValue = _widthController.text.trim();
+    final String? leftWidthValue = _usesSplitWidthInputs
+        ? _leftWidthController.text.trim()
+        : null;
     final int winNo = widget.isEditMode
         ? widget.editingItem!.winNo
         : (_numberingMode == NumberingMode.manual
@@ -287,10 +315,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         winNo: winNo,
         collarIndex: _selectedCollar,
         unitMode: _unitMode,
-        heightValue: _heightController.text.trim(),
-        widthValue: _widthController.text.trim(),
+        heightValue: heightValue,
+        widthValue: rightWidthValue,
+        rightWidthValue: _usesSplitWidthInputs ? rightWidthValue : null,
+        leftWidthValue: leftWidthValue,
         description: description,
         clearDescription: description == null,
+        clearRightWidthValue: !_usesSplitWidthInputs,
+        clearLeftWidthValue: !_usesSplitWidthInputs,
       );
       widget.session.updateItem(updated);
       Navigator.of(context).pop();
@@ -305,8 +337,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         windowIndex: windowIndex,
         collarIndex: _selectedCollar,
         unitMode: _unitMode,
-        heightValue: _heightController.text.trim(),
-        widthValue: _widthController.text.trim(),
+        heightValue: heightValue,
+        widthValue: rightWidthValue,
+        rightWidthValue: _usesSplitWidthInputs ? rightWidthValue : null,
+        leftWidthValue: leftWidthValue,
         description: description,
       );
     } on ArgumentError catch (_) {
@@ -319,12 +353,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     setState(() {
       _heightController.clear();
       _widthController.clear();
+      _leftWidthController.clear();
       _descriptionController.clear();
       if (_numberingMode == NumberingMode.manual) {
         _winNoController.clear();
       }
       _heightError = null;
       _widthError = null;
+      _leftWidthError = null;
       _winNoError = null;
     });
     _heightFocusNode.requestFocus();
@@ -759,12 +795,43 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           }
                         },
                         decoration: InputDecoration(
-                          labelText: 'Width',
+                          labelText:
+                              _usesSplitWidthInputs ? 'Right Width' : 'Width',
                           hintText: _unitMode.inputHint,
                           hintStyle: hintStyle,
                           errorText: _widthError,
                         ),
                       ),
+                      if (_usesSplitWidthInputs) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          key: const Key('input_left_width_field'),
+                          controller: _leftWidthController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9.]'),
+                            ),
+                          ],
+                          onChanged: (_) {
+                            if (_leftWidthError != null) {
+                              setState(() {
+                                _leftWidthError = _validateDimension(
+                                  _leftWidthController.text,
+                                );
+                              });
+                            }
+                          },
+                          decoration: InputDecoration(
+                            labelText: 'Left Width',
+                            hintText: _unitMode.inputHint,
+                            hintStyle: hintStyle,
+                            errorText: _leftWidthError,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       TextField(
                         key: const Key('input_description_field'),

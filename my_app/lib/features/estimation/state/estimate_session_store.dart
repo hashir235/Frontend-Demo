@@ -43,6 +43,8 @@ class EstimateSessionStore extends ChangeNotifier {
     required UnitMode unitMode,
     required String heightValue,
     required String widthValue,
+    String? rightWidthValue,
+    String? leftWidthValue,
     String? description,
   }) {
     final WindowReviewItem item = WindowReviewItem(
@@ -54,6 +56,8 @@ class EstimateSessionStore extends ChangeNotifier {
       unitMode: unitMode,
       heightValue: heightValue,
       widthValue: widthValue,
+      rightWidthValue: rightWidthValue,
+      leftWidthValue: leftWidthValue,
       description: description,
     );
     if (existsWinNo(winNo)) {

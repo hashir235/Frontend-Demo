@@ -61,6 +61,8 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       fontSize: 11,
       fontWeight: FontWeight.w700,
     );
+    final String normalizedSection = selectedSection?.trim().toUpperCase() ?? '';
+    final bool onlyHighlightedSymbols = normalizedSection.isNotEmpty;
 
     // Tune these 4 numbers for quick visual adjustments.
     final Rect frame = Rect.fromLTWH(
@@ -142,6 +144,9 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
         Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
 
     void drawLabel(String text, Offset center, {Color? color}) {
+      if (onlyHighlightedSymbols && color == null) {
+        return;
+      }
       final TextPainter tp = TextPainter(
         text: TextSpan(
           text: text,
@@ -246,9 +251,13 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
     final bool showCornerSmallLinks = collarId != 2;
     final bool showOuterLabels = true;
 
-    final bool isScfCollar =
-        windowCode == 'SCF_win' && (collarId == 1 || collarId == 2);
-    final bool showCenterSeam = !isScfCollar;
+    final bool hideCenterSeamForCollar =
+        (windowCode == 'SCF_win' ||
+            windowCode == 'FC_win' ||
+            windowCode == 'SCL_win' ||
+            windowCode == 'SCR_win') &&
+        (collarId == 1 || collarId == 2);
+    final bool showCenterSeam = !hideCenterSeamForCollar;
 
     // Center seam for applicable variants.
     if (showCenterSeam) {
@@ -314,17 +323,31 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
         windowCode == 'SCL_win' && (collarId == 1 || collarId == 2);
     final bool isScrCollar =
         windowCode == 'SCR_win' && (collarId == 1 || collarId == 2);
-    final bool isScfCollar1 = windowCode == 'SCF_win' && collarId == 1;
-    final String normalizedSection = selectedSection?.trim().toUpperCase() ?? '';
-    final bool highlightDc30F = isScfCollar1 && normalizedSection == 'DC30F';
-    final bool highlightDc26F = isScfCollar1 && normalizedSection == 'DC26F';
-    final bool highlightM23 = isScfCollar1 && normalizedSection == 'M23';
-    final bool highlightM28 = isScfCollar1 && normalizedSection == 'M28';
-    final bool highlightM24 = isScfCollar1 && normalizedSection == 'M24';
-    if (!isSclCollar) {
+    final bool isFcCollar =
+        windowCode == 'FC_win' && (collarId == 1 || collarId == 2);
+    final bool isFcSectionCollar = isFcCollar;
+    final bool isScCornerSectionCollar =
+        (windowCode == 'SCF_win' ||
+            windowCode == 'SCS_win' ||
+            windowCode == 'SCL_win' ||
+            windowCode == 'SCR_win') &&
+        (collarId == 1 || collarId == 2);
+    final bool highlightDc30F =
+        isScCornerSectionCollar && collarId == 1 && normalizedSection == 'DC30F';
+    final bool highlightDc26F =
+        isScCornerSectionCollar && collarId == 1 && normalizedSection == 'DC26F';
+    final bool highlightDc30C =
+        isScCornerSectionCollar && collarId == 2 && normalizedSection == 'DC30C';
+    final bool highlightDc26C =
+        isScCornerSectionCollar && collarId == 2 && normalizedSection == 'DC26C';
+    final bool highlightD29 = isScCornerSectionCollar && normalizedSection == 'D29';
+    final bool highlightM23 = isScCornerSectionCollar && normalizedSection == 'M23';
+    final bool highlightM28 = isScCornerSectionCollar && normalizedSection == 'M28';
+    final bool highlightM24 = isScCornerSectionCollar && normalizedSection == 'M24';
+    if (!isSclCollar && !isFcCollar) {
       canvas.drawLine(leftInnerTop, leftInnerBottom, basePaint);
     }
-    if (!isScrCollar) {
+    if (!isScrCollar && !isFcCollar) {
       canvas.drawLine(rightInnerTop, rightInnerBottom, basePaint);
     }
 
@@ -402,9 +425,9 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       final Offset leftMid = mid(leftInnerTop, leftInnerBottom);
       final Offset centerMid = mid(topApex, bottomApex);
       final Offset rightMid = mid(rightInnerTop, rightInnerBottom);
-      final bool hideLeftMidH = isSclCollar;
-      final bool hideRightMidH = isScrCollar;
-      final bool hideCenterMidH = isScfCollar;
+      final bool hideLeftMidH = isSclCollar || isFcCollar;
+      final bool hideRightMidH = isScrCollar || isFcCollar;
+      final bool hideCenterMidH = hideCenterSeamForCollar;
 
       // H rules: edge lines and center line labels.
       if (!hideLeftMidH) {
@@ -421,7 +444,15 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       }
 
       // 4-panel WL-WL-WR-WR mapping (top row).
-      if (isSclCollar) {
+      if (isFcCollar) {
+        drawLabel(
+          'WL',
+          (collarId == 2
+                  ? mid(topLeftUpperJoin, topApexUpper)
+                  : mid(topLeftBase, topApex)) +
+              Offset(-leftPanelX, topInnerY),
+        );
+      } else if (isSclCollar) {
         drawLabel(
           'WL',
           (collarId == 2
@@ -439,7 +470,15 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
           mid(leftInnerTop, topApex) + Offset(-leftPanelX, topInnerY),
         );
       }
-      if (isScrCollar) {
+      if (isFcCollar) {
+        drawLabel(
+          'WR',
+          (collarId == 2
+                  ? mid(topApexUpper, topRightUpperJoin)
+                  : mid(topApex, topRightBase)) +
+              Offset(rightPanelX, topInnerY),
+        );
+      } else if (isScrCollar) {
         drawLabel(
           'WR',
           (collarId == 2
@@ -459,7 +498,15 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       }
 
       // 4-panel WL-WL-WR-WR mapping (bottom row).
-      if (isSclCollar) {
+      if (isFcCollar) {
+        drawLabel(
+          'WL',
+          (collarId == 2
+                  ? mid(bottomLeftLowerJoin, bottomApexLower)
+                  : mid(bottomLeftBase, bottomApex)) +
+              Offset(-leftPanelX, -bottomInnerY),
+        );
+      } else if (isSclCollar) {
         drawLabel(
           'WL',
           (collarId == 2
@@ -478,7 +525,15 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
           mid(leftInnerBottom, bottomApex) + Offset(-leftPanelX, -bottomInnerY),
         );
       }
-      if (isScrCollar) {
+      if (isFcCollar) {
+        drawLabel(
+          'WR',
+          (collarId == 2
+                  ? mid(bottomApexLower, bottomRightLowerJoin)
+                  : mid(bottomApex, bottomRightBase)) +
+              Offset(rightPanelX, -bottomInnerY),
+        );
+      } else if (isScrCollar) {
         drawLabel(
           'WR',
           (collarId == 2
@@ -500,17 +555,153 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       }
     }
 
-    // SCF collar 1 section highlight behavior.
-    if (isScfCollar1) {
+    if (isFcSectionCollar) {
+      final Color accent = highlightPaint.color;
+      final double leftPanelX = size.width * 0.006;
+      final double rightPanelX = size.width * 0.006;
+      final double topInnerY = size.height * 0.048;
+      final double bottomInnerY = size.height * 0.036;
+      final bool highlightFcD54F =
+          collarId == 1 && normalizedSection == 'D54F';
+      final bool highlightFcD54A =
+          collarId == 2 && normalizedSection == 'D54A';
+      final bool highlightFcD41 = normalizedSection == 'D41';
+      final bool highlightAllVisibleLines =
+          highlightFcD54F || highlightFcD54A || highlightFcD41;
+      final bool highlightOuterFcSymbols = highlightFcD54F || highlightFcD54A;
+      final bool highlightInnerFcSymbols = highlightFcD41;
+
+      if (highlightAllVisibleLines) {
+        if (showPrimaryOuterGeometry) {
+          canvas.drawLine(topLeftOuter, topApex, highlightPaint);
+          canvas.drawLine(topApex, topRightOuter, highlightPaint);
+          canvas.drawLine(bottomLeftOuter, bottomApex, highlightPaint);
+          canvas.drawLine(bottomApex, bottomRightOuter, highlightPaint);
+          canvas.drawLine(leftSideTop, leftSideBottom, highlightPaint);
+          canvas.drawLine(rightSideTop, rightSideBottom, highlightPaint);
+        }
+
+        canvas.drawLine(topLeftUpperJoin, topApexUpper, highlightPaint);
+        canvas.drawLine(topApexUpper, topRightUpperJoin, highlightPaint);
+        canvas.drawLine(topLeftUpperJoin, bottomLeftLowerJoin, highlightPaint);
+        canvas.drawLine(topRightUpperJoin, bottomRightLowerJoin, highlightPaint);
+        canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, highlightPaint);
+        canvas.drawLine(bottomApexLower, bottomRightLowerJoin, highlightPaint);
+
+        if (showCornerSmallLinks) {
+          canvas.drawLine(topLeftOuter, topLeftUpperJoin, highlightPaint);
+          canvas.drawLine(topRightOuter, topRightUpperJoin, highlightPaint);
+          canvas.drawLine(bottomLeftOuter, bottomLeftLowerJoin, highlightPaint);
+          canvas.drawLine(
+            bottomRightOuter,
+            bottomRightLowerJoin,
+            highlightPaint,
+          );
+        }
+      }
+
+      if (highlightOuterFcSymbols) {
+        drawLabel(
+          'WT_L',
+          mid(topLeftOuter, topApex) +
+              (nLeft * (size.height * 0.074)) +
+              Offset(0, -(size.height * 0.026)),
+          color: accent,
+        );
+        drawLabel(
+          'WT_R',
+          mid(topApex, topRightOuter) +
+              (nRight * (size.height * 0.074)) +
+              Offset(0, -(size.height * 0.026)),
+          color: accent,
+        );
+        drawLabel(
+          'HL',
+          mid(leftSideTop, leftSideBottom) +
+              (nLeftSide * (size.width * 0.050)) +
+              Offset(-(size.width * 0.015), 0),
+          color: accent,
+        );
+        drawLabel(
+          'HR',
+          mid(rightSideTop, rightSideBottom) +
+              (nRightSide * (size.width * 0.050)) +
+              Offset(size.width * 0.015, 0),
+          color: accent,
+        );
+        drawLabel(
+          'WB_L',
+          mid(bottomLeftOuter, bottomApex) +
+              (nBottomLeft * (size.height * 0.074)) +
+              Offset(0, size.height * 0.030),
+          color: accent,
+        );
+        drawLabel(
+          'WB_R',
+          mid(bottomApex, bottomRightOuter) +
+              (nBottomRight * (size.height * 0.074)) +
+              Offset(0, size.height * 0.030),
+          color: accent,
+        );
+      }
+
+      if (highlightInnerFcSymbols) {
+        drawLabel(
+          'WL',
+          (collarId == 2
+                  ? mid(topLeftUpperJoin, topApexUpper)
+                  : mid(topLeftBase, topApex)) +
+              Offset(-leftPanelX, topInnerY),
+          color: accent,
+        );
+        drawLabel(
+          'WR',
+          (collarId == 2
+                  ? mid(topApexUpper, topRightUpperJoin)
+                  : mid(topApex, topRightBase)) +
+              Offset(rightPanelX, topInnerY),
+          color: accent,
+        );
+        drawLabel(
+          'WL',
+          (collarId == 2
+                  ? mid(bottomLeftLowerJoin, bottomApexLower)
+                  : mid(bottomLeftBase, bottomApex)) +
+              Offset(-leftPanelX, -bottomInnerY),
+          color: accent,
+        );
+        drawLabel(
+          'WR',
+          (collarId == 2
+                  ? mid(bottomApexLower, bottomRightLowerJoin)
+                  : mid(bottomApex, bottomRightBase)) +
+              Offset(rightPanelX, -bottomInnerY),
+          color: accent,
+        );
+      }
+    }
+
+    // SCF collar section highlight behavior.
+    if (isScCornerSectionCollar) {
       final Color accent = highlightPaint.color;
       final double hEdgeGap = size.width * 0.020;
+      final double hCenterGap = size.width * 0.028;
       final double leftPanelX = size.width * 0.006;
       final double rightPanelX = size.width * 0.006;
       final double topInnerY = size.height * 0.048;
       final double bottomInnerY = size.height * 0.036;
 
       final Offset leftMid = mid(leftInnerTop, leftInnerBottom);
+      final Offset centerMid = mid(topApex, bottomApex);
       final Offset rightMid = mid(rightInnerTop, rightInnerBottom);
+      final bool usesCollar2InnerFrame = collarId == 2;
+      final bool isScsHighlight = windowCode == 'SCS_win';
+      final bool allowLeftD29 = !isSclCollar;
+      final bool allowRightD29 = !isScrCollar;
+      final bool allowLeftM28 = !isSclCollar;
+      final bool allowRightM28 = !isScrCollar;
+      final bool allowLeftM24 = !isSclCollar;
+      final bool allowRightM24 = !isScrCollar;
 
       if (highlightDc30F) {
         // Top outer + inner rails.
@@ -530,6 +721,43 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
         canvas.drawLine(topRightOuter, topRightUpperJoin, highlightPaint);
         canvas.drawLine(bottomLeftOuter, bottomLeftLowerJoin, highlightPaint);
         canvas.drawLine(bottomRightOuter, bottomRightLowerJoin, highlightPaint);
+
+        drawLabel(
+          'WT_L',
+          mid(topLeftOuter, topApex) +
+              (nLeft * (size.height * 0.074)) +
+              Offset(0, -(size.height * 0.026)),
+          color: accent,
+        );
+        drawLabel(
+          'WT_R',
+          mid(topApex, topRightOuter) +
+              (nRight * (size.height * 0.074)) +
+              Offset(0, -(size.height * 0.026)),
+          color: accent,
+        );
+        drawLabel(
+          'HL',
+          mid(leftSideTop, leftSideBottom) +
+              (nLeftSide * (size.width * 0.050)) +
+              Offset(-(size.width * 0.015), 0),
+          color: accent,
+        );
+        drawLabel(
+          'HR',
+          mid(rightSideTop, rightSideBottom) +
+              (nRightSide * (size.width * 0.050)) +
+              Offset(size.width * 0.015, 0),
+          color: accent,
+        );
+      }
+
+      if (highlightDc30C) {
+        // Collar 2 keeps the outer frame hidden, so only highlight visible inner frame.
+        canvas.drawLine(topLeftUpperJoin, topApexUpper, highlightPaint);
+        canvas.drawLine(topApexUpper, topRightUpperJoin, highlightPaint);
+        canvas.drawLine(topLeftUpperJoin, bottomLeftLowerJoin, highlightPaint);
+        canvas.drawLine(topRightUpperJoin, bottomRightLowerJoin, highlightPaint);
 
         drawLabel(
           'WT_L',
@@ -587,90 +815,368 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
         );
       }
 
+      if (highlightDc26C) {
+        // Collar 2 keeps the outer frame hidden, so only highlight visible inner bottom.
+        canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, highlightPaint);
+        canvas.drawLine(bottomApexLower, bottomRightLowerJoin, highlightPaint);
+        drawLabel(
+          'WB_L',
+          mid(bottomLeftOuter, bottomApex) +
+              (nBottomLeft * (size.height * 0.074)) +
+              Offset(0, size.height * 0.030),
+          color: accent,
+        );
+        drawLabel(
+          'WB_R',
+          mid(bottomApex, bottomRightOuter) +
+              (nBottomRight * (size.height * 0.074)) +
+              Offset(0, size.height * 0.030),
+          color: accent,
+        );
+      }
+
+      if (highlightD29) {
+        // First and last panels.
+        if (allowLeftD29) {
+          if (usesCollar2InnerFrame) {
+            canvas.drawLine(
+              topLeftUpperJoin,
+              bottomLeftLowerJoin,
+              highlightPaint,
+            );
+          } else {
+            canvas.drawLine(
+              leftSideTop,
+              leftSideBottom,
+              highlightPaint,
+            );
+          }
+        }
+        if (allowRightD29) {
+          if (usesCollar2InnerFrame) {
+            canvas.drawLine(
+              topRightUpperJoin,
+              bottomRightLowerJoin,
+              highlightPaint,
+            );
+          } else {
+            canvas.drawLine(
+              rightSideTop,
+              rightSideBottom,
+              highlightPaint,
+            );
+          }
+        }
+
+        if (allowLeftD29) {
+          canvas.drawLine(leftInnerTop, leftInnerBottom, highlightPaint);
+          canvas.drawLine(
+            usesCollar2InnerFrame ? topLeftUpperJoin : topLeftBase,
+            leftInnerTop,
+            highlightPaint,
+          );
+          canvas.drawLine(
+            usesCollar2InnerFrame ? bottomLeftLowerJoin : bottomLeftBase,
+            leftInnerBottom,
+            highlightPaint,
+          );
+
+          drawLabel(
+            'WL',
+            mid(
+                  usesCollar2InnerFrame ? topLeftUpperJoin : topLeftBase,
+                  leftInnerTop,
+                ) +
+                Offset(-leftPanelX, topInnerY),
+            color: accent,
+          );
+          drawLabel(
+            'WL',
+            mid(
+                  usesCollar2InnerFrame ? bottomLeftLowerJoin : bottomLeftBase,
+                  leftInnerBottom,
+                ) +
+                Offset(-leftPanelX, -bottomInnerY),
+            color: accent,
+          );
+          drawLabel(
+            'H',
+            mid(
+                  usesCollar2InnerFrame ? topLeftUpperJoin : leftSideTop,
+                  usesCollar2InnerFrame ? bottomLeftLowerJoin : leftSideBottom,
+                ) +
+                Offset(size.width * 0.022, 0),
+            color: accent,
+          );
+          drawLabel('H', leftMid + Offset(-hEdgeGap, 0), color: accent);
+        }
+        if (allowRightD29) {
+          canvas.drawLine(rightInnerTop, rightInnerBottom, highlightPaint);
+          canvas.drawLine(
+            rightInnerTop,
+            usesCollar2InnerFrame ? topRightUpperJoin : topRightBase,
+            highlightPaint,
+          );
+          canvas.drawLine(
+            rightInnerBottom,
+            usesCollar2InnerFrame ? bottomRightLowerJoin : bottomRightBase,
+            highlightPaint,
+          );
+
+          drawLabel(
+            'WR',
+            mid(
+                  rightInnerTop,
+                  usesCollar2InnerFrame ? topRightUpperJoin : topRightBase,
+                ) +
+                Offset(rightPanelX, topInnerY),
+            color: accent,
+          );
+          drawLabel(
+            'WR',
+            mid(
+                  rightInnerBottom,
+                  usesCollar2InnerFrame ? bottomRightLowerJoin : bottomRightBase,
+                ) +
+                Offset(rightPanelX, -bottomInnerY),
+            color: accent,
+          );
+          drawLabel(
+            'H',
+            mid(
+                  usesCollar2InnerFrame ? topRightUpperJoin : rightSideTop,
+                  usesCollar2InnerFrame ? bottomRightLowerJoin : rightSideBottom,
+                ) +
+                Offset(-size.width * 0.022, 0),
+            color: accent,
+          );
+          drawLabel('H', rightMid + Offset(hEdgeGap, 0), color: accent);
+        }
+      }
+
       if (highlightM23) {
         // Only inner side lines.
         canvas.drawLine(
-          leftSideTop,
-          leftSideBottom,
+          usesCollar2InnerFrame ? topLeftUpperJoin : leftSideTop,
+          usesCollar2InnerFrame ? bottomLeftLowerJoin : leftSideBottom,
           highlightPaint,
         );
         canvas.drawLine(
-          rightSideTop,
-          rightSideBottom,
+          usesCollar2InnerFrame ? topRightUpperJoin : rightSideTop,
+          usesCollar2InnerFrame ? bottomRightLowerJoin : rightSideBottom,
           highlightPaint,
         );
+        if (isScsHighlight) {
+          canvas.drawLine(topApex, bottomApex, highlightPaint);
+        }
         // |H on left line and H| on right line.
         drawLabel(
           'H',
-          mid(leftSideTop, leftSideBottom) + Offset(size.width * 0.022, 0),
+          mid(
+                usesCollar2InnerFrame ? topLeftUpperJoin : leftSideTop,
+                usesCollar2InnerFrame ? bottomLeftLowerJoin : leftSideBottom,
+              ) +
+              Offset(size.width * 0.022, 0),
           color: accent,
         );
         drawLabel(
           'H',
-          mid(rightSideTop, rightSideBottom) + Offset(-size.width * 0.022, 0),
+          mid(
+                usesCollar2InnerFrame ? topRightUpperJoin : rightSideTop,
+                usesCollar2InnerFrame ? bottomRightLowerJoin : rightSideBottom,
+              ) +
+              Offset(-size.width * 0.022, 0),
           color: accent,
         );
+        if (isScsHighlight) {
+          drawLabel('H', centerMid + Offset(-hCenterGap, 0), color: accent);
+          drawLabel('H', centerMid + Offset(hCenterGap, 0), color: accent);
+        }
       }
 
       if (highlightM28) {
-        canvas.drawLine(leftInnerTop, leftInnerBottom, highlightPaint);
-        canvas.drawLine(rightInnerTop, rightInnerBottom, highlightPaint);
-        drawLabel('H', leftMid + Offset(-hEdgeGap, 0), color: accent);
-        drawLabel('H', leftMid + Offset(hEdgeGap, 0), color: accent);
-        drawLabel('H', rightMid + Offset(-hEdgeGap, 0), color: accent);
-        drawLabel('H', rightMid + Offset(hEdgeGap, 0), color: accent);
+        if (allowLeftM28) {
+          canvas.drawLine(leftInnerTop, leftInnerBottom, highlightPaint);
+          drawLabel('H', leftMid + Offset(-hEdgeGap, 0), color: accent);
+          drawLabel('H', leftMid + Offset(hEdgeGap, 0), color: accent);
+        }
+        if (allowRightM28) {
+          canvas.drawLine(rightInnerTop, rightInnerBottom, highlightPaint);
+          drawLabel('H', rightMid + Offset(-hEdgeGap, 0), color: accent);
+          drawLabel('H', rightMid + Offset(hEdgeGap, 0), color: accent);
+        }
       }
 
       if (highlightM24) {
-        // Only inner top/bottom rails.
-        canvas.drawLine(topLeftOuter, topApex, highlightPaint);
-        canvas.drawLine(topApex, topRightOuter, highlightPaint);
-        canvas.drawLine(bottomLeftOuter, bottomApex, highlightPaint);
-        canvas.drawLine(bottomApex, bottomRightOuter, highlightPaint);
-
-        drawLabel(
-          'WL',
-          mid(topLeftBase, leftInnerTop) + Offset(-leftPanelX, topInnerY),
-          color: accent,
-        );
-        drawLabel(
-          'WL',
-          mid(leftInnerTop, topApex) + Offset(-leftPanelX, topInnerY),
-          color: accent,
-        );
-        drawLabel(
-          'WR',
-          mid(topApex, rightInnerTop) + Offset(rightPanelX, topInnerY),
-          color: accent,
-        );
-        drawLabel(
-          'WR',
-          mid(rightInnerTop, topRightBase) + Offset(rightPanelX, topInnerY),
-          color: accent,
-        );
-        drawLabel(
-          'WL',
-          mid(bottomLeftBase, leftInnerBottom) +
-              Offset(-leftPanelX, -bottomInnerY),
-          color: accent,
-        );
-        drawLabel(
-          'WL',
-          mid(leftInnerBottom, bottomApex) + Offset(-leftPanelX, -bottomInnerY),
-          color: accent,
-        );
-        drawLabel(
-          'WR',
-          mid(bottomApex, rightInnerBottom) +
-              Offset(rightPanelX, -bottomInnerY),
-          color: accent,
-        );
-        drawLabel(
-          'WR',
-          mid(rightInnerBottom, bottomRightBase) +
-              Offset(rightPanelX, -bottomInnerY),
-          color: accent,
-        );
+        if (usesCollar2InnerFrame) {
+          // Only inner top/bottom rails for collar 2.
+          if (isSclCollar) {
+            canvas.drawLine(topLeftUpperJoin, topApexUpper, highlightPaint);
+            canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, highlightPaint);
+            drawLabel(
+              'WL',
+              mid(topLeftUpperJoin, topApexUpper) + Offset(-leftPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WL',
+              mid(bottomLeftLowerJoin, bottomApexLower) +
+                  Offset(-leftPanelX, -bottomInnerY),
+              color: accent,
+            );
+          } else if (allowLeftM24) {
+            canvas.drawLine(topLeftUpperJoin, topApexUpper, highlightPaint);
+            canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, highlightPaint);
+            drawLabel(
+              'WL',
+              mid(topLeftUpperJoin, leftInnerTop) +
+                  Offset(-leftPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WL',
+              mid(leftInnerTop, topApexUpper) + Offset(-leftPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WL',
+              mid(bottomLeftLowerJoin, leftInnerBottom) +
+                  Offset(-leftPanelX, -bottomInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WL',
+              mid(leftInnerBottom, bottomApexLower) +
+                  Offset(-leftPanelX, -bottomInnerY),
+              color: accent,
+            );
+          }
+          if (isScrCollar) {
+            canvas.drawLine(topApexUpper, topRightUpperJoin, highlightPaint);
+            canvas.drawLine(bottomApexLower, bottomRightLowerJoin, highlightPaint);
+            drawLabel(
+              'WR',
+              mid(topApexUpper, topRightUpperJoin) +
+                  Offset(rightPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WR',
+              mid(bottomApexLower, bottomRightLowerJoin) +
+                  Offset(rightPanelX, -bottomInnerY),
+              color: accent,
+            );
+          } else if (allowRightM24) {
+            canvas.drawLine(topApexUpper, topRightUpperJoin, highlightPaint);
+            canvas.drawLine(bottomApexLower, bottomRightLowerJoin, highlightPaint);
+            drawLabel(
+              'WR',
+              mid(topApexUpper, rightInnerTop) +
+                  Offset(rightPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WR',
+              mid(rightInnerTop, topRightUpperJoin) +
+                  Offset(rightPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WR',
+              mid(bottomApexLower, rightInnerBottom) +
+                  Offset(rightPanelX, -bottomInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WR',
+              mid(rightInnerBottom, bottomRightLowerJoin) +
+                  Offset(rightPanelX, -bottomInnerY),
+              color: accent,
+            );
+          }
+        } else {
+          // Only inner top/bottom rails.
+          if (isSclCollar) {
+            canvas.drawLine(topLeftOuter, topApex, highlightPaint);
+            canvas.drawLine(bottomLeftOuter, bottomApex, highlightPaint);
+            drawLabel(
+              'WL',
+              mid(topLeftBase, topApex) + Offset(-leftPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WL',
+              mid(bottomLeftBase, bottomApex) +
+                  Offset(-leftPanelX, -bottomInnerY),
+              color: accent,
+            );
+          } else if (allowLeftM24) {
+            canvas.drawLine(topLeftOuter, topApex, highlightPaint);
+            canvas.drawLine(bottomLeftOuter, bottomApex, highlightPaint);
+            drawLabel(
+              'WL',
+              mid(topLeftBase, leftInnerTop) + Offset(-leftPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WL',
+              mid(leftInnerTop, topApex) + Offset(-leftPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WL',
+              mid(bottomLeftBase, leftInnerBottom) +
+                  Offset(-leftPanelX, -bottomInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WL',
+              mid(leftInnerBottom, bottomApex) +
+                  Offset(-leftPanelX, -bottomInnerY),
+              color: accent,
+            );
+          }
+          if (isScrCollar) {
+            canvas.drawLine(topApex, topRightOuter, highlightPaint);
+            canvas.drawLine(bottomApex, bottomRightOuter, highlightPaint);
+            drawLabel(
+              'WR',
+              mid(topApex, topRightBase) + Offset(rightPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WR',
+              mid(bottomApex, bottomRightBase) +
+                  Offset(rightPanelX, -bottomInnerY),
+              color: accent,
+            );
+          } else if (allowRightM24) {
+            canvas.drawLine(topApex, topRightOuter, highlightPaint);
+            canvas.drawLine(bottomApex, bottomRightOuter, highlightPaint);
+            drawLabel(
+              'WR',
+              mid(topApex, rightInnerTop) + Offset(rightPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WR',
+              mid(rightInnerTop, topRightBase) + Offset(rightPanelX, topInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WR',
+              mid(bottomApex, rightInnerBottom) +
+                  Offset(rightPanelX, -bottomInnerY),
+              color: accent,
+            );
+            drawLabel(
+              'WR',
+              mid(rightInnerBottom, bottomRightBase) +
+                  Offset(rightPanelX, -bottomInnerY),
+              color: accent,
+            );
+          }
+        }
       }
     }
   }

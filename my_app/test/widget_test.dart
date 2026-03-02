@@ -168,6 +168,58 @@ void main() {
     expect(delegate.childCount, 2);
   });
 
+  testWidgets('SCF input shows right and left width fields', (
+    WidgetTester tester,
+  ) async {
+    const WindowType scfNode = WindowType(
+      label: 'Sliding Corner Center Fix',
+      graphicKey: 'corner_basic',
+      children: <WindowType>[],
+      displayIndex: 11,
+      codeName: 'SCF_win',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: scfNode,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('input_width_field')), findsOneWidget);
+    expect(find.byKey(const Key('input_left_width_field')), findsOneWidget);
+    expect(find.text('Right Width'), findsOneWidget);
+    expect(find.text('Left Width'), findsOneWidget);
+  });
+
+  testWidgets('MSCF input also shows right and left width fields', (
+    WidgetTester tester,
+  ) async {
+    const WindowType mscfNode = WindowType(
+      label: 'Sliding Corner Center Fix (M_Section)',
+      graphicKey: 'corner_basic',
+      children: <WindowType>[],
+      displayIndex: 15,
+      codeName: 'MSCF_win',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(
+          node: mscfNode,
+          session: EstimateSessionStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('input_width_field')), findsOneWidget);
+    expect(find.byKey(const Key('input_left_width_field')), findsOneWidget);
+    expect(find.text('Right Width'), findsOneWidget);
+    expect(find.text('Left Width'), findsOneWidget);
+  });
+
   testWidgets('Non-corner windows keep 14 collar cards', (
     WidgetTester tester,
   ) async {

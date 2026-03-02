@@ -5,6 +5,9 @@ import '../../widgets/panel_equal_overlay.dart';
 import '../../widgets/panel_center_fix_overlay.dart';
 import '../../widgets/panel_center_slide_overlay.dart';
 import '../../widgets/sliding_corner_center_fix_overlay.dart';
+import '../../widgets/sliding_corner_m_section_overlay.dart';
+import '../../widgets/fix_window_overlay.dart';
+import '../../widgets/openable_window_overlay.dart';
 import '../../widgets/sliding_m_section_overlay.dart';
 import '../../widgets/sliding_section_overlay.dart';
 
@@ -16,6 +19,10 @@ part 'panel_equal_input_handler.dart';
 part 'panel_sliding_equal_input_handler.dart';
 part 'panel_m_section_input_handlers.dart';
 part 'sliding_corner_center_fix_input_handler.dart';
+part 'sliding_corner_m_section_input_handler.dart';
+part 'fix_window_input_handler.dart';
+part 'corner_fix_input_handler.dart';
+part 'openable_input_handler.dart';
 
 /// Base class for window-specific input behavior.
 abstract class WindowInputHandler {
@@ -23,6 +30,9 @@ abstract class WindowInputHandler {
 
   /// Number of collars available for this window input.
   int get collarCount => 14;
+
+  /// Whether this window uses separate right/left width inputs.
+  bool get usesSplitWidthInputs => false;
 
   /// Sections to show in the drawer for a given collar.
   List<String> sectionsForCollar(int collarIndex) =>
@@ -80,7 +90,19 @@ WindowInputHandler handlerForWindow(WindowType node) {
     case 'SCR_win':
       return const SlidingCornerCenterFixInputHandler(windowCode: 'SCR_win');
     case 'MSCF_win':
-      return const SlidingCornerCenterFixInputHandler(windowCode: 'MSCF_win');
+      return const SlidingCornerMSectionInputHandler(windowCode: 'MSCF_win');
+    case 'MSCS_win':
+      return const SlidingCornerMSectionInputHandler(windowCode: 'MSCS_win');
+    case 'MSCL_win':
+      return const SlidingCornerMSectionInputHandler(windowCode: 'MSCL_win');
+    case 'MSCR_win':
+      return const SlidingCornerMSectionInputHandler(windowCode: 'MSCR_win');
+    case 'F_win':
+      return const FixWindowInputHandler();
+    case 'FC_win':
+      return const CornerFixInputHandler();
+    case 'O_win':
+      return const OpenableInputHandler();
     default:
       return const DefaultInputHandler();
   }
