@@ -65,6 +65,124 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }
 
   bool get _usesSplitWidthInputs => _handler.usesSplitWidthInputs;
+  bool get _showsDoorSectionToggles =>
+      _handler is DoorSingleInputHandler || _handler is DoorDoubleInputHandler;
+  bool get _showsOpenableNetToggle => _handler is OpenableInputHandler;
+
+  bool get _doorD46Enabled {
+    if (_handler is DoorSingleInputHandler) {
+      return _handler.d46Enabled;
+    }
+    if (_handler is DoorDoubleInputHandler) {
+      return _handler.d46Enabled;
+    }
+    return false;
+  }
+
+  bool get _doorD52Enabled {
+    if (_handler is DoorSingleInputHandler) {
+      return _handler.d52Enabled;
+    }
+    if (_handler is DoorDoubleInputHandler) {
+      return _handler.d52Enabled;
+    }
+    return false;
+  }
+
+  void _setDoorD46Enabled(bool enabled) {
+    if (!_showsDoorSectionToggles || _doorD46Enabled == enabled) {
+      return;
+    }
+
+    setState(() {
+      if (_handler is DoorSingleInputHandler) {
+        _handler.d46Enabled = enabled;
+      } else if (_handler is DoorDoubleInputHandler) {
+        _handler.d46Enabled = enabled;
+      }
+      if (!enabled && _selectedSectionCode == 'D46') {
+        _selectedSectionCode = null;
+      }
+    });
+  }
+
+  void _setDoorD52Enabled(bool enabled) {
+    if (!_showsDoorSectionToggles || _doorD52Enabled == enabled) {
+      return;
+    }
+
+    setState(() {
+      if (_handler is DoorSingleInputHandler) {
+        _handler.d52Enabled = enabled;
+      } else if (_handler is DoorDoubleInputHandler) {
+        _handler.d52Enabled = enabled;
+      }
+      if (!enabled && _selectedSectionCode == 'D52') {
+        _selectedSectionCode = null;
+      }
+    });
+  }
+
+  bool get _openableNetEnabled {
+    final WindowInputHandler handler = _handler;
+    if (handler is OpenableInputHandler) {
+      return handler.netEnabled;
+    }
+    return false;
+  }
+
+  void _setOpenableNetEnabled(bool enabled) {
+    final WindowInputHandler handler = _handler;
+    if (handler is! OpenableInputHandler || handler.netEnabled == enabled) {
+      return;
+    }
+
+    setState(() {
+      handler.netEnabled = enabled;
+      if (!enabled && _selectedSectionCode == 'D29') {
+        _selectedSectionCode = null;
+      }
+    });
+  }
+
+  Widget _buildSidebarToggleOption({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: selected
+          ? AppTheme.violet.withValues(alpha: 0.12)
+          : Colors.grey.shade200,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                size: 18,
+                color: selected ? AppTheme.violet : AppTheme.deepTeal,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: AppTheme.deepTeal,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -483,6 +601,70 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                 const SizedBox(height: 8),
                 const Divider(),
                 const SizedBox(height: 8),
+                if (_showsDoorSectionToggles) ...[
+                  Text(
+                    'D46 Option',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSidebarToggleOption(
+                    label: 'D46 Off',
+                    selected: !_doorD46Enabled,
+                    onTap: () => _setDoorD46Enabled(false),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSidebarToggleOption(
+                    label: 'D46 On',
+                    selected: _doorD46Enabled,
+                    onTap: () => _setDoorD46Enabled(true),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'D52 Option',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSidebarToggleOption(
+                    label: 'D52 Off',
+                    selected: !_doorD52Enabled,
+                    onTap: () => _setDoorD52Enabled(false),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSidebarToggleOption(
+                    label: 'D52 On',
+                    selected: _doorD52Enabled,
+                    onTap: () => _setDoorD52Enabled(true),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (_showsOpenableNetToggle) ...[
+                  Text(
+                    'Net Option',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSidebarToggleOption(
+                    label: 'Net Off',
+                    selected: !_openableNetEnabled,
+                    onTap: () => _setOpenableNetEnabled(false),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSidebarToggleOption(
+                    label: 'Net On',
+                    selected: _openableNetEnabled,
+                    onTap: () => _setOpenableNetEnabled(true),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 if (_handler.showDrawerForCollar(_selectedCollar)) ...[
                   Text(
                     'Sections',
@@ -622,11 +804,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.menu_rounded),
-                      color: AppTheme.deepTeal,
-                    ),
+                    const SizedBox(width: 48),
                     Expanded(
                       child: Text(
                         widget.node.label,

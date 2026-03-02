@@ -122,6 +122,34 @@ void main() {
     displayIndex: 21,
     codeName: 'O_win',
   );
+  const WindowType singleDoorNode = WindowType(
+    label: 'Single Door',
+    graphicKey: 'door_basic',
+    children: <WindowType>[],
+    displayIndex: 22,
+    codeName: 'Single_Door',
+  );
+  const WindowType doubleDoorNode = WindowType(
+    label: 'Double Door',
+    graphicKey: 'door_basic',
+    children: <WindowType>[],
+    displayIndex: 23,
+    codeName: 'Double_Door',
+  );
+  const WindowType roundArchNode = WindowType(
+    label: 'Round Arch',
+    graphicKey: 'door_basic',
+    children: <WindowType>[],
+    displayIndex: 24,
+    codeName: 'A_win',
+  );
+  const WindowType rectArchNode = WindowType(
+    label: 'Rectangle',
+    graphicKey: 'door_basic',
+    children: <WindowType>[],
+    displayIndex: 25,
+    codeName: 'AR_win',
+  );
 
   test('MS_win collar 1 sections include M-codes and exclude D29', () {
     final WindowInputHandler handler = handlerForWindow(mSectionNode);
@@ -359,15 +387,152 @@ void main() {
     expect(handler.overlayForCollar(3, null), isNull);
   });
 
-  test('O_win copies F_win section system with D50 replacing D41', () {
+  test('O_win copies F_win section system with D50A replacing D41', () {
     final WindowInputHandler handler = handlerForWindow(openableNode);
     expect(handler, isA<OpenableInputHandler>());
     expect(handler.collarCount, 14);
-    expect(handler.sectionsForCollar(1), const <String>['D50', 'D54F', 'D54A']);
-    expect(handler.sectionsForCollar(2), const <String>['D50', 'D54A']);
-    expect(handler.sectionsForCollar(14), const <String>['D50', 'D54F', 'D54A']);
+    expect(
+      handler.sectionsForCollar(1),
+      const <String>['D50A', 'D54F', 'D54A'],
+    );
+    expect(handler.sectionsForCollar(2), const <String>['D50A', 'D54A']);
+    expect(
+      handler.sectionsForCollar(14),
+      const <String>['D50A', 'D54F', 'D54A'],
+    );
     expect(handler.overlayForCollar(1, null), isNotNull);
     expect(handler.overlayForCollar(14, null), isNotNull);
     expect(handler.overlayForCollar(15, null), isNull);
+  });
+
+  test('O_win adds D29 when net is enabled', () {
+    final OpenableInputHandler handler =
+        handlerForWindow(openableNode) as OpenableInputHandler;
+
+    handler.netEnabled = true;
+
+    expect(
+      handler.sectionsForCollar(1),
+      const <String>['D50A', 'D29', 'D54F', 'D54A'],
+    );
+    expect(
+      handler.sectionsForCollar(2),
+      const <String>['D50A', 'D29', 'D54A'],
+    );
+  });
+
+  test('Single_Door routes to DoorSingleInputHandler and supports collar overlays', () {
+    final WindowInputHandler handler = handlerForWindow(singleDoorNode);
+    expect(handler, isA<DoorSingleInputHandler>());
+    expect(handler.collarCount, 8);
+    expect(handler.sectionsForCollar(1), const <String>['D50', 'D54F']);
+    expect(handler.sectionsForCollar(2), const <String>['D50', 'D54A']);
+    expect(handler.sectionsForCollar(8), const <String>['D50', 'D54F', 'D54A']);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(2, null), isNotNull);
+    expect(handler.overlayForCollar(8, null), isNotNull);
+    expect(handler.overlayForCollar(9, null), isNull);
+    expect(handler.overlayForCollar(15, null), isNull);
+  });
+
+  test('Single_Door adds D46 when the toggle is enabled', () {
+    final DoorSingleInputHandler handler =
+        handlerForWindow(singleDoorNode) as DoorSingleInputHandler;
+
+    handler.d46Enabled = true;
+
+    expect(handler.sectionsForCollar(1), const <String>['D50', 'D46', 'D54F']);
+    expect(handler.sectionsForCollar(2), const <String>['D50', 'D46', 'D54A']);
+    expect(
+      handler.sectionsForCollar(8),
+      const <String>['D50', 'D46', 'D54F', 'D54A'],
+    );
+  });
+
+  test('Single_Door adds D52 when the toggle is enabled', () {
+    final DoorSingleInputHandler handler =
+        handlerForWindow(singleDoorNode) as DoorSingleInputHandler;
+
+    handler.d52Enabled = true;
+
+    expect(handler.sectionsForCollar(1), const <String>['D50', 'D52', 'D54F']);
+    expect(handler.sectionsForCollar(2), const <String>['D50', 'D52', 'D54A']);
+    expect(
+      handler.sectionsForCollar(8),
+      const <String>['D50', 'D52', 'D54F', 'D54A'],
+    );
+  });
+
+  test('Single_Door inserts D52 after D46 when both toggles are enabled', () {
+    final DoorSingleInputHandler handler =
+        handlerForWindow(singleDoorNode) as DoorSingleInputHandler;
+
+    handler.d46Enabled = true;
+    handler.d52Enabled = true;
+
+    expect(
+      handler.sectionsForCollar(1),
+      const <String>['D50', 'D46', 'D52', 'D54F'],
+    );
+    expect(
+      handler.sectionsForCollar(2),
+      const <String>['D50', 'D46', 'D52', 'D54A'],
+    );
+  });
+
+  test('Double_Door copies Single_Door section system and collar limit', () {
+    final WindowInputHandler handler = handlerForWindow(doubleDoorNode);
+
+    expect(handler, isA<DoorDoubleInputHandler>());
+    expect(handler.collarCount, 8);
+    expect(handler.sectionsForCollar(1), const <String>['D50', 'D54F']);
+    expect(handler.sectionsForCollar(2), const <String>['D50', 'D54A']);
+    expect(handler.sectionsForCollar(8), const <String>['D50', 'D54F', 'D54A']);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(8, null), isNotNull);
+    expect(handler.overlayForCollar(9, null), isNull);
+  });
+
+  test('Double_Door adds D46 and D52 using the same toggles', () {
+    final DoorDoubleInputHandler handler =
+        handlerForWindow(doubleDoorNode) as DoorDoubleInputHandler;
+
+    handler.d46Enabled = true;
+    handler.d52Enabled = true;
+
+    expect(
+      handler.sectionsForCollar(1),
+      const <String>['D50', 'D46', 'D52', 'D54F'],
+    );
+    expect(
+      handler.sectionsForCollar(2),
+      const <String>['D50', 'D46', 'D52', 'D54A'],
+    );
+  });
+
+  test('A_win routes to ArchRoundInputHandler and draws on collars 1 and 2', () {
+    final WindowInputHandler handler = handlerForWindow(roundArchNode);
+
+    expect(handler, isA<ArchRoundInputHandler>());
+    expect(handler.collarCount, 2);
+    expect(handler.sectionsForCollar(1), const <String>['D41', 'D50A', 'D50F']);
+    expect(handler.sectionsForCollar(2), const <String>['D41', 'D50A']);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(2, null), isNotNull);
+    expect(handler.overlayForCollar(3, null), isNull);
+  });
+
+  test('AR_win routes to ArchRectInputHandler and limits collars to 8', () {
+    final WindowInputHandler handler = handlerForWindow(rectArchNode);
+
+    expect(handler, isA<ArchRectInputHandler>());
+    expect(handler.collarCount, 8);
+    expect(handler.sectionsForCollar(1), const <String>['D41', 'D50F', 'D50A']);
+    expect(handler.sectionsForCollar(2), const <String>['D41', 'D50A']);
+    expect(handler.sectionsForCollar(8), const <String>['D41', 'D50F', 'D50A']);
+    expect(handler.overlayForCollar(1, null), isNotNull);
+    expect(handler.overlayForCollar(2, null), isNotNull);
+    expect(handler.overlayForCollar(8, null), isNotNull);
+    expect(handler.overlayForCollar(9, null), isNull);
   });
 }

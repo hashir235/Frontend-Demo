@@ -8,6 +8,10 @@ import '../../widgets/sliding_corner_center_fix_overlay.dart';
 import '../../widgets/sliding_corner_m_section_overlay.dart';
 import '../../widgets/fix_window_overlay.dart';
 import '../../widgets/openable_window_overlay.dart';
+import '../../widgets/door_single_overlay.dart';
+import '../../widgets/door_double_overlay.dart';
+import '../../widgets/arch_round_overlay.dart';
+import '../../widgets/arch_rect_overlay.dart';
 import '../../widgets/sliding_m_section_overlay.dart';
 import '../../widgets/sliding_section_overlay.dart';
 
@@ -23,6 +27,10 @@ part 'sliding_corner_m_section_input_handler.dart';
 part 'fix_window_input_handler.dart';
 part 'corner_fix_input_handler.dart';
 part 'openable_input_handler.dart';
+part 'door_single_input_handler.dart';
+part 'door_double_input_handler.dart';
+part 'arch_round_input_handler.dart';
+part 'arch_rect_input_handler.dart';
 
 /// Base class for window-specific input behavior.
 abstract class WindowInputHandler {
@@ -102,7 +110,15 @@ WindowInputHandler handlerForWindow(WindowType node) {
     case 'FC_win':
       return const CornerFixInputHandler();
     case 'O_win':
-      return const OpenableInputHandler();
+      return OpenableInputHandler();
+    case 'Single_Door':
+      return DoorSingleInputHandler();
+    case 'Double_Door':
+      return DoorDoubleInputHandler();
+    case 'A_win':
+      return const ArchRoundInputHandler();
+    case 'AR_win':
+      return const ArchRectInputHandler();
     default:
       return const DefaultInputHandler();
   }

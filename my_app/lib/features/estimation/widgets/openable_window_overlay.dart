@@ -17,7 +17,9 @@ class OpenableWindowOverlay extends StatelessWidget {
       return null;
     }
     switch (selectedSection!.trim().toUpperCase()) {
+      case 'D50A':
       case 'D50':
+      case 'D29':
         return 'D41';
       default:
         return selectedSection;
