@@ -42,6 +42,9 @@ abstract class WindowInputHandler {
   /// Whether this window uses separate right/left width inputs.
   bool get usesSplitWidthInputs => false;
 
+  /// Whether this window requires a separate arch input.
+  bool get usesArchInput => false;
+
   /// Sections to show in the drawer for a given collar.
   List<String> sectionsForCollar(int collarIndex) =>
       sectionsByCollar[collarIndex] ?? const [];

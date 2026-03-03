@@ -17,6 +17,10 @@ class WindowReviewItem {
   final String widthValue;
   final String? rightWidthValue;
   final String? leftWidthValue;
+  final String? archValue;
+  final bool addBottom;
+  final bool addTee;
+  final bool addNet;
   final String? description;
 
   const WindowReviewItem({
@@ -30,6 +34,10 @@ class WindowReviewItem {
     required this.widthValue,
     this.rightWidthValue,
     this.leftWidthValue,
+    this.archValue,
+    this.addBottom = false,
+    this.addTee = false,
+    this.addNet = false,
     this.description,
   });
 
@@ -44,10 +52,15 @@ class WindowReviewItem {
     String? widthValue,
     String? rightWidthValue,
     String? leftWidthValue,
+    String? archValue,
+    bool? addBottom,
+    bool? addTee,
+    bool? addNet,
     String? description,
     bool clearDescription = false,
     bool clearRightWidthValue = false,
     bool clearLeftWidthValue = false,
+    bool clearArchValue = false,
   }) {
     return WindowReviewItem(
       winNo: winNo ?? this.winNo,
@@ -64,6 +77,10 @@ class WindowReviewItem {
       leftWidthValue: clearLeftWidthValue
           ? null
           : (leftWidthValue ?? this.leftWidthValue),
+      archValue: clearArchValue ? null : (archValue ?? this.archValue),
+      addBottom: addBottom ?? this.addBottom,
+      addTee: addTee ?? this.addTee,
+      addNet: addNet ?? this.addNet,
       description: clearDescription ? null : (description ?? this.description),
     );
   }

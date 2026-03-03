@@ -515,8 +515,8 @@ void main() {
 
     expect(handler, isA<ArchRoundInputHandler>());
     expect(handler.collarCount, 2);
-    expect(handler.sectionsForCollar(1), const <String>['D41', 'D50A', 'D50F']);
-    expect(handler.sectionsForCollar(2), const <String>['D41', 'D50A']);
+    expect(handler.sectionsForCollar(1), const <String>['D41', 'D51A', 'D51F']);
+    expect(handler.sectionsForCollar(2), const <String>['D41', 'D51A']);
     expect(handler.overlayForCollar(1, null), isNotNull);
     expect(handler.overlayForCollar(2, null), isNotNull);
     expect(handler.overlayForCollar(3, null), isNull);
@@ -527,9 +527,9 @@ void main() {
 
     expect(handler, isA<ArchRectInputHandler>());
     expect(handler.collarCount, 8);
-    expect(handler.sectionsForCollar(1), const <String>['D41', 'D50F', 'D50A']);
-    expect(handler.sectionsForCollar(2), const <String>['D41', 'D50A']);
-    expect(handler.sectionsForCollar(8), const <String>['D41', 'D50F', 'D50A']);
+    expect(handler.sectionsForCollar(1), const <String>['D41', 'D51F', 'D51A']);
+    expect(handler.sectionsForCollar(2), const <String>['D41', 'D51A']);
+    expect(handler.sectionsForCollar(8), const <String>['D41', 'D51F', 'D51A']);
     expect(handler.overlayForCollar(1, null), isNotNull);
     expect(handler.overlayForCollar(2, null), isNotNull);
     expect(handler.overlayForCollar(8, null), isNotNull);

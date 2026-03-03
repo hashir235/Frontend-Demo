@@ -7,9 +7,12 @@ class ArchRoundInputHandler extends WindowInputHandler {
   int get collarCount => 2;
 
   @override
+  bool get usesArchInput => true;
+
+  @override
   Map<int, List<String>> get sectionsByCollar => const <int, List<String>>{
-    1: <String>['D41', 'D50A', 'D50F'],
-    2: <String>['D41', 'D50A'],
+    1: <String>['D41', 'D51A', 'D51F'],
+    2: <String>['D41', 'D51A'],
   };
 
   @override

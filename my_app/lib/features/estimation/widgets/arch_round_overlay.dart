@@ -76,8 +76,8 @@ class _ArchRoundPainter extends CustomPainter {
     final String normalizedSection = selectedSection?.trim().toUpperCase() ?? '';
     final bool onlyHighlightedSymbols = normalizedSection.isNotEmpty;
     final bool highlightD41 = normalizedSection == 'D41';
-    final bool highlightD50A = normalizedSection == 'D50A';
-    final bool highlightD50F = normalizedSection == 'D50F';
+    final bool highlightD51A = normalizedSection == 'D51A';
+    final bool highlightD51F = normalizedSection == 'D51F';
 
     final Rect frameRect = Rect.fromCenter(
       center: Offset(size.width / 2, size.height / 2),
@@ -177,7 +177,7 @@ class _ArchRoundPainter extends CustomPainter {
       );
     }
 
-    if (highlightD50A) {
+    if (highlightD51A) {
       if (collarId == 1) {
         drawLine(innerLeftBase, innerRightBase, highlightPaint);
       } else {
@@ -193,7 +193,7 @@ class _ArchRoundPainter extends CustomPainter {
       }
     }
 
-    if (highlightD50F) {
+    if (highlightD51F) {
       if (showOuterDesign) {
         drawLine(leftBase, leftTop, highlightPaint);
         drawLine(rightBase, rightTop, highlightPaint);
@@ -218,21 +218,21 @@ class _ArchRoundPainter extends CustomPainter {
       );
     }
 
-    if (showOuterDesign || highlightD50F || (highlightD50A && collarId == 2)) {
+    if (showOuterDesign || highlightD51F || (highlightD51A && collarId == 2)) {
       drawLabel(
         'Arch',
         Offset(
           size.width / 2,
           (showOuterDesign ? frameRect.top : innerRect.top) - size.height * 0.09,
         ),
-        highlight: highlightD50F || (highlightD50A && collarId == 2),
+        highlight: highlightD51F || (highlightD51A && collarId == 2),
       );
     }
-    if (showOuterDesign || highlightD50A) {
+    if (showOuterDesign || highlightD51A) {
       drawLabel(
         'W',
         Offset(size.width / 2, innerRect.bottom + size.height * 0.045),
-        highlight: highlightD50A,
+        highlight: highlightD51A,
       );
     }
 

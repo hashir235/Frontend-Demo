@@ -38,6 +38,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _widthController = TextEditingController();
   final TextEditingController _leftWidthController = TextEditingController();
+  final TextEditingController _archController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _winNoController = TextEditingController();
   final FocusNode _heightFocusNode = FocusNode();
@@ -51,6 +52,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   String? _heightError;
   String? _widthError;
   String? _leftWidthError;
+  String? _archError;
   late final WindowInputHandler _handler;
 
   int get _visibleWinNo {
@@ -65,6 +67,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }
 
   bool get _usesSplitWidthInputs => _handler.usesSplitWidthInputs;
+  bool get _usesArchInput => _handler.usesArchInput;
   bool get _showsDoorSectionToggles =>
       _handler is DoorSingleInputHandler || _handler is DoorDoubleInputHandler;
   bool get _showsOpenableNetToggle => _handler is OpenableInputHandler;
@@ -145,6 +148,22 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     });
   }
 
+  void _restoreHandlerOptionsFromEditingItem(WindowReviewItem? editingItem) {
+    if (editingItem == null) {
+      return;
+    }
+
+    if (_handler is DoorSingleInputHandler) {
+      _handler.d46Enabled = editingItem.addBottom;
+      _handler.d52Enabled = editingItem.addTee;
+    } else if (_handler is DoorDoubleInputHandler) {
+      _handler.d46Enabled = editingItem.addBottom;
+      _handler.d52Enabled = editingItem.addTee;
+    } else if (_handler is OpenableInputHandler) {
+      _handler.netEnabled = editingItem.addNet;
+    }
+  }
+
   Widget _buildSidebarToggleOption({
     required String label,
     required bool selected,
@@ -188,6 +207,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   void initState() {
     super.initState();
     _handler = handlerForWindow(widget.node);
+    _restoreHandlerOptionsFromEditingItem(widget.editingItem);
     _unitMode = widget.editingItem?.unitMode ?? UnitMode.inches;
     final int initialCollar = widget.editingItem?.collarIndex ?? 1;
     if (initialCollar < 1) {
@@ -207,6 +227,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     } else {
       _widthController.text = editingItem?.widthValue ?? '';
     }
+    _archController.text = editingItem?.archValue ?? '';
     _descriptionController.text = widget.editingItem?.description ?? '';
     if (widget.editingItem != null) {
       _winNoController.text = widget.editingItem!.winNo.toString();
@@ -245,6 +266,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _heightController.dispose();
     _widthController.dispose();
     _leftWidthController.dispose();
+    _archController.dispose();
     _descriptionController.dispose();
     _winNoController.dispose();
     _heightFocusNode.dispose();
@@ -307,6 +329,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _leftWidthError = _usesSplitWidthInputs
           ? _validateDimension(_leftWidthController.text)
           : null;
+      _archError = _usesArchInput ? _validateDimension(_archController.text) : null;
     });
   }
 
@@ -375,18 +398,23 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     final String? leftWidthError = _usesSplitWidthInputs
         ? _validateDimension(_leftWidthController.text)
         : null;
+    final String? archError = _usesArchInput
+        ? _validateDimension(_archController.text)
+        : null;
 
     setState(() {
       _winNoError = winNoError;
       _heightError = heightError;
       _widthError = widthError;
       _leftWidthError = leftWidthError;
+      _archError = archError;
     });
 
     return winNoError == null &&
         heightError == null &&
         widthError == null &&
-        leftWidthError == null;
+        leftWidthError == null &&
+        archError == null;
   }
 
   String? _normalizedDescription() {
@@ -422,6 +450,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     final String? leftWidthValue = _usesSplitWidthInputs
         ? _leftWidthController.text.trim()
         : null;
+    final String? archValue = _usesArchInput ? _archController.text.trim() : null;
     final int winNo = widget.isEditMode
         ? widget.editingItem!.winNo
         : (_numberingMode == NumberingMode.manual
@@ -437,10 +466,15 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         widthValue: rightWidthValue,
         rightWidthValue: _usesSplitWidthInputs ? rightWidthValue : null,
         leftWidthValue: leftWidthValue,
+        archValue: archValue,
+        addBottom: _doorD46Enabled,
+        addTee: _doorD52Enabled,
+        addNet: _openableNetEnabled,
         description: description,
         clearDescription: description == null,
         clearRightWidthValue: !_usesSplitWidthInputs,
         clearLeftWidthValue: !_usesSplitWidthInputs,
+        clearArchValue: !_usesArchInput,
       );
       widget.session.updateItem(updated);
       Navigator.of(context).pop();
@@ -459,6 +493,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         widthValue: rightWidthValue,
         rightWidthValue: _usesSplitWidthInputs ? rightWidthValue : null,
         leftWidthValue: leftWidthValue,
+        archValue: archValue,
+        addBottom: _doorD46Enabled,
+        addTee: _doorD52Enabled,
+        addNet: _openableNetEnabled,
         description: description,
       );
     } on ArgumentError catch (_) {
@@ -472,6 +510,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _heightController.clear();
       _widthController.clear();
       _leftWidthController.clear();
+      _archController.clear();
       _descriptionController.clear();
       if (_numberingMode == NumberingMode.manual) {
         _winNoController.clear();
@@ -479,6 +518,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _heightError = null;
       _widthError = null;
       _leftWidthError = null;
+      _archError = null;
       _winNoError = null;
     });
     _heightFocusNode.requestFocus();
@@ -1007,6 +1047,36 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             hintText: _unitMode.inputHint,
                             hintStyle: hintStyle,
                             errorText: _leftWidthError,
+                          ),
+                        ),
+                      ],
+                      if (_usesArchInput) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          key: const Key('input_arch_field'),
+                          controller: _archController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9.]'),
+                            ),
+                          ],
+                          onChanged: (_) {
+                            if (_archError != null) {
+                              setState(() {
+                                _archError = _validateDimension(
+                                  _archController.text,
+                                );
+                              });
+                            }
+                          },
+                          decoration: InputDecoration(
+                            labelText: 'Arch',
+                            hintText: _unitMode.inputHint,
+                            hintStyle: hintStyle,
+                            errorText: _archError,
                           ),
                         ),
                       ],

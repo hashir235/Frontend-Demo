@@ -7,15 +7,18 @@ class ArchRectInputHandler extends WindowInputHandler {
   int get collarCount => 8;
 
   @override
+  bool get usesArchInput => true;
+
+  @override
   Map<int, List<String>> get sectionsByCollar => const <int, List<String>>{
-    1: <String>['D41', 'D50F', 'D50A'],
-    2: <String>['D41', 'D50A'],
-    3: <String>['D41', 'D50F', 'D50A'],
-    4: <String>['D41', 'D50F', 'D50A'],
-    5: <String>['D41', 'D50F', 'D50A'],
-    6: <String>['D41', 'D50F', 'D50A'],
-    7: <String>['D41', 'D50F', 'D50A'],
-    8: <String>['D41', 'D50F', 'D50A'],
+    1: <String>['D41', 'D51F', 'D51A'],
+    2: <String>['D41', 'D51A'],
+    3: <String>['D41', 'D51F', 'D51A'],
+    4: <String>['D41', 'D51F', 'D51A'],
+    5: <String>['D41', 'D51F', 'D51A'],
+    6: <String>['D41', 'D51F', 'D51A'],
+    7: <String>['D41', 'D51F', 'D51A'],
+    8: <String>['D41', 'D51F', 'D51A'],
   };
 
   @override

@@ -5,6 +5,7 @@ import 'input/input_registry.dart';
 import '../models/window_review_item.dart';
 import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
+import 'length_optimization_screen.dart';
 import '../../../core/theme/app_theme.dart';
 
 class ReviewListScreen extends StatelessWidget {
@@ -55,6 +56,19 @@ class ReviewListScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _openLengthOptimization(BuildContext context) async {
+    final List<WindowReviewItem> items = session.items;
+    if (items.isEmpty) {
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LengthOptimizationScreen(items: items),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,9 +98,12 @@ class ReviewListScreen extends StatelessWidget {
               final WindowReviewItem item = items[index];
               final bool usesSplitWidth =
                   item.leftWidthValue != null || item.rightWidthValue != null;
-              final String dimensionsLabel = usesSplitWidth
+              final String baseDimensionsLabel = usesSplitWidth
                   ? 'H: ${item.heightValue}   RW: ${item.rightWidthValue ?? item.widthValue}   LW: ${item.leftWidthValue ?? item.widthValue}'
                   : 'H: ${item.heightValue}   W: ${item.widthValue}';
+              final String dimensionsLabel = item.archValue != null
+                  ? '$baseDimensionsLabel   A: ${item.archValue}'
+                  : baseDimensionsLabel;
               return Container(
                 key: Key('review_item_${item.winNo}'),
                 padding: const EdgeInsets.all(14),
@@ -169,6 +186,26 @@ class ReviewListScreen extends StatelessWidget {
                 ),
               );
             },
+          );
+        },
+      ),
+      bottomNavigationBar: AnimatedBuilder(
+        animation: session,
+        builder: (BuildContext context, Widget? child) {
+          if (session.items.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: FilledButton.icon(
+                key: const Key('review_next_button'),
+                onPressed: () => _openLengthOptimization(context),
+                icon: const Icon(Icons.arrow_forward_rounded),
+                label: const Text('Next'),
+              ),
+            ),
           );
         },
       ),
