@@ -13,11 +13,15 @@ class OptimizationRepository {
     List<WindowReviewItem> items, {
     String context = 'estimation',
     String displayUnit = 'ft',
+    required String projectName,
+    required String projectLocation,
   }) {
     final OptimizationRequest request = OptimizationRequest.fromReviewItems(
       items,
       context: context,
       displayUnit: displayUnit,
+      projectName: projectName,
+      projectLocation: projectLocation,
     );
     return _apiClient.fetchLengthOptimization(request);
   }

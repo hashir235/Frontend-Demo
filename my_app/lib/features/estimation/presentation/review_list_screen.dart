@@ -64,7 +64,11 @@ class ReviewListScreen extends StatelessWidget {
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => LengthOptimizationScreen(items: items),
+        builder: (_) => LengthOptimizationScreen(
+          items: items,
+          projectName: session.projectName,
+          projectLocation: session.projectLocation,
+        ),
       ),
     );
   }

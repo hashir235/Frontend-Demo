@@ -75,11 +75,15 @@ class OptimizationWindowRequest {
 class OptimizationRequest {
   final String context;
   final String displayUnit;
+  final String projectName;
+  final String projectLocation;
   final List<OptimizationWindowRequest> windows;
 
   const OptimizationRequest({
     required this.context,
     required this.displayUnit,
+    required this.projectName,
+    required this.projectLocation,
     required this.windows,
   });
 
@@ -87,10 +91,14 @@ class OptimizationRequest {
     List<WindowReviewItem> items, {
     String context = 'estimation',
     String displayUnit = 'ft',
+    required String projectName,
+    required String projectLocation,
   }) {
     return OptimizationRequest(
       context: context,
       displayUnit: displayUnit,
+      projectName: projectName,
+      projectLocation: projectLocation,
       windows: items
           .map(OptimizationWindowRequest.fromReviewItem)
           .toList(growable: false),
@@ -101,6 +109,8 @@ class OptimizationRequest {
     return <String, Object?>{
       'context': context,
       'displayUnit': displayUnit,
+      'projectName': projectName,
+      'projectLocation': projectLocation,
       'windows': windows.map((OptimizationWindowRequest item) => item.toJson())
           .toList(growable: false),
     };

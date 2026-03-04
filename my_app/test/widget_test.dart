@@ -8,10 +8,19 @@ import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 const Key _pageViewKey = Key('window_page_view');
 const Key _focusedCodeNameKey = Key('focused_code_name');
 
+EstimateSessionStore _testSession() => EstimateSessionStore(
+  projectName: 'Test Project',
+  projectLocation: 'Test Location',
+);
+
 Future<void> _openAddWindows(WidgetTester tester) async {
   await tester.tap(find.text('Estimation'));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Add Windows'));
+  await tester.tap(find.text('Create Project'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.widgetWithText(TextFormField, 'Project Name *'), 'Test Project');
+  await tester.enterText(find.widgetWithText(TextFormField, 'Location *'), 'Test Location');
+  await tester.tap(find.text('Continue'));
   await tester.pumpAndSettle();
 }
 
@@ -84,7 +93,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: mSectionNode,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );
@@ -128,7 +137,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: scfNode,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );
@@ -154,7 +163,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: mscfNode,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );
@@ -182,7 +191,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: scfNode,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );
@@ -208,7 +217,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: mscfNode,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );
@@ -234,7 +243,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: slidingNode,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );
@@ -263,7 +272,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: pf3Node,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );
@@ -344,7 +353,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: ps4Node,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );
@@ -386,7 +395,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: ef3Node,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );
@@ -428,7 +437,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: es3Node,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );
@@ -476,7 +485,7 @@ void main() {
       MaterialApp(
         home: WindowInputScreen(
           node: mpf3Node,
-          session: EstimateSessionStore(),
+          session: _testSession(),
         ),
       ),
     );

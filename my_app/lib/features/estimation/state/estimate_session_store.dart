@@ -4,12 +4,17 @@ import '../models/window_review_item.dart';
 import '../../settings/state/numbering_mode.dart';
 
 class EstimateSessionStore extends ChangeNotifier {
+  final String projectName;
+  final String projectLocation;
   final List<WindowReviewItem> _items = <WindowReviewItem>[];
   int _nextWinNo = 1;
   NumberingMode _numberingMode;
 
-  EstimateSessionStore({NumberingMode numberingMode = NumberingMode.auto})
-    : _numberingMode = numberingMode;
+  EstimateSessionStore({
+    required this.projectName,
+    required this.projectLocation,
+    NumberingMode numberingMode = NumberingMode.auto,
+  }) : _numberingMode = numberingMode;
 
   List<WindowReviewItem> get items {
     final List<WindowReviewItem> sorted = List<WindowReviewItem>.from(_items);

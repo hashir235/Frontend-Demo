@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/window_type.dart';
-import '../../settings/state/app_settings.dart';
 import '../state/estimate_session_store.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/window_catalog.dart';
@@ -20,14 +19,16 @@ class WindowNavigationScreen extends StatefulWidget {
     required this.session,
   });
 
-  factory WindowNavigationScreen.root({Key? key}) {
+  factory WindowNavigationScreen.root({
+    Key? key,
+    required EstimateSessionStore session,
+    String rootLabel = 'Create Project',
+  }) {
     return WindowNavigationScreen(
       key: key,
       nodes: WindowCatalog.root,
-      path: const ['Add Windows'],
-      session: EstimateSessionStore(
-        numberingMode: AppSettings.instance.numberingMode,
-      ),
+      path: <String>[rootLabel],
+      session: session,
     );
   }
 

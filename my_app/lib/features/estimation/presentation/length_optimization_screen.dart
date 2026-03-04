@@ -8,14 +8,19 @@ import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
 import '../models/window_review_item.dart';
 import '../../../core/theme/app_theme.dart';
+import 'material_selection_screen.dart';
 
 class LengthOptimizationScreen extends StatefulWidget {
   final List<WindowReviewItem> items;
+  final String projectName;
+  final String projectLocation;
   final OptimizationRepository? repository;
 
   const LengthOptimizationScreen({
     super.key,
     required this.items,
+    required this.projectName,
+    required this.projectLocation,
     this.repository,
   });
 
@@ -232,9 +237,13 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
   }
 
   void _handleNextPressed() {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Next screen is not defined yet.')),
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => MaterialSelectionScreen(
+          projectName: widget.projectName,
+          projectLocation: widget.projectLocation,
+        ),
+      ),
     );
   }
 
@@ -297,6 +306,8 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     try {
       final CuttingReport report = await _repository.fetchLengthOptimization(
         widget.items,
+        projectName: widget.projectName,
+        projectLocation: widget.projectLocation,
       );
       if (!mounted) {
         return;
@@ -655,3 +666,5 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     );
   }
 }
+
+
