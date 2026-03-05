@@ -196,22 +196,6 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            FilledButton.tonal(
-              onPressed: () {
-                Navigator.of(context).popUntil(
-                  (Route<dynamic> route) => route.isFirst,
-                );
-              },
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Icon(Icons.home_rounded),
-                  SizedBox(width: 6),
-                  Text('Home'),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
             IconButton.filledTonal(
               tooltip: 'Share',
               onPressed: _showShareOptions,

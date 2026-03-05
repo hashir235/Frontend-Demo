@@ -25,11 +25,11 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
   ];
 
   static const List<_MaterialChoice> _colorOptions = <_MaterialChoice>[
-    _MaterialChoice(label: 'DULL', value: 'DULL'),
     _MaterialChoice(
       label: 'H23/PC-RAL (champain)',
       value: 'H23/PC-RAL',
     ),
+    _MaterialChoice(label: 'DULL', value: 'DULL'),
     _MaterialChoice(
       label: 'SAHARA/ BROW',
       value: 'SAHARA/ BROWN',

@@ -37,6 +37,15 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
   String? _selectedSectionName;
   final Set<String> _markedCutRowKeys = <String>{};
 
+  bool get _canProceedToMaterialSelection {
+    final CuttingReport? report = _report;
+    return !_isLoading &&
+        _errorMessage == null &&
+        report != null &&
+        report.ok &&
+        report.sections.isNotEmpty;
+  }
+
   CuttingReportSection? get _selectedSection {
     final CuttingReport? report = _report;
     if (report == null || report.sections.isEmpty) {
@@ -237,6 +246,17 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
   }
 
   void _handleNextPressed() {
+    if (!_canProceedToMaterialSelection) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Wait for optimization to finish before opening Material Selection.',
+          ),
+        ),
+      );
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (BuildContext context) => MaterialSelectionScreen(
@@ -339,7 +359,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         actions: <Widget>[
           IconButton(
             tooltip: 'Next',
-            onPressed: _handleNextPressed,
+            onPressed: _canProceedToMaterialSelection ? _handleNextPressed : null,
             icon: const Icon(Icons.arrow_forward_rounded),
           ),
         ],

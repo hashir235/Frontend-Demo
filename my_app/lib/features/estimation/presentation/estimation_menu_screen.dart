@@ -1,5 +1,9 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/primary_card_button.dart';
@@ -10,6 +14,13 @@ import 'window_navigation_screen.dart';
 class EstimationMenuScreen extends StatelessWidget {
   const EstimationMenuScreen({super.key});
 
+  String _apiBaseUrl() {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8080';
+    }
+    return 'http://127.0.0.1:8080';
+  }
+
   void _showComingSoon(BuildContext context) {
     ScaffoldMessenger.of(
       context,
@@ -17,89 +28,36 @@ class EstimationMenuScreen extends StatelessWidget {
   }
 
   Future<_ProjectDraft?> _showProjectDialog(BuildContext context) async {
-    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-    final TextEditingController projectNameController = TextEditingController();
-    final TextEditingController locationController = TextEditingController();
-
-    final _ProjectDraft? result = await showDialog<_ProjectDraft>(
+    return showDialog<_ProjectDraft>(
       context: context,
       barrierDismissible: true,
-      builder: (BuildContext dialogContext) {
-        String? requiredValidator(String? value) {
-          if ((value ?? '').trim().isEmpty) {
-            return 'Required';
-          }
-          return null;
-        }
-
-        InputDecoration decoration(String label) {
-          return InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
-          );
-        }
-
-        return AlertDialog(
-          title: const Text('Create Project'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                TextFormField(
-                  controller: projectNameController,
-                  autofocus: true,
-                  inputFormatters: <TextInputFormatter>[
-                    LengthLimitingTextInputFormatter(100),
-                  ],
-                  decoration: decoration('Project Name *'),
-                  validator: requiredValidator,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: locationController,
-                  inputFormatters: <TextInputFormatter>[
-                    LengthLimitingTextInputFormatter(100),
-                  ],
-                  decoration: decoration('Location *'),
-                  validator: requiredValidator,
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final FormState? form = formKey.currentState;
-                if (form == null || !form.validate()) {
-                  return;
-                }
-                Navigator.of(dialogContext).pop(
-                  _ProjectDraft(
-                    projectName: projectNameController.text.trim(),
-                    projectLocation: locationController.text.trim(),
-                  ),
-                );
-              },
-              child: const Text('Continue'),
-            ),
-          ],
-        );
-      },
+      builder: (_) => const _CreateProjectDialog(),
     );
-
-    projectNameController.dispose();
-    locationController.dispose();
-    return result;
   }
 
   Future<void> _handleCreateProject(BuildContext context) async {
     final _ProjectDraft? draft = await _showProjectDialog(context);
     if (draft == null || !context.mounted) {
+      return;
+    }
+
+    String? resetWarning;
+    try {
+      final http.Response response = await http.post(
+        Uri.parse('${_apiBaseUrl()}/api/estimation/reset-session'),
+        headers: const <String, String>{
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(const <String, Object?>{}),
+      ).timeout(const Duration(seconds: 5));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        resetWarning = 'Backend reset failed. Continuing with new project.';
+      }
+    } on Exception {
+      resetWarning = 'Reset service unreachable. Continuing with new project.';
+    }
+
+    if (!context.mounted) {
       return;
     }
 
@@ -114,6 +72,12 @@ class EstimationMenuScreen extends StatelessWidget {
         builder: (_) => WindowNavigationScreen.root(session: session),
       ),
     );
+
+    if (resetWarning != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(resetWarning)),
+      );
+    }
   }
 
   @override
@@ -196,6 +160,96 @@ class _ProjectDraft {
     required this.projectName,
     required this.projectLocation,
   });
+}
+
+class _CreateProjectDialog extends StatefulWidget {
+  const _CreateProjectDialog();
+
+  @override
+  State<_CreateProjectDialog> createState() => _CreateProjectDialogState();
+}
+
+class _CreateProjectDialogState extends State<_CreateProjectDialog> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _projectNameController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+
+  @override
+  void dispose() {
+    _projectNameController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  String? _requiredValidator(String? value) {
+    if ((value ?? '').trim().isEmpty) {
+      return 'Required';
+    }
+    return null;
+  }
+
+  InputDecoration _decoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: const OutlineInputBorder(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Create Project'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              TextFormField(
+                controller: _projectNameController,
+                autofocus: true,
+                inputFormatters: <TextInputFormatter>[
+                  LengthLimitingTextInputFormatter(100),
+                ],
+                decoration: _decoration('Project Name *'),
+                validator: _requiredValidator,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _locationController,
+                inputFormatters: <TextInputFormatter>[
+                  LengthLimitingTextInputFormatter(100),
+                ],
+                decoration: _decoration('Location *'),
+                validator: _requiredValidator,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final FormState? form = _formKey.currentState;
+            if (form == null || !form.validate()) {
+              return;
+            }
+            Navigator.of(context).pop(
+              _ProjectDraft(
+                projectName: _projectNameController.text.trim(),
+                projectLocation: _locationController.text.trim(),
+              ),
+            );
+          },
+          child: const Text('Continue'),
+        ),
+      ],
+    );
+  }
 }
 
 class _GlowCircle extends StatelessWidget {

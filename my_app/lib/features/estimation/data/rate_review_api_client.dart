@@ -57,9 +57,18 @@ class RateReviewApiClient {
 
     final Map<String, dynamic>? payload = _decodeObject(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      String message =
+          (payload?['error'] as String?) ??
+          'Rate request failed with status ${response.statusCode}.';
+      final Object? detail = payload?['detail'];
+      if (detail is Map<String, dynamic>) {
+        final String stderr = ((detail['stderr'] as String?) ?? '').trim();
+        if (stderr.isNotEmpty) {
+          message = '$message: $stderr';
+        }
+      }
       throw RateReviewApiException(
-        (payload?['error'] as String?) ??
-            'Rate request failed with status ${response.statusCode}.',
+        message,
         statusCode: response.statusCode,
         detail: payload?['detail'],
       );

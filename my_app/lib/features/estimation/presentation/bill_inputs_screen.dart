@@ -107,13 +107,6 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     return null;
   }
 
-  String? _requiredTextValidator(String? value) {
-    if ((value ?? '').trim().isEmpty) {
-      return 'Required';
-    }
-    return null;
-  }
-
   String? _optionalNumberValidator(String? value) {
     final String text = (value ?? '').trim();
     if (text.isEmpty) {
@@ -279,12 +272,6 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
                           label: 'Hardware Rate *',
                           validator: _requiredNumberValidator,
                         ),
-                        _buildTextField(
-                          controller: _glassColorController,
-                          label: 'Glass Color *',
-                          inputFormatters: _glassColorInputFormatters,
-                          validator: _requiredTextValidator,
-                        ),
                         _buildNumberField(
                           controller: _discountController,
                           label: 'Aluminium Discount % *',
@@ -302,6 +289,11 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
                           controller: _advancePaidController,
                           label: 'Advance Paid',
                           validator: _optionalNumberValidator,
+                        ),
+                        _buildTextField(
+                          controller: _glassColorController,
+                          label: 'Glass Color',
+                          inputFormatters: _glassColorInputFormatters,
                         ),
                         _buildTextField(
                           controller: _customerNameController,

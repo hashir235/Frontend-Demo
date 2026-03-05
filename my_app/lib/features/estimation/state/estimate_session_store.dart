@@ -39,6 +39,16 @@ class EstimateSessionStore extends ChangeNotifier {
     return _items.any((WindowReviewItem item) => item.winNo == winNo);
   }
 
+  void _syncNextWinNo() {
+    int highest = 0;
+    for (final WindowReviewItem item in _items) {
+      if (item.winNo > highest) {
+        highest = item.winNo;
+      }
+    }
+    _nextWinNo = highest + 1;
+  }
+
   WindowReviewItem addItem({
     required int winNo,
     required String windowLabel,
@@ -78,12 +88,7 @@ class EstimateSessionStore extends ChangeNotifier {
     }
 
     _items.add(item);
-
-    if (winNo >= _nextWinNo) {
-      _nextWinNo = winNo + 1;
-    } else if (_numberingMode == NumberingMode.auto) {
-      _nextWinNo += 1;
-    }
+    _syncNextWinNo();
     notifyListeners();
     return item;
   }
@@ -101,6 +106,7 @@ class EstimateSessionStore extends ChangeNotifier {
 
   void deleteByWinNo(int winNo) {
     _items.removeWhere((WindowReviewItem item) => item.winNo == winNo);
+    _syncNextWinNo();
     notifyListeners();
   }
 }

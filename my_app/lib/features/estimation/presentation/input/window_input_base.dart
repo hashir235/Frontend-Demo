@@ -339,23 +339,24 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return 'Required';
     }
 
-    final RegExp basicPattern = RegExp(r'^\d+\.\d+$');
+    final RegExp basicPattern = RegExp(r'^\d+(?:\.\d+)?$');
     if (!basicPattern.hasMatch(value)) {
       return 'Use format ${_unitMode.inputHint}';
     }
 
     final List<String> parts = value.split('.');
-    if (parts.length != 2) {
+    if (parts.length > 2) {
       return 'Invalid value';
     }
 
-    final int? rightPart = int.tryParse(parts[1]);
+    final String rightText = parts.length == 2 ? parts[1] : '0';
+    final int? rightPart = int.tryParse(rightText);
     if (rightPart == null) {
       return 'Invalid value';
     }
 
     if (_unitMode == UnitMode.inches) {
-      if (parts[1].length != 1) {
+      if (parts.length == 2 && rightText.length != 1) {
         return 'Use one digit after point';
       }
       if (rightPart < 0 || rightPart >= 8) {
@@ -368,6 +369,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return 'Right side must be less than 12';
     }
     return null;
+  }
+
+  String _normalizeDimensionForStorage(String rawValue) {
+    final String value = rawValue.trim();
+    if (value.contains('.')) {
+      return value;
+    }
+    return '$value.0';
   }
 
   String? _validateWinNo(String rawValue) {
@@ -445,12 +454,18 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
 
     final String? description = _normalizedDescription();
-    final String heightValue = _heightController.text.trim();
-    final String rightWidthValue = _widthController.text.trim();
+    final String heightValue = _normalizeDimensionForStorage(
+      _heightController.text,
+    );
+    final String rightWidthValue = _normalizeDimensionForStorage(
+      _widthController.text,
+    );
     final String? leftWidthValue = _usesSplitWidthInputs
-        ? _leftWidthController.text.trim()
+        ? _normalizeDimensionForStorage(_leftWidthController.text)
         : null;
-    final String? archValue = _usesArchInput ? _archController.text.trim() : null;
+    final String? archValue = _usesArchInput
+        ? _normalizeDimensionForStorage(_archController.text)
+        : null;
     final int winNo = widget.isEditMode
         ? widget.editingItem!.winNo
         : (_numberingMode == NumberingMode.manual
@@ -617,6 +632,12 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   Widget build(BuildContext context) {
     final TextStyle? hintStyle = Theme.of(context).textTheme.bodyMedium
         ?.copyWith(color: AppTheme.slate.withValues(alpha: 0.6));
+    final TextStyle? numberInputStyle = Theme.of(context).textTheme.titleLarge
+        ?.copyWith(
+          color: AppTheme.deepTeal,
+          fontWeight: FontWeight.w700,
+          fontSize: 22,
+        );
 
     return Scaffold(
       key: _scaffoldKey,
@@ -967,13 +988,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           ),
                         ],
                       ),
-                      TextField(
-                        key: const Key('input_height_field'),
-                        controller: _heightController,
-                        focusNode: _heightFocusNode,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
+                        TextField(
+                          key: const Key('input_height_field'),
+                          controller: _heightController,
+                          focusNode: _heightFocusNode,
+                          style: numberInputStyle,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                         ],
@@ -997,6 +1019,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       TextField(
                         key: const Key('input_width_field'),
                         controller: _widthController,
+                        style: numberInputStyle,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
@@ -1025,6 +1048,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         TextField(
                           key: const Key('input_left_width_field'),
                           controller: _leftWidthController,
+                          style: numberInputStyle,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
@@ -1055,6 +1079,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         TextField(
                           key: const Key('input_arch_field'),
                           controller: _archController,
+                          style: numberInputStyle,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
