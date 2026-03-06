@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../data/cost_table_api_client.dart';
+import '../data/rate_review_api_client.dart';
 import 'rate_review_screen.dart';
 
 class MaterialSelectionScreen extends StatefulWidget {
   final String projectName;
   final String projectLocation;
+  final String requestContext;
+  final RateReviewApiClient? rateReviewApiClient;
+  final CostTableApiClient? costTableApiClient;
+  final String materialTableTitle;
+  final bool materialTableShowNextToBill;
+  final bool materialTableShowPdfActions;
 
   const MaterialSelectionScreen({
     super.key,
     required this.projectName,
     required this.projectLocation,
+    this.requestContext = 'estimation',
+    this.rateReviewApiClient,
+    this.costTableApiClient,
+    this.materialTableTitle = 'Estimation Material Table',
+    this.materialTableShowNextToBill = true,
+    this.materialTableShowPdfActions = true,
   });
 
   @override
@@ -48,8 +62,14 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
           gaugeValue: _selectedGage.value,
           colorLabel: _selectedColor.label,
           colorValue: _selectedColor.value,
+          requestContext: widget.requestContext,
           projectName: widget.projectName,
           projectLocation: widget.projectLocation,
+          apiClient: widget.rateReviewApiClient,
+          costTableApiClient: widget.costTableApiClient,
+          materialTableTitle: widget.materialTableTitle,
+          materialTableShowNextToBill: widget.materialTableShowNextToBill,
+          materialTableShowPdfActions: widget.materialTableShowPdfActions,
         ),
       ),
     );

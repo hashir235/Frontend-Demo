@@ -2,16 +2,11 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/primary_card_button.dart';
 import '../../estimation/presentation/estimation_menu_screen.dart';
+import '../../fabrication/presentation/fabrication_menu_screen.dart';
 import '../../settings/presentation/settings_home_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Coming soon')));
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +75,14 @@ class HomeScreen extends StatelessWidget {
                             title: 'Fabrication',
                             subtitle: 'Production & cutting details',
                             accent: AppTheme.sky,
-                            onTap: () => _showComingSoon(context),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const FabricationMenuScreen(),
+                                ),
+                              );
+                            },
                           ),
                           const SizedBox(height: 18),
                           PrimaryCardButton(

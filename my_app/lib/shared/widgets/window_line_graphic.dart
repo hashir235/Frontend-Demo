@@ -5,6 +5,7 @@ class WindowLineGraphic extends StatelessWidget {
   final String graphicKey;
   final String windowLabel;
   final int? displayIndex;
+  final String? windowCode;
   final Color strokeColor;
   final double horizontalShift;
 
@@ -13,6 +14,7 @@ class WindowLineGraphic extends StatelessWidget {
     required this.graphicKey,
     required this.windowLabel,
     required this.displayIndex,
+    this.windowCode,
     required this.strokeColor,
     this.horizontalShift = 0,
   });
@@ -28,6 +30,7 @@ class WindowLineGraphic extends StatelessWidget {
           graphicKey: graphicKey,
           windowLabel: windowLabel,
           displayIndex: displayIndex,
+          windowCode: windowCode,
         ),
       ),
     );
@@ -39,12 +42,14 @@ class _WindowLinePainter extends CustomPainter {
   final String graphicKey;
   final String windowLabel;
   final int? displayIndex;
+  final String? windowCode;
 
   const _WindowLinePainter({
     required this.strokeColor,
     required this.graphicKey,
     required this.windowLabel,
     required this.displayIndex,
+    required this.windowCode,
   });
 
   @override
@@ -55,52 +60,49 @@ class _WindowLinePainter extends CustomPainter {
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
 
-    final bool isFixWindow19 =
-        displayIndex == 19 && windowLabel == 'Fix Window';
-    final bool isOpenable21 = displayIndex == 21 && windowLabel == 'Openable';
-    final bool isDoorGateway = displayIndex == null && windowLabel == 'Door';
-    final bool isSingleDoor22 =
-        displayIndex == 22 && windowLabel == 'Single Door';
-    final bool isDoubleDoor23 =
-        displayIndex == 23 && windowLabel == 'Double Door';
-    final bool isArchGateway = displayIndex == null && windowLabel == 'Arch';
-    final bool isRoundArch24 =
-        displayIndex == 24 && windowLabel == 'Round Arch';
-    final bool isRectangleArch25 =
-        displayIndex == 25 && windowLabel == 'Rectangle';
-    final bool isCornerFix20 =
-        displayIndex == 20 && windowLabel == 'Corner Fix';
-    final Rect frameRect = isFixWindow19
+    final String resolvedCode = (windowCode ?? '').trim();
+    final bool hasCode = resolvedCode.isNotEmpty;
+    final bool isFixWindow = resolvedCode == 'F_win';
+    final bool isOpenableWindow = resolvedCode == 'O_win';
+    final bool isSingleDoor = resolvedCode == 'Single_Door';
+    final bool isDoubleDoor = resolvedCode == 'Double_Door';
+    final bool isCornerFixWindow = resolvedCode == 'FC_win';
+    final bool isRoundArchWindow = resolvedCode == 'A_win';
+    final bool isRectangleArchWindow = resolvedCode == 'AR_win';
+    final bool isDoorGateway = !hasCode && windowLabel == 'Door';
+    final bool isArchGateway = !hasCode && windowLabel == 'Arch';
+
+    final Rect frameRect = isFixWindow
         ? Rect.fromCenter(
             center: Offset(size.width / 2, size.height / 2),
             width: size.width * 0.50,
             height: size.width * 0.50,
           )
-        : isOpenable21
+        : isOpenableWindow
         ? Rect.fromCenter(
             center: Offset(size.width / 2, size.height / 2),
             width: size.width * 0.44,
             height: size.height * 0.66,
           )
-        : (isDoorGateway || isSingleDoor22)
+        : (isDoorGateway || isSingleDoor)
         ? Rect.fromCenter(
             center: Offset(size.width / 2, size.height / 2),
             width: size.width * 0.42,
             height: size.height * 0.70,
           )
-        : isDoubleDoor23
+        : isDoubleDoor
         ? Rect.fromCenter(
             center: Offset(size.width / 2, size.height / 2),
             width: size.width * 0.58,
             height: size.height * 0.74,
           )
-        : (isArchGateway || isRoundArch24)
+        : (isArchGateway || isRoundArchWindow)
         ? Rect.fromCenter(
             center: Offset(size.width / 2, size.height / 2),
             width: size.width * 0.86,
             height: size.height * 0.50,
           )
-        : isRectangleArch25
+        : isRectangleArchWindow
         ? Rect.fromCenter(
             center: Offset(size.width / 2, size.height / 2),
             width: size.width * 0.80,
@@ -113,7 +115,7 @@ class _WindowLinePainter extends CustomPainter {
             size.height * 0.68,
           );
 
-    if (isCornerFix20) {
+    if (isCornerFixWindow) {
       _drawCornerFix(canvas, frameRect, strokePaint);
       return;
     }
@@ -123,7 +125,7 @@ class _WindowLinePainter extends CustomPainter {
       return;
     }
 
-    if (isArchGateway || isRoundArch24) {
+    if (isArchGateway || isRoundArchWindow) {
       _drawRoundArch(canvas, frameRect, strokePaint);
       return;
     }
@@ -131,7 +133,7 @@ class _WindowLinePainter extends CustomPainter {
     canvas.drawRect(frameRect, strokePaint);
 
     if (graphicKey != 'panel_basic') {
-      if (isRectangleArch25) {
+      if (isRectangleArchWindow) {
         _drawCenteredText(
           canvas,
           text: 'F',
@@ -145,23 +147,23 @@ class _WindowLinePainter extends CustomPainter {
         return;
       }
 
-      if (isDoubleDoor23) {
+      if (isDoubleDoor) {
         _drawDoubleDoorHandles(canvas, frameRect, strokePaint);
         return;
       }
 
-      if (isDoorGateway || isSingleDoor22) {
+      if (isDoorGateway || isSingleDoor) {
         _drawSingleDoorHandle(canvas, frameRect, strokePaint);
         return;
       }
 
-      if (isOpenable21) {
+      if (isOpenableWindow) {
         canvas.drawLine(frameRect.topLeft, frameRect.bottomRight, strokePaint);
         canvas.drawLine(frameRect.topRight, frameRect.bottomLeft, strokePaint);
         return;
       }
 
-      if (isFixWindow19) {
+      if (isFixWindow) {
         _drawCenteredText(
           canvas,
           text: 'F',
@@ -794,7 +796,8 @@ class _WindowLinePainter extends CustomPainter {
     return oldDelegate.strokeColor != strokeColor ||
         oldDelegate.graphicKey != graphicKey ||
         oldDelegate.windowLabel != windowLabel ||
-        oldDelegate.displayIndex != displayIndex;
+        oldDelegate.displayIndex != displayIndex ||
+        oldDelegate.windowCode != windowCode;
   }
 }
 

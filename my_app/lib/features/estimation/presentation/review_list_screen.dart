@@ -6,6 +6,7 @@ import '../models/window_review_item.dart';
 import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
 import 'length_optimization_screen.dart';
+import 'material_selection_screen.dart';
 import '../../../core/theme/app_theme.dart';
 
 class ReviewListScreen extends StatelessWidget {
@@ -62,12 +63,39 @@ class ReviewListScreen extends StatelessWidget {
       return;
     }
 
+    if (session.isFabrication) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => LengthOptimizationScreen(
+            items: items,
+            projectName: session.projectName,
+            projectLocation: session.projectLocation,
+            requestContext: 'fabrication',
+            showPdfActions: true,
+            materialSelectionBuilder:
+                (BuildContext context, String projectName, String projectLocation) {
+                  return MaterialSelectionScreen(
+                    projectName: projectName,
+                    projectLocation: projectLocation,
+                    requestContext: 'fabrication',
+                    materialTableTitle: 'Fabrication Material Table',
+                    materialTableShowNextToBill: false,
+                    materialTableShowPdfActions: true,
+                  );
+                },
+          ),
+        ),
+      );
+      return;
+    }
+
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => LengthOptimizationScreen(
           items: items,
           projectName: session.projectName,
           projectLocation: session.projectLocation,
+          requestContext: 'estimation',
         ),
       ),
     );
@@ -164,7 +192,7 @@ class ReviewListScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Collar: ${item.collarIndex}   Unit: ${item.unitMode.label}',
+                      'Collar: ${item.collarIndex}   Unit: ${session.isFabrication ? (item.unitMode == UnitMode.feet ? 'cm' : 'inches') : item.unitMode.label}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppTheme.deepTeal,
                       ),

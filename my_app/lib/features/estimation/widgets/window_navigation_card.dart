@@ -108,6 +108,7 @@ class WindowNavigationCard extends StatelessWidget {
                       graphicKey: node.graphicKey,
                       windowLabel: node.label,
                       displayIndex: node.displayIndex,
+                      windowCode: node.codeName,
                       strokeColor: isFocused
                           ? AppTheme.deepTeal
                           : AppTheme.slate,

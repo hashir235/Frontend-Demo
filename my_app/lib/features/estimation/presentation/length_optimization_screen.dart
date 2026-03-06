@@ -10,18 +10,31 @@ import '../models/window_review_item.dart';
 import '../../../core/theme/app_theme.dart';
 import 'material_selection_screen.dart';
 
+typedef MaterialSelectionBuilder =
+    Widget Function(
+      BuildContext context,
+      String projectName,
+      String projectLocation,
+    );
+
 class LengthOptimizationScreen extends StatefulWidget {
   final List<WindowReviewItem> items;
   final String projectName;
   final String projectLocation;
+  final String requestContext;
   final OptimizationRepository? repository;
+  final MaterialSelectionBuilder? materialSelectionBuilder;
+  final bool showPdfActions;
 
   const LengthOptimizationScreen({
     super.key,
     required this.items,
     required this.projectName,
     required this.projectLocation,
+    this.requestContext = 'estimation',
     this.repository,
+    this.materialSelectionBuilder,
+    this.showPdfActions = true,
   });
 
   @override
@@ -74,20 +87,12 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     return symbol.isEmpty ? '--' : symbol;
   }
 
-  String _compactDisplayLength(String value) {
-    final RegExp zeroDecimals = RegExp(r'^(-?\d+)\.00(\s*\S+)$');
-    final Match? zeroMatch = zeroDecimals.firstMatch(value.trim());
-    if (zeroMatch != null) {
-      return '${zeroMatch.group(1)}${zeroMatch.group(2)}';
-    }
-
-    final RegExp singleTrailingZero = RegExp(r'^(-?\d+\.\d*[1-9])0(\s*\S+)$');
-    final Match? singleZeroMatch = singleTrailingZero.firstMatch(value.trim());
-    if (singleZeroMatch != null) {
-      return '${singleZeroMatch.group(1)}${singleZeroMatch.group(2)}';
-    }
-
-    return value;
+  String _stockDisplayInFeet(double stockLenFt) {
+    final String fixed = stockLenFt.toStringAsFixed(2);
+    final String compact = fixed
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+    return '$compact ft';
   }
 
   String _cutRowKey(
@@ -117,8 +122,11 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     final Widget content = Text(
       text,
       style: TextStyle(
-        color: isMarked ? AppTheme.deepTeal.withValues(alpha: 0.78) : null,
-        fontWeight: isMarked ? FontWeight.w600 : null,
+        color: isMarked
+            ? AppTheme.deepTeal.withValues(alpha: 0.82)
+            : AppTheme.deepTeal,
+        fontWeight: isMarked ? FontWeight.w800 : FontWeight.w700,
+        fontSize: 13,
       ),
     );
 
@@ -257,18 +265,27 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => MaterialSelectionScreen(
+    final Widget nextScreen =
+        widget.materialSelectionBuilder?.call(
+          context,
+          widget.projectName,
+          widget.projectLocation,
+        ) ??
+        MaterialSelectionScreen(
           projectName: widget.projectName,
           projectLocation: widget.projectLocation,
-        ),
-      ),
-    );
+          requestContext: widget.requestContext,
+        );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (BuildContext context) => nextScreen));
   }
 
   Widget? _buildBottomActions(BuildContext context) {
     if (_isLoading || _errorMessage != null || _report == null) {
+      return null;
+    }
+    if (!widget.showPdfActions) {
       return null;
     }
 
@@ -326,6 +343,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     try {
       final CuttingReport report = await _repository.fetchLengthOptimization(
         widget.items,
+        context: widget.requestContext,
         projectName: widget.projectName,
         projectLocation: widget.projectLocation,
       );
@@ -455,16 +473,29 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: report.sections.map((CuttingReportSection item) {
-                final bool isSelected = item.name == section?.name;
-                return ChoiceChip(
-                  label: Text(item.name),
-                  selected: isSelected,
-                  onSelected: (_) {
-                    setState(() {
-                      _selectedSectionName = item.name;
-                    });
-                  },
+                children: report.sections.map((CuttingReportSection item) {
+                  final bool isSelected = item.name == section?.name;
+                  return ChoiceChip(
+                    label: Text(item.name),
+                    selected: isSelected,
+                    selectedColor: AppTheme.violet.withValues(alpha: 0.88),
+                    backgroundColor: Colors.white,
+                    checkmarkColor: Colors.white,
+                    side: BorderSide(
+                      color: isSelected
+                          ? AppTheme.violet
+                          : AppTheme.sky.withValues(alpha: 0.8),
+                      width: isSelected ? 1.3 : 1,
+                    ),
+                    labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: isSelected ? Colors.white : AppTheme.deepTeal,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedSectionName = item.name;
+                      });
+                    },
                 );
               }).toList(growable: false),
             ),
@@ -540,9 +571,11 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     BuildContext context,
     CuttingReportSummary summary,
   ) {
-    final String usedLengths = summary.usedLengthsDisplay.isEmpty
+    final String usedLengths = summary.usedLengths.isEmpty
         ? '--'
-        : summary.usedLengthsDisplay.join(', ');
+        : summary.usedLengths
+              .map(_stockDisplayInFeet)
+              .join(', ');
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -563,7 +596,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Total Length: ${summary.totalLengthDisplay}',
+            'Total Length: ${_stockDisplayInFeet(summary.totalLength)}',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: AppTheme.deepTeal,
               fontWeight: FontWeight.w700,
@@ -599,7 +632,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            'Stock: ${_compactDisplayLength(group.stockLenDisplay)}',
+            'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: AppTheme.deepTeal,
               fontWeight: FontWeight.w800,

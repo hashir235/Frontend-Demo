@@ -11,24 +11,28 @@ class WindowNavigationScreen extends StatefulWidget {
   final List<WindowType> nodes;
   final List<String> path;
   final EstimateSessionStore session;
+  final String moduleTitle;
 
   const WindowNavigationScreen({
     super.key,
     required this.nodes,
     required this.path,
     required this.session,
+    required this.moduleTitle,
   });
 
   factory WindowNavigationScreen.root({
     Key? key,
     required EstimateSessionStore session,
     String rootLabel = 'Create Project',
+    String moduleTitle = 'Estimation',
   }) {
     return WindowNavigationScreen(
       key: key,
-      nodes: WindowCatalog.root,
+      nodes: WindowCatalog.rootForFlow(isFabrication: session.isFabrication),
       path: <String>[rootLabel],
       session: session,
+      moduleTitle: moduleTitle,
     );
   }
 
@@ -81,6 +85,7 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
             nodes: node.children,
             path: [...widget.path, node.label],
             session: widget.session,
+            moduleTitle: widget.moduleTitle,
           ),
         ),
       );
@@ -144,7 +149,7 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Estimation',
+                                widget.moduleTitle,
                                 key: const Key('navigation_estimation_heading'),
                                 style: Theme.of(context).textTheme.headlineLarge
                                     ?.copyWith(fontSize: 30, height: 1),

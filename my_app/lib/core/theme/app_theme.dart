@@ -109,6 +109,47 @@ class AppTheme {
           ),
         ),
       ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          foregroundColor: WidgetStateProperty.resolveWith<Color>((
+            Set<WidgetState> states,
+          ) {
+            if (states.contains(WidgetState.selected)) {
+              return Colors.white;
+            }
+            return deepTeal;
+          }),
+          backgroundColor: WidgetStateProperty.resolveWith<Color>((
+            Set<WidgetState> states,
+          ) {
+            if (states.contains(WidgetState.selected)) {
+              return violet.withValues(alpha: 0.86);
+            }
+            return Colors.white;
+          }),
+          side: WidgetStateProperty.resolveWith<BorderSide>((
+            Set<WidgetState> states,
+          ) {
+            if (states.contains(WidgetState.selected)) {
+              return BorderSide(color: violet, width: 1.4);
+            }
+            return BorderSide(color: sky.withValues(alpha: 0.75), width: 1);
+          }),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith<Color>((
+          Set<WidgetState> states,
+        ) {
+          if (states.contains(WidgetState.selected)) {
+            return violet;
+          }
+          return slate.withValues(alpha: 0.75);
+        }),
+      ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           foregroundColor: deepTeal,

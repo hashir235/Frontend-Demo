@@ -15,6 +15,8 @@ class OptimizationWindowRequest {
   final bool addBottom;
   final bool addTee;
   final bool addNet;
+  final int? lockType;
+  final String? rubberType;
 
   const OptimizationWindowRequest({
     required this.winNo,
@@ -31,15 +33,23 @@ class OptimizationWindowRequest {
     required this.addBottom,
     required this.addTee,
     required this.addNet,
+    required this.lockType,
+    required this.rubberType,
   });
 
-  factory OptimizationWindowRequest.fromReviewItem(WindowReviewItem item) {
+  factory OptimizationWindowRequest.fromReviewItem(
+    WindowReviewItem item, {
+    required bool isFabrication,
+  }) {
+    final String unitMode = isFabrication
+        ? (item.unitMode == UnitMode.inches ? 'inches' : 'cm')
+        : (item.unitMode == UnitMode.inches ? 'inches' : 'feet');
     return OptimizationWindowRequest(
       winNo: item.winNo,
       windowCode: item.windowCode,
       windowLabel: item.windowLabel,
       collarIndex: item.collarIndex,
-      unitMode: item.unitMode == UnitMode.inches ? 'inches' : 'feet',
+      unitMode: unitMode,
       heightValue: item.heightValue,
       widthValue: item.widthValue,
       rightWidthValue: item.rightWidthValue,
@@ -49,6 +59,8 @@ class OptimizationWindowRequest {
       addBottom: item.addBottom,
       addTee: item.addTee,
       addNet: item.addNet,
+      lockType: item.lockType,
+      rubberType: item.rubberType,
     );
   }
 
@@ -68,6 +80,8 @@ class OptimizationWindowRequest {
       'addBottom': addBottom,
       'addTee': addTee,
       'addNet': addNet,
+      'lockType': lockType,
+      'rubberType': rubberType,
     };
   }
 }
@@ -94,13 +108,19 @@ class OptimizationRequest {
     required String projectName,
     required String projectLocation,
   }) {
+    final bool isFabrication = context.toLowerCase() == 'fabrication';
     return OptimizationRequest(
       context: context,
       displayUnit: displayUnit,
       projectName: projectName,
       projectLocation: projectLocation,
       windows: items
-          .map(OptimizationWindowRequest.fromReviewItem)
+          .map(
+            (WindowReviewItem item) => OptimizationWindowRequest.fromReviewItem(
+              item,
+              isFabrication: isFabrication,
+            ),
+          )
           .toList(growable: false),
     );
   }

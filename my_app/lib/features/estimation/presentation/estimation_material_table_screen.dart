@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
+import '../../fabrication/presentation/glass_report_screen.dart';
 import '../data/cost_table_api_client.dart';
 import '../models/cost_table.dart';
 import 'bill_inputs_screen.dart';
@@ -14,10 +15,14 @@ class EstimationMaterialTableScreen extends StatefulWidget {
   final String gaugeValue;
   final String colorLabel;
   final String colorValue;
+  final String requestContext;
   final String projectName;
   final String projectLocation;
   final List<RateOverrideInput> overrides;
   final CostTableApiClient? apiClient;
+  final String screenTitle;
+  final bool showNextToBill;
+  final bool showPdfActions;
 
   const EstimationMaterialTableScreen({
     super.key,
@@ -25,10 +30,14 @@ class EstimationMaterialTableScreen extends StatefulWidget {
     required this.gaugeValue,
     required this.colorLabel,
     required this.colorValue,
+    this.requestContext = 'estimation',
     required this.projectName,
     required this.projectLocation,
     required this.overrides,
     this.apiClient,
+    this.screenTitle = 'Estimation Material Table',
+    this.showNextToBill = true,
+    this.showPdfActions = true,
   });
 
   @override
@@ -60,6 +69,7 @@ class _EstimationMaterialTableScreenState
       final CostTable table = await _apiClient.fetchCostTable(
         gauge: widget.gaugeValue,
         color: widget.colorValue,
+        context: widget.requestContext,
         overrides: widget.overrides,
       );
       if (!mounted) {
@@ -85,7 +95,9 @@ class _EstimationMaterialTableScreenState
     if (!fixed.contains('.')) {
       return fixed;
     }
-    return fixed.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+    return fixed
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
   }
 
   TextStyle? _tableValueTextStyle(BuildContext context) {
@@ -111,9 +123,7 @@ class _EstimationMaterialTableScreenState
     try {
       final http.Response response = await http.post(
         Uri.parse('${_apiBaseUrl()}/api/pdf/material'),
-        headers: const <String, String>{
-          'Content-Type': 'application/json',
-        },
+        headers: const <String, String>{'Content-Type': 'application/json'},
         body: jsonEncode(const <String, Object?>{}),
       );
 
@@ -160,7 +170,8 @@ class _EstimationMaterialTableScreenState
                 onTap: () async {
                   Navigator.of(context).pop();
                   await _generateMaterialPdf(
-                    successMessage: 'Material PDF generated in local downloads.',
+                    successMessage:
+                        'Material PDF generated in local downloads.',
                   );
                 },
               ),
@@ -203,8 +214,21 @@ class _EstimationMaterialTableScreenState
     );
   }
 
+  void _openGlassReport() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => const GlassReportScreen(),
+      ),
+    );
+  }
+
   Widget? _buildBottomActions() {
     if (_isLoading || _errorMessage != null || _table == null) {
+      return null;
+    }
+    final bool showGlassReport =
+        widget.requestContext.toLowerCase() == 'fabrication';
+    if (!widget.showPdfActions && !widget.showNextToBill && !showGlassReport) {
       return null;
     }
 
@@ -227,24 +251,37 @@ class _EstimationMaterialTableScreenState
         ),
         child: Row(
           children: <Widget>[
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _generateMaterialPdf,
-                icon: const Icon(Icons.download_rounded),
-                label: const Text('Download PDF'),
+            if (widget.showPdfActions) ...<Widget>[
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _generateMaterialPdf,
+                  icon: const Icon(Icons.download_rounded),
+                  label: const Text('Download PDF'),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            IconButton.filledTonal(
-              tooltip: 'Share',
-              onPressed: _showShareOptions,
-              icon: const Icon(Icons.share_outlined),
-            ),
-            const SizedBox(width: 12),
-            FilledButton(
-              onPressed: _handleNextPressed,
-              child: const Text('Next'),
-            ),
+              const SizedBox(width: 12),
+              IconButton.filledTonal(
+                tooltip: 'Share',
+                onPressed: _showShareOptions,
+                icon: const Icon(Icons.share_outlined),
+              ),
+            ],
+            if (showGlassReport) ...<Widget>[
+              if (widget.showPdfActions) const SizedBox(width: 12),
+              FilledButton.tonalIcon(
+                onPressed: _openGlassReport,
+                icon: const Icon(Icons.table_view_rounded),
+                label: const Text('Glass Report'),
+              ),
+            ],
+            if (widget.showNextToBill) ...<Widget>[
+              if (widget.showPdfActions || showGlassReport)
+                const SizedBox(width: 12),
+              FilledButton(
+                onPressed: _handleNextPressed,
+                child: const Text('Next'),
+              ),
+            ],
           ],
         ),
       ),
@@ -287,9 +324,7 @@ class _EstimationMaterialTableScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Estimation Material Table'),
-      ),
+      appBar: AppBar(title: Text(widget.screenTitle)),
       bottomNavigationBar: _buildBottomActions(),
       body: Container(
         decoration: BoxDecoration(
@@ -519,10 +554,7 @@ class _MaterialInfoPill extends StatelessWidget {
   final String label;
   final String value;
 
-  const _MaterialInfoPill({
-    required this.label,
-    required this.value,
-  });
+  const _MaterialInfoPill({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -557,4 +589,3 @@ class _MaterialInfoPill extends StatelessWidget {
     );
   }
 }
-

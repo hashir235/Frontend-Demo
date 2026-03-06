@@ -21,6 +21,8 @@ class WindowReviewItem {
   final bool addBottom;
   final bool addTee;
   final bool addNet;
+  final int? lockType;
+  final String? rubberType;
   final String? description;
 
   const WindowReviewItem({
@@ -38,6 +40,8 @@ class WindowReviewItem {
     this.addBottom = false,
     this.addTee = false,
     this.addNet = false,
+    this.lockType,
+    this.rubberType,
     this.description,
   });
 
@@ -56,11 +60,15 @@ class WindowReviewItem {
     bool? addBottom,
     bool? addTee,
     bool? addNet,
+    int? lockType,
+    String? rubberType,
     String? description,
     bool clearDescription = false,
     bool clearRightWidthValue = false,
     bool clearLeftWidthValue = false,
     bool clearArchValue = false,
+    bool clearLockType = false,
+    bool clearRubberType = false,
   }) {
     return WindowReviewItem(
       winNo: winNo ?? this.winNo,
@@ -81,6 +89,8 @@ class WindowReviewItem {
       addBottom: addBottom ?? this.addBottom,
       addTee: addTee ?? this.addTee,
       addNet: addNet ?? this.addNet,
+      lockType: clearLockType ? null : (lockType ?? this.lockType),
+      rubberType: clearRubberType ? null : (rubberType ?? this.rubberType),
       description: clearDescription ? null : (description ?? this.description),
     );
   }

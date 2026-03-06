@@ -3,14 +3,14 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-import '../models/rate_review.dart';
+import '../models/glass_report.dart';
 
-class RateReviewApiException implements Exception {
+class GlassReportApiException implements Exception {
   final String message;
   final int? statusCode;
   final Object? detail;
 
-  const RateReviewApiException(
+  const GlassReportApiException(
     this.message, {
     this.statusCode,
     this.detail,
@@ -20,23 +20,19 @@ class RateReviewApiException implements Exception {
   String toString() => message;
 }
 
-class RateReviewApiClient {
+class GlassReportApiClient {
   final http.Client _httpClient;
   final Uri _endpointUri;
 
-  RateReviewApiClient({
+  GlassReportApiClient({
     http.Client? httpClient,
     String? baseUrl,
   }) : _httpClient = httpClient ?? http.Client(),
        _endpointUri = Uri.parse(
-         '${baseUrl ?? _defaultBaseUrl()}/api/rate-review',
+         '${baseUrl ?? _defaultBaseUrl()}/api/glass-report',
        );
 
-  Future<RateReview> fetchRateReview({
-    required String gauge,
-    required String color,
-    String context = 'estimation',
-  }) async {
+  Future<GlassReport> fetchGlassReport() async {
     late final http.Response response;
     try {
       response = await _httpClient.post(
@@ -44,15 +40,11 @@ class RateReviewApiClient {
         headers: const <String, String>{
           'Content-Type': 'application/json',
         },
-        body: jsonEncode(<String, Object?>{
-          'gauge': gauge,
-          'color': color,
-          'context': context,
-        }),
+        body: jsonEncode(const <String, Object?>{}),
       );
     } on Exception catch (error) {
-      throw RateReviewApiException(
-        'Unable to reach local rate service.',
+      throw GlassReportApiException(
+        'Unable to reach local glass report service.',
         detail: error,
       );
     }
@@ -61,7 +53,7 @@ class RateReviewApiClient {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       String message =
           (payload?['error'] as String?) ??
-          'Rate request failed with status ${response.statusCode}.';
+          'Glass report request failed with status ${response.statusCode}.';
       final Object? detail = payload?['detail'];
       if (detail is Map<String, dynamic>) {
         final String stderr = ((detail['stderr'] as String?) ?? '').trim();
@@ -69,7 +61,7 @@ class RateReviewApiClient {
           message = '$message: $stderr';
         }
       }
-      throw RateReviewApiException(
+      throw GlassReportApiException(
         message,
         statusCode: response.statusCode,
         detail: payload?['detail'],
@@ -77,22 +69,22 @@ class RateReviewApiClient {
     }
 
     if (payload == null) {
-      throw const RateReviewApiException(
-        'Rate service returned invalid JSON.',
+      throw const GlassReportApiException(
+        'Glass report service returned invalid JSON.',
       );
     }
 
-    final RateReview review = RateReview.fromJson(payload);
-    if (!review.ok) {
-      throw RateReviewApiException(
-        review.errors.isEmpty
-            ? 'Rate service returned an unsuccessful result.'
-            : review.errors.join('\n'),
+    final GlassReport report = GlassReport.fromJson(payload);
+    if (!report.ok) {
+      throw GlassReportApiException(
+        report.errors.isEmpty
+            ? 'Glass report service returned an unsuccessful result.'
+            : report.errors.join('\n'),
         statusCode: response.statusCode,
-        detail: review.errors,
+        detail: report.errors,
       );
     }
-    return review;
+    return report;
   }
 
   static String _defaultBaseUrl() {
@@ -118,3 +110,4 @@ class RateReviewApiClient {
     return null;
   }
 }
+

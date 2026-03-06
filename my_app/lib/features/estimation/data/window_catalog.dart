@@ -207,8 +207,30 @@ class WindowCatalog {
     ),
   ];
 
+  static List<WindowType> rootForFlow({required bool isFabrication}) {
+    if (!isFabrication) {
+      return root;
+    }
+    return root
+        .where((WindowType node) => !_isArchFamily(node))
+        .toList(growable: false);
+  }
+
   static WindowType? byDisplayIndex(int index) {
     return _findIn(root, index);
+  }
+
+  static bool _isArchFamily(WindowType node) {
+    if (node.codeName == 'A_win' || node.codeName == 'AR_win') {
+      return true;
+    }
+    if (node.children.isEmpty) {
+      return false;
+    }
+    return node.children.any(
+      (WindowType child) =>
+          child.codeName == 'A_win' || child.codeName == 'AR_win',
+    );
   }
 
   static WindowType? _findIn(List<WindowType> nodes, int index) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../data/cost_table_api_client.dart';
 import '../data/rate_review_api_client.dart';
 import '../models/cost_table.dart';
 import '../models/rate_review.dart';
@@ -12,9 +13,14 @@ class RateReviewScreen extends StatefulWidget {
   final String gaugeValue;
   final String colorLabel;
   final String colorValue;
+  final String requestContext;
   final String projectName;
   final String projectLocation;
   final RateReviewApiClient? apiClient;
+  final CostTableApiClient? costTableApiClient;
+  final String materialTableTitle;
+  final bool materialTableShowNextToBill;
+  final bool materialTableShowPdfActions;
 
   const RateReviewScreen({
     super.key,
@@ -22,9 +28,14 @@ class RateReviewScreen extends StatefulWidget {
     required this.gaugeValue,
     required this.colorLabel,
     required this.colorValue,
+    this.requestContext = 'estimation',
     required this.projectName,
     required this.projectLocation,
     this.apiClient,
+    this.costTableApiClient,
+    this.materialTableTitle = 'Estimation Material Table',
+    this.materialTableShowNextToBill = true,
+    this.materialTableShowPdfActions = true,
   });
 
   @override
@@ -55,6 +66,7 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
       final RateReview review = await _apiClient.fetchRateReview(
         gauge: widget.gaugeValue,
         color: widget.colorValue,
+        context: widget.requestContext,
       );
       if (!mounted) {
         return;
@@ -120,9 +132,14 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
           gaugeValue: widget.gaugeValue,
           colorLabel: widget.colorLabel,
           colorValue: widget.colorValue,
+          requestContext: widget.requestContext,
           projectName: widget.projectName,
           projectLocation: widget.projectLocation,
           overrides: overrides,
+          apiClient: widget.costTableApiClient,
+          screenTitle: widget.materialTableTitle,
+          showNextToBill: widget.materialTableShowNextToBill,
+          showPdfActions: widget.materialTableShowPdfActions,
         ),
       ),
     );
