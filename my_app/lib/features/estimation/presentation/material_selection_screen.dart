@@ -6,6 +6,7 @@ import '../data/rate_review_api_client.dart';
 import 'rate_review_screen.dart';
 
 class MaterialSelectionScreen extends StatefulWidget {
+  final String? projectId;
   final String projectName;
   final String projectLocation;
   final String requestContext;
@@ -17,6 +18,7 @@ class MaterialSelectionScreen extends StatefulWidget {
 
   const MaterialSelectionScreen({
     super.key,
+    this.projectId,
     required this.projectName,
     required this.projectLocation,
     this.requestContext = 'estimation',
@@ -62,6 +64,7 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
           gaugeValue: _selectedGage.value,
           colorLabel: _selectedColor.label,
           colorValue: _selectedColor.value,
+          projectId: widget.projectId,
           requestContext: widget.requestContext,
           projectName: widget.projectName,
           projectLocation: widget.projectLocation,

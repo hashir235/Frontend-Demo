@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/billing_settings_repository.dart';
 import '../data/estimation_settings_repository.dart';
+import '../data/fabrication_settings_repository.dart';
 import '../models/billing_settings.dart';
 import '../models/estimation_settings.dart';
+import '../models/fabrication_settings.dart';
 import '../state/app_settings.dart';
 import '../state/numbering_mode.dart';
 
@@ -19,6 +21,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final GlobalKey<FormState> _billingFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> _estimationFormKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _fabricationFormKey = GlobalKey<FormState>();
 
   final TextEditingController _contractorController = TextEditingController();
   final TextEditingController _workshopController = TextEditingController();
@@ -33,10 +36,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       <String, TextEditingController>{};
   final Map<String, TextEditingController> _cuttingMarginControllers =
       <String, TextEditingController>{};
+  final TextEditingController _fabricationCuttingMarginController =
+      TextEditingController();
 
   late NumberingMode _mode;
   late final BillingSettingsRepository _billingSettingsRepository;
   late final EstimationSettingsRepository _estimationSettingsRepository;
+  late final FabricationSettingsRepository _fabricationSettingsRepository;
 
   bool _isLoadingBillingSettings = true;
   bool _isSavingBillingSettings = false;
@@ -47,15 +53,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _estimationSettingsError;
   bool _enforceMaxExtraPieces = false;
 
+  bool _isLoadingFabricationSettings = true;
+  bool _isSavingFabricationSettings = false;
+  String? _fabricationSettingsError;
+
   @override
   void initState() {
     super.initState();
     _mode = AppSettings.instance.numberingMode;
     _billingSettingsRepository = BillingSettingsRepository();
     _estimationSettingsRepository = EstimationSettingsRepository();
+    _fabricationSettingsRepository = FabricationSettingsRepository();
     AppSettings.instance.addListener(_onSettingsChanged);
     _loadBillingSettings();
     _loadEstimationSettings();
+    _loadFabricationSettings();
   }
 
   @override
@@ -68,6 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _maxExtraPiecesController.dispose();
     _redZone1Controller.dispose();
     _redZone2Controller.dispose();
+    _fabricationCuttingMarginController.dispose();
     for (final TextEditingController controller
         in _sectionLengthControllers.values) {
       controller.dispose();
@@ -96,8 +109,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      final BillingSettingsModel settings =
-          await _billingSettingsRepository.fetchBillingSettings();
+      final BillingSettingsModel settings = await _billingSettingsRepository
+          .fetchBillingSettings();
       if (!mounted) {
         return;
       }
@@ -115,6 +128,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _billingSettingsError = error.toString();
         _isLoadingBillingSettings = false;
+      });
+    }
+  }
+
+  Future<void> _loadFabricationSettings() async {
+    setState(() {
+      _isLoadingFabricationSettings = true;
+      _fabricationSettingsError = null;
+    });
+
+    try {
+      final FabricationSettingsModel settings =
+          await _fabricationSettingsRepository.fetchFabricationSettings();
+      if (!mounted) {
+        return;
+      }
+      _fabricationCuttingMarginController.text = _formatNumber(
+        settings.cuttingMarginCm,
+      );
+      setState(() {
+        _isLoadingFabricationSettings = false;
+      });
+    } on Exception catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _fabricationSettingsError = error.toString();
+        _isLoadingFabricationSettings = false;
       });
     }
   }
@@ -138,37 +180,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _enforceMaxExtraPieces = settings.enforceMaxExtraPieces;
 
       final Set<String> activeKeys = settings.sectionLengths.keys.toSet();
-      final List<String> staleKeys =
-          _sectionLengthControllers.keys
-              .where((String key) => !activeKeys.contains(key))
-              .toList(growable: false);
+      final List<String> staleKeys = _sectionLengthControllers.keys
+          .where((String key) => !activeKeys.contains(key))
+          .toList(growable: false);
       for (final String key in staleKeys) {
         _sectionLengthControllers.remove(key)?.dispose();
       }
       final Set<String> activeMarginKeys = settings.cuttingMargins.keys.toSet();
-      final List<String> staleMarginKeys =
-          _cuttingMarginControllers.keys
-              .where((String key) => !activeMarginKeys.contains(key))
-              .toList(growable: false);
+      final List<String> staleMarginKeys = _cuttingMarginControllers.keys
+          .where((String key) => !activeMarginKeys.contains(key))
+          .toList(growable: false);
       for (final String key in staleMarginKeys) {
         _cuttingMarginControllers.remove(key)?.dispose();
       }
 
       for (final MapEntry<String, List<int>> entry
           in settings.sectionLengths.entries) {
-        final TextEditingController controller =
-            _sectionLengthControllers.putIfAbsent(
-              entry.key,
-              TextEditingController.new,
-            );
+        final TextEditingController controller = _sectionLengthControllers
+            .putIfAbsent(entry.key, TextEditingController.new);
         controller.text = _joinLengths(entry.value);
       }
-      for (final MapEntry<String, double> entry in settings.cuttingMargins.entries) {
-        final TextEditingController controller =
-            _cuttingMarginControllers.putIfAbsent(
-              entry.key,
-              TextEditingController.new,
-            );
+      for (final MapEntry<String, double> entry
+          in settings.cuttingMargins.entries) {
+        final TextEditingController controller = _cuttingMarginControllers
+            .putIfAbsent(entry.key, TextEditingController.new);
         controller.text = _formatNumber(entry.value);
       }
 
@@ -278,8 +313,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      final BillingSettingsModel saved =
-          await _billingSettingsRepository.saveBillingSettings(
+      final BillingSettingsModel saved = await _billingSettingsRepository
+          .saveBillingSettings(
             BillingSettingsModel(
               contractorName: _contractorController.text.trim(),
               workshopName: _workshopController.text.trim(),
@@ -302,9 +337,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('General settings saved.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('General settings saved.')));
     } on Exception catch (error) {
       if (!mounted) {
         return;
@@ -314,9 +349,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isSavingBillingSettings = false;
       });
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -329,13 +364,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final Map<String, List<int>> sectionLengths = <String, List<int>>{};
     final Map<String, double> cuttingMargins = <String, double>{};
     for (final String key in _sortedSectionKeys()) {
-      final List<int>? parsed =
-          _parseLengthList(_sectionLengthControllers[key]?.text);
+      final List<int>? parsed = _parseLengthList(
+        _sectionLengthControllers[key]?.text,
+      );
       if (parsed == null) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid lengths for $key.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Invalid lengths for $key.')));
         return;
       }
       sectionLengths[key] = parsed;
@@ -359,14 +395,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      final EstimationSettingsModel saved =
-          await _estimationSettingsRepository.saveEstimationSettings(
+      final EstimationSettingsModel saved = await _estimationSettingsRepository
+          .saveEstimationSettings(
             EstimationSettingsModel(
               sectionLengths: sectionLengths,
               cuttingMargins: cuttingMargins,
-              maxExtraPieces: int.parse(
-                _maxExtraPiecesController.text.trim(),
-              ),
+              maxExtraPieces: int.parse(_maxExtraPiecesController.text.trim()),
               enforceMaxExtraPieces: _enforceMaxExtraPieces,
               redZone1: double.parse(_redZone1Controller.text.trim()),
               redZone2: double.parse(_redZone2Controller.text.trim()),
@@ -382,20 +416,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _redZone2Controller.text = _formatNumber(saved.redZone2);
       _enforceMaxExtraPieces = saved.enforceMaxExtraPieces;
 
-      for (final MapEntry<String, List<int>> entry in saved.sectionLengths.entries) {
-        final TextEditingController controller =
-            _sectionLengthControllers.putIfAbsent(
-              entry.key,
-              TextEditingController.new,
-            );
+      for (final MapEntry<String, List<int>> entry
+          in saved.sectionLengths.entries) {
+        final TextEditingController controller = _sectionLengthControllers
+            .putIfAbsent(entry.key, TextEditingController.new);
         controller.text = _joinLengths(entry.value);
       }
-      for (final MapEntry<String, double> entry in saved.cuttingMargins.entries) {
-        final TextEditingController controller =
-            _cuttingMarginControllers.putIfAbsent(
-              entry.key,
-              TextEditingController.new,
-            );
+      for (final MapEntry<String, double> entry
+          in saved.cuttingMargins.entries) {
+        final TextEditingController controller = _cuttingMarginControllers
+            .putIfAbsent(entry.key, TextEditingController.new);
         controller.text = _formatNumber(entry.value);
       }
 
@@ -416,9 +446,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isSavingEstimationSettings = false;
       });
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  Future<void> _saveFabricationSettings() async {
+    final FormState? form = _fabricationFormKey.currentState;
+    if (form == null || !form.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isSavingFabricationSettings = true;
+      _fabricationSettingsError = null;
+    });
+
+    try {
+      final FabricationSettingsModel saved =
+          await _fabricationSettingsRepository.saveFabricationSettings(
+            FabricationSettingsModel(
+              cuttingMarginCm: double.parse(
+                _fabricationCuttingMarginController.text.trim(),
+              ),
+            ),
+          );
+
+      if (!mounted) {
+        return;
+      }
+
+      _fabricationCuttingMarginController.text = _formatNumber(
+        saved.cuttingMarginCm,
       );
+
+      setState(() {
+        _isSavingFabricationSettings = false;
+      });
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fabrication settings saved.')),
+      );
+    } on Exception catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _fabricationSettingsError = error.toString();
+        _isSavingFabricationSettings = false;
+      });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -606,7 +688,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           LengthLimitingTextInputFormatter(15),
                         ],
                         validator: _phoneValidator,
-                        decoration: _inputDecoration('Workshop / Company Phone'),
+                        decoration: _inputDecoration(
+                          'Workshop / Company Phone',
+                        ),
                       ),
                       const SizedBox(height: 16),
                       SizedBox(
@@ -695,10 +779,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           padding: const EdgeInsets.only(bottom: 12),
                           child: TextFormField(
                             controller: controller,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             validator: _requiredDecimalWithZeroValidator,
                             decoration: _inputDecoration(key),
                           ),
@@ -760,6 +843,85 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _isSavingEstimationSettings
                                 ? 'Saving...'
                                 : 'Save Estimation Settings',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 32),
+              _buildSectionTitle(context, 'Fabrication Settings'),
+              const SizedBox(height: 8),
+              _buildSectionSubtitle(
+                context,
+                'Manage fabrication cutting margin used in fabrication optimization and reports.',
+              ),
+              const SizedBox(height: 18),
+              if (_isLoadingFabricationSettings)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else
+                Form(
+                  key: _fabricationFormKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      if (_fabricationSettingsError != null) ...<Widget>[
+                        Text(
+                          _fabricationSettingsError!,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Colors.red.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            onPressed: _loadFabricationSettings,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Retry Load'),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      _buildEstimationSubheading(
+                        context,
+                        'Fabrication Cutting Margin',
+                      ),
+                      _buildSectionSubtitle(
+                        context,
+                        'This value is in cm. Current default is 1.2.',
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _fabricationCuttingMarginController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: <TextInputFormatter>[
+                          LengthLimitingTextInputFormatter(8),
+                        ],
+                        validator: _requiredDecimalWithZeroValidator,
+                        decoration: _inputDecoration(
+                          'Fabrication Cutting Margin',
+                          hint: '1.2',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _isSavingFabricationSettings
+                              ? null
+                              : _saveFabricationSettings,
+                          child: Text(
+                            _isSavingFabricationSettings
+                                ? 'Saving...'
+                                : 'Save Fabrication Settings',
                           ),
                         ),
                       ),

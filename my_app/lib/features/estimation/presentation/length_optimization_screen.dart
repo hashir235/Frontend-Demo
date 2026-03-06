@@ -9,16 +9,19 @@ import '../models/cutting_report.dart';
 import '../models/window_review_item.dart';
 import '../../../core/theme/app_theme.dart';
 import 'material_selection_screen.dart';
+import 'section_recalculation_screen.dart';
 
 typedef MaterialSelectionBuilder =
     Widget Function(
       BuildContext context,
+      String? projectId,
       String projectName,
       String projectLocation,
     );
 
 class LengthOptimizationScreen extends StatefulWidget {
   final List<WindowReviewItem> items;
+  final String? projectId;
   final String projectName;
   final String projectLocation;
   final String requestContext;
@@ -29,6 +32,7 @@ class LengthOptimizationScreen extends StatefulWidget {
   const LengthOptimizationScreen({
     super.key,
     required this.items,
+    this.projectId,
     required this.projectName,
     required this.projectLocation,
     this.requestContext = 'estimation',
@@ -58,6 +62,8 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         report.ok &&
         report.sections.isNotEmpty;
   }
+
+  bool get _canRecalculateSection => _selectedSection != null;
 
   CuttingReportSection? get _selectedSection {
     final CuttingReport? report = _report;
@@ -114,11 +120,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     });
   }
 
-  Widget _buildCutCell(
-    String text, {
-    required bool isMarked,
-    double? width,
-  }) {
+  Widget _buildCutCell(String text, {required bool isMarked, double? width}) {
     final Widget content = Text(
       text,
       style: TextStyle(
@@ -169,9 +171,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     try {
       final http.Response response = await http.post(
         Uri.parse('${_apiBaseUrl()}/api/pdf/cutting'),
-        headers: const <String, String>{
-          'Content-Type': 'application/json',
-        },
+        headers: const <String, String>{'Content-Type': 'application/json'},
         body: jsonEncode(const <String, Object?>{}),
       );
 
@@ -195,9 +195,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         // Keep fallback success message.
       }
 
-      messenger.showSnackBar(
-        SnackBar(content: Text(resolvedMessage)),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(resolvedMessage)));
     } on Exception {
       messenger.showSnackBar(
         const SnackBar(content: Text('Unable to reach local PDF service.')),
@@ -253,6 +251,45 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     );
   }
 
+  Future<void> _openRecalculationScreen() async {
+    final CuttingReportSection? section = _selectedSection;
+    final CuttingReport? report = _report;
+    if (section == null || report == null) {
+      return;
+    }
+
+    final CuttingReport? updatedReport = await Navigator.of(context)
+        .push<CuttingReport>(
+          MaterialPageRoute<CuttingReport>(
+            builder: (BuildContext context) => SectionRecalculationScreen(
+              section: section,
+              projectId: widget.projectId,
+              requestContext: widget.requestContext,
+              displayUnit: report.displayUnit,
+              repository: _repository,
+            ),
+          ),
+        );
+
+    if (!mounted || updatedReport == null) {
+      return;
+    }
+
+    final bool containsSelectedSection = updatedReport.sections.any(
+      (CuttingReportSection candidate) => candidate.name == section.name,
+    );
+
+    setState(() {
+      _report = updatedReport;
+      _selectedSectionName = containsSelectedSection
+          ? section.name
+          : (updatedReport.sections.isEmpty
+                ? null
+                : updatedReport.sections.first.name);
+      _markedCutRowKeys.clear();
+    });
+  }
+
   void _handleNextPressed() {
     if (!_canProceedToMaterialSelection) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -268,24 +305,28 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     final Widget nextScreen =
         widget.materialSelectionBuilder?.call(
           context,
+          widget.projectId,
           widget.projectName,
           widget.projectLocation,
         ) ??
         MaterialSelectionScreen(
+          projectId: widget.projectId,
           projectName: widget.projectName,
           projectLocation: widget.projectLocation,
           requestContext: widget.requestContext,
         );
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (BuildContext context) => nextScreen));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (BuildContext context) => nextScreen),
+    );
   }
 
   Widget? _buildBottomActions(BuildContext context) {
     if (_isLoading || _errorMessage != null || _report == null) {
       return null;
     }
-    if (!widget.showPdfActions) {
+
+    final bool canRecalculate = _canRecalculateSection;
+    if (!widget.showPdfActions && !canRecalculate) {
       return null;
     }
 
@@ -308,19 +349,31 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         ),
         child: Row(
           children: <Widget>[
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _generateCuttingPdf,
-                icon: const Icon(Icons.download_rounded),
-                label: const Text('Download PDF'),
+            if (widget.showPdfActions)
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _generateCuttingPdf,
+                  icon: const Icon(Icons.download_rounded),
+                  label: const Text('Download PDF'),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            IconButton.filledTonal(
-              tooltip: 'Share',
-              onPressed: _showShareOptions,
-              icon: const Icon(Icons.share_outlined),
-            ),
+            if (widget.showPdfActions && canRecalculate)
+              const SizedBox(width: 12),
+            if (canRecalculate)
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: _openRecalculationScreen,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Re Calculation'),
+                ),
+              ),
+            if (widget.showPdfActions) const SizedBox(width: 12),
+            if (widget.showPdfActions)
+              IconButton.filledTonal(
+                tooltip: 'Share',
+                onPressed: _showShareOptions,
+                icon: const Icon(Icons.share_outlined),
+              ),
           ],
         ),
       ),
@@ -343,6 +396,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     try {
       final CuttingReport report = await _repository.fetchLengthOptimization(
         widget.items,
+        projectId: widget.projectId,
         context: widget.requestContext,
         projectName: widget.projectName,
         projectLocation: widget.projectLocation,
@@ -377,7 +431,9 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         actions: <Widget>[
           IconButton(
             tooltip: 'Next',
-            onPressed: _canProceedToMaterialSelection ? _handleNextPressed : null,
+            onPressed: _canProceedToMaterialSelection
+                ? _handleNextPressed
+                : null,
             icon: const Icon(Icons.arrow_forward_rounded),
           ),
         ],
@@ -391,9 +447,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             end: Alignment.bottomRight,
           ),
         ),
-        child: SafeArea(
-          child: _buildBody(context),
-        ),
+        child: SafeArea(child: _buildBody(context)),
       ),
     );
   }
@@ -473,31 +527,38 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
-                children: report.sections.map((CuttingReportSection item) {
-                  final bool isSelected = item.name == section?.name;
-                  return ChoiceChip(
-                    label: Text(item.name),
-                    selected: isSelected,
-                    selectedColor: AppTheme.violet.withValues(alpha: 0.88),
-                    backgroundColor: Colors.white,
-                    checkmarkColor: Colors.white,
-                    side: BorderSide(
-                      color: isSelected
-                          ? AppTheme.violet
-                          : AppTheme.sky.withValues(alpha: 0.8),
-                      width: isSelected ? 1.3 : 1,
-                    ),
-                    labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isSelected ? Colors.white : AppTheme.deepTeal,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                    ),
-                    onSelected: (_) {
-                      setState(() {
-                        _selectedSectionName = item.name;
-                      });
-                    },
-                );
-              }).toList(growable: false),
+              children: report.sections
+                  .map((CuttingReportSection item) {
+                    final bool isSelected = item.name == section?.name;
+                    return ChoiceChip(
+                      label: Text(item.name),
+                      selected: isSelected,
+                      selectedColor: AppTheme.violet.withValues(alpha: 0.88),
+                      backgroundColor: Colors.white,
+                      checkmarkColor: Colors.white,
+                      side: BorderSide(
+                        color: isSelected
+                            ? AppTheme.violet
+                            : AppTheme.sky.withValues(alpha: 0.8),
+                        width: isSelected ? 1.3 : 1,
+                      ),
+                      labelStyle: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(
+                            color: isSelected
+                                ? Colors.white
+                                : AppTheme.deepTeal,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                          ),
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedSectionName = item.name;
+                        });
+                      },
+                    );
+                  })
+                  .toList(growable: false),
             ),
           ),
         ),
@@ -507,7 +568,8 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                if (report.errors.isNotEmpty) _buildErrorBanner(context, report),
+                if (report.errors.isNotEmpty)
+                  _buildErrorBanner(context, report),
                 if (section != null) ...<Widget>[
                   _buildSectionHeader(context, section),
                   const SizedBox(height: 12),
@@ -567,15 +629,10 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     );
   }
 
-  Widget _buildSummaryCard(
-    BuildContext context,
-    CuttingReportSummary summary,
-  ) {
+  Widget _buildSummaryCard(BuildContext context, CuttingReportSummary summary) {
     final String usedLengths = summary.usedLengths.isEmpty
         ? '--'
-        : summary.usedLengths
-              .map(_stockDisplayInFeet)
-              .join(', ');
+        : summary.usedLengths.map(_stockDisplayInFeet).join(', ');
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -668,50 +725,52 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                 DataColumn(label: Text('Dimention')),
                 DataColumn(label: Text('Cuts')),
               ],
-              rows: group.cuts.asMap().entries.map((
-                MapEntry<int, CuttingReportCut> entry,
-              ) {
-                final int cutIndex = entry.key;
-                final CuttingReportCut cut = entry.value;
-                final String rowKey = _cutRowKey(
-                  sectionName,
-                  groupIndex,
-                  cutIndex,
-                  cut,
-                );
-                final bool isMarked = _markedCutRowKeys.contains(rowKey);
-                return DataRow(
-                  selected: isMarked,
-                  onSelectChanged: (_) => _toggleMarkedCutRow(rowKey),
-                  cells: <DataCell>[
-                    DataCell(
-                      _buildCutCell(
-                        _winSizeForCut(cut),
-                        isMarked: isMarked,
-                        width: 110,
-                      ),
-                    ),
-                    DataCell(
-                      _buildCutCell(cut.windowName, isMarked: isMarked),
-                    ),
-                    DataCell(
-                      _buildCutCell(
-                        cut.windowNo.toString(),
-                        isMarked: isMarked,
-                      ),
-                    ),
-                    DataCell(
-                      _buildCutCell(
-                        _pieceSymbolForCut(cut),
-                        isMarked: isMarked,
-                      ),
-                    ),
-                    DataCell(
-                      _buildCutCell(cut.lengthDisplay, isMarked: isMarked),
-                    ),
-                  ],
-                );
-              }).toList(growable: false),
+              rows: group.cuts
+                  .asMap()
+                  .entries
+                  .map((MapEntry<int, CuttingReportCut> entry) {
+                    final int cutIndex = entry.key;
+                    final CuttingReportCut cut = entry.value;
+                    final String rowKey = _cutRowKey(
+                      sectionName,
+                      groupIndex,
+                      cutIndex,
+                      cut,
+                    );
+                    final bool isMarked = _markedCutRowKeys.contains(rowKey);
+                    return DataRow(
+                      selected: isMarked,
+                      onSelectChanged: (_) => _toggleMarkedCutRow(rowKey),
+                      cells: <DataCell>[
+                        DataCell(
+                          _buildCutCell(
+                            _winSizeForCut(cut),
+                            isMarked: isMarked,
+                            width: 110,
+                          ),
+                        ),
+                        DataCell(
+                          _buildCutCell(cut.windowName, isMarked: isMarked),
+                        ),
+                        DataCell(
+                          _buildCutCell(
+                            cut.windowNo.toString(),
+                            isMarked: isMarked,
+                          ),
+                        ),
+                        DataCell(
+                          _buildCutCell(
+                            _pieceSymbolForCut(cut),
+                            isMarked: isMarked,
+                          ),
+                        ),
+                        DataCell(
+                          _buildCutCell(cut.lengthDisplay, isMarked: isMarked),
+                        ),
+                      ],
+                    );
+                  })
+                  .toList(growable: false),
             ),
           ),
         ],
@@ -719,5 +778,3 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     );
   }
 }
-
-

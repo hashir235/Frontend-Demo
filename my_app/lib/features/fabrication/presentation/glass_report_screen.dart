@@ -9,9 +9,10 @@ import '../data/glass_report_api_client.dart';
 import '../models/glass_report.dart';
 
 class GlassReportScreen extends StatefulWidget {
+  final String? projectId;
   final GlassReportApiClient? apiClient;
 
-  const GlassReportScreen({super.key, this.apiClient});
+  const GlassReportScreen({super.key, this.projectId, this.apiClient});
 
   @override
   State<GlassReportScreen> createState() => _GlassReportScreenState();
@@ -58,7 +59,9 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     });
 
     try {
-      final GlassReport report = await _apiClient.fetchGlassReport();
+      final GlassReport report = await _apiClient.fetchGlassReport(
+        projectId: widget.projectId,
+      );
       if (!mounted) {
         return;
       }

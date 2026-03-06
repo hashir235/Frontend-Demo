@@ -33,23 +33,38 @@ class CuttingReportSection {
   final String name;
   final CuttingReportSummary? summary;
   final List<CuttingReportGroup> groups;
+  final List<double> allowedLengthsFt;
+  final List<String> allowedLengthsDisplay;
 
   const CuttingReportSection({
     required this.name,
     required this.summary,
     required this.groups,
+    required this.allowedLengthsFt,
+    required this.allowedLengthsDisplay,
   });
 
   factory CuttingReportSection.fromJson(Map<String, dynamic> json) {
     return CuttingReportSection(
       name: (json['name'] as String?) ?? '',
       summary: json['summary'] is Map<String, dynamic>
-          ? CuttingReportSummary.fromJson(json['summary'] as Map<String, dynamic>)
+          ? CuttingReportSummary.fromJson(
+              json['summary'] as Map<String, dynamic>,
+            )
           : null,
       groups: ((json['groups'] as List<dynamic>?) ?? const <dynamic>[])
           .whereType<Map<String, dynamic>>()
           .map(CuttingReportGroup.fromJson)
           .toList(growable: false),
+      allowedLengthsFt:
+          ((json['allowedLengthsFt'] as List<dynamic>?) ?? const <dynamic>[])
+              .map(_toDouble)
+              .toList(growable: false),
+      allowedLengthsDisplay:
+          ((json['allowedLengthsDisplay'] as List<dynamic>?) ??
+                  const <dynamic>[])
+              .map((dynamic item) => item.toString())
+              .toList(growable: false),
     );
   }
 }
@@ -69,9 +84,10 @@ class CuttingReportSummary {
 
   factory CuttingReportSummary.fromJson(Map<String, dynamic> json) {
     return CuttingReportSummary(
-      usedLengths: ((json['usedLengths'] as List<dynamic>?) ?? const <dynamic>[])
-          .map(_toDouble)
-          .toList(growable: false),
+      usedLengths:
+          ((json['usedLengths'] as List<dynamic>?) ?? const <dynamic>[])
+              .map(_toDouble)
+              .toList(growable: false),
       usedLengthsDisplay:
           ((json['usedLengthsDisplay'] as List<dynamic>?) ?? const <dynamic>[])
               .map((dynamic item) => item.toString())
@@ -140,6 +156,17 @@ class CuttingReportCut {
       lengthFt: _toDouble(json['lengthFt']),
       lengthDisplay: (json['lengthDisplay'] as String?) ?? '',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'label': label,
+      'windowName': windowName,
+      'windowNo': windowNo,
+      'dimension': dimension,
+      'lengthFt': lengthFt,
+      'lengthDisplay': lengthDisplay,
+    };
   }
 }
 

@@ -4,6 +4,12 @@ extension UnitModeLabels on UnitMode {
   String get label => this == UnitMode.inches ? 'Inches' : 'Feet';
 
   String get inputHint => this == UnitMode.inches ? 'inch.suter' : 'feet.inchs';
+
+  String get wireValue => this == UnitMode.inches ? 'inches' : 'feet';
+}
+
+UnitMode unitModeFromWireValue(String? value) {
+  return value == 'inches' ? UnitMode.inches : UnitMode.feet;
 }
 
 class WindowReviewItem {
@@ -93,5 +99,56 @@ class WindowReviewItem {
       rubberType: clearRubberType ? null : (rubberType ?? this.rubberType),
       description: clearDescription ? null : (description ?? this.description),
     );
+  }
+
+  factory WindowReviewItem.fromJson(Map<String, dynamic> json) {
+    return WindowReviewItem(
+      winNo: _asInt(json['winNo']),
+      windowLabel: (json['windowLabel'] as String? ?? '').trim(),
+      windowCode: (json['windowCode'] as String? ?? '').trim(),
+      windowIndex: _asInt(json['windowIndex']),
+      collarIndex: _asInt(json['collarIndex']),
+      unitMode: unitModeFromWireValue(json['unitMode'] as String?),
+      heightValue: (json['heightValue'] as String? ?? '').trim(),
+      widthValue: (json['widthValue'] as String? ?? '').trim(),
+      rightWidthValue: (json['rightWidthValue'] as String?)?.trim(),
+      leftWidthValue: (json['leftWidthValue'] as String?)?.trim(),
+      archValue: (json['archValue'] as String?)?.trim(),
+      addBottom: json['addBottom'] == true,
+      addTee: json['addTee'] == true,
+      addNet: json['addNet'] == true,
+      lockType: json['lockType'] == null ? null : _asInt(json['lockType']),
+      rubberType: (json['rubberType'] as String?)?.trim(),
+      description: (json['description'] as String?)?.trim(),
+    );
+  }
+
+  Map<String, Object?> toJson() {
+    return <String, Object?>{
+      'winNo': winNo,
+      'windowLabel': windowLabel,
+      'windowCode': windowCode,
+      'windowIndex': windowIndex,
+      'collarIndex': collarIndex,
+      'unitMode': unitMode.wireValue,
+      'heightValue': heightValue,
+      'widthValue': widthValue,
+      'rightWidthValue': rightWidthValue,
+      'leftWidthValue': leftWidthValue,
+      'archValue': archValue,
+      'addBottom': addBottom,
+      'addTee': addTee,
+      'addNet': addNet,
+      'lockType': lockType,
+      'rubberType': rubberType,
+      'description': description,
+    };
+  }
+
+  static int _asInt(Object? value) {
+    if (value is int) {
+      return value;
+    }
+    return int.tryParse('$value') ?? 0;
   }
 }

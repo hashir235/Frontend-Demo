@@ -87,6 +87,7 @@ class OptimizationWindowRequest {
 }
 
 class OptimizationRequest {
+  final String? projectId;
   final String context;
   final String displayUnit;
   final String projectName;
@@ -94,6 +95,7 @@ class OptimizationRequest {
   final List<OptimizationWindowRequest> windows;
 
   const OptimizationRequest({
+    required this.projectId,
     required this.context,
     required this.displayUnit,
     required this.projectName,
@@ -103,6 +105,7 @@ class OptimizationRequest {
 
   factory OptimizationRequest.fromReviewItems(
     List<WindowReviewItem> items, {
+    String? projectId,
     String context = 'estimation',
     String displayUnit = 'ft',
     required String projectName,
@@ -110,6 +113,7 @@ class OptimizationRequest {
   }) {
     final bool isFabrication = context.toLowerCase() == 'fabrication';
     return OptimizationRequest(
+      projectId: projectId,
       context: context,
       displayUnit: displayUnit,
       projectName: projectName,
@@ -129,6 +133,7 @@ class OptimizationRequest {
     return <String, Object?>{
       'context': context,
       'displayUnit': displayUnit,
+      'projectId': projectId,
       'projectName': projectName,
       'projectLocation': projectLocation,
       'windows': windows.map((OptimizationWindowRequest item) => item.toJson())

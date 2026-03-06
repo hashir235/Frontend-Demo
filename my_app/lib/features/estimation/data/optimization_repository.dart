@@ -1,5 +1,6 @@
 import '../models/cutting_report.dart';
 import '../models/optimization_request.dart';
+import '../models/section_recalculation.dart';
 import '../models/window_review_item.dart';
 import 'optimization_api_client.dart';
 
@@ -11,6 +12,7 @@ class OptimizationRepository {
 
   Future<CuttingReport> fetchLengthOptimization(
     List<WindowReviewItem> items, {
+    String? projectId,
     String context = 'estimation',
     String displayUnit = 'ft',
     required String projectName,
@@ -18,11 +20,18 @@ class OptimizationRepository {
   }) {
     final OptimizationRequest request = OptimizationRequest.fromReviewItems(
       items,
+      projectId: projectId,
       context: context,
       displayUnit: displayUnit,
       projectName: projectName,
       projectLocation: projectLocation,
     );
     return _apiClient.fetchLengthOptimization(request);
+  }
+
+  Future<CuttingReport> recalculateSection(
+    SectionRecalculationRequest request,
+  ) {
+    return _apiClient.recalculateSection(request);
   }
 }

@@ -35,6 +35,7 @@ class RateReviewApiClient {
   Future<RateReview> fetchRateReview({
     required String gauge,
     required String color,
+    String? projectId,
     String context = 'estimation',
   }) async {
     late final http.Response response;
@@ -47,6 +48,7 @@ class RateReviewApiClient {
         body: jsonEncode(<String, Object?>{
           'gauge': gauge,
           'color': color,
+          'projectId': projectId,
           'context': context,
         }),
       );

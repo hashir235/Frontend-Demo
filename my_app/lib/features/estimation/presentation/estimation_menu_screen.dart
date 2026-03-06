@@ -8,7 +8,9 @@ import 'package:http/http.dart' as http;
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/primary_card_button.dart';
 import '../../settings/state/app_settings.dart';
+import '../data/project_repository.dart';
 import '../state/estimate_session_store.dart';
+import 'recent_projects_screen.dart';
 import 'window_navigation_screen.dart';
 
 class EstimationMenuScreen extends StatelessWidget {
@@ -19,12 +21,6 @@ class EstimationMenuScreen extends StatelessWidget {
       return 'http://10.0.2.2:8080';
     }
     return 'http://127.0.0.1:8080';
-  }
-
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
   Future<_ProjectDraft?> _showProjectDialog(BuildContext context) async {
@@ -43,13 +39,13 @@ class EstimationMenuScreen extends StatelessWidget {
 
     String? resetWarning;
     try {
-      final http.Response response = await http.post(
-        Uri.parse('${_apiBaseUrl()}/api/estimation/reset-session'),
-        headers: const <String, String>{
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(const <String, Object?>{}),
-      ).timeout(const Duration(seconds: 5));
+      final http.Response response = await http
+          .post(
+            Uri.parse('${_apiBaseUrl()}/api/estimation/reset-session'),
+            headers: const <String, String>{'Content-Type': 'application/json'},
+            body: jsonEncode(const <String, Object?>{}),
+          )
+          .timeout(const Duration(seconds: 5));
       if (response.statusCode < 200 || response.statusCode >= 300) {
         resetWarning = 'Backend reset failed. Continuing with new project.';
       }
@@ -61,7 +57,33 @@ class EstimationMenuScreen extends StatelessWidget {
       return;
     }
 
+    final ProjectRepository projectRepository = ProjectRepository();
+    String? projectId;
+    String? projectError;
+    try {
+      final project = await projectRepository.createProject(
+        flow: EstimateFlow.estimation,
+        projectName: draft.projectName,
+        projectLocation: draft.projectLocation,
+      );
+      projectId = project.id;
+    } on Exception catch (error) {
+      projectError = error.toString();
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(projectError ?? 'Project create failed.')),
+      );
+      return;
+    }
+
     final EstimateSessionStore session = EstimateSessionStore(
+      projectId: projectId,
       projectName: draft.projectName,
       projectLocation: draft.projectLocation,
       numberingMode: AppSettings.instance.numberingMode,
@@ -74,9 +96,9 @@ class EstimationMenuScreen extends StatelessWidget {
     );
 
     if (resetWarning != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(resetWarning)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(resetWarning)));
     }
   }
 
@@ -117,7 +139,7 @@ class EstimationMenuScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Start a new window estimate or review history',
+                      'Start a new window estimate or open recent projects directly here',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 24),
@@ -131,12 +153,9 @@ class EstimationMenuScreen extends StatelessWidget {
                             onTap: () => _handleCreateProject(context),
                           ),
                           const SizedBox(height: 18),
-                          PrimaryCardButton(
-                            icon: Icons.history_rounded,
-                            title: 'History',
-                            subtitle: 'See saved estimates and status',
-                            accent: AppTheme.sky,
-                            onTap: () => _showComingSoon(context),
+                          const RecentProjectsListSection(
+                            flow: EstimateFlow.estimation,
+                            moduleTitle: 'Estimation',
                           ),
                         ],
                       ),

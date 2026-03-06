@@ -32,7 +32,7 @@ class GlassReportApiClient {
          '${baseUrl ?? _defaultBaseUrl()}/api/glass-report',
        );
 
-  Future<GlassReport> fetchGlassReport() async {
+  Future<GlassReport> fetchGlassReport({String? projectId}) async {
     late final http.Response response;
     try {
       response = await _httpClient.post(
@@ -40,7 +40,9 @@ class GlassReportApiClient {
         headers: const <String, String>{
           'Content-Type': 'application/json',
         },
-        body: jsonEncode(const <String, Object?>{}),
+        body: jsonEncode(<String, Object?>{
+          'projectId': projectId,
+        }),
       );
     } on Exception catch (error) {
       throw GlassReportApiException(
@@ -110,4 +112,3 @@ class GlassReportApiClient {
     return null;
   }
 }
-

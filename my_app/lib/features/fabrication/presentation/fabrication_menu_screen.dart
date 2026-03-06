@@ -7,7 +7,9 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/primary_card_button.dart';
+import '../../estimation/data/project_repository.dart';
 import '../../estimation/presentation/window_navigation_screen.dart';
+import '../../estimation/presentation/recent_projects_screen.dart';
 import '../../estimation/state/estimate_session_store.dart';
 import '../../settings/state/app_settings.dart';
 import 'glass_report_screen.dart';
@@ -56,7 +58,33 @@ class FabricationMenuScreen extends StatelessWidget {
       return;
     }
 
+    final ProjectRepository projectRepository = ProjectRepository();
+    String? projectId;
+    String? projectError;
+    try {
+      final project = await projectRepository.createProject(
+        flow: EstimateFlow.fabrication,
+        projectName: draft.projectName,
+        projectLocation: draft.projectLocation,
+      );
+      projectId = project.id;
+    } on Exception catch (error) {
+      projectError = error.toString();
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(projectError ?? 'Project create failed.')),
+      );
+      return;
+    }
+
     final EstimateSessionStore session = EstimateSessionStore(
+      projectId: projectId,
       projectName: draft.projectName,
       projectLocation: draft.projectLocation,
       flow: EstimateFlow.fabrication,
@@ -116,7 +144,7 @@ class FabricationMenuScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Create project and continue fabrication flow',
+                      'Create project and open recent fabrication projects directly here',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 24),
@@ -141,6 +169,11 @@ class FabricationMenuScreen extends StatelessWidget {
                                 ),
                               );
                             },
+                          ),
+                          const SizedBox(height: 12),
+                          const RecentProjectsListSection(
+                            flow: EstimateFlow.fabrication,
+                            moduleTitle: 'Fabrication',
                           ),
                         ],
                       ),

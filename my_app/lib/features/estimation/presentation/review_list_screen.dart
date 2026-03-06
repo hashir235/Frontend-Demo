@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/project_repository.dart';
 import '../data/window_catalog.dart';
 import 'input/input_registry.dart';
 import '../models/window_review_item.dart';
@@ -11,11 +12,14 @@ import '../../../core/theme/app_theme.dart';
 
 class ReviewListScreen extends StatelessWidget {
   final EstimateSessionStore session;
+  final ProjectRepository _projectRepository = ProjectRepository();
 
-  const ReviewListScreen({super.key, required this.session});
+  ReviewListScreen({super.key, required this.session});
 
   Future<void> _editItem(BuildContext context, WindowReviewItem item) async {
-    final WindowType? node = WindowCatalog.byDisplayIndex(item.windowIndex);
+    final WindowType? node =
+        WindowCatalog.byDisplayIndex(item.windowIndex) ??
+        WindowCatalog.byCodeName(item.windowCode);
     if (node == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Unable to open editor for this item.')),
@@ -54,6 +58,15 @@ class ReviewListScreen extends StatelessWidget {
 
     if (confirm == true) {
       session.deleteByWinNo(item.winNo);
+      try {
+        await _projectRepository.syncSession(session);
+      } on Exception catch (error) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.toString())));
+        }
+      }
     }
   }
 
@@ -68,13 +81,19 @@ class ReviewListScreen extends StatelessWidget {
         MaterialPageRoute(
           builder: (_) => LengthOptimizationScreen(
             items: items,
+            projectId: session.projectId,
             projectName: session.projectName,
             projectLocation: session.projectLocation,
             requestContext: 'fabrication',
             showPdfActions: true,
-            materialSelectionBuilder:
-                (BuildContext context, String projectName, String projectLocation) {
+            materialSelectionBuilder: (
+              BuildContext context,
+              String? projectId,
+              String projectName,
+              String projectLocation,
+            ) {
                   return MaterialSelectionScreen(
+                    projectId: projectId,
                     projectName: projectName,
                     projectLocation: projectLocation,
                     requestContext: 'fabrication',
@@ -93,6 +112,7 @@ class ReviewListScreen extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => LengthOptimizationScreen(
           items: items,
+          projectId: session.projectId,
           projectName: session.projectName,
           projectLocation: session.projectLocation,
           requestContext: 'estimation',

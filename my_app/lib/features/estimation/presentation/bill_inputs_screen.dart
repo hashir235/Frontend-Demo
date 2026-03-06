@@ -11,6 +11,7 @@ class BillInputsScreen extends StatefulWidget {
   final String gaugeValue;
   final String colorLabel;
   final String colorValue;
+  final String? projectId;
   final String projectName;
   final String projectLocation;
 
@@ -21,6 +22,7 @@ class BillInputsScreen extends StatefulWidget {
     required this.gaugeValue,
     required this.colorLabel,
     required this.colorValue,
+    this.projectId,
     required this.projectName,
     required this.projectLocation,
   });
@@ -163,6 +165,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     }
 
     final BillRequest request = BillRequest(
+      projectId: widget.projectId,
       glassRatePerSqFt: _parseRequiredNumber(_glassRateController),
       laborRatePerSqFt: _parseRequiredNumber(_laborRateController),
       hardwareRatePerWindow: _parseRequiredNumber(_hardwareRateController),

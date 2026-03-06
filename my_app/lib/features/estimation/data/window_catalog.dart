@@ -220,6 +220,10 @@ class WindowCatalog {
     return _findIn(root, index);
   }
 
+  static WindowType? byCodeName(String codeName) {
+    return _findByCode(root, codeName);
+  }
+
   static bool _isArchFamily(WindowType node) {
     if (node.codeName == 'A_win' || node.codeName == 'AR_win') {
       return true;
@@ -240,6 +244,21 @@ class WindowCatalog {
       }
       if (node.children.isNotEmpty) {
         final WindowType? nested = _findIn(node.children, index);
+        if (nested != null) {
+          return nested;
+        }
+      }
+    }
+    return null;
+  }
+
+  static WindowType? _findByCode(List<WindowType> nodes, String codeName) {
+    for (final WindowType node in nodes) {
+      if (node.codeName == codeName) {
+        return node;
+      }
+      if (node.children.isNotEmpty) {
+        final WindowType? nested = _findByCode(node.children, codeName);
         if (nested != null) {
           return nested;
         }

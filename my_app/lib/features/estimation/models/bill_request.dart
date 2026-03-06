@@ -1,4 +1,5 @@
 class BillRequest {
+  final String? projectId;
   final double glassRatePerSqFt;
   final double laborRatePerSqFt;
   final double hardwareRatePerWindow;
@@ -16,6 +17,7 @@ class BillRequest {
   final String customerAddress;
 
   const BillRequest({
+    required this.projectId,
     required this.glassRatePerSqFt,
     required this.laborRatePerSqFt,
     required this.hardwareRatePerWindow,
@@ -35,6 +37,7 @@ class BillRequest {
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
+      'projectId': projectId,
       'glassRatePerSqFt': glassRatePerSqFt,
       'laborRatePerSqFt': laborRatePerSqFt,
       'hardwareRatePerWindow': hardwareRatePerWindow,

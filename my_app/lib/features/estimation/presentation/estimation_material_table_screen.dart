@@ -15,6 +15,7 @@ class EstimationMaterialTableScreen extends StatefulWidget {
   final String gaugeValue;
   final String colorLabel;
   final String colorValue;
+  final String? projectId;
   final String requestContext;
   final String projectName;
   final String projectLocation;
@@ -30,6 +31,7 @@ class EstimationMaterialTableScreen extends StatefulWidget {
     required this.gaugeValue,
     required this.colorLabel,
     required this.colorValue,
+    this.projectId,
     this.requestContext = 'estimation',
     required this.projectName,
     required this.projectLocation,
@@ -69,6 +71,7 @@ class _EstimationMaterialTableScreenState
       final CostTable table = await _apiClient.fetchCostTable(
         gauge: widget.gaugeValue,
         color: widget.colorValue,
+        projectId: widget.projectId,
         context: widget.requestContext,
         overrides: widget.overrides,
       );
@@ -207,6 +210,7 @@ class _EstimationMaterialTableScreenState
           gaugeValue: widget.gaugeValue,
           colorLabel: widget.colorLabel,
           colorValue: widget.colorValue,
+          projectId: widget.projectId,
           projectName: widget.projectName,
           projectLocation: widget.projectLocation,
         ),
@@ -217,7 +221,9 @@ class _EstimationMaterialTableScreenState
   void _openGlassReport() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (BuildContext context) => const GlassReportScreen(),
+        builder: (BuildContext context) => GlassReportScreen(
+          projectId: widget.projectId,
+        ),
       ),
     );
   }

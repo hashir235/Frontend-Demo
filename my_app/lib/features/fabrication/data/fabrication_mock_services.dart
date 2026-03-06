@@ -10,6 +10,7 @@ class FabricationMockOptimizationRepository extends OptimizationRepository {
   @override
   Future<CuttingReport> fetchLengthOptimization(
     List<WindowReviewItem> items, {
+    String? projectId,
     String context = 'estimation',
     String displayUnit = 'ft',
     required String projectName,
@@ -23,7 +24,8 @@ class FabricationMockOptimizationRepository extends OptimizationRepository {
       final WindowReviewItem item = items[i];
       final double length = 6.25 + (i % 4) * 0.75;
       final CuttingReportCut cut = CuttingReportCut(
-        label: '${item.windowLabel} #${item.winNo} -> '
+        label:
+            '${item.windowLabel} #${item.winNo} -> '
             '${item.heightValue}x${item.widthValue} | ${symbols[i % symbols.length]}',
         windowName: item.windowLabel,
         windowNo: item.winNo,
@@ -41,7 +43,8 @@ class FabricationMockOptimizationRepository extends OptimizationRepository {
     if (topCuts.isEmpty && items.isNotEmpty) {
       topCuts.add(
         CuttingReportCut(
-          label: '${items.first.windowLabel} #${items.first.winNo} -> '
+          label:
+              '${items.first.windowLabel} #${items.first.winNo} -> '
               '${items.first.heightValue}x${items.first.widthValue} | WT',
           windowName: items.first.windowLabel,
           windowNo: items.first.winNo,
@@ -55,7 +58,8 @@ class FabricationMockOptimizationRepository extends OptimizationRepository {
     if (bottomCuts.isEmpty && items.isNotEmpty) {
       bottomCuts.add(
         CuttingReportCut(
-          label: '${items.first.windowLabel} #${items.first.winNo} -> '
+          label:
+              '${items.first.windowLabel} #${items.first.winNo} -> '
               '${items.first.heightValue}x${items.first.widthValue} | WB',
           windowName: items.first.windowLabel,
           windowNo: items.first.winNo,
@@ -86,6 +90,8 @@ class FabricationMockOptimizationRepository extends OptimizationRepository {
           totalLength: total,
           totalLengthDisplay: '${total.toStringAsFixed(2)} ft',
         ),
+        allowedLengthsFt: <double>[stockLen],
+        allowedLengthsDisplay: <String>['${stockLen.toStringAsFixed(2)} ft'],
         groups: <CuttingReportGroup>[
           CuttingReportGroup(
             stockLenFt: stockLen,
@@ -118,6 +124,7 @@ class FabricationMockRateReviewApiClient extends RateReviewApiClient {
   Future<RateReview> fetchRateReview({
     required String gauge,
     required String color,
+    String? projectId,
     String context = 'estimation',
   }) async {
     return RateReview(
@@ -140,6 +147,7 @@ class FabricationMockCostTableApiClient extends CostTableApiClient {
   Future<CostTable> fetchCostTable({
     required String gauge,
     required String color,
+    String? projectId,
     List<RateOverrideInput> overrides = const <RateOverrideInput>[],
     String context = 'estimation',
   }) async {
@@ -169,18 +177,14 @@ class FabricationMockCostTableApiClient extends CostTableApiClient {
         totalFt: 36.0,
         rate: 495.0,
         totalPrice: 17820.0,
-        lengths: <CostTableLength>[
-          CostTableLength(lengthFt: 9.0, quantity: 4),
-        ],
+        lengths: <CostTableLength>[CostTableLength(lengthFt: 9.0, quantity: 4)],
       ),
       CostTableRow(
         section: 'HR',
         totalFt: 36.0,
         rate: 495.0,
         totalPrice: 17820.0,
-        lengths: <CostTableLength>[
-          CostTableLength(lengthFt: 9.0, quantity: 4),
-        ],
+        lengths: <CostTableLength>[CostTableLength(lengthFt: 9.0, quantity: 4)],
       ),
     ];
 
@@ -189,16 +193,18 @@ class FabricationMockCostTableApiClient extends CostTableApiClient {
       overrideMap[item.section] = item.rate;
     }
 
-    final List<CostTableRow> rows = baseRows.map((CostTableRow row) {
-      final double rate = overrideMap[row.section] ?? row.rate;
-      return CostTableRow(
-        section: row.section,
-        totalFt: row.totalFt,
-        rate: rate,
-        totalPrice: row.totalFt * rate,
-        lengths: row.lengths,
-      );
-    }).toList(growable: false);
+    final List<CostTableRow> rows = baseRows
+        .map((CostTableRow row) {
+          final double rate = overrideMap[row.section] ?? row.rate;
+          return CostTableRow(
+            section: row.section,
+            totalFt: row.totalFt,
+            rate: rate,
+            totalPrice: row.totalFt * rate,
+            lengths: row.lengths,
+          );
+        })
+        .toList(growable: false);
 
     final double grandTotal = rows.fold<double>(0.0, (
       double sum,

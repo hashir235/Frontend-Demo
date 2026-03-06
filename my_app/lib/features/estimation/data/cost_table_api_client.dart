@@ -35,6 +35,7 @@ class CostTableApiClient {
   Future<CostTable> fetchCostTable({
     required String gauge,
     required String color,
+    String? projectId,
     List<RateOverrideInput> overrides = const <RateOverrideInput>[],
     String context = 'estimation',
   }) async {
@@ -48,6 +49,7 @@ class CostTableApiClient {
         body: jsonEncode(<String, Object?>{
           'gauge': gauge,
           'color': color,
+          'projectId': projectId,
           'context': context,
           'overrides': overrides.map((RateOverrideInput item) => item.toJson()).toList(),
         }),

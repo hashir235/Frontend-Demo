@@ -9,6 +9,7 @@ enum EstimateFlow {
 }
 
 class EstimateSessionStore extends ChangeNotifier {
+  final String? projectId;
   final String projectName;
   final String projectLocation;
   final EstimateFlow flow;
@@ -17,6 +18,7 @@ class EstimateSessionStore extends ChangeNotifier {
   NumberingMode _numberingMode;
 
   EstimateSessionStore({
+    this.projectId,
     required this.projectName,
     required this.projectLocation,
     this.flow = EstimateFlow.estimation,
@@ -35,6 +37,14 @@ class EstimateSessionStore extends ChangeNotifier {
 
   int get nextWinNo => _nextWinNo;
   NumberingMode get numberingMode => _numberingMode;
+
+  void replaceItems(Iterable<WindowReviewItem> items) {
+    _items
+      ..clear()
+      ..addAll(items);
+    _syncNextWinNo();
+    notifyListeners();
+  }
 
   set numberingMode(NumberingMode mode) {
     if (_numberingMode == mode) {

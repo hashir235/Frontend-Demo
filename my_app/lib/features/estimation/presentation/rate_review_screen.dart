@@ -13,6 +13,7 @@ class RateReviewScreen extends StatefulWidget {
   final String gaugeValue;
   final String colorLabel;
   final String colorValue;
+  final String? projectId;
   final String requestContext;
   final String projectName;
   final String projectLocation;
@@ -28,6 +29,7 @@ class RateReviewScreen extends StatefulWidget {
     required this.gaugeValue,
     required this.colorLabel,
     required this.colorValue,
+    this.projectId,
     this.requestContext = 'estimation',
     required this.projectName,
     required this.projectLocation,
@@ -66,6 +68,7 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
       final RateReview review = await _apiClient.fetchRateReview(
         gauge: widget.gaugeValue,
         color: widget.colorValue,
+        projectId: widget.projectId,
         context: widget.requestContext,
       );
       if (!mounted) {
@@ -132,6 +135,7 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
           gaugeValue: widget.gaugeValue,
           colorLabel: widget.colorLabel,
           colorValue: widget.colorValue,
+          projectId: widget.projectId,
           requestContext: widget.requestContext,
           projectName: widget.projectName,
           projectLocation: widget.projectLocation,

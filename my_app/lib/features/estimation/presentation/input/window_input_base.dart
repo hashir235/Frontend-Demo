@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'window_input_handler.dart';
+import '../../data/project_repository.dart';
 import '../../models/window_review_item.dart';
 import '../../models/window_type.dart';
 import '../../state/estimate_session_store.dart';
@@ -37,6 +38,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   static const double _collarCardSize = 258;
   static const double _collarCardWidthFactor = 1.16;
   static const double _collarViewportFraction = 0.78;
+  final ProjectRepository _projectRepository = ProjectRepository();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _heightInchController = TextEditingController();
@@ -762,7 +764,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     return trimmed;
   }
 
-  void _onSavePressed() {
+  Future<void> _onSavePressed() async {
     if (!_validateAndShowErrors()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -834,6 +836,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         clearRubberType: !_isFabricationFlow || !_isLockSupportedWindow,
       );
       widget.session.updateItem(updated);
+      await _syncProjectSession();
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop();
       return;
     }
@@ -865,6 +871,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return;
     }
 
+    await _syncProjectSession();
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _heightController.clear();
       _heightInchController.clear();
@@ -887,6 +898,19 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _winNoError = null;
     });
     _heightFocusNode.requestFocus();
+  }
+
+  Future<void> _syncProjectSession() async {
+    try {
+      await _projectRepository.syncSession(widget.session);
+    } on Exception catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
   }
 
   Widget _buildCollarCard(
