@@ -28,13 +28,13 @@ class _SlidingMSectionPainter extends CustomPainter {
     String? effectiveSection = selectedSection;
     if (selectedSection != null) {
       // If selected matches an alias value, map back to its base key.
-      final String? base = sectionAliases.entries
+      final String base = sectionAliases.entries
           .firstWhere(
             (e) => e.value == selectedSection,
             orElse: () => const MapEntry<String, String>('', ''),
           )
           .key;
-      if (base != null && base.isNotEmpty) {
+      if (base.isNotEmpty) {
         effectiveSection = base;
       }
     }

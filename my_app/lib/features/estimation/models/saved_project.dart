@@ -63,8 +63,9 @@ class SavedProjectDetail extends SavedProjectSummary {
   });
 
   factory SavedProjectDetail.fromJson(Map<String, dynamic> json) {
-    final List<dynamic> rawWindows =
-        json['windows'] is List<dynamic> ? json['windows'] as List<dynamic> : <dynamic>[];
+    final List<dynamic> rawWindows = json['windows'] is List<dynamic>
+        ? json['windows'] as List<dynamic>
+        : <dynamic>[];
     return SavedProjectDetail(
       id: (json['id'] as String? ?? '').trim(),
       context: (json['context'] as String? ?? '').trim(),
@@ -72,7 +73,9 @@ class SavedProjectDetail extends SavedProjectSummary {
       projectLocation: (json['projectLocation'] as String? ?? '').trim(),
       status: (json['status'] as String? ?? '').trim(),
       windowCount: SavedProjectSummary._asInt(json['windowCount']),
-      updatedAt: SavedProjectSummary._tryParseDate(json['updatedAt'] as String?),
+      updatedAt: SavedProjectSummary._tryParseDate(
+        json['updatedAt'] as String?,
+      ),
       windows: rawWindows
           .whereType<Map<String, dynamic>>()
           .map(WindowReviewItem.fromJson)

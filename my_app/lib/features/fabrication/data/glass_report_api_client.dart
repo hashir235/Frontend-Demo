@@ -10,11 +10,7 @@ class GlassReportApiException implements Exception {
   final int? statusCode;
   final Object? detail;
 
-  const GlassReportApiException(
-    this.message, {
-    this.statusCode,
-    this.detail,
-  });
+  const GlassReportApiException(this.message, {this.statusCode, this.detail});
 
   @override
   String toString() => message;
@@ -24,25 +20,19 @@ class GlassReportApiClient {
   final http.Client _httpClient;
   final Uri _endpointUri;
 
-  GlassReportApiClient({
-    http.Client? httpClient,
-    String? baseUrl,
-  }) : _httpClient = httpClient ?? http.Client(),
-       _endpointUri = Uri.parse(
-         '${baseUrl ?? _defaultBaseUrl()}/api/glass-report',
-       );
+  GlassReportApiClient({http.Client? httpClient, String? baseUrl})
+    : _httpClient = httpClient ?? http.Client(),
+      _endpointUri = Uri.parse(
+        '${baseUrl ?? _defaultBaseUrl()}/api/glass-report',
+      );
 
   Future<GlassReport> fetchGlassReport({String? projectId}) async {
     late final http.Response response;
     try {
       response = await _httpClient.post(
         _endpointUri,
-        headers: const <String, String>{
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(<String, Object?>{
-          'projectId': projectId,
-        }),
+        headers: const <String, String>{'Content-Type': 'application/json'},
+        body: jsonEncode(<String, Object?>{'projectId': projectId}),
       );
     } on Exception catch (error) {
       throw GlassReportApiException(

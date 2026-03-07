@@ -25,20 +25,18 @@ class DoorSingleInputHandler extends WindowInputHandler {
       return base;
     }
 
-    return base.map(
-      (int key, List<String> value) {
-        final List<String> sections = List<String>.from(value);
-        int insertAt = sections.indexOf('D50');
-        if (insertAt >= 0 && d46Enabled && !sections.contains('D46')) {
-          sections.insert(insertAt + 1, 'D46');
-          insertAt = sections.indexOf('D46');
-        }
-        if (insertAt >= 0 && d52Enabled && !sections.contains('D52')) {
-          sections.insert(insertAt + 1, 'D52');
-        }
-        return MapEntry<int, List<String>>(key, sections);
-      },
-    );
+    return base.map((int key, List<String> value) {
+      final List<String> sections = List<String>.from(value);
+      int insertAt = sections.indexOf('D50');
+      if (insertAt >= 0 && d46Enabled && !sections.contains('D46')) {
+        sections.insert(insertAt + 1, 'D46');
+        insertAt = sections.indexOf('D46');
+      }
+      if (insertAt >= 0 && d52Enabled && !sections.contains('D52')) {
+        sections.insert(insertAt + 1, 'D52');
+      }
+      return MapEntry<int, List<String>>(key, sections);
+    });
   }
 
   @override

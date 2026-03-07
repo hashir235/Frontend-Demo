@@ -5,6 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_hero_header.dart';
+import '../../../shared/widgets/app_screen_shell.dart';
+import '../../../shared/widgets/bottom_action_bar.dart';
+import '../../../shared/widgets/metric_card.dart';
+import '../../../shared/widgets/project_meta_strip.dart';
+import '../../../shared/widgets/section_surface_card.dart';
+import '../../../shared/widgets/state_message_card.dart';
 import '../data/glass_report_api_client.dart';
 import '../models/glass_report.dart';
 
@@ -29,11 +36,6 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     super.initState();
     _apiClient = widget.apiClient ?? GlassReportApiClient();
     _loadReport();
-  }
-
-  String _projectValue(String value) {
-    final String trimmed = value.trim();
-    return trimmed.isEmpty ? '--' : trimmed;
   }
 
   String _winSizeForRow(GlassReportRow row) {
@@ -110,7 +112,7 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
           }
         }
       } on FormatException {
-        // Keep fallback message.
+        // keep fallback
       }
 
       messenger.showSnackBar(SnackBar(content: Text(resolvedMessage)));
@@ -166,47 +168,28 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     if (_isLoading || _errorMessage != null) {
       return null;
     }
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(color: AppTheme.sky.withValues(alpha: 0.7)),
+    return BottomActionBar(
+      children: <Widget>[
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: _generateGlassPdf,
+            icon: const Icon(Icons.download_rounded),
+            label: const Text('Download PDF'),
           ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: AppTheme.deepTeal.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, -4),
-            ),
-          ],
         ),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _generateGlassPdf,
-                icon: const Icon(Icons.download_rounded),
-                label: const Text('Download PDF'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            IconButton.filledTonal(
-              tooltip: 'Home',
-              onPressed: _goHome,
-              icon: const Icon(Icons.home_rounded),
-            ),
-            const SizedBox(width: 12),
-            IconButton.filledTonal(
-              tooltip: 'Share',
-              onPressed: _showShareOptions,
-              icon: const Icon(Icons.share_outlined),
-            ),
-          ],
+        const SizedBox(width: AppTheme.space4),
+        IconButton.filledTonal(
+          tooltip: 'Home',
+          onPressed: _goHome,
+          icon: const Icon(Icons.home_rounded),
         ),
-      ),
+        const SizedBox(width: AppTheme.space4),
+        IconButton.filledTonal(
+          tooltip: 'Share',
+          onPressed: _showShareOptions,
+          icon: const Icon(Icons.share_outlined),
+        ),
+      ],
     );
   }
 
@@ -215,64 +198,26 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Glass Report')),
       bottomNavigationBar: _buildBottomActions(),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              AppTheme.ice,
-              AppTheme.sky.withValues(alpha: 0.42),
-              AppTheme.mist,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: _buildBody(context),
-          ),
-        ),
-      ),
+      body: AppScreenShell(child: _buildBody(context)),
     );
   }
 
   Widget _buildBody(BuildContext context) {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            CircularProgressIndicator(),
-            SizedBox(height: 12),
-            Text('Loading glass report...'),
-          ],
-        ),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.red.shade700,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _loadReport,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Retry'),
-              ),
-            ],
+        child: StateMessageCard(
+          icon: Icons.table_rows_rounded,
+          title: 'Glass report unavailable',
+          message: _errorMessage,
+          iconColor: AppTheme.danger,
+          action: FilledButton.icon(
+            onPressed: _loadReport,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Retry'),
           ),
         ),
       );
@@ -280,65 +225,52 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
 
     final GlassReport? report = _report;
     if (report == null || report.rows.isEmpty) {
-      return _buildShell(
-        child: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'No glass rows found. Run Fabrication Length Optimization first.',
-              textAlign: TextAlign.center,
-            ),
-          ),
+      return const Center(
+        child: StateMessageCard(
+          icon: Icons.grid_off_rounded,
+          title: 'No glass rows found',
+          message:
+              'Run Fabrication Length Optimization first to generate the latest glass report.',
         ),
       );
     }
 
-    return _buildShell(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-        children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppTheme.violet.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.sky.withValues(alpha: 0.55)),
+    return ListView(
+      children: <Widget>[
+        const AppHeroHeader(
+          eyebrow: 'GLASS REPORT',
+          title: 'Fabrication glass table ready for issue and print',
+          subtitle:
+              'Use the latest fabrication output to review window sizes, glass sizes, rubber types, and quantities.',
+        ),
+        const SizedBox(height: AppTheme.space5),
+        ProjectMetaStrip(
+          projectName: report.projectName,
+          projectLocation: report.projectLocation,
+          extras: <Widget>[
+            _MetaChip(label: 'Rows', value: '${report.rows.length}'),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space6),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: MetricCard(
+                label: 'Report Rows',
+                value: '${report.rows.length}',
+                icon: Icons.table_chart_rounded,
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Rows: ${report.rows.length}',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.deepTeal,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Project: ${_projectValue(report.projectName)}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.deepTeal,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  'Location: ${_projectValue(report.projectLocation)}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.deepTeal,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          SingleChildScrollView(
+          ],
+        ),
+        const SizedBox(height: AppTheme.space6),
+        SectionSurfaceCard(
+          title: 'Glass Cutting Table',
+          subtitle:
+              'Window input sizes and final glass sizes are grouped in a clean production-ready table.',
+          child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              headingRowColor: WidgetStateProperty.all(
-                AppTheme.deepTeal.withValues(alpha: 0.08),
-              ),
               columns: const <DataColumn>[
                 DataColumn(label: Text('WinSize')),
                 DataColumn(label: Text('Label')),
@@ -348,53 +280,47 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
                 DataColumn(label: Text('Glass Size')),
               ],
               rows: report.rows
-                  .asMap()
-                  .entries
-                  .map((entry) {
-                    final GlassReportRow row = entry.value;
+                  .map((GlassReportRow row) {
                     return DataRow(
                       cells: <DataCell>[
-                        DataCell(_valueText(_winSizeForRow(row))),
-                        DataCell(_valueText(row.windowName)),
-                        DataCell(_valueText('${row.windowNo}')),
-                        DataCell(_valueText(row.rubberType)),
-                        DataCell(_valueText('${row.quantity}')),
-                        DataCell(_valueText(_glassSizeForRow(row))),
+                        DataCell(Text(_winSizeForRow(row))),
+                        DataCell(Text(row.windowName)),
+                        DataCell(Text('${row.windowNo}')),
+                        DataCell(Text(row.rubberType)),
+                        DataCell(Text('${row.quantity}')),
+                        DataCell(Text(_glassSizeForRow(row))),
                       ],
                     );
                   })
                   .toList(growable: false),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+}
 
-  Widget _buildShell({required Widget child}) {
+class _MetaChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MetaChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: AppTheme.sky.withValues(alpha: 0.8)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: AppTheme.deepTeal.withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.space4,
+        vertical: AppTheme.space3,
       ),
-      child: child,
-    );
-  }
-
-  Widget _valueText(String value) {
-    return Text(
-      value,
-      style: const TextStyle(
-        color: AppTheme.deepTeal,
-        fontWeight: FontWeight.w700,
+      decoration: AppTheme.infoChipDecoration(emphasized: true),
+      child: Text(
+        '$label: $value',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppTheme.textPrimary,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

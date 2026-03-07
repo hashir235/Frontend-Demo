@@ -2,31 +2,29 @@ class RateOverrideInput {
   final String section;
   final double rate;
 
-  const RateOverrideInput({
-    required this.section,
-    required this.rate,
-  });
+  const RateOverrideInput({required this.section, required this.rate});
 
   Map<String, Object> toJson() {
-    return <String, Object>{
-      'section': section,
-      'rate': rate,
-    };
+    return <String, Object>{'section': section, 'rate': rate};
   }
 }
 
 class CostTableLength {
   final double lengthFt;
+  final String lengthDisplay;
   final int quantity;
 
   const CostTableLength({
     required this.lengthFt,
+    required this.lengthDisplay,
     required this.quantity,
   });
 
   factory CostTableLength.fromJson(Map<String, dynamic> json) {
+    final double lengthFt = (json['lengthFt'] as num?)?.toDouble() ?? 0;
     return CostTableLength(
-      lengthFt: (json['lengthFt'] as num?)?.toDouble() ?? 0,
+      lengthFt: lengthFt,
+      lengthDisplay: json['lengthDisplay'] as String? ?? '$lengthFt ft',
       quantity: (json['quantity'] as num?)?.toInt() ?? 0,
     );
   }
@@ -35,6 +33,7 @@ class CostTableLength {
 class CostTableRow {
   final String section;
   final double totalFt;
+  final String totalFtDisplay;
   final double rate;
   final double totalPrice;
   final List<CostTableLength> lengths;
@@ -42,6 +41,7 @@ class CostTableRow {
   const CostTableRow({
     required this.section,
     required this.totalFt,
+    required this.totalFtDisplay,
     required this.rate,
     required this.totalPrice,
     required this.lengths,
@@ -49,12 +49,15 @@ class CostTableRow {
 
   factory CostTableRow.fromJson(Map<String, dynamic> json) {
     final Object? rawLengths = json['lengths'];
-    final List<dynamic> lengthItems =
-        rawLengths is List<dynamic> ? rawLengths : const <dynamic>[];
+    final List<dynamic> lengthItems = rawLengths is List<dynamic>
+        ? rawLengths
+        : const <dynamic>[];
+    final double totalFt = (json['totalFt'] as num?)?.toDouble() ?? 0;
 
     return CostTableRow(
       section: json['section'] as String? ?? '',
-      totalFt: (json['totalFt'] as num?)?.toDouble() ?? 0,
+      totalFt: totalFt,
+      totalFtDisplay: json['totalFtDisplay'] as String? ?? '$totalFt ft',
       rate: (json['rate'] as num?)?.toDouble() ?? 0,
       totalPrice: (json['totalPrice'] as num?)?.toDouble() ?? 0,
       lengths: lengthItems
@@ -86,7 +89,9 @@ class CostTable {
 
   factory CostTable.fromJson(Map<String, dynamic> json) {
     final Object? rawRows = json['rows'];
-    final List<dynamic> rowItems = rawRows is List<dynamic> ? rawRows : const <dynamic>[];
+    final List<dynamic> rowItems = rawRows is List<dynamic>
+        ? rawRows
+        : const <dynamic>[];
 
     return CostTable(
       ok: json['ok'] as bool? ?? false,

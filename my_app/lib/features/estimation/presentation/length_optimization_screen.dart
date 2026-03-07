@@ -4,10 +4,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_hero_header.dart';
+import '../../../shared/widgets/app_screen_shell.dart';
+import '../../../shared/widgets/bottom_action_bar.dart';
+import '../../../shared/widgets/metric_card.dart';
+import '../../../shared/widgets/project_meta_strip.dart';
+import '../../../shared/widgets/section_surface_card.dart';
+import '../../../shared/widgets/state_message_card.dart';
 import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
 import '../models/window_review_item.dart';
-import '../../../core/theme/app_theme.dart';
 import 'material_selection_screen.dart';
 import 'section_recalculation_screen.dart';
 
@@ -120,39 +127,32 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     });
   }
 
-  Widget _buildCutCell(String text, {required bool isMarked, double? width}) {
-    final Widget content = Text(
-      text,
-      style: TextStyle(
-        color: isMarked
-            ? AppTheme.deepTeal.withValues(alpha: 0.82)
-            : AppTheme.deepTeal,
-        fontWeight: isMarked ? FontWeight.w800 : FontWeight.w700,
-        fontSize: 13,
-      ),
-    );
-
-    final Widget stacked = Stack(
+  Widget _buildCutCell(String text, {required bool isMarked}) {
+    return Stack(
       alignment: Alignment.centerLeft,
       children: <Widget>[
-        content,
+        Text(
+          text,
+          style: TextStyle(
+            color: isMarked
+                ? AppTheme.textPrimary.withValues(alpha: 0.82)
+                : AppTheme.textPrimary,
+            fontWeight: isMarked ? FontWeight.w900 : FontWeight.w700,
+            fontSize: 13,
+          ),
+        ),
         if (isMarked)
           Positioned.fill(
             child: Align(
               alignment: Alignment.center,
               child: Container(
                 height: 2,
-                color: AppTheme.violet.withValues(alpha: 0.9),
+                color: AppTheme.royalBlue.withValues(alpha: 0.95),
               ),
             ),
           ),
       ],
     );
-
-    if (width != null) {
-      return SizedBox(width: width, child: stacked);
-    }
-    return stacked;
   }
 
   String _apiBaseUrl() {
@@ -192,7 +192,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           }
         }
       } on FormatException {
-        // Keep fallback success message.
+        // keep fallback
       }
 
       messenger.showSnackBar(SnackBar(content: Text(resolvedMessage)));
@@ -230,17 +230,6 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                   await _generateCuttingPdf(
                     successMessage:
                         'PDF generated. Native share can be wired next.',
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.chat_rounded),
-                title: const Text('WhatsApp Share'),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  await _generateCuttingPdf(
-                    successMessage:
-                        'PDF generated. WhatsApp share can be wired next.',
                   );
                 },
               ),
@@ -330,53 +319,35 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
       return null;
     }
 
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(color: AppTheme.sky.withValues(alpha: 0.7)),
-          ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: AppTheme.deepTeal.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, -4),
+    return BottomActionBar(
+      children: <Widget>[
+        if (widget.showPdfActions)
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: _generateCuttingPdf,
+              icon: const Icon(Icons.download_rounded),
+              label: const Text('Download PDF'),
             ),
-          ],
-        ),
-        child: Row(
-          children: <Widget>[
-            if (widget.showPdfActions)
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _generateCuttingPdf,
-                  icon: const Icon(Icons.download_rounded),
-                  label: const Text('Download PDF'),
-                ),
-              ),
-            if (widget.showPdfActions && canRecalculate)
-              const SizedBox(width: 12),
-            if (canRecalculate)
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: _openRecalculationScreen,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Re Calculation'),
-                ),
-              ),
-            if (widget.showPdfActions) const SizedBox(width: 12),
-            if (widget.showPdfActions)
-              IconButton.filledTonal(
-                tooltip: 'Share',
-                onPressed: _showShareOptions,
-                icon: const Icon(Icons.share_outlined),
-              ),
-          ],
-        ),
-      ),
+          ),
+        if (widget.showPdfActions && canRecalculate)
+          const SizedBox(width: AppTheme.space4),
+        if (canRecalculate)
+          Expanded(
+            child: FilledButton.tonalIcon(
+              onPressed: _openRecalculationScreen,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Re Calculation'),
+            ),
+          ),
+        if (widget.showPdfActions) ...<Widget>[
+          const SizedBox(width: AppTheme.space4),
+          IconButton.filledTonal(
+            tooltip: 'Share',
+            onPressed: _showShareOptions,
+            icon: const Icon(Icons.share_outlined),
+          ),
+        ],
+      ],
     );
   }
 
@@ -439,55 +410,26 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         ],
       ),
       bottomNavigationBar: _buildBottomActions(context),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[AppTheme.mist, AppTheme.ice],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(child: _buildBody(context)),
-      ),
+      body: AppScreenShell(child: _buildBody(context)),
     );
   }
 
   Widget _buildBody(BuildContext context) {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            CircularProgressIndicator(),
-            SizedBox(height: 12),
-            Text('Loading optimization report...'),
-          ],
-        ),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.red.shade700,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _loadReport,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Retry'),
-              ),
-            ],
+        child: StateMessageCard(
+          icon: Icons.auto_graph_rounded,
+          title: 'Optimization failed',
+          message: _errorMessage,
+          iconColor: AppTheme.danger,
+          action: FilledButton.icon(
+            onPressed: _loadReport,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Retry'),
           ),
         ),
       );
@@ -495,137 +437,119 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
 
     final CuttingReport? report = _report;
     if (report == null) {
-      return const Center(child: Text('No optimization data.'));
+      return const Center(
+        child: StateMessageCard(
+          icon: Icons.grid_off_rounded,
+          title: 'No optimization data',
+        ),
+      );
     }
 
     if (report.sections.isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            report.errors.isNotEmpty
-                ? report.errors.join('\n')
-                : 'No optimization data.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.deepTeal,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        child: StateMessageCard(
+          icon: Icons.layers_clear_rounded,
+          title: 'No optimization data',
+          message: report.errors.isNotEmpty
+              ? report.errors.join('\n')
+              : 'No optimization data.',
         ),
       );
     }
 
     final CuttingReportSection? section = _selectedSection;
 
-    return Column(
+    return ListView(
       children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: report.sections
-                  .map((CuttingReportSection item) {
-                    final bool isSelected = item.name == section?.name;
-                    return ChoiceChip(
-                      label: Text(item.name),
-                      selected: isSelected,
-                      selectedColor: AppTheme.violet.withValues(alpha: 0.88),
-                      backgroundColor: Colors.white,
-                      checkmarkColor: Colors.white,
-                      side: BorderSide(
-                        color: isSelected
-                            ? AppTheme.violet
-                            : AppTheme.sky.withValues(alpha: 0.8),
-                        width: isSelected ? 1.3 : 1,
-                      ),
-                      labelStyle: Theme.of(context).textTheme.bodyMedium
-                          ?.copyWith(
-                            color: isSelected
-                                ? Colors.white
-                                : AppTheme.deepTeal,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w600,
-                          ),
-                      onSelected: (_) {
-                        setState(() {
-                          _selectedSectionName = item.name;
-                        });
-                      },
-                    );
-                  })
-                  .toList(growable: false),
-            ),
+        const AppHeroHeader(
+          eyebrow: 'OPTIMIZATION',
+          title: 'Cutting layout ready for production review',
+          subtitle:
+              'Compare sections, inspect grouped lengths, and mark finished cuts while keeping recalculation one tap away.',
+        ),
+        const SizedBox(height: AppTheme.space5),
+        ProjectMetaStrip(
+          projectName: widget.projectName,
+          projectLocation: widget.projectLocation,
+          extras: <Widget>[
+            _MetaChip(label: 'Windows', value: '${widget.items.length}'),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space6),
+        SectionSurfaceCard(
+          title: 'Sections',
+          subtitle:
+              'Choose the section to inspect. The active section stays visually highlighted.',
+          child: Wrap(
+            spacing: AppTheme.space3,
+            runSpacing: AppTheme.space3,
+            children: report.sections
+                .map((CuttingReportSection item) {
+                  final bool isSelected = item.name == section?.name;
+                  return ChoiceChip(
+                    label: Text(item.name),
+                    selected: isSelected,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedSectionName = item.name;
+                      });
+                    },
+                  );
+                })
+                .toList(growable: false),
           ),
         ),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                if (report.errors.isNotEmpty)
-                  _buildErrorBanner(context, report),
-                if (section != null) ...<Widget>[
-                  _buildSectionHeader(context, section),
-                  const SizedBox(height: 12),
-                  if (section.summary != null)
-                    _buildSummaryCard(context, section.summary!),
-                  const SizedBox(height: 12),
-                  ...section.groups.asMap().entries.map(
-                    (MapEntry<int, CuttingReportGroup> entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildGroupCard(
-                        context,
-                        section.name,
-                        entry.key,
-                        entry.value,
-                      ),
-                    ),
+        if (report.errors.isNotEmpty) ...<Widget>[
+          const SizedBox(height: AppTheme.space5),
+          StateMessageCard(
+            icon: Icons.warning_amber_rounded,
+            title: 'Warnings',
+            message: report.errors.join('\n'),
+            iconColor: AppTheme.warning,
+          ),
+        ],
+        if (section != null) ...<Widget>[
+          const SizedBox(height: AppTheme.space6),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: MetricCard(
+                  label: 'Selected Section',
+                  value: section.name,
+                  icon: Icons.straighten_rounded,
+                ),
+              ),
+              if (section.summary != null) ...<Widget>[
+                const SizedBox(width: AppTheme.space4),
+                Expanded(
+                  child: MetricCard(
+                    label: 'Groups',
+                    value: '${section.groups.length}',
+                    icon: Icons.segment_rounded,
+                    accent: AppTheme.tealAccent,
                   ),
-                ],
+                ),
               ],
+            ],
+          ),
+          if (section.summary != null) ...<Widget>[
+            const SizedBox(height: AppTheme.space5),
+            _buildSummaryCard(context, section.summary!),
+          ],
+          const SizedBox(height: AppTheme.space5),
+          ...section.groups.asMap().entries.map(
+            (MapEntry<int, CuttingReportGroup> entry) => Padding(
+              padding: const EdgeInsets.only(bottom: AppTheme.space5),
+              child: _buildGroupCard(
+                context,
+                section.name,
+                entry.key,
+                entry.value,
+              ),
             ),
           ),
-        ),
+        ],
       ],
-    );
-  }
-
-  Widget _buildErrorBanner(BuildContext context, CuttingReport report) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.shade200),
-      ),
-      child: Text(
-        report.errors.join('\n'),
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Colors.red.shade800,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(
-    BuildContext context,
-    CuttingReportSection section,
-  ) {
-    return Text(
-      section.name,
-      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-        color: AppTheme.deepTeal,
-        fontWeight: FontWeight.w800,
-      ),
     );
   }
 
@@ -633,30 +557,24 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     final String usedLengths = summary.usedLengths.isEmpty
         ? '--'
         : summary.usedLengths.map(_stockDisplayInFeet).join(', ');
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.sky.withValues(alpha: 0.85)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return SectionSurfaceCard(
+      title: 'Section Summary',
+      child: Row(
         children: <Widget>[
-          Text(
-            'Used Lengths: $usedLengths',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppTheme.deepTeal,
-              fontWeight: FontWeight.w700,
+          Expanded(
+            child: MetricCard(
+              label: 'Lengths',
+              value: usedLengths,
+              icon: Icons.format_list_bulleted_rounded,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Total Length: ${_stockDisplayInFeet(summary.totalLength)}',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppTheme.deepTeal,
-              fontWeight: FontWeight.w700,
+          const SizedBox(width: AppTheme.space4),
+          Expanded(
+            child: MetricCard(
+              label: 'Total Length',
+              value: _stockDisplayInFeet(summary.totalLength),
+              icon: Icons.stacked_line_chart_rounded,
+              accent: AppTheme.tealAccent,
             ),
           ),
         ],
@@ -670,110 +588,101 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     int groupIndex,
     CuttingReportGroup group,
   ) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.sky.withValues(alpha: 0.85)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: AppTheme.deepTeal.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+    final String wastageText =
+        'Wastage: ${group.wastageDisplay}${group.offcut ? ' • Offcut' : ''}';
+    return SectionSurfaceCard(
+      title: 'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}',
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.space4,
+          vertical: AppTheme.space3,
+        ),
+        decoration: AppTheme.infoChipDecoration(emphasized: true),
+        child: Text(
+          wastageText,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: group.offcut ? AppTheme.warning : AppTheme.textPrimary,
+            fontWeight: FontWeight.w900,
           ),
-        ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.deepTeal,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Wastage: ${group.wastageDisplay}',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppTheme.deepTeal,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (group.offcut) ...<Widget>[
-            const SizedBox(height: 4),
-            Text(
-              'Offcut',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppTheme.violet,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          showCheckboxColumn: false,
+          columns: const <DataColumn>[
+            DataColumn(label: Text('WinSize')),
+            DataColumn(label: Text('Window')),
+            DataColumn(label: Text('No.')),
+            DataColumn(label: Text('Dimension')),
+            DataColumn(label: Text('Cuts')),
           ],
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              showCheckboxColumn: false,
-              columns: const <DataColumn>[
-                DataColumn(label: Text('WinSize')),
-                DataColumn(label: Text('Window')),
-                DataColumn(label: Text('No.')),
-                DataColumn(label: Text('Dimention')),
-                DataColumn(label: Text('Cuts')),
-              ],
-              rows: group.cuts
-                  .asMap()
-                  .entries
-                  .map((MapEntry<int, CuttingReportCut> entry) {
-                    final int cutIndex = entry.key;
-                    final CuttingReportCut cut = entry.value;
-                    final String rowKey = _cutRowKey(
-                      sectionName,
-                      groupIndex,
-                      cutIndex,
-                      cut,
-                    );
-                    final bool isMarked = _markedCutRowKeys.contains(rowKey);
-                    return DataRow(
-                      selected: isMarked,
-                      onSelectChanged: (_) => _toggleMarkedCutRow(rowKey),
-                      cells: <DataCell>[
-                        DataCell(
-                          _buildCutCell(
-                            _winSizeForCut(cut),
-                            isMarked: isMarked,
-                            width: 110,
-                          ),
-                        ),
-                        DataCell(
-                          _buildCutCell(cut.windowName, isMarked: isMarked),
-                        ),
-                        DataCell(
-                          _buildCutCell(
-                            cut.windowNo.toString(),
-                            isMarked: isMarked,
-                          ),
-                        ),
-                        DataCell(
-                          _buildCutCell(
-                            _pieceSymbolForCut(cut),
-                            isMarked: isMarked,
-                          ),
-                        ),
-                        DataCell(
-                          _buildCutCell(cut.lengthDisplay, isMarked: isMarked),
-                        ),
-                      ],
-                    );
-                  })
-                  .toList(growable: false),
-            ),
-          ),
-        ],
+          rows: group.cuts
+              .asMap()
+              .entries
+              .map((MapEntry<int, CuttingReportCut> entry) {
+                final int cutIndex = entry.key;
+                final CuttingReportCut cut = entry.value;
+                final String rowKey = _cutRowKey(
+                  sectionName,
+                  groupIndex,
+                  cutIndex,
+                  cut,
+                );
+                final bool isMarked = _markedCutRowKeys.contains(rowKey);
+                return DataRow(
+                  selected: isMarked,
+                  onSelectChanged: (_) => _toggleMarkedCutRow(rowKey),
+                  cells: <DataCell>[
+                    DataCell(
+                      _buildCutCell(_winSizeForCut(cut), isMarked: isMarked),
+                    ),
+                    DataCell(_buildCutCell(cut.windowName, isMarked: isMarked)),
+                    DataCell(
+                      _buildCutCell(
+                        cut.windowNo.toString(),
+                        isMarked: isMarked,
+                      ),
+                    ),
+                    DataCell(
+                      _buildCutCell(
+                        _pieceSymbolForCut(cut),
+                        isMarked: isMarked,
+                      ),
+                    ),
+                    DataCell(
+                      _buildCutCell(cut.lengthDisplay, isMarked: isMarked),
+                    ),
+                  ],
+                );
+              })
+              .toList(growable: false),
+        ),
+      ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MetaChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.space4,
+        vertical: AppTheme.space3,
+      ),
+      decoration: AppTheme.infoChipDecoration(emphasized: true),
+      child: Text(
+        '$label: $value',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppTheme.textPrimary,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

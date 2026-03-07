@@ -6,10 +6,14 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_hero_header.dart';
+import '../../../shared/widgets/app_screen_shell.dart';
+import '../../../shared/widgets/metric_card.dart';
 import '../../../shared/widgets/primary_card_button.dart';
+import '../../../shared/widgets/section_surface_card.dart';
 import '../../estimation/data/project_repository.dart';
-import '../../estimation/presentation/window_navigation_screen.dart';
 import '../../estimation/presentation/recent_projects_screen.dart';
+import '../../estimation/presentation/window_navigation_screen.dart';
 import '../../estimation/state/estimate_session_store.dart';
 import '../../settings/state/app_settings.dart';
 import 'glass_report_screen.dart';
@@ -92,7 +96,7 @@ class FabricationMenuScreen extends StatelessWidget {
     );
 
     await Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (_) => WindowNavigationScreen.root(
           session: session,
           moduleTitle: 'Fabrication',
@@ -110,77 +114,83 @@ class FabricationMenuScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(title: const Text('Fabrication'), centerTitle: true),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppTheme.ice, AppTheme.mist],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Stack(
-          children: [
-            const _GlowCircle(
-              alignment: Alignment(-1.2, -1.0),
-              size: 200,
-              color: AppTheme.violet,
-            ),
-            const _GlowCircle(
-              alignment: Alignment(1.1, 0.8),
-              size: 240,
-              color: AppTheme.sky,
-            ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Fabrication tools',
-                      style: Theme.of(context).textTheme.headlineLarge,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Create project and open recent fabrication projects directly here',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 24),
-                    Expanded(
-                      child: ListView(
-                        children: [
-                          PrimaryCardButton(
-                            icon: Icons.add_box_outlined,
-                            title: 'Create Project',
-                            subtitle: 'Set project details and browse windows',
-                            onTap: () => _handleCreateProject(context),
-                          ),
-                          const SizedBox(height: 12),
-                          PrimaryCardButton(
-                            icon: Icons.table_view_rounded,
-                            title: 'Glass Report',
-                            subtitle: 'View latest fabrication glass table',
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const GlassReportScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          const RecentProjectsListSection(
-                            flow: EstimateFlow.fabrication,
-                            moduleTitle: 'Fabrication',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+      appBar: AppBar(title: const Text('Fabrication')),
+      body: AppScreenShell(
+        child: ListView(
+          children: <Widget>[
+            AppHeroHeader(
+              eyebrow: 'FABRICATION',
+              title: 'Production-ready fabrication workflow',
+              subtitle:
+                  'Start fabrication projects, run cutting and glass output flows, and reopen recent work from the same polished surface.',
+              trailing: Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: <Color>[AppTheme.tealAccent, AppTheme.royalBlue],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                ),
+                child: const Icon(
+                  Icons.precision_manufacturing_rounded,
+                  size: 40,
+                  color: Colors.white,
                 ),
               ),
+            ),
+            const SizedBox(height: AppTheme.space6),
+            SectionSurfaceCard(
+              title: 'Start Work',
+              subtitle:
+                  'Create a new fabrication project, view the latest glass report, or reopen recent work.',
+              child: Column(
+                children: <Widget>[
+                  PrimaryCardButton(
+                    icon: Icons.add_box_outlined,
+                    title: 'Create Project',
+                    subtitle:
+                        'Set project details and open the fabrication window catalogue.',
+                    accent: AppTheme.tealAccent,
+                    onTap: () => _handleCreateProject(context),
+                  ),
+                  const SizedBox(height: AppTheme.space5),
+                  PrimaryCardButton(
+                    icon: Icons.table_view_rounded,
+                    title: 'Glass Report',
+                    subtitle:
+                        'Open the latest fabrication glass table and PDF tools.',
+                    accent: AppTheme.amberAccent,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const GlassReportScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: AppTheme.space5),
+                  const RecentProjectsListSection(
+                    flow: EstimateFlow.fabrication,
+                    moduleTitle: 'Fabrication',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppTheme.space6),
+            const Row(
+              children: <Widget>[
+                Expanded(
+                  child: MetricCard(
+                    label: 'Glass + cutting flow',
+                    value: 'Integrated',
+                    icon: Icons.fact_check_outlined,
+                    accent: AppTheme.tealAccent,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -225,13 +235,6 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
     return null;
   }
 
-  InputDecoration _decoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      border: const OutlineInputBorder(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -248,16 +251,16 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
                 inputFormatters: <TextInputFormatter>[
                   LengthLimitingTextInputFormatter(100),
                 ],
-                decoration: _decoration('Project Name *'),
+                decoration: const InputDecoration(labelText: 'Project Name *'),
                 validator: _requiredValidator,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppTheme.space4),
               TextFormField(
                 controller: _locationController,
                 inputFormatters: <TextInputFormatter>[
                   LengthLimitingTextInputFormatter(100),
                 ],
-                decoration: _decoration('Location *'),
+                decoration: const InputDecoration(labelText: 'Location *'),
                 validator: _requiredValidator,
               ),
             ],
@@ -285,33 +288,6 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
           child: const Text('Continue'),
         ),
       ],
-    );
-  }
-}
-
-class _GlowCircle extends StatelessWidget {
-  final Alignment alignment;
-  final double size;
-  final Color color;
-
-  const _GlowCircle({
-    required this.alignment,
-    required this.size,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withValues(alpha: 0.2),
-        ),
-      ),
     );
   }
 }

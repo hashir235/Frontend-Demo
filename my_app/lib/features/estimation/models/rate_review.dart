@@ -1,18 +1,22 @@
 class RateReviewRow {
   final String section;
   final double totalFt;
+  final String totalFtDisplay;
   final double rate;
 
   const RateReviewRow({
     required this.section,
     required this.totalFt,
+    required this.totalFtDisplay,
     required this.rate,
   });
 
   factory RateReviewRow.fromJson(Map<String, dynamic> json) {
+    final double totalFt = (json['totalFt'] as num?)?.toDouble() ?? 0;
     return RateReviewRow(
       section: json['section'] as String? ?? '',
-      totalFt: (json['totalFt'] as num?)?.toDouble() ?? 0,
+      totalFt: totalFt,
+      totalFtDisplay: json['totalFtDisplay'] as String? ?? '$totalFt ft',
       rate: (json['rate'] as num?)?.toDouble() ?? 0,
     );
   }
@@ -35,7 +39,9 @@ class RateReview {
 
   factory RateReview.fromJson(Map<String, dynamic> json) {
     final Object? rawRows = json['rows'];
-    final List<dynamic> rowItems = rawRows is List<dynamic> ? rawRows : const <dynamic>[];
+    final List<dynamic> rowItems = rawRows is List<dynamic>
+        ? rawRows
+        : const <dynamic>[];
 
     return RateReview(
       ok: json['ok'] as bool? ?? false,

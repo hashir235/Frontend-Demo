@@ -88,7 +88,8 @@ class _ArchRectPainter extends CustomPainter {
       color: highlightColor,
     );
 
-    final String normalizedSection = selectedSection?.trim().toUpperCase() ?? '';
+    final String normalizedSection =
+        selectedSection?.trim().toUpperCase() ?? '';
     final bool onlyHighlightedSymbols = normalizedSection.isNotEmpty;
     final bool highlightD41 = normalizedSection == 'D41';
     final bool highlightD51F = normalizedSection == 'D51F';
@@ -210,27 +211,26 @@ class _ArchRectPainter extends CustomPainter {
     drawLabel(
       'WT',
       Offset(outerRect.center.dx, outerRect.top - size.height * 0.08),
-      highlight: (highlightD51F && _showOuterTop) ||
-          (highlightD51A && singleInnerTop),
+      highlight:
+          (highlightD51F && _showOuterTop) || (highlightD51A && singleInnerTop),
     );
     drawLabel(
       'WL',
       Offset(outerRect.left - size.width * 0.08, outerRect.center.dy),
-      highlight: (highlightD51F && _showOuterLeft) ||
+      highlight:
+          (highlightD51F && _showOuterLeft) ||
           (highlightD51A && singleInnerLeft),
     );
     drawLabel(
       'WR',
       Offset(outerRect.right + size.width * 0.08, outerRect.center.dy),
-      highlight: (highlightD51F && _showOuterRight) ||
+      highlight:
+          (highlightD51F && _showOuterRight) ||
           (highlightD51A && singleInnerRight),
     );
     drawLabel(
       'WB',
-      Offset(
-        outerRect.center.dx,
-        outerRect.bottom + size.height * 0.075,
-      ),
+      Offset(outerRect.center.dx, outerRect.bottom + size.height * 0.075),
       highlight: highlightD51A && singleInnerBottom,
     );
 
@@ -241,10 +241,7 @@ class _ArchRectPainter extends CustomPainter {
     );
     drawLabel(
       'W',
-      Offset(
-        innerRect.center.dx,
-        innerRect.bottom - size.height * 0.035,
-      ),
+      Offset(innerRect.center.dx, innerRect.bottom - size.height * 0.035),
       highlight: highlightD41,
     );
     drawLabel(
@@ -254,10 +251,7 @@ class _ArchRectPainter extends CustomPainter {
     );
     drawLabel(
       'H',
-      Offset(
-        innerRect.right - size.width * 0.045,
-        innerRect.center.dy,
-      ),
+      Offset(innerRect.right - size.width * 0.045, innerRect.center.dy),
       highlight: highlightD41,
     );
   }

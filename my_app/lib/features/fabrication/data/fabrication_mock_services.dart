@@ -6,6 +6,28 @@ import '../../estimation/models/cutting_report.dart';
 import '../../estimation/models/rate_review.dart';
 import '../../estimation/models/window_review_item.dart';
 
+String _trimFixed(double value, int decimals) {
+  String text = value.toStringAsFixed(decimals);
+  if (text.contains('.')) {
+    text = text
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+  }
+  return text;
+}
+
+String _formatFeetInches(double feet) {
+  final double totalInches = feet * 12;
+  int feetPart = totalInches ~/ 12;
+  double inchPart = totalInches - (feetPart * 12);
+  inchPart = (inchPart * 10).round() / 10;
+  if (inchPart >= 12) {
+    feetPart += 1;
+    inchPart = 0;
+  }
+  return "$feetPart' ${_trimFixed(inchPart, 1)}\"";
+}
+
 class FabricationMockOptimizationRepository extends OptimizationRepository {
   @override
   Future<CuttingReport> fetchLengthOptimization(
@@ -132,11 +154,31 @@ class FabricationMockRateReviewApiClient extends RateReviewApiClient {
       errors: const <String>[],
       gauge: gauge,
       color: color,
-      rows: const <RateReviewRow>[
-        RateReviewRow(section: 'WT', totalFt: 42.0, rate: 510.0),
-        RateReviewRow(section: 'WB', totalFt: 38.5, rate: 500.0),
-        RateReviewRow(section: 'HL', totalFt: 36.0, rate: 495.0),
-        RateReviewRow(section: 'HR', totalFt: 36.0, rate: 495.0),
+      rows: <RateReviewRow>[
+        RateReviewRow(
+          section: 'WT',
+          totalFt: 42.0,
+          totalFtDisplay: _formatFeetInches(42.0),
+          rate: 510.0,
+        ),
+        RateReviewRow(
+          section: 'WB',
+          totalFt: 38.5,
+          totalFtDisplay: _formatFeetInches(38.5),
+          rate: 500.0,
+        ),
+        RateReviewRow(
+          section: 'HL',
+          totalFt: 36.0,
+          totalFtDisplay: _formatFeetInches(36.0),
+          rate: 495.0,
+        ),
+        RateReviewRow(
+          section: 'HR',
+          totalFt: 36.0,
+          totalFtDisplay: _formatFeetInches(36.0),
+          rate: 495.0,
+        ),
       ],
     );
   }
@@ -151,40 +193,72 @@ class FabricationMockCostTableApiClient extends CostTableApiClient {
     List<RateOverrideInput> overrides = const <RateOverrideInput>[],
     String context = 'estimation',
   }) async {
-    const List<CostTableRow> baseRows = <CostTableRow>[
+    final List<CostTableRow> baseRows = <CostTableRow>[
       CostTableRow(
         section: 'WT',
         totalFt: 42.0,
+        totalFtDisplay: _formatFeetInches(42.0),
         rate: 510.0,
         totalPrice: 21420.0,
         lengths: <CostTableLength>[
-          CostTableLength(lengthFt: 12.0, quantity: 2),
-          CostTableLength(lengthFt: 9.0, quantity: 2),
+          CostTableLength(
+            lengthFt: 12.0,
+            lengthDisplay: _formatFeetInches(12.0),
+            quantity: 2,
+          ),
+          CostTableLength(
+            lengthFt: 9.0,
+            lengthDisplay: _formatFeetInches(9.0),
+            quantity: 2,
+          ),
         ],
       ),
       CostTableRow(
         section: 'WB',
         totalFt: 38.5,
+        totalFtDisplay: _formatFeetInches(38.5),
         rate: 500.0,
         totalPrice: 19250.0,
         lengths: <CostTableLength>[
-          CostTableLength(lengthFt: 10.0, quantity: 2),
-          CostTableLength(lengthFt: 9.25, quantity: 2),
+          CostTableLength(
+            lengthFt: 10.0,
+            lengthDisplay: _formatFeetInches(10.0),
+            quantity: 2,
+          ),
+          CostTableLength(
+            lengthFt: 9.25,
+            lengthDisplay: _formatFeetInches(9.25),
+            quantity: 2,
+          ),
         ],
       ),
       CostTableRow(
         section: 'HL',
         totalFt: 36.0,
+        totalFtDisplay: _formatFeetInches(36.0),
         rate: 495.0,
         totalPrice: 17820.0,
-        lengths: <CostTableLength>[CostTableLength(lengthFt: 9.0, quantity: 4)],
+        lengths: <CostTableLength>[
+          CostTableLength(
+            lengthFt: 9.0,
+            lengthDisplay: _formatFeetInches(9.0),
+            quantity: 4,
+          ),
+        ],
       ),
       CostTableRow(
         section: 'HR',
         totalFt: 36.0,
+        totalFtDisplay: _formatFeetInches(36.0),
         rate: 495.0,
         totalPrice: 17820.0,
-        lengths: <CostTableLength>[CostTableLength(lengthFt: 9.0, quantity: 4)],
+        lengths: <CostTableLength>[
+          CostTableLength(
+            lengthFt: 9.0,
+            lengthDisplay: _formatFeetInches(9.0),
+            quantity: 4,
+          ),
+        ],
       ),
     ];
 
@@ -199,6 +273,7 @@ class FabricationMockCostTableApiClient extends CostTableApiClient {
           return CostTableRow(
             section: row.section,
             totalFt: row.totalFt,
+            totalFtDisplay: row.totalFtDisplay,
             rate: rate,
             totalPrice: row.totalFt * rate,
             lengths: row.lengths,

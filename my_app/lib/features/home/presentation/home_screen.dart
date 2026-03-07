@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_hero_header.dart';
+import '../../../shared/widgets/app_screen_shell.dart';
+import '../../../shared/widgets/metric_card.dart';
 import '../../../shared/widgets/primary_card_button.dart';
+import '../../../shared/widgets/section_surface_card.dart';
 import '../../estimation/presentation/estimation_menu_screen.dart';
 import '../../fabrication/presentation/fabrication_menu_screen.dart';
 import '../../settings/presentation/settings_home_screen.dart';
@@ -12,127 +17,104 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(title: const Text('Dashboard'), centerTitle: true),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppTheme.ice, AppTheme.mist],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Stack(
-          children: [
-            const _GlowCircle(
-              alignment: Alignment(-1.1, -1.2),
-              size: 220,
-              color: AppTheme.sky,
-            ),
-            const _GlowCircle(
-              alignment: Alignment(1.1, -0.6),
-              size: 180,
-              color: AppTheme.violet,
-            ),
-            const _GlowCircle(
-              alignment: Alignment(0.8, 1.1),
-              size: 240,
-              color: AppTheme.ice,
-            ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome back',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Choose a module to continue',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 24),
-                    Expanded(
-                      child: ListView(
-                        children: [
-                          PrimaryCardButton(
-                            icon: Icons.calculate_outlined,
-                            title: 'Estimation',
-                            subtitle: 'Create cost & material estimates',
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const EstimationMenuScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 18),
-                          PrimaryCardButton(
-                            icon: Icons.construction_outlined,
-                            title: 'Fabrication',
-                            subtitle: 'Production & cutting details',
-                            accent: AppTheme.sky,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const FabricationMenuScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 18),
-                          PrimaryCardButton(
-                            icon: Icons.settings_outlined,
-                            title: 'Settings',
-                            subtitle: 'App & system configuration',
-                            accent: AppTheme.slate,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+      appBar: AppBar(title: const Text('Quick Aluminium')),
+      body: AppScreenShell(
+        child: ListView(
+          children: <Widget>[
+            AppHeroHeader(
+              eyebrow: 'QUICK ALUMINIUM',
+              title: 'Premium estimation and fabrication workspace',
+              subtitle:
+                  'A refined business tool for aluminium windows, fabrication operations, and project settings.',
+              trailing: Container(
+                width: 86,
+                height: 86,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.brandGradient,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                ),
+                child: const Icon(
+                  Icons.precision_manufacturing_rounded,
+                  color: Colors.white,
+                  size: 42,
                 ),
               ),
             ),
+            const SizedBox(height: AppTheme.space6),
+            SectionSurfaceCard(
+              title: 'Workspace',
+              subtitle:
+                  'Choose the module that matches the current project phase.',
+              child: Column(
+                children: <Widget>[
+                  PrimaryCardButton(
+                    icon: Icons.calculate_rounded,
+                    title: 'Estimation',
+                    subtitle:
+                        'Window selection, review flow, optimization, rates, material table, and billing.',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const EstimationMenuScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: AppTheme.space5),
+                  PrimaryCardButton(
+                    icon: Icons.construction_rounded,
+                    title: 'Fabrication',
+                    subtitle:
+                        'Production-ready windows, cutting workflow, glass reporting, and fabrication outputs.',
+                    accent: AppTheme.tealAccent,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const FabricationMenuScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: AppTheme.space5),
+                  PrimaryCardButton(
+                    icon: Icons.settings_suggest_rounded,
+                    title: 'Settings',
+                    subtitle:
+                        'General, estimation, and fabrication configuration with structured controls.',
+                    accent: AppTheme.amberAccent,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppTheme.space6),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: MetricCard(
+                    label: 'Modern visual system',
+                    value: '2026',
+                    icon: Icons.auto_awesome_rounded,
+                  ),
+                ),
+                const SizedBox(width: AppTheme.space4),
+                Expanded(
+                  child: MetricCard(
+                    label: 'Modules',
+                    value: '3',
+                    icon: Icons.dashboard_customize_rounded,
+                    accent: AppTheme.tealAccent,
+                  ),
+                ),
+              ],
+            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GlowCircle extends StatelessWidget {
-  final Alignment alignment;
-  final double size;
-  final Color color;
-
-  const _GlowCircle({
-    required this.alignment,
-    required this.size,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withValues(alpha: 0.2),
         ),
       ),
     );

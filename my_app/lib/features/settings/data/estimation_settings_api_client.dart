@@ -24,13 +24,11 @@ class EstimationSettingsApiClient {
   final http.Client _httpClient;
   final Uri _endpointUri;
 
-  EstimationSettingsApiClient({
-    http.Client? httpClient,
-    String? baseUrl,
-  }) : _httpClient = httpClient ?? http.Client(),
-       _endpointUri = Uri.parse(
-         '${baseUrl ?? _defaultBaseUrl()}/api/settings/estimation',
-       );
+  EstimationSettingsApiClient({http.Client? httpClient, String? baseUrl})
+    : _httpClient = httpClient ?? http.Client(),
+      _endpointUri = Uri.parse(
+        '${baseUrl ?? _defaultBaseUrl()}/api/settings/estimation',
+      );
 
   Future<EstimationSettingsModel> fetchEstimationSettings() async {
     late final http.Response response;
@@ -69,9 +67,7 @@ class EstimationSettingsApiClient {
     try {
       response = await _httpClient.post(
         _endpointUri,
-        headers: const <String, String>{
-          'Content-Type': 'application/json',
-        },
+        headers: const <String, String>{'Content-Type': 'application/json'},
         body: jsonEncode(settings.toJson()),
       );
     } on Exception catch (error) {

@@ -3,10 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/window_review_item.dart';
 import '../../settings/state/numbering_mode.dart';
 
-enum EstimateFlow {
-  estimation,
-  fabrication,
-}
+enum EstimateFlow { estimation, fabrication }
 
 class EstimateSessionStore extends ChangeNotifier {
   final String? projectId;

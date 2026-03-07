@@ -175,8 +175,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       _maxExtraPiecesController.text = settings.maxExtraPieces.toString();
-      _redZone1Controller.text = _formatNumber(settings.redZone1);
-      _redZone2Controller.text = _formatNumber(settings.redZone2);
+      _redZone1Controller.text = _formatNumber(settings.redZoneEven);
+      _redZone2Controller.text = _formatNumber(settings.redZoneOdd);
       _enforceMaxExtraPieces = settings.enforceMaxExtraPieces;
 
       final Set<String> activeKeys = settings.sectionLengths.keys.toSet();
@@ -402,8 +402,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               cuttingMargins: cuttingMargins,
               maxExtraPieces: int.parse(_maxExtraPiecesController.text.trim()),
               enforceMaxExtraPieces: _enforceMaxExtraPieces,
-              redZone1: double.parse(_redZone1Controller.text.trim()),
-              redZone2: double.parse(_redZone2Controller.text.trim()),
+              redZoneEven: double.parse(_redZone1Controller.text.trim()),
+              redZoneOdd: double.parse(_redZone2Controller.text.trim()),
             ),
           );
 
@@ -412,8 +412,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       _maxExtraPiecesController.text = saved.maxExtraPieces.toString();
-      _redZone1Controller.text = _formatNumber(saved.redZone1);
-      _redZone2Controller.text = _formatNumber(saved.redZone2);
+      _redZone1Controller.text = _formatNumber(saved.redZoneEven);
+      _redZone2Controller.text = _formatNumber(saved.redZoneOdd);
       _enforceMaxExtraPieces = saved.enforceMaxExtraPieces;
 
       for (final MapEntry<String, List<int>> entry
@@ -551,13 +551,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       text,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
         color: AppTheme.deepTeal.withValues(alpha: 0.7),
+        height: 1.35,
       ),
     );
   }
 
   Widget _buildEstimationSubheading(BuildContext context, String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 10),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -568,233 +569,386 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('General Settings'), centerTitle: true),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[AppTheme.ice, AppTheme.mist],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+  Widget _buildPageHero(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          colors: <Color>[
+            Colors.white.withValues(alpha: 0.96),
+            AppTheme.ice.withValues(alpha: 0.92),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-            children: <Widget>[
-              _buildSectionTitle(context, 'Window Numbering'),
-              const SizedBox(height: 8),
-              _buildSectionSubtitle(
-                context,
-                'Choose how window numbers are assigned in Estimation.',
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: AppTheme.violet.withValues(alpha: 0.12),
+            blurRadius: 26,
+            offset: const Offset(0, 14),
+          ),
+        ],
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.violet.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              'System Controls',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: AppTheme.violet,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
               ),
-              const SizedBox(height: 18),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Settings',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: AppTheme.deepTeal,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _buildSectionSubtitle(
+            context,
+            'Manage numbering, company information, estimation rules, and fabrication margins from one place.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: AppTheme.violet.withValues(alpha: 0.10),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.violet.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: AppTheme.violet),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    _buildSectionTitle(context, title),
+                    const SizedBox(height: 6),
+                    _buildSectionSubtitle(context, subtitle),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsCluster(
+    BuildContext context, {
+    required String title,
+    String? subtitle,
+    required List<Widget> children,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.ice.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _buildEstimationSubheading(context, title),
+          if (subtitle != null) ...<Widget>[
+            _buildSectionSubtitle(context, subtitle),
+            const SizedBox(height: 12),
+          ],
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(
+    BuildContext context,
+    String message,
+    VoidCallback onRetry,
+  ) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.red.shade800,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Retry Load'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingCard() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 28),
+      child: Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  Widget _buildWindowNumberingCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.pin_outlined,
+      title: 'Window Numbering',
+      subtitle: 'Choose how new windows receive numbers in Estimation.',
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.ice.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
+        ),
+        child: RadioGroup<NumberingMode>(
+          groupValue: _mode,
+          onChanged: (NumberingMode? value) {
+            if (value != null) {
+              _updateMode(value);
+            }
+          },
+          child: Column(
+            children: const <Widget>[
               RadioListTile<NumberingMode>(
                 value: NumberingMode.auto,
-                groupValue: _mode,
-                title: const Text('Auto (default)'),
-                subtitle: const Text(
+                title: Text('Auto (default)'),
+                subtitle: Text(
                   'Automatically increments window numbers for each new entry.',
                 ),
-                onChanged: (NumberingMode? value) {
-                  if (value != null) {
-                    _updateMode(value);
-                  }
-                },
               ),
+              Divider(height: 1),
               RadioListTile<NumberingMode>(
                 value: NumberingMode.manual,
-                groupValue: _mode,
-                title: const Text('Manual'),
-                subtitle: const Text(
+                title: Text('Manual'),
+                subtitle: Text(
                   'User must enter a window number before height/width.',
                 ),
-                onChanged: (NumberingMode? value) {
-                  if (value != null) {
-                    _updateMode(value);
-                  }
-                },
               ),
-              const SizedBox(height: 28),
-              _buildSectionTitle(context, 'Company Information'),
-              const SizedBox(height: 8),
-              _buildSectionSubtitle(
-                context,
-                'These values are auto-filled in billing.',
-              ),
-              const SizedBox(height: 18),
-              if (_isLoadingBillingSettings)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else
-                Form(
-                  key: _billingFormKey,
-                  child: Column(
-                    children: <Widget>[
-                      if (_billingSettingsError != null) ...<Widget>[
-                        Text(
-                          _billingSettingsError!,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Colors.red.shade700,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: OutlinedButton.icon(
-                            onPressed: _loadBillingSettings,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Retry Load'),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      TextFormField(
-                        controller: _contractorController,
-                        inputFormatters: <TextInputFormatter>[
-                          LengthLimitingTextInputFormatter(80),
-                        ],
-                        decoration: _inputDecoration('Contractor Name'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _workshopController,
-                        inputFormatters: <TextInputFormatter>[
-                          LengthLimitingTextInputFormatter(80),
-                        ],
-                        decoration: _inputDecoration('Workshop / Company Name'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _addressController,
-                        maxLines: 2,
-                        inputFormatters: <TextInputFormatter>[
-                          LengthLimitingTextInputFormatter(200),
-                        ],
-                        decoration: _inputDecoration('Address'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: <TextInputFormatter>[
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(15),
-                        ],
-                        validator: _phoneValidator,
-                        decoration: _inputDecoration(
-                          'Workshop / Company Phone',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: _isSavingBillingSettings
-                              ? null
-                              : _saveBillingSettings,
-                          child: Text(
-                            _isSavingBillingSettings
-                                ? 'Saving...'
-                                : 'Save Settings',
-                          ),
-                        ),
-                      ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompanyInformationCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.apartment_rounded,
+      title: 'Company Information',
+      subtitle: 'These values are loaded automatically into the billing flow.',
+      child: _isLoadingBillingSettings
+          ? _buildLoadingCard()
+          : Form(
+              key: _billingFormKey,
+              child: Column(
+                children: <Widget>[
+                  if (_billingSettingsError != null)
+                    _buildErrorBanner(
+                      context,
+                      _billingSettingsError!,
+                      _loadBillingSettings,
+                    ),
+                  TextFormField(
+                    controller: _contractorController,
+                    inputFormatters: <TextInputFormatter>[
+                      LengthLimitingTextInputFormatter(80),
                     ],
+                    decoration: _inputDecoration('Contractor Name'),
                   ),
-                ),
-              const SizedBox(height: 32),
-              _buildSectionTitle(context, 'Estimation Settings'),
-              const SizedBox(height: 8),
-              _buildSectionSubtitle(
-                context,
-                'Manage assigned section lengths and optimization limits.',
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _workshopController,
+                    inputFormatters: <TextInputFormatter>[
+                      LengthLimitingTextInputFormatter(80),
+                    ],
+                    decoration: _inputDecoration('Workshop / Company Name'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _addressController,
+                    maxLines: 2,
+                    inputFormatters: <TextInputFormatter>[
+                      LengthLimitingTextInputFormatter(200),
+                    ],
+                    decoration: _inputDecoration('Address'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(15),
+                    ],
+                    validator: _phoneValidator,
+                    decoration: _inputDecoration('Workshop / Company Phone'),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _isSavingBillingSettings
+                          ? null
+                          : _saveBillingSettings,
+                      child: Text(
+                        _isSavingBillingSettings
+                            ? 'Saving...'
+                            : 'Save Settings',
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 18),
-              if (_isLoadingEstimationSettings)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else
-                Form(
-                  key: _estimationFormKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      if (_estimationSettingsError != null) ...<Widget>[
-                        Text(
-                          _estimationSettingsError!,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Colors.red.shade700,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: OutlinedButton.icon(
-                            onPressed: _loadEstimationSettings,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Retry Load'),
-                          ),
-                        ),
-                      ],
-                      _buildEstimationSubheading(
-                        context,
-                        'Assigned Lengths for Section',
-                      ),
-                      _buildSectionSubtitle(
-                        context,
+            ),
+    );
+  }
+
+  Widget _buildEstimationSettingsCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.tune_rounded,
+      title: 'Estimation Settings',
+      subtitle:
+          'Manage allowed lengths, cutting margins, and optimization thresholds.',
+      child: _isLoadingEstimationSettings
+          ? _buildLoadingCard()
+          : Form(
+              key: _estimationFormKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  if (_estimationSettingsError != null)
+                    _buildErrorBanner(
+                      context,
+                      _estimationSettingsError!,
+                      _loadEstimationSettings,
+                    ),
+                  _buildSettingsCluster(
+                    context,
+                    title: 'Assigned Lengths for Section',
+                    subtitle:
                         'Use comma-separated whole numbers, for example 14, 16, 18.',
-                      ),
-                      const SizedBox(height: 12),
-                      ..._sortedSectionKeys().map((String key) {
-                        final TextEditingController controller =
-                            _sectionLengthControllers[key]!;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: TextFormField(
-                            controller: controller,
-                            validator: _sectionLengthsValidator,
-                            decoration: _inputDecoration(key),
-                          ),
-                        );
-                      }),
-                      _buildEstimationSubheading(
-                        context,
-                        'Cutting Margin of Each Section',
-                      ),
-                      ..._sortedCuttingMarginKeys().map((String key) {
-                        final TextEditingController controller =
-                            _cuttingMarginControllers[key]!;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: TextFormField(
-                            controller: controller,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
+                    children: _sortedSectionKeys()
+                        .map((String key) {
+                          final TextEditingController controller =
+                              _sectionLengthControllers[key]!;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: TextFormField(
+                              controller: controller,
+                              validator: _sectionLengthsValidator,
+                              decoration: _inputDecoration(key),
                             ),
-                            validator: _requiredDecimalWithZeroValidator,
-                            decoration: _inputDecoration(key),
-                          ),
-                        );
-                      }),
-                      _buildEstimationSubheading(context, 'Red Zone Theory'),
+                          );
+                        })
+                        .toList(growable: false),
+                  ),
+                  _buildSettingsCluster(
+                    context,
+                    title: 'Cutting Margin of Each Section',
+                    subtitle:
+                        'These margins are applied per section during estimation calculations.',
+                    children: _sortedCuttingMarginKeys()
+                        .map((String key) {
+                          final TextEditingController controller =
+                              _cuttingMarginControllers[key]!;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: TextFormField(
+                              controller: controller,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              validator: _requiredDecimalWithZeroValidator,
+                              decoration: _inputDecoration(key),
+                            ),
+                          );
+                        })
+                        .toList(growable: false),
+                  ),
+                  _buildSettingsCluster(
+                    context,
+                    title: 'Red Zone Thresholds',
+                    subtitle:
+                        'These thresholds control when the optimizer may keep a custom extra piece before rounding up to the smallest stock length.',
+                    children: <Widget>[
                       TextFormField(
                         controller: _redZone1Controller,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
                         validator: _requiredDecimalValidator,
-                        decoration: _inputDecoration('Red Zone 1'),
+                        decoration: _inputDecoration(
+                          'RedZoneEven',
+                          hint: 'Even groups: 14, 16, 18',
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -803,12 +957,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           decimal: true,
                         ),
                         validator: _requiredDecimalValidator,
-                        decoration: _inputDecoration('Red Zone 2'),
+                        decoration: _inputDecoration(
+                          'RedZoneOdd',
+                          hint: 'Odd groups: 15, 17, 19',
+                        ),
                       ),
-                      _buildEstimationSubheading(
-                        context,
-                        'Extra Pieces Allowance',
-                      ),
+                    ],
+                  ),
+                  _buildSettingsCluster(
+                    context,
+                    title: 'Extra Pieces Allowance',
+                    subtitle:
+                        'Control how many extra leftover pieces may remain when strict enforcement is enabled.',
+                    children: <Widget>[
                       TextFormField(
                         controller: _maxExtraPiecesController,
                         keyboardType: TextInputType.number,
@@ -832,71 +993,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           });
                         },
                       ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: _isSavingEstimationSettings
-                              ? null
-                              : _saveEstimationSettings,
-                          child: Text(
-                            _isSavingEstimationSettings
-                                ? 'Saving...'
-                                : 'Save Estimation Settings',
-                          ),
-                        ),
-                      ),
                     ],
                   ),
-                ),
-              const SizedBox(height: 32),
-              _buildSectionTitle(context, 'Fabrication Settings'),
-              const SizedBox(height: 8),
-              _buildSectionSubtitle(
-                context,
-                'Manage fabrication cutting margin used in fabrication optimization and reports.',
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _isSavingEstimationSettings
+                          ? null
+                          : _saveEstimationSettings,
+                      child: Text(
+                        _isSavingEstimationSettings
+                            ? 'Saving...'
+                            : 'Save Estimation Settings',
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 18),
-              if (_isLoadingFabricationSettings)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else
-                Form(
-                  key: _fabricationFormKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+    );
+  }
+
+  Widget _buildFabricationSettingsCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.construction_rounded,
+      title: 'Fabrication Settings',
+      subtitle:
+          'Manage the fabrication cutting margin used in fabrication optimization and reports.',
+      child: _isLoadingFabricationSettings
+          ? _buildLoadingCard()
+          : Form(
+              key: _fabricationFormKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  if (_fabricationSettingsError != null)
+                    _buildErrorBanner(
+                      context,
+                      _fabricationSettingsError!,
+                      _loadFabricationSettings,
+                    ),
+                  _buildSettingsCluster(
+                    context,
+                    title: 'Fabrication Cutting Margin',
+                    subtitle: 'This value is in cm. Current default is 1.2.',
                     children: <Widget>[
-                      if (_fabricationSettingsError != null) ...<Widget>[
-                        Text(
-                          _fabricationSettingsError!,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Colors.red.shade700,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: OutlinedButton.icon(
-                            onPressed: _loadFabricationSettings,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Retry Load'),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      _buildEstimationSubheading(
-                        context,
-                        'Fabrication Cutting Margin',
-                      ),
-                      _buildSectionSubtitle(
-                        context,
-                        'This value is in cm. Current default is 1.2.',
-                      ),
-                      const SizedBox(height: 12),
                       TextFormField(
                         controller: _fabricationCuttingMarginController,
                         keyboardType: const TextInputType.numberWithOptions(
@@ -911,23 +1054,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           hint: '1.2',
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: _isSavingFabricationSettings
-                              ? null
-                              : _saveFabricationSettings,
-                          child: Text(
-                            _isSavingFabricationSettings
-                                ? 'Saving...'
-                                : 'Save Fabrication Settings',
-                          ),
-                        ),
-                      ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _isSavingFabricationSettings
+                          ? null
+                          : _saveFabricationSettings,
+                      child: Text(
+                        _isSavingFabricationSettings
+                            ? 'Saving...'
+                            : 'Save Fabrication Settings',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('General Settings'), centerTitle: true),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: <Color>[AppTheme.ice, AppTheme.mist],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+            children: <Widget>[
+              _buildPageHero(context),
+              const SizedBox(height: 20),
+              _buildWindowNumberingCard(context),
+              const SizedBox(height: 20),
+              _buildCompanyInformationCard(context),
+              const SizedBox(height: 20),
+              _buildEstimationSettingsCard(context),
+              const SizedBox(height: 20),
+              _buildFabricationSettingsCard(context),
             ],
           ),
         ),

@@ -61,7 +61,8 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       fontSize: 11,
       fontWeight: FontWeight.w700,
     );
-    final String normalizedSection = selectedSection?.trim().toUpperCase() ?? '';
+    final String normalizedSection =
+        selectedSection?.trim().toUpperCase() ?? '';
     final bool onlyHighlightedSymbols = normalizedSection.isNotEmpty;
 
     // Tune these 4 numbers for quick visual adjustments.
@@ -85,7 +86,10 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
     final double wingLen = math.min(maxLenByWidth, maxLenByHeight);
 
     // These factors make shape close to your sketch and easy to tweak.
-    final Offset topApex = Offset(frame.center.dx, frame.top + frame.height * 0.30);
+    final Offset topApex = Offset(
+      frame.center.dx,
+      frame.top + frame.height * 0.30,
+    );
     final Offset bottomApex = Offset(
       frame.center.dx,
       frame.bottom - frame.height * 0.14,
@@ -185,14 +189,16 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
     final Offset leftSideTop = topLeftOuter - (leftSideDir * sideExtend);
     final Offset leftSideBottom = bottomLeftOuter + (leftSideDir * sideExtend);
     final Offset rightSideTop = topRightOuter - (rightSideDir * sideExtend);
-    final Offset rightSideBottom = bottomRightOuter + (rightSideDir * sideExtend);
+    final Offset rightSideBottom =
+        bottomRightOuter + (rightSideDir * sideExtend);
 
     Offset nLeftSide = outwardNormal(topLeftOuter, bottomLeftOuter);
     if (nLeftSide.dx > 0) nLeftSide = nLeftSide * -1;
     Offset nRightSide = outwardNormal(topRightOuter, bottomRightOuter);
     if (nRightSide.dx < 0) nRightSide = nRightSide * -1;
 
-    final Offset leftSideParallelTop = leftSideTop + (nLeftSide * sideParallelOffset);
+    final Offset leftSideParallelTop =
+        leftSideTop + (nLeftSide * sideParallelOffset);
     final Offset leftSideParallelBottom =
         leftSideBottom + (nLeftSide * sideParallelOffset);
     final Offset rightSideParallelTop =
@@ -207,11 +213,14 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
     Offset nBottomRight = outwardNormal(bottomApex, bottomRightOuter);
     if (nBottomRight.dy < 0) nBottomRight = nBottomRight * -1;
 
-    final Offset bottomLeftLower = bottomLeftOuter + (nBottomLeft * bottomOffset);
+    final Offset bottomLeftLower =
+        bottomLeftOuter + (nBottomLeft * bottomOffset);
     final Offset bottomRightLower =
         bottomRightOuter + (nBottomRight * bottomOffset);
-    final Offset leftShiftBottomApex = bottomApex + (nBottomLeft * bottomOffset);
-    final Offset rightShiftBottomApex = bottomApex + (nBottomRight * bottomOffset);
+    final Offset leftShiftBottomApex =
+        bottomApex + (nBottomLeft * bottomOffset);
+    final Offset rightShiftBottomApex =
+        bottomApex + (nBottomRight * bottomOffset);
     final Offset bottomApexLower = lineIntersection(
       bottomLeftLower,
       leftShiftBottomApex,
@@ -333,17 +342,29 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
             windowCode == 'SCR_win') &&
         (collarId == 1 || collarId == 2);
     final bool highlightDc30F =
-        isScCornerSectionCollar && collarId == 1 && normalizedSection == 'DC30F';
+        isScCornerSectionCollar &&
+        collarId == 1 &&
+        normalizedSection == 'DC30F';
     final bool highlightDc26F =
-        isScCornerSectionCollar && collarId == 1 && normalizedSection == 'DC26F';
+        isScCornerSectionCollar &&
+        collarId == 1 &&
+        normalizedSection == 'DC26F';
     final bool highlightDc30C =
-        isScCornerSectionCollar && collarId == 2 && normalizedSection == 'DC30C';
+        isScCornerSectionCollar &&
+        collarId == 2 &&
+        normalizedSection == 'DC30C';
     final bool highlightDc26C =
-        isScCornerSectionCollar && collarId == 2 && normalizedSection == 'DC26C';
-    final bool highlightD29 = isScCornerSectionCollar && normalizedSection == 'D29';
-    final bool highlightM23 = isScCornerSectionCollar && normalizedSection == 'M23';
-    final bool highlightM28 = isScCornerSectionCollar && normalizedSection == 'M28';
-    final bool highlightM24 = isScCornerSectionCollar && normalizedSection == 'M24';
+        isScCornerSectionCollar &&
+        collarId == 2 &&
+        normalizedSection == 'DC26C';
+    final bool highlightD29 =
+        isScCornerSectionCollar && normalizedSection == 'D29';
+    final bool highlightM23 =
+        isScCornerSectionCollar && normalizedSection == 'M23';
+    final bool highlightM28 =
+        isScCornerSectionCollar && normalizedSection == 'M28';
+    final bool highlightM24 =
+        isScCornerSectionCollar && normalizedSection == 'M24';
     if (!isSclCollar && !isFcCollar) {
       canvas.drawLine(leftInnerTop, leftInnerBottom, basePaint);
     }
@@ -561,10 +582,8 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       final double rightPanelX = size.width * 0.006;
       final double topInnerY = size.height * 0.048;
       final double bottomInnerY = size.height * 0.036;
-      final bool highlightFcD54F =
-          collarId == 1 && normalizedSection == 'D54F';
-      final bool highlightFcD54A =
-          collarId == 2 && normalizedSection == 'D54A';
+      final bool highlightFcD54F = collarId == 1 && normalizedSection == 'D54F';
+      final bool highlightFcD54A = collarId == 2 && normalizedSection == 'D54A';
       final bool highlightFcD41 = normalizedSection == 'D41';
       final bool highlightAllVisibleLines =
           highlightFcD54F || highlightFcD54A || highlightFcD41;
@@ -584,7 +603,11 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
         canvas.drawLine(topLeftUpperJoin, topApexUpper, highlightPaint);
         canvas.drawLine(topApexUpper, topRightUpperJoin, highlightPaint);
         canvas.drawLine(topLeftUpperJoin, bottomLeftLowerJoin, highlightPaint);
-        canvas.drawLine(topRightUpperJoin, bottomRightLowerJoin, highlightPaint);
+        canvas.drawLine(
+          topRightUpperJoin,
+          bottomRightLowerJoin,
+          highlightPaint,
+        );
         canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, highlightPaint);
         canvas.drawLine(bottomApexLower, bottomRightLowerJoin, highlightPaint);
 
@@ -713,8 +736,16 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
         // Left/right outer + inner verticals.
         canvas.drawLine(leftSideTop, leftSideBottom, highlightPaint);
         canvas.drawLine(rightSideTop, rightSideBottom, highlightPaint);
-        canvas.drawLine(leftSideParallelTop, leftSideParallelBottom, highlightPaint);
-        canvas.drawLine(rightSideParallelTop, rightSideParallelBottom, highlightPaint);
+        canvas.drawLine(
+          leftSideParallelTop,
+          leftSideParallelBottom,
+          highlightPaint,
+        );
+        canvas.drawLine(
+          rightSideParallelTop,
+          rightSideParallelBottom,
+          highlightPaint,
+        );
 
         // Corner small links.
         canvas.drawLine(topLeftOuter, topLeftUpperJoin, highlightPaint);
@@ -757,7 +788,11 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
         canvas.drawLine(topLeftUpperJoin, topApexUpper, highlightPaint);
         canvas.drawLine(topApexUpper, topRightUpperJoin, highlightPaint);
         canvas.drawLine(topLeftUpperJoin, bottomLeftLowerJoin, highlightPaint);
-        canvas.drawLine(topRightUpperJoin, bottomRightLowerJoin, highlightPaint);
+        canvas.drawLine(
+          topRightUpperJoin,
+          bottomRightLowerJoin,
+          highlightPaint,
+        );
 
         drawLabel(
           'WT_L',
@@ -845,11 +880,7 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
               highlightPaint,
             );
           } else {
-            canvas.drawLine(
-              leftSideTop,
-              leftSideBottom,
-              highlightPaint,
-            );
+            canvas.drawLine(leftSideTop, leftSideBottom, highlightPaint);
           }
         }
         if (allowRightD29) {
@@ -860,11 +891,7 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
               highlightPaint,
             );
           } else {
-            canvas.drawLine(
-              rightSideTop,
-              rightSideBottom,
-              highlightPaint,
-            );
+            canvas.drawLine(rightSideTop, rightSideBottom, highlightPaint);
           }
         }
 
@@ -936,7 +963,9 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
             'WR',
             mid(
                   rightInnerBottom,
-                  usesCollar2InnerFrame ? bottomRightLowerJoin : bottomRightBase,
+                  usesCollar2InnerFrame
+                      ? bottomRightLowerJoin
+                      : bottomRightBase,
                 ) +
                 Offset(rightPanelX, -bottomInnerY),
             color: accent,
@@ -945,7 +974,9 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
             'H',
             mid(
                   usesCollar2InnerFrame ? topRightUpperJoin : rightSideTop,
-                  usesCollar2InnerFrame ? bottomRightLowerJoin : rightSideBottom,
+                  usesCollar2InnerFrame
+                      ? bottomRightLowerJoin
+                      : rightSideBottom,
                 ) +
                 Offset(-size.width * 0.022, 0),
             color: accent,
@@ -1012,10 +1043,15 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
           // Only inner top/bottom rails for collar 2.
           if (isSclCollar) {
             canvas.drawLine(topLeftUpperJoin, topApexUpper, highlightPaint);
-            canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, highlightPaint);
+            canvas.drawLine(
+              bottomLeftLowerJoin,
+              bottomApexLower,
+              highlightPaint,
+            );
             drawLabel(
               'WL',
-              mid(topLeftUpperJoin, topApexUpper) + Offset(-leftPanelX, topInnerY),
+              mid(topLeftUpperJoin, topApexUpper) +
+                  Offset(-leftPanelX, topInnerY),
               color: accent,
             );
             drawLabel(
@@ -1026,7 +1062,11 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
             );
           } else if (allowLeftM24) {
             canvas.drawLine(topLeftUpperJoin, topApexUpper, highlightPaint);
-            canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, highlightPaint);
+            canvas.drawLine(
+              bottomLeftLowerJoin,
+              bottomApexLower,
+              highlightPaint,
+            );
             drawLabel(
               'WL',
               mid(topLeftUpperJoin, leftInnerTop) +
@@ -1053,7 +1093,11 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
           }
           if (isScrCollar) {
             canvas.drawLine(topApexUpper, topRightUpperJoin, highlightPaint);
-            canvas.drawLine(bottomApexLower, bottomRightLowerJoin, highlightPaint);
+            canvas.drawLine(
+              bottomApexLower,
+              bottomRightLowerJoin,
+              highlightPaint,
+            );
             drawLabel(
               'WR',
               mid(topApexUpper, topRightUpperJoin) +
@@ -1068,11 +1112,14 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
             );
           } else if (allowRightM24) {
             canvas.drawLine(topApexUpper, topRightUpperJoin, highlightPaint);
-            canvas.drawLine(bottomApexLower, bottomRightLowerJoin, highlightPaint);
+            canvas.drawLine(
+              bottomApexLower,
+              bottomRightLowerJoin,
+              highlightPaint,
+            );
             drawLabel(
               'WR',
-              mid(topApexUpper, rightInnerTop) +
-                  Offset(rightPanelX, topInnerY),
+              mid(topApexUpper, rightInnerTop) + Offset(rightPanelX, topInnerY),
               color: accent,
             );
             drawLabel(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'features/home/presentation/home_screen.dart';
+
 import 'core/theme/app_theme.dart';
+import 'features/home/presentation/home_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -8,7 +9,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Frontend Demo',
+      title: 'Quick Aluminium',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       home: const HomeScreen(),

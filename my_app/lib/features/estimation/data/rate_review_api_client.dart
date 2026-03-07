@@ -10,11 +10,7 @@ class RateReviewApiException implements Exception {
   final int? statusCode;
   final Object? detail;
 
-  const RateReviewApiException(
-    this.message, {
-    this.statusCode,
-    this.detail,
-  });
+  const RateReviewApiException(this.message, {this.statusCode, this.detail});
 
   @override
   String toString() => message;
@@ -24,13 +20,11 @@ class RateReviewApiClient {
   final http.Client _httpClient;
   final Uri _endpointUri;
 
-  RateReviewApiClient({
-    http.Client? httpClient,
-    String? baseUrl,
-  }) : _httpClient = httpClient ?? http.Client(),
-       _endpointUri = Uri.parse(
-         '${baseUrl ?? _defaultBaseUrl()}/api/rate-review',
-       );
+  RateReviewApiClient({http.Client? httpClient, String? baseUrl})
+    : _httpClient = httpClient ?? http.Client(),
+      _endpointUri = Uri.parse(
+        '${baseUrl ?? _defaultBaseUrl()}/api/rate-review',
+      );
 
   Future<RateReview> fetchRateReview({
     required String gauge,
@@ -42,9 +36,7 @@ class RateReviewApiClient {
     try {
       response = await _httpClient.post(
         _endpointUri,
-        headers: const <String, String>{
-          'Content-Type': 'application/json',
-        },
+        headers: const <String, String>{'Content-Type': 'application/json'},
         body: jsonEncode(<String, Object?>{
           'gauge': gauge,
           'color': color,
@@ -79,9 +71,7 @@ class RateReviewApiClient {
     }
 
     if (payload == null) {
-      throw const RateReviewApiException(
-        'Rate service returned invalid JSON.',
-      );
+      throw const RateReviewApiException('Rate service returned invalid JSON.');
     }
 
     final RateReview review = RateReview.fromJson(payload);

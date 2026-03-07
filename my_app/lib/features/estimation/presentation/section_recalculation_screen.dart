@@ -106,9 +106,8 @@ class _SectionRecalculationScreenState
     return report.sections.first;
   }
 
-  Future<bool> _handleWillPop() async {
+  void _handlePop() {
     Navigator.of(context).pop(_result);
-    return false;
   }
 
   List<CuttingReportCut> _flattenSourceCuts() {
@@ -185,8 +184,13 @@ class _SectionRecalculationScreenState
   Widget build(BuildContext context) {
     final CuttingReportSection? resultSection = _resultSection;
 
-    return WillPopScope(
-      onWillPop: _handleWillPop,
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) {
+          _handlePop();
+        }
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Re Calculation'),

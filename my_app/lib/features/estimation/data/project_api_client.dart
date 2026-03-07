@@ -11,11 +11,7 @@ class ProjectApiException implements Exception {
   final int? statusCode;
   final Object? detail;
 
-  const ProjectApiException(
-    this.message, {
-    this.statusCode,
-    this.detail,
-  });
+  const ProjectApiException(this.message, {this.statusCode, this.detail});
 
   @override
   String toString() => message;
@@ -25,11 +21,9 @@ class ProjectApiClient {
   final http.Client _httpClient;
   final String _baseUrl;
 
-  ProjectApiClient({
-    http.Client? httpClient,
-    String? baseUrl,
-  }) : _httpClient = httpClient ?? http.Client(),
-       _baseUrl = baseUrl ?? _defaultBaseUrl();
+  ProjectApiClient({http.Client? httpClient, String? baseUrl})
+    : _httpClient = httpClient ?? http.Client(),
+      _baseUrl = baseUrl ?? _defaultBaseUrl();
 
   Future<SavedProjectDetail> createProject({
     required String context,
@@ -61,8 +55,9 @@ class ProjectApiClient {
       unreachableMessage: 'Unable to reach local project service.',
       failureMessage: 'Recent projects load failed.',
     );
-    final List<dynamic> rawProjects =
-        payload['projects'] is List<dynamic> ? payload['projects'] as List<dynamic> : <dynamic>[];
+    final List<dynamic> rawProjects = payload['projects'] is List<dynamic>
+        ? payload['projects'] as List<dynamic>
+        : <dynamic>[];
     return rawProjects
         .whereType<Map<String, dynamic>>()
         .map(SavedProjectSummary.fromJson)
@@ -85,7 +80,9 @@ class ProjectApiClient {
     final Map<String, dynamic> payload = await _putJson(
       Uri.parse('$_baseUrl/api/projects/$projectId/windows'),
       <String, Object?>{
-        'windows': windows.map((WindowReviewItem item) => item.toJson()).toList(),
+        'windows': windows
+            .map((WindowReviewItem item) => item.toJson())
+            .toList(),
       },
       unreachableMessage: 'Unable to reach local project service.',
       failureMessage: 'Project save failed.',

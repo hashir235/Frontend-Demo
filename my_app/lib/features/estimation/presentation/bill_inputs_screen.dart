@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_hero_header.dart';
+import '../../../shared/widgets/app_screen_shell.dart';
+import '../../../shared/widgets/bottom_action_bar.dart';
+import '../../../shared/widgets/project_meta_strip.dart';
+import '../../../shared/widgets/section_surface_card.dart';
 import '../models/bill_request.dart';
 import 'actual_bill_screen.dart';
 
@@ -47,25 +52,19 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
 
   static final List<TextInputFormatter> _decimalInputFormatters =
       <TextInputFormatter>[
-    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
-  ];
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+      ];
   static final List<TextInputFormatter> _phoneInputFormatters =
       <TextInputFormatter>[
-    FilteringTextInputFormatter.digitsOnly,
-    LengthLimitingTextInputFormatter(15),
-  ];
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(15),
+      ];
   static final List<TextInputFormatter> _nameInputFormatters =
-      <TextInputFormatter>[
-    LengthLimitingTextInputFormatter(80),
-  ];
+      <TextInputFormatter>[LengthLimitingTextInputFormatter(80)];
   static final List<TextInputFormatter> _glassColorInputFormatters =
-      <TextInputFormatter>[
-    LengthLimitingTextInputFormatter(80),
-  ];
+      <TextInputFormatter>[LengthLimitingTextInputFormatter(80)];
   static final List<TextInputFormatter> _addressInputFormatters =
-      <TextInputFormatter>[
-    LengthLimitingTextInputFormatter(200),
-  ];
+      <TextInputFormatter>[LengthLimitingTextInputFormatter(200)];
 
   @override
   void dispose() {
@@ -185,9 +184,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (BuildContext context) => ActualBillScreen(
-          request: request,
-        ),
+        builder: (BuildContext context) => ActualBillScreen(request: request),
       ),
     );
   }
@@ -195,143 +192,112 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppTheme.mist, AppTheme.ice],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      appBar: AppBar(title: const Text('Bill Inputs')),
+      bottomNavigationBar: BottomActionBar(
+        children: <Widget>[
+          Expanded(
+            child: FilledButton(
+              onPressed: _handleNextPressed,
+              child: const Text('Next'),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Column(
+        ],
+      ),
+      body: AppScreenShell(
+        child: Form(
+          key: _formKey,
+          child: ListView(
             children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                child: Row(
+              const AppHeroHeader(
+                eyebrow: 'BILLING',
+                title: 'Enter billing inputs with a clean structured form',
+                subtitle:
+                    'Keep the rate inputs tight, optional details controlled, and move directly into the final bill.',
+              ),
+              const SizedBox(height: AppTheme.space5),
+              ProjectMetaStrip(
+                projectName: widget.projectName,
+                projectLocation: widget.projectLocation,
+                extras: <Widget>[
+                  _InfoChip(label: 'Gage', value: widget.gaugeLabel),
+                  _InfoChip(label: 'Colour', value: widget.colorLabel),
+                  _InfoChip(
+                    label: 'Aluminium',
+                    value: _formatAmount(widget.aluminiumTotal),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.space6),
+              SectionSurfaceCard(
+                title: 'Mandatory Fields',
+                subtitle:
+                    'These values drive the actual bill calculation and are required.',
+                child: Column(
                   children: <Widget>[
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      color: AppTheme.deepTeal,
+                    _buildNumberField(
+                      controller: _glassRateController,
+                      label: 'Glass Rate *',
+                      validator: _requiredNumberValidator,
                     ),
-                    Expanded(
-                      child: Text(
-                        'Bill Inputs',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineLarge
-                            ?.copyWith(fontSize: 30, height: 1),
-                      ),
+                    _buildNumberField(
+                      controller: _laborRateController,
+                      label: 'Labor Rate *',
+                      validator: _requiredNumberValidator,
                     ),
-                    const SizedBox(width: 48),
+                    _buildNumberField(
+                      controller: _hardwareRateController,
+                      label: 'Hardware Rate *',
+                      validator: _requiredNumberValidator,
+                    ),
+                    _buildNumberField(
+                      controller: _discountController,
+                      label: 'Aluminium Discount % *',
+                      validator: _discountValidator,
+                    ),
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
-                child: Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: AppTheme.sky.withValues(alpha: 0.65),
-                ),
-              ),
-              Expanded(
-                child: Form(
-                  key: _formKey,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: <Widget>[
-                            _InfoChip(label: 'Gage', value: widget.gaugeLabel),
-                            _InfoChip(label: 'Color', value: widget.colorLabel),
-                            _InfoChip(
-                              label: 'Aluminium',
-                              value: _formatAmount(widget.aluminiumTotal),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        _SectionLabel(text: '* Mandatory Fields'),
-                        const SizedBox(height: 10),
-                        _buildNumberField(
-                          controller: _glassRateController,
-                          label: 'Glass Rate *',
-                          validator: _requiredNumberValidator,
-                        ),
-                        _buildNumberField(
-                          controller: _laborRateController,
-                          label: 'Labor Rate *',
-                          validator: _requiredNumberValidator,
-                        ),
-                        _buildNumberField(
-                          controller: _hardwareRateController,
-                          label: 'Hardware Rate *',
-                          validator: _requiredNumberValidator,
-                        ),
-                        _buildNumberField(
-                          controller: _discountController,
-                          label: 'Aluminium Discount % *',
-                          validator: _discountValidator,
-                        ),
-                        const SizedBox(height: 12),
-                        _SectionLabel(text: '* Optional Fields'),
-                        const SizedBox(height: 10),
-                        _buildNumberField(
-                          controller: _extraChargesController,
-                          label: 'Extra Charges',
-                          validator: _optionalNumberValidator,
-                        ),
-                        _buildNumberField(
-                          controller: _advancePaidController,
-                          label: 'Advance Paid',
-                          validator: _optionalNumberValidator,
-                        ),
-                        _buildTextField(
-                          controller: _glassColorController,
-                          label: 'Glass Color',
-                          inputFormatters: _glassColorInputFormatters,
-                        ),
-                        _buildTextField(
-                          controller: _customerNameController,
-                          label: 'Customer Name',
-                          inputFormatters: _nameInputFormatters,
-                        ),
-                        _buildTextField(
-                          controller: _addressController,
-                          label: 'Address',
-                          maxLines: 2,
-                          inputFormatters: _addressInputFormatters,
-                        ),
-                        _buildTextField(
-                          controller: _phoneController,
-                          label: 'Phone Number',
-                          keyboardType: TextInputType.phone,
-                          inputFormatters: _phoneInputFormatters,
-                          validator: _phoneValidator,
-                        ),
-                      ],
+              const SizedBox(height: AppTheme.space5),
+              SectionSurfaceCard(
+                title: 'Optional Details',
+                subtitle:
+                    'Add customer and adjustment details only where they are needed.',
+                child: Column(
+                  children: <Widget>[
+                    _buildNumberField(
+                      controller: _extraChargesController,
+                      label: 'Extra Charges',
+                      validator: _optionalNumberValidator,
                     ),
-                  ),
-                ),
-              ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _handleNextPressed,
-                      child: const Text('Next'),
+                    _buildNumberField(
+                      controller: _advancePaidController,
+                      label: 'Advance Paid',
+                      validator: _optionalNumberValidator,
                     ),
-                  ),
+                    _buildTextField(
+                      controller: _glassColorController,
+                      label: 'Glass Color',
+                      inputFormatters: _glassColorInputFormatters,
+                    ),
+                    _buildTextField(
+                      controller: _customerNameController,
+                      label: 'Customer Name',
+                      inputFormatters: _nameInputFormatters,
+                    ),
+                    _buildTextField(
+                      controller: _addressController,
+                      label: 'Address',
+                      maxLines: 2,
+                      inputFormatters: _addressInputFormatters,
+                    ),
+                    _buildTextField(
+                      controller: _phoneController,
+                      label: 'Phone Number',
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: _phoneInputFormatters,
+                      validator: _phoneValidator,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -347,13 +313,13 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     String? Function(String?)? validator,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppTheme.space4),
       child: TextFormField(
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: _decimalInputFormatters,
         validator: validator,
-        decoration: _inputDecoration(label),
+        decoration: InputDecoration(labelText: label),
       ),
     );
   }
@@ -367,55 +333,14 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     String? Function(String?)? validator,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppTheme.space4),
       child: TextFormField(
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
         validator: validator,
-        decoration: _inputDecoration(label),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(vertical: 12),
-      enabledBorder: BorderSide(
-        color: AppTheme.sky.withValues(alpha: 0.75),
-        width: 1,
-      ).toBorder(),
-      focusedBorder: BorderSide(
-        color: AppTheme.violet.withValues(alpha: 0.85),
-        width: 1.2,
-      ).toBorder(),
-      errorBorder: BorderSide(
-        color: Colors.red.shade400,
-        width: 1,
-      ).toBorder(),
-      focusedErrorBorder: BorderSide(
-        color: Colors.red.shade600,
-        width: 1.2,
-      ).toBorder(),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String text;
-
-  const _SectionLabel({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-        color: AppTheme.deepTeal,
-        fontWeight: FontWeight.w700,
+        decoration: InputDecoration(labelText: label),
       ),
     );
   }
@@ -430,33 +355,18 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.sky.withValues(alpha: 0.55)),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.space4,
+        vertical: AppTheme.space3,
       ),
-      child: RichText(
-        text: TextSpan(
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.deepTeal,
-          ),
-          children: <InlineSpan>[
-            TextSpan(
-              text: '$label: ',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            TextSpan(text: value),
-          ],
+      decoration: AppTheme.infoChipDecoration(emphasized: true),
+      child: Text(
+        '$label: $value',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppTheme.textPrimary,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
   }
 }
-
-extension on BorderSide {
-  UnderlineInputBorder toBorder() {
-    return UnderlineInputBorder(borderSide: this);
-  }
-}
-

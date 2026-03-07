@@ -1,9 +1,6 @@
 part of 'window_input_handler.dart';
 
-List<String> _toPanelMSections(
-  List<String> source, {
-  required bool removeM28,
-}) {
+List<String> _toPanelMSections(List<String> source, {required bool removeM28}) {
   final List<String> out = <String>[];
   for (final String code in source) {
     if (code == 'D29') continue;
@@ -49,7 +46,9 @@ Map<int, List<String>> _buildPanelMSections(
   };
 }
 
-Map<int, Map<String, String>> _buildPanelMAliases(Map<int, List<String>> sections) {
+Map<int, Map<String, String>> _buildPanelMAliases(
+  Map<int, List<String>> sections,
+) {
   return <int, Map<String, String>>{
     for (final MapEntry<int, List<String>> entry in sections.entries)
       entry.key: Map<String, String>.unmodifiable(
@@ -76,7 +75,8 @@ class PanelMCenterFixInputHandler extends WindowInputHandler {
   Map<int, Map<String, String>> get sectionAliasesByCollar => _aliases;
 
   @override
-  bool showDrawerForCollar(int collarIndex) => _sections.containsKey(collarIndex);
+  bool showDrawerForCollar(int collarIndex) =>
+      _sections.containsKey(collarIndex);
 
   @override
   Widget? overlayForCollar(int collarIndex, String? selectedSection) {
@@ -107,7 +107,8 @@ class PanelMCenterSlideInputHandler extends WindowInputHandler {
   Map<int, Map<String, String>> get sectionAliasesByCollar => _aliases;
 
   @override
-  bool showDrawerForCollar(int collarIndex) => _sections.containsKey(collarIndex);
+  bool showDrawerForCollar(int collarIndex) =>
+      _sections.containsKey(collarIndex);
 
   @override
   Widget? overlayForCollar(int collarIndex, String? selectedSection) {
@@ -138,7 +139,8 @@ class PanelMEqualInputHandler extends WindowInputHandler {
   Map<int, Map<String, String>> get sectionAliasesByCollar => _aliases;
 
   @override
-  bool showDrawerForCollar(int collarIndex) => _sections.containsKey(collarIndex);
+  bool showDrawerForCollar(int collarIndex) =>
+      _sections.containsKey(collarIndex);
 
   @override
   Widget? overlayForCollar(int collarIndex, String? selectedSection) {
@@ -169,7 +171,8 @@ class PanelMSlidingEqualInputHandler extends WindowInputHandler {
   Map<int, Map<String, String>> get sectionAliasesByCollar => _aliases;
 
   @override
-  bool showDrawerForCollar(int collarIndex) => _sections.containsKey(collarIndex);
+  bool showDrawerForCollar(int collarIndex) =>
+      _sections.containsKey(collarIndex);
 
   @override
   Widget? overlayForCollar(int collarIndex, String? selectedSection) {

@@ -82,7 +82,8 @@ class _DoorSinglePainter extends CustomPainter {
       color: AppTheme.violet,
     );
 
-    final String normalizedSection = selectedSection?.trim().toUpperCase() ?? '';
+    final String normalizedSection =
+        selectedSection?.trim().toUpperCase() ?? '';
     final bool onlyHighlightedSymbols = normalizedSection.isNotEmpty;
     final bool highlightD50 = normalizedSection == 'D50';
     final bool highlightD46 = d46Enabled && normalizedSection == 'D46';
@@ -230,19 +231,21 @@ class _DoorSinglePainter extends CustomPainter {
     drawLabel(
       'WT',
       Offset(outerRect.center.dx, outerRect.top - size.height * 0.07),
-      highlight: (highlightD54F && _showOuterTop) ||
-          (highlightD54A && singleInnerTop),
+      highlight:
+          (highlightD54F && _showOuterTop) || (highlightD54A && singleInnerTop),
     );
     drawLabel(
       'HL',
       Offset(outerRect.left - size.width * 0.08, outerRect.center.dy),
-      highlight: (highlightD54F && _showOuterLeft) ||
+      highlight:
+          (highlightD54F && _showOuterLeft) ||
           (highlightD54A && singleInnerLeft),
     );
     drawLabel(
       'HR',
       Offset(outerRect.right + size.width * 0.08, outerRect.center.dy),
-      highlight: (highlightD54F && _showOuterRight) ||
+      highlight:
+          (highlightD54F && _showOuterRight) ||
           (highlightD54A && singleInnerRight),
     );
 

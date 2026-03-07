@@ -31,6 +31,7 @@ class WindowInputScreen extends StatefulWidget {
 }
 
 enum _RubberType { fix, u }
+
 enum _LockType { latch, self, handal }
 
 class _WindowInputScreenState extends State<WindowInputScreen> {
@@ -47,8 +48,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   final TextEditingController _widthInchController = TextEditingController();
   final TextEditingController _widthSuterController = TextEditingController();
   final TextEditingController _leftWidthController = TextEditingController();
-  final TextEditingController _leftWidthInchController = TextEditingController();
-  final TextEditingController _leftWidthSuterController = TextEditingController();
+  final TextEditingController _leftWidthInchController =
+      TextEditingController();
+  final TextEditingController _leftWidthSuterController =
+      TextEditingController();
   final TextEditingController _archController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _winNoController = TextEditingController();
@@ -419,7 +422,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     return '$inchValue.${left[0]}${right[0]}';
   }
 
-  ({String inch, String suter}) _splitStoredDimensionForInches(String rawValue) {
+  ({String inch, String suter}) _splitStoredDimensionForInches(
+    String rawValue,
+  ) {
     final String value = rawValue.trim();
     if (value.isEmpty) {
       return (inch: '', suter: '');
@@ -454,8 +459,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _widthInchController.text = width.inch;
     _widthSuterController.text = width.suter;
     if (_usesSplitWidthInputs) {
-      final ({String inch, String suter}) left =
-          _splitStoredDimensionForInches(_leftWidthController.text);
+      final ({String inch, String suter}) left = _splitStoredDimensionForInches(
+        _leftWidthController.text,
+      );
       _leftWidthInchController.text = left.inch;
       _leftWidthSuterController.text = left.suter;
     }
@@ -571,9 +577,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Input Instructions'),
-          content: SingleChildScrollView(
-            child: Text(instructionText),
-          ),
+          content: SingleChildScrollView(child: Text(instructionText)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -616,7 +620,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                 suterValue: _leftWidthSuterController.text,
               )
             : null;
-        _archError = _usesArchInput ? _validateDimension(_archController.text) : null;
+        _archError = _usesArchInput
+            ? _validateDimension(_archController.text)
+            : null;
         return;
       }
       if (nextFabricationCmMode) {
@@ -635,7 +641,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _leftWidthError = _usesSplitWidthInputs
           ? _validateDimension(_leftWidthController.text)
           : null;
-      _archError = _usesArchInput ? _validateDimension(_archController.text) : null;
+      _archError = _usesArchInput
+          ? _validateDimension(_archController.text)
+          : null;
     });
   }
 
@@ -802,8 +810,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     final int? lockTypeValue = _showsLockTypeSelector
         ? _lockTypeCode(_lockType)
         : null;
-    final String? rubberTypeValue =
-        _isFabricationFlow && _isLockSupportedWindow
+    final String? rubberTypeValue = _isFabricationFlow && _isLockSupportedWindow
         ? (_rubberType == _RubberType.u ? 'U' : 'F')
         : null;
     final int winNo = widget.isEditMode
@@ -1019,9 +1026,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       focusNode: focusNode,
       style: numberInputStyle,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-      ],
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
@@ -1049,9 +1054,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             controller: inchController,
             focusNode: inchFocusNode,
             style: numberInputStyle,
-            keyboardType: const TextInputType.numberWithOptions(
-              signed: false,
-            ),
+            keyboardType: const TextInputType.numberWithOptions(signed: false),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             onChanged: (_) => onChanged(),
             decoration: InputDecoration(
@@ -1547,10 +1550,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           inchFocusNode: _heightFocusNode,
                           onChanged: () {
                             setState(() {
-                              _heightController.text = _combineInchSuterForStorage(
-                                _heightInchController.text,
-                                _heightSuterController.text,
-                              );
+                              _heightController.text =
+                                  _combineInchSuterForStorage(
+                                    _heightInchController.text,
+                                    _heightSuterController.text,
+                                  );
                               _heightError = _validateFabricationSplitDimension(
                                 inchValue: _heightInchController.text,
                                 suterValue: _heightSuterController.text,
@@ -1567,7 +1571,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           errorText: _heightError,
                           numberInputStyle: numberInputStyle,
                           hintStyle: hintStyle,
-                          hintText: _isFabricationCmMode ? 'cm' : _unitMode.inputHint,
+                          hintText: _isFabricationCmMode
+                              ? 'cm'
+                              : _unitMode.inputHint,
                           onChanged: (_) {
                             if (_heightError != null) {
                               setState(() {
@@ -1575,7 +1581,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                                     ? _validateFabricationCmDimension(
                                         _heightController.text,
                                       )
-                                    : _validateDimension(_heightController.text);
+                                    : _validateDimension(
+                                        _heightController.text,
+                                      );
                               });
                             }
                           },
@@ -1583,17 +1591,20 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       const SizedBox(height: 12),
                       if (_isFabricationInchesMode)
                         _buildFabricationInchesDimensionField(
-                          label: _usesSplitWidthInputs ? 'Right Width' : 'Width',
+                          label: _usesSplitWidthInputs
+                              ? 'Right Width'
+                              : 'Width',
                           inchController: _widthInchController,
                           suterController: _widthSuterController,
                           errorText: _widthError,
                           numberInputStyle: numberInputStyle,
                           onChanged: () {
                             setState(() {
-                              _widthController.text = _combineInchSuterForStorage(
-                                _widthInchController.text,
-                                _widthSuterController.text,
-                              );
+                              _widthController.text =
+                                  _combineInchSuterForStorage(
+                                    _widthInchController.text,
+                                    _widthSuterController.text,
+                                  );
                               _widthError = _validateFabricationSplitDimension(
                                 inchValue: _widthInchController.text,
                                 suterValue: _widthSuterController.text,
@@ -1605,11 +1616,15 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         _buildSingleDimensionField(
                           fieldKey: const Key('input_width_field'),
                           controller: _widthController,
-                          label: _usesSplitWidthInputs ? 'Right Width' : 'Width',
+                          label: _usesSplitWidthInputs
+                              ? 'Right Width'
+                              : 'Width',
                           errorText: _widthError,
                           numberInputStyle: numberInputStyle,
                           hintStyle: hintStyle,
-                          hintText: _isFabricationCmMode ? 'cm' : _unitMode.inputHint,
+                          hintText: _isFabricationCmMode
+                              ? 'cm'
+                              : _unitMode.inputHint,
                           onChanged: (_) {
                             if (_widthError != null) {
                               setState(() {
@@ -1641,7 +1656,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                                 _leftWidthError =
                                     _validateFabricationSplitDimension(
                                       inchValue: _leftWidthInchController.text,
-                                      suterValue: _leftWidthSuterController.text,
+                                      suterValue:
+                                          _leftWidthSuterController.text,
                                     );
                               });
                             },
@@ -1654,7 +1670,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             errorText: _leftWidthError,
                             numberInputStyle: numberInputStyle,
                             hintStyle: hintStyle,
-                            hintText: _isFabricationCmMode ? 'cm' : _unitMode.inputHint,
+                            hintText: _isFabricationCmMode
+                                ? 'cm'
+                                : _unitMode.inputHint,
                             onChanged: (_) {
                               if (_leftWidthError != null) {
                                 setState(() {
@@ -1679,7 +1697,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           errorText: _archError,
                           numberInputStyle: numberInputStyle,
                           hintStyle: hintStyle,
-                          hintText: _isFabricationCmMode ? 'cm' : _unitMode.inputHint,
+                          hintText: _isFabricationCmMode
+                              ? 'cm'
+                              : _unitMode.inputHint,
                           onChanged: (_) {
                             if (_archError != null) {
                               setState(() {

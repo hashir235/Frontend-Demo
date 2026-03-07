@@ -82,7 +82,8 @@ class _DoorDoublePainter extends CustomPainter {
       color: AppTheme.violet,
     );
 
-    final String normalizedSection = selectedSection?.trim().toUpperCase() ?? '';
+    final String normalizedSection =
+        selectedSection?.trim().toUpperCase() ?? '';
     final bool onlyHighlightedSymbols = normalizedSection.isNotEmpty;
     final bool highlightD50 = normalizedSection == 'D50';
     final bool highlightD46 = d46Enabled && normalizedSection == 'D46';
@@ -145,10 +146,22 @@ class _DoorDoublePainter extends CustomPainter {
     drawLine(innerRect.topLeft, Offset(centerX, innerRect.top), basePaint);
     drawLine(Offset(centerX, innerRect.top), innerRect.topRight, basePaint);
     drawLine(innerRect.topLeft, innerRect.bottomLeft, basePaint);
-    drawLine(Offset(centerX, innerRect.top), Offset(centerX, innerRect.bottom), basePaint);
+    drawLine(
+      Offset(centerX, innerRect.top),
+      Offset(centerX, innerRect.bottom),
+      basePaint,
+    );
     drawLine(innerRect.topRight, innerRect.bottomRight, basePaint);
-    drawLine(innerRect.bottomLeft, Offset(centerX, innerRect.bottom), basePaint);
-    drawLine(Offset(centerX, innerRect.bottom), innerRect.bottomRight, basePaint);
+    drawLine(
+      innerRect.bottomLeft,
+      Offset(centerX, innerRect.bottom),
+      basePaint,
+    );
+    drawLine(
+      Offset(centerX, innerRect.bottom),
+      innerRect.bottomRight,
+      basePaint,
+    );
 
     if (d52Enabled) {
       drawLine(
@@ -199,8 +212,16 @@ class _DoorDoublePainter extends CustomPainter {
         drawLine(outerRect.bottomRight, innerRect.bottomRight, highlightPaint);
       }
       if (!singleInnerTop) {
-        drawLine(innerRect.topLeft, Offset(centerX, innerRect.top), highlightPaint);
-        drawLine(Offset(centerX, innerRect.top), innerRect.topRight, highlightPaint);
+        drawLine(
+          innerRect.topLeft,
+          Offset(centerX, innerRect.top),
+          highlightPaint,
+        );
+        drawLine(
+          Offset(centerX, innerRect.top),
+          innerRect.topRight,
+          highlightPaint,
+        );
       }
       if (!singleInnerLeft) {
         drawLine(innerRect.topLeft, innerRect.bottomLeft, highlightPaint);
@@ -212,8 +233,16 @@ class _DoorDoublePainter extends CustomPainter {
 
     if (highlightD54A) {
       if (singleInnerTop) {
-        drawLine(innerRect.topLeft, Offset(centerX, innerRect.top), highlightPaint);
-        drawLine(Offset(centerX, innerRect.top), innerRect.topRight, highlightPaint);
+        drawLine(
+          innerRect.topLeft,
+          Offset(centerX, innerRect.top),
+          highlightPaint,
+        );
+        drawLine(
+          Offset(centerX, innerRect.top),
+          innerRect.topRight,
+          highlightPaint,
+        );
       }
       if (singleInnerLeft) {
         drawLine(innerRect.topLeft, innerRect.bottomLeft, highlightPaint);
@@ -224,8 +253,16 @@ class _DoorDoublePainter extends CustomPainter {
     }
 
     if (highlightD50) {
-      drawLine(innerRect.topLeft, Offset(centerX, innerRect.top), highlightPaint);
-      drawLine(Offset(centerX, innerRect.top), innerRect.topRight, highlightPaint);
+      drawLine(
+        innerRect.topLeft,
+        Offset(centerX, innerRect.top),
+        highlightPaint,
+      );
+      drawLine(
+        Offset(centerX, innerRect.top),
+        innerRect.topRight,
+        highlightPaint,
+      );
       drawLine(innerRect.topLeft, innerRect.bottomLeft, highlightPaint);
       drawLine(
         Offset(centerX, innerRect.top),
@@ -234,14 +271,30 @@ class _DoorDoublePainter extends CustomPainter {
       );
       drawLine(innerRect.topRight, innerRect.bottomRight, highlightPaint);
       if (!d46Enabled) {
-        drawLine(innerRect.bottomLeft, Offset(centerX, innerRect.bottom), highlightPaint);
-        drawLine(Offset(centerX, innerRect.bottom), innerRect.bottomRight, highlightPaint);
+        drawLine(
+          innerRect.bottomLeft,
+          Offset(centerX, innerRect.bottom),
+          highlightPaint,
+        );
+        drawLine(
+          Offset(centerX, innerRect.bottom),
+          innerRect.bottomRight,
+          highlightPaint,
+        );
       }
     }
 
     if (highlightD46) {
-      drawLine(innerRect.bottomLeft, Offset(centerX, innerRect.bottom), highlightPaint);
-      drawLine(Offset(centerX, innerRect.bottom), innerRect.bottomRight, highlightPaint);
+      drawLine(
+        innerRect.bottomLeft,
+        Offset(centerX, innerRect.bottom),
+        highlightPaint,
+      );
+      drawLine(
+        Offset(centerX, innerRect.bottom),
+        innerRect.bottomRight,
+        highlightPaint,
+      );
     }
 
     if (highlightD52) {
@@ -260,19 +313,21 @@ class _DoorDoublePainter extends CustomPainter {
     drawLabel(
       'WT',
       Offset(outerRect.center.dx, outerRect.top - size.height * 0.07),
-      highlight: (highlightD54F && _showOuterTop) ||
-          (highlightD54A && singleInnerTop),
+      highlight:
+          (highlightD54F && _showOuterTop) || (highlightD54A && singleInnerTop),
     );
     drawLabel(
       'HL',
       Offset(outerRect.left - size.width * 0.08, outerRect.center.dy),
-      highlight: (highlightD54F && _showOuterLeft) ||
+      highlight:
+          (highlightD54F && _showOuterLeft) ||
           (highlightD54A && singleInnerLeft),
     );
     drawLabel(
       'HR',
       Offset(outerRect.right + size.width * 0.08, outerRect.center.dy),
-      highlight: (highlightD54F && _showOuterRight) ||
+      highlight:
+          (highlightD54F && _showOuterRight) ||
           (highlightD54A && singleInnerRight),
     );
 

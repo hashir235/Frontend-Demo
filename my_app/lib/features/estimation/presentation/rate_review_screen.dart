@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_hero_header.dart';
+import '../../../shared/widgets/app_screen_shell.dart';
+import '../../../shared/widgets/bottom_action_bar.dart';
+import '../../../shared/widgets/project_meta_strip.dart';
+import '../../../shared/widgets/section_surface_card.dart';
+import '../../../shared/widgets/state_message_card.dart';
 import '../data/cost_table_api_client.dart';
 import '../data/rate_review_api_client.dart';
 import '../models/cost_table.dart';
@@ -46,7 +52,6 @@ class RateReviewScreen extends StatefulWidget {
 
 class _RateReviewScreenState extends State<RateReviewScreen> {
   late final RateReviewApiClient _apiClient;
-  RateReview? _review;
   String? _errorMessage;
   bool _isLoading = true;
   List<_EditableRateRow> _editableRows = const <_EditableRateRow>[];
@@ -75,12 +80,12 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
         return;
       }
       setState(() {
-        _review = review;
         _editableRows = review.rows
             .map(
               (RateReviewRow row) => _EditableRateRow(
                 section: row.section,
                 totalFt: row.totalFt,
+                totalFtDisplay: row.totalFtDisplay,
                 rateText: _formatDecimal(row.rate),
               ),
             )
@@ -99,11 +104,15 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
   }
 
   static String _formatDecimal(double value) {
-    final String fixed = value.toStringAsFixed(value == value.truncateToDouble() ? 0 : 2);
+    final String fixed = value.toStringAsFixed(
+      value == value.truncateToDouble() ? 0 : 2,
+    );
     if (!fixed.contains('.')) {
       return fixed;
     }
-    return fixed.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+    return fixed
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
   }
 
   void _updateRate(int index, String value) {
@@ -120,12 +129,7 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
       if (parsed == null || parsed <= 0) {
         continue;
       }
-      overrides.add(
-        RateOverrideInput(
-          section: row.section,
-          rate: parsed,
-        ),
-      );
+      overrides.add(RateOverrideInput(section: row.section, rate: parsed));
     }
 
     Navigator.of(context).push(
@@ -152,162 +156,88 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rate Setting'),
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: FilledButton(
-            onPressed: _isLoading ? null : _handleNextPressed,
-            child: const Text('Next'),
+      appBar: AppBar(title: const Text('Rate Setting')),
+      bottomNavigationBar: BottomActionBar(
+        children: <Widget>[
+          Expanded(
+            child: FilledButton(
+              onPressed: _isLoading ? null : _handleNextPressed,
+              child: const Text('Next'),
+            ),
           ),
-        ),
+        ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              AppTheme.ice,
-              AppTheme.sky.withValues(alpha: 0.42),
-              AppTheme.mist,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: _buildBody(context),
-          ),
-        ),
-      ),
+      body: AppScreenShell(child: _buildBody(context)),
     );
   }
 
   Widget _buildBody(BuildContext context) {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            CircularProgressIndicator(),
-            SizedBox(height: 12),
-            Text('Loading section rates...'),
-          ],
-        ),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.red.shade700,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _loadRates,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Retry'),
-              ),
-            ],
+        child: StateMessageCard(
+          icon: Icons.price_change_outlined,
+          title: 'Rate review failed',
+          message: _errorMessage,
+          iconColor: AppTheme.danger,
+          action: FilledButton.icon(
+            onPressed: _loadRates,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Retry'),
           ),
         ),
       );
     }
 
     if (_editableRows.isEmpty) {
-      return _buildShell(
-        context,
-        child: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('No sections found for the current project.'),
-          ),
+      return const Center(
+        child: StateMessageCard(
+          icon: Icons.inventory_2_outlined,
+          title: 'No sections found',
+          message: 'No sections are available for the current project.',
         ),
       );
     }
 
-    return _buildShell(
-      context,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-        children: <Widget>[
-          _buildHeaderCard(context),
-          const SizedBox(height: 16),
-          ..._editableRows.asMap().entries.map(
-            (MapEntry<int, _EditableRateRow> entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildRateRowCard(context, entry.key, entry.value),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShell(BuildContext context, {required Widget child}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: AppTheme.sky.withValues(alpha: 0.8)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: AppTheme.deepTeal.withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildHeaderCard(BuildContext context) {
-    final RateReview? review = _review;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          colors: <Color>[
-            AppTheme.violet.withValues(alpha: 0.12),
-            AppTheme.sky.withValues(alpha: 0.14),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return ListView(
+      children: <Widget>[
+        const AppHeroHeader(
+          eyebrow: 'RATE SETTING',
+          title: 'Adjust section rates before material costing',
+          subtitle:
+              'Review the live backend rates and make controlled edits before generating the material table.',
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: <Widget>[
-              _InfoPill(label: 'Gage', value: widget.gaugeLabel),
-              _InfoPill(label: 'Color', value: widget.colorLabel),
-              _InfoPill(
-                label: 'Sections',
-                value: '${review?.rows.length ?? _editableRows.length}',
-              ),
-            ],
+        const SizedBox(height: AppTheme.space5),
+        ProjectMetaStrip(
+          projectName: widget.projectName,
+          projectLocation: widget.projectLocation,
+          extras: <Widget>[
+            _MetaChip(label: 'Gage', value: widget.gaugeLabel),
+            _MetaChip(label: 'Colour', value: widget.colorLabel),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space6),
+        SectionSurfaceCard(
+          title: 'Section Rates',
+          subtitle:
+              'Each section shows the total quantity in feet and the editable rate used for costing.',
+          child: Column(
+            children: _editableRows
+                .asMap()
+                .entries
+                .map((MapEntry<int, _EditableRateRow> entry) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: AppTheme.space4),
+                    child: _buildRateRowCard(context, entry.key, entry.value),
+                  );
+                })
+                .toList(growable: false),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -317,48 +247,42 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
     _EditableRateRow row,
   ) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: const EdgeInsets.all(AppTheme.space5),
       decoration: BoxDecoration(
-        color: AppTheme.mist.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppTheme.sky.withValues(alpha: 0.5)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
             row.section,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppTheme.deepTeal,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppTheme.space4),
           Row(
             children: <Widget>[
               Expanded(
-                child: _MetricBox(
+                child: _ReadOnlyMetric(
                   label: 'Total Length',
-                  value: '${_formatDecimal(row.totalFt)} ft',
+                  value: row.totalFtDisplay,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppTheme.space4),
               Expanded(
                 child: TextFormField(
-                  key: ValueKey<String>('${row.section}-$index'),
                   initialValue: row.rateText,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                   ],
-                  decoration: const InputDecoration(
-                    labelText: 'Rate',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
                   onChanged: (String value) => _updateRate(index, value),
+                  decoration: const InputDecoration(labelText: 'Rate'),
                 ),
               ),
             ],
@@ -372,63 +296,56 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
 class _EditableRateRow {
   final String section;
   final double totalFt;
+  final String totalFtDisplay;
   final String rateText;
 
   const _EditableRateRow({
     required this.section,
     required this.totalFt,
+    required this.totalFtDisplay,
     required this.rateText,
   });
 
-  _EditableRateRow copyWith({
-    String? section,
-    double? totalFt,
-    String? rateText,
-  }) {
+  _EditableRateRow copyWith({String? rateText}) {
     return _EditableRateRow(
-      section: section ?? this.section,
-      totalFt: totalFt ?? this.totalFt,
+      section: section,
+      totalFt: totalFt,
+      totalFtDisplay: totalFtDisplay,
       rateText: rateText ?? this.rateText,
     );
   }
 }
 
-class _InfoPill extends StatelessWidget {
+class _ReadOnlyMetric extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoPill({
-    required this.label,
-    required this.value,
-  });
+  const _ReadOnlyMetric({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.sky.withValues(alpha: 0.45)),
+        color: AppTheme.surfaceAlt,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Text(
             label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppTheme.deepTeal.withValues(alpha: 0.66),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.deepTeal,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.textSecondary,
               fontWeight: FontWeight.w800,
             ),
+          ),
+          const SizedBox(height: AppTheme.space2),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
         ],
       ),
@@ -436,45 +353,27 @@ class _InfoPill extends StatelessWidget {
   }
 }
 
-class _MetricBox extends StatelessWidget {
+class _MetaChip extends StatelessWidget {
   final String label;
   final String value;
 
-  const _MetricBox({
-    required this.label,
-    required this.value,
-  });
+  const _MetaChip({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.86),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.sky.withValues(alpha: 0.4)),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.space4,
+        vertical: AppTheme.space3,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppTheme.deepTeal.withValues(alpha: 0.66),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppTheme.deepTeal,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
+      decoration: AppTheme.infoChipDecoration(emphasized: true),
+      child: Text(
+        '$label: $value',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppTheme.textPrimary,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
 }
-

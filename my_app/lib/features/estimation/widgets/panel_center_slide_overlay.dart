@@ -7,11 +7,7 @@ class _LineSpec {
   final Offset from;
   final Offset to;
 
-  const _LineSpec({
-    required this.id,
-    required this.from,
-    required this.to,
-  });
+  const _LineSpec({required this.id, required this.from, required this.to});
 }
 
 class _PanelCenterSlidePainter extends CustomPainter {
@@ -68,12 +64,7 @@ class _PanelCenterSlidePainter extends CustomPainter {
       'corner_tr',
       'corner_br',
     },
-    7: <String>{
-      'outer_right',
-      'inner_right',
-      'corner_tr',
-      'corner_br',
-    },
+    7: <String>{'outer_right', 'inner_right', 'corner_tr', 'corner_br'},
     8: <String>{
       'outer_top',
       'outer_left',
@@ -93,30 +84,10 @@ class _PanelCenterSlidePainter extends CustomPainter {
       'corner_bl',
       'corner_br',
     },
-    10: <String>{
-      'outer_top',
-      'inner_top',
-      'corner_tl',
-      'corner_tr',
-    },
-    11: <String>{
-      'outer_top',
-      'inner_top',
-      'corner_tl',
-      'corner_tr',
-    },
-    12: <String>{
-      'outer_right',
-      'inner_right',
-      'corner_tr',
-      'corner_br',
-    },
-    14: <String>{
-      'outer_left',
-      'inner_left',
-      'corner_tl',
-      'corner_bl',
-    },
+    10: <String>{'outer_top', 'inner_top', 'corner_tl', 'corner_tr'},
+    11: <String>{'outer_top', 'inner_top', 'corner_tl', 'corner_tr'},
+    12: <String>{'outer_right', 'inner_right', 'corner_tr', 'corner_br'},
+    14: <String>{'outer_left', 'inner_left', 'corner_tl', 'corner_bl'},
   };
 
   static const Map<int, Set<String>> _dc30CByCollar = <int, Set<String>>{
@@ -209,26 +180,46 @@ class _PanelCenterSlidePainter extends CustomPainter {
       ..color = AppTheme.violet;
 
     final List<_LineSpec> lines = <_LineSpec>[
-      _LineSpec(id: 'outer_top', from: outerRect.topLeft, to: outerRect.topRight),
+      _LineSpec(
+        id: 'outer_top',
+        from: outerRect.topLeft,
+        to: outerRect.topRight,
+      ),
       _LineSpec(
         id: 'outer_bottom',
         from: outerRect.bottomLeft,
         to: outerRect.bottomRight,
       ),
-      _LineSpec(id: 'outer_left', from: outerRect.topLeft, to: outerRect.bottomLeft),
+      _LineSpec(
+        id: 'outer_left',
+        from: outerRect.topLeft,
+        to: outerRect.bottomLeft,
+      ),
       _LineSpec(
         id: 'outer_right',
         from: outerRect.topRight,
         to: outerRect.bottomRight,
       ),
-      _LineSpec(id: 'inner_top', from: innerRect.topLeft, to: innerRect.topRight),
+      _LineSpec(
+        id: 'inner_top',
+        from: innerRect.topLeft,
+        to: innerRect.topRight,
+      ),
       _LineSpec(
         id: 'inner_bottom',
         from: innerRect.bottomLeft,
         to: innerRect.bottomRight,
       ),
-      _LineSpec(id: 'inner_left', from: innerRect.topLeft, to: innerRect.bottomLeft),
-      _LineSpec(id: 'inner_right', from: innerRect.topRight, to: innerRect.bottomRight),
+      _LineSpec(
+        id: 'inner_left',
+        from: innerRect.topLeft,
+        to: innerRect.bottomLeft,
+      ),
+      _LineSpec(
+        id: 'inner_right',
+        from: innerRect.topRight,
+        to: innerRect.bottomRight,
+      ),
       _LineSpec(
         id: 'divider_25',
         from: Offset(x25, innerRect.top),
@@ -244,9 +235,21 @@ class _PanelCenterSlidePainter extends CustomPainter {
         from: Offset(x75, innerRect.top),
         to: Offset(x75, innerRect.bottom),
       ),
-      _LineSpec(id: 'corner_tl', from: outerRect.topLeft, to: innerRect.topLeft),
-      _LineSpec(id: 'corner_tr', from: outerRect.topRight, to: innerRect.topRight),
-      _LineSpec(id: 'corner_bl', from: outerRect.bottomLeft, to: innerRect.bottomLeft),
+      _LineSpec(
+        id: 'corner_tl',
+        from: outerRect.topLeft,
+        to: innerRect.topLeft,
+      ),
+      _LineSpec(
+        id: 'corner_tr',
+        from: outerRect.topRight,
+        to: innerRect.topRight,
+      ),
+      _LineSpec(
+        id: 'corner_bl',
+        from: outerRect.bottomLeft,
+        to: innerRect.bottomLeft,
+      ),
       _LineSpec(
         id: 'corner_br',
         from: outerRect.bottomRight,
@@ -262,12 +265,7 @@ class _PanelCenterSlidePainter extends CustomPainter {
 
       switch (id) {
         case 'outer_top':
-          return c != 3 &&
-              c != 7 &&
-              c != 9 &&
-              c != 12 &&
-              c != 13 &&
-              c != 14;
+          return c != 3 && c != 7 && c != 9 && c != 12 && c != 13 && c != 14;
         case 'outer_bottom':
           return c != 5 &&
               c != 8 &&
@@ -277,19 +275,9 @@ class _PanelCenterSlidePainter extends CustomPainter {
               c != 12 &&
               c != 14;
         case 'outer_left':
-          return c != 6 &&
-              c != 7 &&
-              c != 10 &&
-              c != 11 &&
-              c != 12 &&
-              c != 13;
+          return c != 6 && c != 7 && c != 10 && c != 11 && c != 12 && c != 13;
         case 'outer_right':
-          return c != 4 &&
-              c != 8 &&
-              c != 10 &&
-              c != 11 &&
-              c != 13 &&
-              c != 14;
+          return c != 4 && c != 8 && c != 10 && c != 11 && c != 13 && c != 14;
         case 'corner_tl':
           return (c != 7 && c != 12 && c != 13) || c == 14;
         case 'corner_tr':
@@ -315,7 +303,8 @@ class _PanelCenterSlidePainter extends CustomPainter {
 
     final bool highlightDc30F = effectiveSection == 'DC30F';
     final bool highlightDc30C = effectiveSection == 'DC30C';
-    final bool highlightDc26 = effectiveSection == 'DC26F' || effectiveSection == 'DC26C';
+    final bool highlightDc26 =
+        effectiveSection == 'DC26F' || effectiveSection == 'DC26C';
     final bool highlightD29 = effectiveSection == 'D29';
     final bool highlightM23 = effectiveSection == 'M23';
     final bool highlightM24 = effectiveSection == 'M24';
@@ -352,10 +341,12 @@ class _PanelCenterSlidePainter extends CustomPainter {
           c != 11 &&
           c != 12) ...<String>{'HL'},
       if (highlightDc30F && (c == 6 || c == 7 || c == 12)) ...<String>{'HR'},
-      if (highlightDc30F && (c == 1 || c == 3 || c == 5 || c == 9)) ...<String>{'HR'},
+      if (highlightDc30F && (c == 1 || c == 3 || c == 5 || c == 9)) ...<String>{
+        'HR',
+      },
       if (highlightDc30F && c == 8) ...<String>{'WT', 'HL'},
-      if (highlightDc30F && (c == 10 || c == 11 || c == 1 || c == 5 || c == 6))
-        ...<String>{'WT'},
+      if (highlightDc30F &&
+          (c == 10 || c == 11 || c == 1 || c == 5 || c == 6)) ...<String>{'WT'},
       if (highlightDc30F &&
           c != 1 &&
           c != 3 &&
@@ -383,7 +374,10 @@ class _PanelCenterSlidePainter extends CustomPainter {
           c != 12) ...<String>{'WT'},
       if (highlightDc30C && c == 4) ...<String>{'HR'},
       if (highlightDc30C && c == 6) ...<String>{'HL'},
-      if (highlightDc30C && (c == 10 || c == 11 || c == 13)) ...<String>{'HL', 'HR'},
+      if (highlightDc30C && (c == 10 || c == 11 || c == 13)) ...<String>{
+        'HL',
+        'HR',
+      },
       if (highlightDc30C && c == 14) ...<String>{'WT', 'HR'},
       if (highlightDc26 &&
           c != 8 &&
@@ -391,19 +385,20 @@ class _PanelCenterSlidePainter extends CustomPainter {
           c != 11 &&
           c != 12 &&
           c != 13) ...<String>{'WB'},
-      if (highlightDc26 && (c == 8 || c == 9 || c == 11 || c == 12 || c == 13))
-        ...<String>{'WB'},
-      if (highlightM24)
-        ...<String>{
-          'W_T1',
-          'W_T2',
-          'W_T3',
-          'W_T4',
-          'W_B1',
-          'W_B2',
-          'W_B3',
-          'W_B4',
-        },
+      if (highlightDc26 &&
+          (c == 8 || c == 9 || c == 11 || c == 12 || c == 13)) ...<String>{
+        'WB',
+      },
+      if (highlightM24) ...<String>{
+        'W_T1',
+        'W_T2',
+        'W_T3',
+        'W_T4',
+        'W_B1',
+        'W_B2',
+        'W_B3',
+        'W_B4',
+      },
       if (highlightM23) ...<String>{'H_1_R', 'H_3_L', 'H_3_R', 'H_5_L'},
       if (highlightM28) ...<String>{'H_2_L', 'H_2_R', 'H_4_L', 'H_4_R'},
       if (highlightD29) ...<String>{'H_2_R', 'H_3_L', 'H_3_R', 'H_4_L'},
@@ -435,7 +430,10 @@ class _PanelCenterSlidePainter extends CustomPainter {
     }
 
     final TextPainter tpWT = buildPainter('WT', 'WT');
-    final double wtY = (labelRect.top - labelGap - tpWT.height).clamp(0, size.height);
+    final double wtY = (labelRect.top - labelGap - tpWT.height).clamp(
+      0,
+      size.height,
+    );
     drawLabel(
       id: 'WT',
       text: 'WT',
@@ -496,48 +494,13 @@ class _PanelCenterSlidePainter extends CustomPainter {
 
     final TextPainter hSample = buildPainter('H_1_R', 'H');
     final double hY = innerRect.center.dy - (hSample.height / 2);
-    drawLabel(
-      id: 'H_1_R',
-      text: 'H',
-      x: innerRect.left + innerGap,
-      y: hY,
-    );
-    drawLabel(
-      id: 'H_2_L',
-      text: 'H',
-      x: x25 - innerGap - hSample.width,
-      y: hY,
-    );
-    drawLabel(
-      id: 'H_2_R',
-      text: 'H',
-      x: x25 + innerGap,
-      y: hY,
-    );
-    drawLabel(
-      id: 'H_3_L',
-      text: 'H',
-      x: x50 - innerGap - hSample.width,
-      y: hY,
-    );
-    drawLabel(
-      id: 'H_3_R',
-      text: 'H',
-      x: x50 + innerGap,
-      y: hY,
-    );
-    drawLabel(
-      id: 'H_4_L',
-      text: 'H',
-      x: x75 - innerGap - hSample.width,
-      y: hY,
-    );
-    drawLabel(
-      id: 'H_4_R',
-      text: 'H',
-      x: x75 + innerGap,
-      y: hY,
-    );
+    drawLabel(id: 'H_1_R', text: 'H', x: innerRect.left + innerGap, y: hY);
+    drawLabel(id: 'H_2_L', text: 'H', x: x25 - innerGap - hSample.width, y: hY);
+    drawLabel(id: 'H_2_R', text: 'H', x: x25 + innerGap, y: hY);
+    drawLabel(id: 'H_3_L', text: 'H', x: x50 - innerGap - hSample.width, y: hY);
+    drawLabel(id: 'H_3_R', text: 'H', x: x50 + innerGap, y: hY);
+    drawLabel(id: 'H_4_L', text: 'H', x: x75 - innerGap - hSample.width, y: hY);
+    drawLabel(id: 'H_4_R', text: 'H', x: x75 + innerGap, y: hY);
     drawLabel(
       id: 'H_5_L',
       text: 'H',

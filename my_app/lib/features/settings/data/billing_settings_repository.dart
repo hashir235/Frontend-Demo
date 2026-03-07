@@ -4,9 +4,8 @@ import 'billing_settings_api_client.dart';
 class BillingSettingsRepository {
   final BillingSettingsApiClient _apiClient;
 
-  BillingSettingsRepository({
-    BillingSettingsApiClient? apiClient,
-  }) : _apiClient = apiClient ?? BillingSettingsApiClient();
+  BillingSettingsRepository({BillingSettingsApiClient? apiClient})
+    : _apiClient = apiClient ?? BillingSettingsApiClient();
 
   Future<BillingSettingsModel> fetchBillingSettings() {
     return _apiClient.fetchBillingSettings();

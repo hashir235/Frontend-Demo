@@ -10,11 +10,7 @@ class CostTableApiException implements Exception {
   final int? statusCode;
   final Object? detail;
 
-  const CostTableApiException(
-    this.message, {
-    this.statusCode,
-    this.detail,
-  });
+  const CostTableApiException(this.message, {this.statusCode, this.detail});
 
   @override
   String toString() => message;
@@ -24,13 +20,11 @@ class CostTableApiClient {
   final http.Client _httpClient;
   final Uri _endpointUri;
 
-  CostTableApiClient({
-    http.Client? httpClient,
-    String? baseUrl,
-  }) : _httpClient = httpClient ?? http.Client(),
-       _endpointUri = Uri.parse(
-         '${baseUrl ?? _defaultBaseUrl()}/api/cost-table',
-       );
+  CostTableApiClient({http.Client? httpClient, String? baseUrl})
+    : _httpClient = httpClient ?? http.Client(),
+      _endpointUri = Uri.parse(
+        '${baseUrl ?? _defaultBaseUrl()}/api/cost-table',
+      );
 
   Future<CostTable> fetchCostTable({
     required String gauge,
@@ -43,15 +37,15 @@ class CostTableApiClient {
     try {
       response = await _httpClient.post(
         _endpointUri,
-        headers: const <String, String>{
-          'Content-Type': 'application/json',
-        },
+        headers: const <String, String>{'Content-Type': 'application/json'},
         body: jsonEncode(<String, Object?>{
           'gauge': gauge,
           'color': color,
           'projectId': projectId,
           'context': context,
-          'overrides': overrides.map((RateOverrideInput item) => item.toJson()).toList(),
+          'overrides': overrides
+              .map((RateOverrideInput item) => item.toJson())
+              .toList(),
         }),
       );
     } on Exception catch (error) {

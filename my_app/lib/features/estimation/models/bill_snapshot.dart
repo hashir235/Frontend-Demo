@@ -22,10 +22,7 @@ class BillProject {
   final String name;
   final String location;
 
-  const BillProject({
-    required this.name,
-    required this.location,
-  });
+  const BillProject({required this.name, required this.location});
 
   factory BillProject.fromJson(Map<String, dynamic> json) {
     return BillProject(

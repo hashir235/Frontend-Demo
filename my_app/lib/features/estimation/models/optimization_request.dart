@@ -136,7 +136,8 @@ class OptimizationRequest {
       'projectId': projectId,
       'projectName': projectName,
       'projectLocation': projectLocation,
-      'windows': windows.map((OptimizationWindowRequest item) => item.toJson())
+      'windows': windows
+          .map((OptimizationWindowRequest item) => item.toJson())
           .toList(growable: false),
     };
   }

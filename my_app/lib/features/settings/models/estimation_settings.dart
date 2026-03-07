@@ -3,16 +3,16 @@ class EstimationSettingsModel {
   final Map<String, double> cuttingMargins;
   final int maxExtraPieces;
   final bool enforceMaxExtraPieces;
-  final double redZone1;
-  final double redZone2;
+  final double redZoneEven;
+  final double redZoneOdd;
 
   const EstimationSettingsModel({
     required this.sectionLengths,
     required this.cuttingMargins,
     required this.maxExtraPieces,
     required this.enforceMaxExtraPieces,
-    required this.redZone1,
-    required this.redZone2,
+    required this.redZoneEven,
+    required this.redZoneOdd,
   });
 
   const EstimationSettingsModel.empty()
@@ -20,8 +20,8 @@ class EstimationSettingsModel {
       cuttingMargins = const <String, double>{},
       maxExtraPieces = 1,
       enforceMaxExtraPieces = false,
-      redZone1 = 13.0,
-      redZone2 = 13.6;
+      redZoneEven = 12.0,
+      redZoneOdd = 13.0;
 
   factory EstimationSettingsModel.fromJson(Map<String, dynamic> json) {
     final Map<String, List<int>> parsedSectionLengths = <String, List<int>>{};
@@ -32,11 +32,10 @@ class EstimationSettingsModel {
       for (final MapEntry<String, dynamic> entry in rawSectionLengths.entries) {
         final Object? rawList = entry.value;
         if (rawList is List<dynamic>) {
-          parsedSectionLengths[entry.key] =
-              rawList
-                  .whereType<num>()
-                  .map((num value) => value.toInt())
-                  .toList(growable: false);
+          parsedSectionLengths[entry.key] = rawList
+              .whereType<num>()
+              .map((num value) => value.toInt())
+              .toList(growable: false);
         }
       }
     }
@@ -55,26 +54,30 @@ class EstimationSettingsModel {
       sectionLengths: parsedSectionLengths,
       cuttingMargins: parsedCuttingMargins,
       maxExtraPieces: (json['maxExtraPieces'] as num?)?.toInt() ?? 1,
-      enforceMaxExtraPieces:
-          json['enforceMaxExtraPieces'] as bool? ?? false,
-      redZone1: (json['redZone1'] as num?)?.toDouble() ?? 13.0,
-      redZone2: (json['redZone2'] as num?)?.toDouble() ?? 13.6,
+      enforceMaxExtraPieces: json['enforceMaxExtraPieces'] as bool? ?? false,
+      redZoneEven:
+          (json['redZoneEven'] as num?)?.toDouble() ??
+          (json['redZone1'] as num?)?.toDouble() ??
+          12.0,
+      redZoneOdd:
+          (json['redZoneOdd'] as num?)?.toDouble() ??
+          (json['redZone2'] as num?)?.toDouble() ??
+          13.0,
     );
   }
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
       'sectionLengths': sectionLengths.map<String, Object?>(
-        (String key, List<int> value) =>
-            MapEntry<String, Object?>(key, value),
+        (String key, List<int> value) => MapEntry<String, Object?>(key, value),
       ),
       'cuttingMargins': cuttingMargins.map<String, Object?>(
         (String key, double value) => MapEntry<String, Object?>(key, value),
       ),
       'maxExtraPieces': maxExtraPieces,
       'enforceMaxExtraPieces': enforceMaxExtraPieces,
-      'redZone1': redZone1,
-      'redZone2': redZone2,
+      'redZoneEven': redZoneEven,
+      'redZoneOdd': redZoneOdd,
     };
   }
 }

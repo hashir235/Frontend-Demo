@@ -11,11 +11,7 @@ class BillingApiException implements Exception {
   final int? statusCode;
   final Object? detail;
 
-  const BillingApiException(
-    this.message, {
-    this.statusCode,
-    this.detail,
-  });
+  const BillingApiException(this.message, {this.statusCode, this.detail});
 
   @override
   String toString() => message;
@@ -25,22 +21,18 @@ class BillingApiClient {
   final http.Client _httpClient;
   final Uri _endpointUri;
 
-  BillingApiClient({
-    http.Client? httpClient,
-    String? baseUrl,
-  }) : _httpClient = httpClient ?? http.Client(),
-       _endpointUri = Uri.parse(
-         '${baseUrl ?? _defaultBaseUrl()}/api/billing/estimate',
-       );
+  BillingApiClient({http.Client? httpClient, String? baseUrl})
+    : _httpClient = httpClient ?? http.Client(),
+      _endpointUri = Uri.parse(
+        '${baseUrl ?? _defaultBaseUrl()}/api/billing/estimate',
+      );
 
   Future<BillSnapshot> estimateBill(BillRequest request) async {
     late final http.Response response;
     try {
       response = await _httpClient.post(
         _endpointUri,
-        headers: const <String, String>{
-          'Content-Type': 'application/json',
-        },
+        headers: const <String, String>{'Content-Type': 'application/json'},
         body: jsonEncode(request.toJson()),
       );
     } on Exception catch (error) {
@@ -61,9 +53,7 @@ class BillingApiClient {
     }
 
     if (payload == null) {
-      throw const BillingApiException(
-        'Billing service returned invalid JSON.',
-      );
+      throw const BillingApiException('Billing service returned invalid JSON.');
     }
 
     final BillSnapshot snapshot = BillSnapshot.fromJson(payload);

@@ -168,10 +168,12 @@ class _FixWindowPainter extends CustomPainter {
         (_highlightD54F && _showOuterBottom) ||
         (_highlightD54A && !_showOuterBottom);
     final bool highlightOuterLeftSymbol =
-        (_highlightD54F && _showOuterLeft) || (_highlightD54A && !_showOuterLeft);
+        (_highlightD54F && _showOuterLeft) ||
+        (_highlightD54A && !_showOuterLeft);
     final bool highlightCornerTopLeft =
         _highlightD54F && _showTopLeftCornerLink;
-    final bool highlightCornerTopRight = _highlightD54F && _showTopRightCornerLink;
+    final bool highlightCornerTopRight =
+        _highlightD54F && _showTopRightCornerLink;
     final bool highlightCornerBottomLeft =
         _highlightD54F && _showBottomLeftCornerLink;
     final bool highlightCornerBottomRight =
@@ -205,11 +207,7 @@ class _FixWindowPainter extends CustomPainter {
       canvas.drawRect(rect, paint);
     }
 
-    void drawLabel(
-      String text,
-      Offset center, {
-      required bool highlight,
-    }) {
+    void drawLabel(String text, Offset center, {required bool highlight}) {
       if (_hasSelection && !highlight) {
         return;
       }
@@ -255,28 +253,28 @@ class _FixWindowPainter extends CustomPainter {
     }
 
     if (highlightOuterTopLine) {
-        drawLine(outerRect.topLeft, outerRect.topRight, accentPaint);
+      drawLine(outerRect.topLeft, outerRect.topRight, accentPaint);
     }
     if (highlightOuterRightLine) {
-        drawLine(outerRect.topRight, outerRect.bottomRight, accentPaint);
+      drawLine(outerRect.topRight, outerRect.bottomRight, accentPaint);
     }
     if (highlightOuterBottomLine) {
-        drawLine(outerRect.bottomLeft, outerRect.bottomRight, accentPaint);
+      drawLine(outerRect.bottomLeft, outerRect.bottomRight, accentPaint);
     }
     if (highlightOuterLeftLine) {
-        drawLine(outerRect.topLeft, outerRect.bottomLeft, accentPaint);
+      drawLine(outerRect.topLeft, outerRect.bottomLeft, accentPaint);
     }
     if (highlightCornerTopLeft) {
-        drawLine(outerRect.topLeft, innerRect.topLeft, accentPaint);
+      drawLine(outerRect.topLeft, innerRect.topLeft, accentPaint);
     }
     if (highlightCornerTopRight) {
-        drawLine(outerRect.topRight, innerRect.topRight, accentPaint);
+      drawLine(outerRect.topRight, innerRect.topRight, accentPaint);
     }
     if (highlightCornerBottomLeft) {
-        drawLine(outerRect.bottomLeft, innerRect.bottomLeft, accentPaint);
+      drawLine(outerRect.bottomLeft, innerRect.bottomLeft, accentPaint);
     }
     if (highlightCornerBottomRight) {
-        drawLine(outerRect.bottomRight, innerRect.bottomRight, accentPaint);
+      drawLine(outerRect.bottomRight, innerRect.bottomRight, accentPaint);
     }
 
     if (highlightInnerTop) {
@@ -292,46 +290,14 @@ class _FixWindowPainter extends CustomPainter {
       drawLine(innerRect.topLeft, innerRect.bottomLeft, accentPaint);
     }
 
-    drawLabel(
-      'WT',
-      wtCenter,
-      highlight: highlightOuterTopSymbol,
-    );
-    drawLabel(
-      'HL',
-      hlCenter,
-      highlight: highlightOuterLeftSymbol,
-    );
-    drawLabel(
-      'HR',
-      hrCenter,
-      highlight: highlightOuterRightSymbol,
-    );
-    drawLabel(
-      'WB',
-      wbCenter,
-      highlight: highlightOuterBottomSymbol,
-    );
-    drawLabel(
-      'W',
-      innerTopWCenter,
-      highlight: highlightInnerTopLabel,
-    );
-    drawLabel(
-      'W',
-      innerBottomWCenter,
-      highlight: highlightInnerBottomLabel,
-    );
-    drawLabel(
-      'H',
-      innerLeftHCenter,
-      highlight: highlightInnerLeftLabel,
-    );
-    drawLabel(
-      'H',
-      innerRightHCenter,
-      highlight: highlightInnerRightLabel,
-    );
+    drawLabel('WT', wtCenter, highlight: highlightOuterTopSymbol);
+    drawLabel('HL', hlCenter, highlight: highlightOuterLeftSymbol);
+    drawLabel('HR', hrCenter, highlight: highlightOuterRightSymbol);
+    drawLabel('WB', wbCenter, highlight: highlightOuterBottomSymbol);
+    drawLabel('W', innerTopWCenter, highlight: highlightInnerTopLabel);
+    drawLabel('W', innerBottomWCenter, highlight: highlightInnerBottomLabel);
+    drawLabel('H', innerLeftHCenter, highlight: highlightInnerLeftLabel);
+    drawLabel('H', innerRightHCenter, highlight: highlightInnerRightLabel);
   }
 
   @override

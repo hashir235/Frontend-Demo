@@ -4,9 +4,8 @@ import 'estimation_settings_api_client.dart';
 class EstimationSettingsRepository {
   final EstimationSettingsApiClient _apiClient;
 
-  EstimationSettingsRepository({
-    EstimationSettingsApiClient? apiClient,
-  }) : _apiClient = apiClient ?? EstimationSettingsApiClient();
+  EstimationSettingsRepository({EstimationSettingsApiClient? apiClient})
+    : _apiClient = apiClient ?? EstimationSettingsApiClient();
 
   Future<EstimationSettingsModel> fetchEstimationSettings() {
     return _apiClient.fetchEstimationSettings();

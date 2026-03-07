@@ -73,7 +73,8 @@ class _ArchRoundPainter extends CustomPainter {
       color: highlightColor,
     );
 
-    final String normalizedSection = selectedSection?.trim().toUpperCase() ?? '';
+    final String normalizedSection =
+        selectedSection?.trim().toUpperCase() ?? '';
     final bool onlyHighlightedSymbols = normalizedSection.isNotEmpty;
     final bool highlightD41 = normalizedSection == 'D41';
     final bool highlightD51A = normalizedSection == 'D51A';
@@ -223,7 +224,8 @@ class _ArchRoundPainter extends CustomPainter {
         'Arch',
         Offset(
           size.width / 2,
-          (showOuterDesign ? frameRect.top : innerRect.top) - size.height * 0.09,
+          (showOuterDesign ? frameRect.top : innerRect.top) -
+              size.height * 0.09,
         ),
         highlight: highlightD51F || (highlightD51A && collarId == 2),
       );

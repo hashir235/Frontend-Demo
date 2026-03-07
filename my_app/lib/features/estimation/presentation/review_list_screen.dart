@@ -86,12 +86,13 @@ class ReviewListScreen extends StatelessWidget {
             projectLocation: session.projectLocation,
             requestContext: 'fabrication',
             showPdfActions: true,
-            materialSelectionBuilder: (
-              BuildContext context,
-              String? projectId,
-              String projectName,
-              String projectLocation,
-            ) {
+            materialSelectionBuilder:
+                (
+                  BuildContext context,
+                  String? projectId,
+                  String projectName,
+                  String projectLocation,
+                ) {
                   return MaterialSelectionScreen(
                     projectId: projectId,
                     projectName: projectName,

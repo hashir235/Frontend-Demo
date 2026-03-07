@@ -5,6 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_hero_header.dart';
+import '../../../shared/widgets/app_screen_shell.dart';
+import '../../../shared/widgets/bottom_action_bar.dart';
+import '../../../shared/widgets/metric_card.dart';
+import '../../../shared/widgets/project_meta_strip.dart';
+import '../../../shared/widgets/section_surface_card.dart';
+import '../../../shared/widgets/state_message_card.dart';
 import '../../fabrication/presentation/glass_report_screen.dart';
 import '../data/cost_table_api_client.dart';
 import '../models/cost_table.dart';
@@ -103,13 +110,6 @@ class _EstimationMaterialTableScreenState
         .replaceFirst(RegExp(r'\.$'), '');
   }
 
-  TextStyle? _tableValueTextStyle(BuildContext context) {
-    return Theme.of(context).textTheme.bodyMedium?.copyWith(
-      color: AppTheme.deepTeal,
-      fontWeight: FontWeight.w700,
-    );
-  }
-
   String _apiBaseUrl() {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:8080';
@@ -147,7 +147,7 @@ class _EstimationMaterialTableScreenState
           }
         }
       } on FormatException {
-        // Keep fallback message.
+        // keep fallback
       }
 
       messenger.showSnackBar(SnackBar(content: Text(resolvedMessage)));
@@ -221,9 +221,8 @@ class _EstimationMaterialTableScreenState
   void _openGlassReport() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (BuildContext context) => GlassReportScreen(
-          projectId: widget.projectId,
-        ),
+        builder: (BuildContext context) =>
+            GlassReportScreen(projectId: widget.projectId),
       ),
     );
   }
@@ -238,59 +237,40 @@ class _EstimationMaterialTableScreenState
       return null;
     }
 
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(color: AppTheme.sky.withValues(alpha: 0.7)),
-          ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: AppTheme.deepTeal.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, -4),
+    return BottomActionBar(
+      children: <Widget>[
+        if (widget.showPdfActions)
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: _generateMaterialPdf,
+              icon: const Icon(Icons.download_rounded),
+              label: const Text('Download PDF'),
             ),
-          ],
-        ),
-        child: Row(
-          children: <Widget>[
-            if (widget.showPdfActions) ...<Widget>[
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _generateMaterialPdf,
-                  icon: const Icon(Icons.download_rounded),
-                  label: const Text('Download PDF'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              IconButton.filledTonal(
-                tooltip: 'Share',
-                onPressed: _showShareOptions,
-                icon: const Icon(Icons.share_outlined),
-              ),
-            ],
-            if (showGlassReport) ...<Widget>[
-              if (widget.showPdfActions) const SizedBox(width: 12),
-              FilledButton.tonalIcon(
-                onPressed: _openGlassReport,
-                icon: const Icon(Icons.table_view_rounded),
-                label: const Text('Glass Report'),
-              ),
-            ],
-            if (widget.showNextToBill) ...<Widget>[
-              if (widget.showPdfActions || showGlassReport)
-                const SizedBox(width: 12),
-              FilledButton(
-                onPressed: _handleNextPressed,
-                child: const Text('Next'),
-              ),
-            ],
-          ],
-        ),
-      ),
+          ),
+        if (widget.showPdfActions && showGlassReport)
+          const SizedBox(width: AppTheme.space4),
+        if (showGlassReport)
+          FilledButton.tonalIcon(
+            onPressed: _openGlassReport,
+            icon: const Icon(Icons.table_view_rounded),
+            label: const Text('Glass Report'),
+          ),
+        if ((widget.showPdfActions || showGlassReport) && widget.showNextToBill)
+          const SizedBox(width: AppTheme.space4),
+        if (widget.showNextToBill)
+          FilledButton(
+            onPressed: _handleNextPressed,
+            child: const Text('Next'),
+          ),
+        if (widget.showPdfActions) ...<Widget>[
+          const SizedBox(width: AppTheme.space4),
+          IconButton.filledTonal(
+            tooltip: 'Share',
+            onPressed: _showShareOptions,
+            icon: const Icon(Icons.share_outlined),
+          ),
+        ],
+      ],
     );
   }
 
@@ -301,9 +281,10 @@ class _EstimationMaterialTableScreenState
         rows.add(
           _MaterialDisplayRow(
             section: row.section,
-            length: '--',
+            lengthDisplay: '--',
             quantity: 0,
             totalFt: row.totalFt,
+            totalFtDisplay: row.totalFtDisplay,
             rate: row.rate,
             totalRate: row.totalPrice,
           ),
@@ -315,9 +296,10 @@ class _EstimationMaterialTableScreenState
         rows.add(
           _MaterialDisplayRow(
             section: row.section,
-            length: length.lengthFt,
+            lengthDisplay: length.lengthDisplay,
             quantity: length.quantity,
             totalFt: row.totalFt,
+            totalFtDisplay: row.totalFtDisplay,
             rate: row.rate,
             totalRate: row.totalPrice,
           ),
@@ -332,64 +314,26 @@ class _EstimationMaterialTableScreenState
     return Scaffold(
       appBar: AppBar(title: Text(widget.screenTitle)),
       bottomNavigationBar: _buildBottomActions(),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              AppTheme.ice,
-              AppTheme.sky.withValues(alpha: 0.42),
-              AppTheme.mist,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: _buildBody(context),
-          ),
-        ),
-      ),
+      body: AppScreenShell(child: _buildBody(context)),
     );
   }
 
   Widget _buildBody(BuildContext context) {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            CircularProgressIndicator(),
-            SizedBox(height: 12),
-            Text('Loading material table...'),
-          ],
-        ),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.red.shade700,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _loadTable,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Retry'),
-              ),
-            ],
+        child: StateMessageCard(
+          icon: Icons.table_rows_outlined,
+          title: 'Material table unavailable',
+          message: _errorMessage,
+          iconColor: AppTheme.danger,
+          action: FilledButton.icon(
+            onPressed: _loadTable,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Retry'),
           ),
         ),
       );
@@ -397,33 +341,71 @@ class _EstimationMaterialTableScreenState
 
     final CostTable? table = _table;
     if (table == null) {
-      return const Center(child: Text('No material data.'));
-    }
-
-    final List<_MaterialDisplayRow> rows = _displayRows(table);
-    if (rows.isEmpty) {
-      return _buildShell(
-        child: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('No material rows found for the current project.'),
-          ),
+      return const Center(
+        child: StateMessageCard(
+          icon: Icons.grid_off_rounded,
+          title: 'No material data',
         ),
       );
     }
 
-    return _buildShell(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-        children: <Widget>[
-          _buildHeaderCard(context, table),
-          const SizedBox(height: 16),
-          SingleChildScrollView(
+    final List<_MaterialDisplayRow> rows = _displayRows(table);
+    if (rows.isEmpty) {
+      return const Center(
+        child: StateMessageCard(
+          icon: Icons.inventory_2_outlined,
+          title: 'No material rows found',
+          message: 'No material rows are available for the current project.',
+        ),
+      );
+    }
+
+    return ListView(
+      children: <Widget>[
+        AppHeroHeader(
+          eyebrow: widget.requestContext.toUpperCase(),
+          title: widget.screenTitle,
+          subtitle:
+              'A polished summary of section lengths, quantities, rates, and totals for ordering and costing.',
+        ),
+        const SizedBox(height: AppTheme.space5),
+        ProjectMetaStrip(
+          projectName: widget.projectName,
+          projectLocation: widget.projectLocation,
+          extras: <Widget>[
+            _MetaChip(label: 'Gage', value: widget.gaugeLabel),
+            _MetaChip(label: 'Colour', value: widget.colorLabel),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space6),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: MetricCard(
+                label: 'Sections',
+                value: '${table.rows.length}',
+                icon: Icons.view_module_rounded,
+              ),
+            ),
+            const SizedBox(width: AppTheme.space4),
+            Expanded(
+              child: MetricCard(
+                label: 'Grand Total',
+                value: _formatNumber(table.grandTotal),
+                icon: Icons.request_quote_rounded,
+                accent: AppTheme.tealAccent,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space6),
+        SectionSurfaceCard(
+          title: 'Material Summary',
+          subtitle:
+              'Lengths are shown in the user-readable display format returned by the backend.',
+          child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              headingRowColor: WidgetStateProperty.all(
-                AppTheme.deepTeal.withValues(alpha: 0.08),
-              ),
               columns: const <DataColumn>[
                 DataColumn(label: Text('Section')),
                 DataColumn(label: Text('Length')),
@@ -436,161 +418,64 @@ class _EstimationMaterialTableScreenState
                   .map(
                     (_MaterialDisplayRow row) => DataRow(
                       cells: <DataCell>[
-                        DataCell(
-                          Text(
-                            row.section,
-                            style: _tableValueTextStyle(context),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            row.length is String
-                                ? row.length as String
-                                : '${_formatNumber(row.length as double, decimals: 1)} ft',
-                            style: _tableValueTextStyle(context),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            '${row.quantity}',
-                            style: _tableValueTextStyle(context),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            _formatNumber(row.totalFt),
-                            style: _tableValueTextStyle(context),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            _formatNumber(row.rate),
-                            style: _tableValueTextStyle(context),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            _formatNumber(row.totalRate),
-                            style: _tableValueTextStyle(context),
-                          ),
-                        ),
+                        DataCell(Text(row.section)),
+                        DataCell(Text(row.lengthDisplay)),
+                        DataCell(Text('${row.quantity}')),
+                        DataCell(Text(row.totalFtDisplay)),
+                        DataCell(Text(_formatNumber(row.rate))),
+                        DataCell(Text(_formatNumber(row.totalRate))),
                       ],
                     ),
                   )
-                  .toList(),
+                  .toList(growable: false),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShell({required Widget child}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: AppTheme.sky.withValues(alpha: 0.8)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: AppTheme.deepTeal.withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildHeaderCard(BuildContext context, CostTable table) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          colors: <Color>[
-            AppTheme.violet.withValues(alpha: 0.12),
-            AppTheme.sky.withValues(alpha: 0.14),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: <Widget>[
-              _MaterialInfoPill(label: 'Gage', value: widget.gaugeLabel),
-              _MaterialInfoPill(label: 'Color', value: widget.colorLabel),
-              _MaterialInfoPill(
-                label: 'Grand Total',
-                value: _formatNumber(table.grandTotal),
-              ),
-            ],
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
 
 class _MaterialDisplayRow {
   final String section;
-  final Object length;
+  final String lengthDisplay;
   final int quantity;
   final double totalFt;
+  final String totalFtDisplay;
   final double rate;
   final double totalRate;
 
   const _MaterialDisplayRow({
     required this.section,
-    required this.length,
+    required this.lengthDisplay,
     required this.quantity,
     required this.totalFt,
+    required this.totalFtDisplay,
     required this.rate,
     required this.totalRate,
   });
 }
 
-class _MaterialInfoPill extends StatelessWidget {
+class _MetaChip extends StatelessWidget {
   final String label;
   final String value;
 
-  const _MaterialInfoPill({required this.label, required this.value});
+  const _MetaChip({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.sky.withValues(alpha: 0.45)),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.space4,
+        vertical: AppTheme.space3,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppTheme.deepTeal.withValues(alpha: 0.66),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.deepTeal,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
+      decoration: AppTheme.infoChipDecoration(emphasized: true),
+      child: Text(
+        '$label: $value',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppTheme.textPrimary,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

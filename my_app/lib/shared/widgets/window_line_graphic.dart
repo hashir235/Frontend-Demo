@@ -410,8 +410,11 @@ class _WindowLinePainter extends CustomPainter {
     final double cornerInteriorDeg = 30;
     final double edgeAngleRad = cornerInteriorDeg * (math.pi / 180);
     final int? cornerIndex = _effectiveCornerIndex(displayIndex);
-    final bool isLeftFix13 = cornerIndex == 13;
-    final bool isRightFix14 = cornerIndex == 14;
+    final String resolvedCode = (windowCode ?? '').trim();
+    final bool isLeftFix13 =
+        resolvedCode == 'SCL_win' || resolvedCode == 'MSCL_win';
+    final bool isRightFix14 =
+        resolvedCode == 'SCR_win' || resolvedCode == 'MSCR_win';
 
     final Rect cornerRect = Rect.fromLTWH(
       frameRect.left + (frameRect.width * 0.02),
@@ -502,7 +505,11 @@ class _WindowLinePainter extends CustomPainter {
       canvas.drawLine(rightTopInner, rightBottomInner, strokePaint);
     }
 
-    final _CornerPattern? pattern = _cornerPatternFor(windowLabel, cornerIndex);
+    final _CornerPattern? pattern = _cornerPatternFor(
+      windowLabel,
+      cornerIndex,
+      resolvedCode,
+    );
     if (pattern == null) {
       return;
     }
@@ -549,14 +556,22 @@ class _WindowLinePainter extends CustomPainter {
       final double yOffset = _cornerSymbolYOffset(
         windowLabel,
         cornerIndex,
+        resolvedCode,
         i,
         symbol,
       );
       final bool placeArrowBelowLetter =
           (windowLabel == 'Sliding Corner Center Fix' &&
               (i == 0 || i == pattern.symbols.length - 1)) ||
+          (resolvedCode == 'MSCS_win' && symbol.contains('S')) ||
           (cornerIndex == 13 && symbol.contains('<-')) ||
           (cornerIndex == 14 && symbol.contains('->'));
+      final double belowArrowYOffset =
+          resolvedCode == 'MSCS_win' && symbol.contains('S') ? 10 : 11;
+      final bool placeArrowAboveLetter =
+          windowLabel == 'Sliding Corner Center Slide' &&
+          symbol.contains('S') &&
+          resolvedCode != 'MSCS_win';
 
       final TextPainter letterPainter = _drawCenteredText(
         canvas,
@@ -574,10 +589,14 @@ class _WindowLinePainter extends CustomPainter {
           center: Offset(centerX, centerY + yOffset),
           letterWidth: letterPainter.width,
           color: strokeColor,
-          rotateDeg: placeArrowBelowLetter ? 0 : wingRotationDeg,
+          rotateDeg: (placeArrowBelowLetter || placeArrowAboveLetter)
+              ? 0
+              : wingRotationDeg,
           drawLeft: hasLeftArrow,
           drawRight: hasRightArrow,
           placeBelowLetter: placeArrowBelowLetter,
+          belowYOffset: belowArrowYOffset,
+          placeAboveLetter: placeArrowAboveLetter,
         );
       }
     }
@@ -606,6 +625,7 @@ class _WindowLinePainter extends CustomPainter {
   double _cornerSymbolYOffset(
     String label,
     int? index,
+    String resolvedCode,
     int panelIndex,
     String symbol,
   ) {
@@ -625,7 +645,16 @@ class _WindowLinePainter extends CustomPainter {
         }
         return 0;
       case 'Sliding Corner Center Slide':
-        if (index == 12) {
+        if (resolvedCode == 'SCS_win') {
+          if (symbol.contains('F')) {
+            return -20;
+          }
+          if (symbol.contains('S')) {
+            return -6;
+          }
+          return 0;
+        }
+        if (resolvedCode == 'MSCS_win') {
           if (symbol.contains('F')) {
             return -20;
           }
@@ -639,18 +668,22 @@ class _WindowLinePainter extends CustomPainter {
         }
         return 0;
       case 'Sliding Corner Left Fix':
-        if (index == 13 && panelIndex == 0) {
+        if ((resolvedCode == 'SCL_win' || resolvedCode == 'MSCL_win') &&
+            panelIndex == 0) {
           return -10;
         }
-        if (index == 13 && symbol.contains('S')) {
-          return -32;
+        if ((resolvedCode == 'SCL_win' || resolvedCode == 'MSCL_win') &&
+            symbol.contains('S')) {
+          return -16;
         }
         return 0;
       case 'Sliding Corner Right Fix':
-        if (index == 14 && panelIndex == 0) {
+        if ((resolvedCode == 'SCR_win' || resolvedCode == 'MSCR_win') &&
+            panelIndex == 0) {
           return -24;
         }
-        if (index == 14 && panelIndex == 2) {
+        if ((resolvedCode == 'SCR_win' || resolvedCode == 'MSCR_win') &&
+            panelIndex == 2) {
           return -12;
         }
         return 0;
@@ -690,19 +723,23 @@ class _WindowLinePainter extends CustomPainter {
     }
   }
 
-  _CornerPattern? _cornerPatternFor(String label, int? index) {
+  _CornerPattern? _cornerPatternFor(
+    String label,
+    int? index,
+    String resolvedCode,
+  ) {
     switch (label) {
       case 'Sliding Corner Center Fix':
         return const _CornerPattern(symbols: ['S->', 'F', 'F', '<-S']);
       case 'Sliding Corner Center Slide':
         return const _CornerPattern(symbols: ['F', '<-S', 'S->', 'F']);
       case 'Sliding Corner Left Fix':
-        if (index == 13) {
+        if (resolvedCode == 'SCL_win' || resolvedCode == 'MSCL_win') {
           return const _CornerPattern(symbols: ['F', 'F', '<-S']);
         }
         return null;
       case 'Sliding Corner Right Fix':
-        if (index == 14) {
+        if (resolvedCode == 'SCR_win' || resolvedCode == 'MSCR_win') {
           return const _CornerPattern(symbols: ['S->', 'F', 'F']);
         }
         return null;
@@ -738,6 +775,8 @@ class _WindowLinePainter extends CustomPainter {
     required bool drawLeft,
     required bool drawRight,
     required bool placeBelowLetter,
+    required double belowYOffset,
+    required bool placeAboveLetter,
   }) {
     final Paint arrowPaint = Paint()
       ..color = color.withValues(alpha: 0.95)
@@ -756,7 +795,14 @@ class _WindowLinePainter extends CustomPainter {
 
     if (drawRight) {
       if (placeBelowLetter) {
-        const double y = 11;
+        final double y = belowYOffset;
+        final double x1 = -shaft / 2;
+        final double x2 = shaft / 2;
+        canvas.drawLine(Offset(x1, y), Offset(x2, y), arrowPaint);
+        canvas.drawLine(Offset(x2, y), Offset(x2 - head, y - head), arrowPaint);
+        canvas.drawLine(Offset(x2, y), Offset(x2 - head, y + head), arrowPaint);
+      } else if (placeAboveLetter) {
+        const double y = -11;
         final double x1 = -shaft / 2;
         final double x2 = shaft / 2;
         canvas.drawLine(Offset(x1, y), Offset(x2, y), arrowPaint);
@@ -773,7 +819,14 @@ class _WindowLinePainter extends CustomPainter {
 
     if (drawLeft) {
       if (placeBelowLetter) {
-        const double y = 11;
+        final double y = belowYOffset;
+        final double x1 = shaft / 2;
+        final double x2 = -shaft / 2;
+        canvas.drawLine(Offset(x1, y), Offset(x2, y), arrowPaint);
+        canvas.drawLine(Offset(x2, y), Offset(x2 + head, y - head), arrowPaint);
+        canvas.drawLine(Offset(x2, y), Offset(x2 + head, y + head), arrowPaint);
+      } else if (placeAboveLetter) {
+        const double y = -11;
         final double x1 = shaft / 2;
         final double x2 = -shaft / 2;
         canvas.drawLine(Offset(x1, y), Offset(x2, y), arrowPaint);

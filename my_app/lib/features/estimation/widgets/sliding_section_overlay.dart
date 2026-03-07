@@ -28,13 +28,13 @@ class _SlidingPainter extends CustomPainter {
     String? effectiveSection = selectedSection;
     if (selectedSection != null) {
       // If selected matches an alias value, map back to its base key.
-      final String? base = sectionAliases.entries
+      final String base = sectionAliases.entries
           .firstWhere(
             (e) => e.value == selectedSection,
             orElse: () => const MapEntry<String, String>('', ''),
           )
           .key;
-      if (base != null && base.isNotEmpty) {
+      if (base.isNotEmpty) {
         effectiveSection = base;
       }
     }
@@ -163,7 +163,8 @@ class _SlidingPainter extends CustomPainter {
     final double sideGap = labelGap + size.width * 0.01;
     final bool highlightDc30F = effectiveSection == 'DC30F';
     final bool highlightDc30C = effectiveSection == 'DC30C';
-    final bool highlightDc26 = effectiveSection == 'DC26C' || effectiveSection == 'DC26F';
+    final bool highlightDc26 =
+        effectiveSection == 'DC26C' || effectiveSection == 'DC26F';
     final bool highlightM23 = effectiveSection == 'M23';
     final bool highlightM24 = effectiveSection == 'M24';
     final bool highlightM28 = effectiveSection == 'M28';
@@ -269,7 +270,11 @@ class _SlidingPainter extends CustomPainter {
     if (highlightDc30F && collarId == 1) {
       if (!hideOuter) {
         canvas.drawLine(outerRect.topLeft, outerRect.topRight, highlightPaint);
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, highlightPaint);
+        canvas.drawLine(
+          outerRect.topLeft,
+          outerRect.bottomLeft,
+          highlightPaint,
+        );
         canvas.drawLine(
           outerRect.topRight,
           outerRect.bottomRight,
@@ -311,7 +316,11 @@ class _SlidingPainter extends CustomPainter {
     // left/right rails + corner links with HL/HR labels
     if (highlightDc30F && collarId == 3) {
       if (!hideOuter) {
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, highlightPaint);
+        canvas.drawLine(
+          outerRect.topLeft,
+          outerRect.bottomLeft,
+          highlightPaint,
+        );
         canvas.drawLine(
           outerRect.topRight,
           outerRect.bottomRight,
@@ -347,7 +356,11 @@ class _SlidingPainter extends CustomPainter {
     if (highlightDc30F && collarId == 4) {
       if (!hideOuter) {
         canvas.drawLine(outerRect.topLeft, outerRect.topRight, highlightPaint);
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, highlightPaint);
+        canvas.drawLine(
+          outerRect.topLeft,
+          outerRect.bottomLeft,
+          highlightPaint,
+        );
         canvas.drawLine(outerRect.topLeft, innerRect.topLeft, highlightPaint);
         canvas.drawLine(outerRect.topRight, innerRect.topRight, highlightPaint);
         canvas.drawLine(
@@ -373,7 +386,11 @@ class _SlidingPainter extends CustomPainter {
     if (highlightDc30F && collarId == 5) {
       if (!hideOuter) {
         canvas.drawLine(outerRect.topLeft, outerRect.topRight, highlightPaint);
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, highlightPaint);
+        canvas.drawLine(
+          outerRect.topLeft,
+          outerRect.bottomLeft,
+          highlightPaint,
+        );
         canvas.drawLine(
           outerRect.topRight,
           outerRect.bottomRight,
@@ -468,7 +485,11 @@ class _SlidingPainter extends CustomPainter {
     if (highlightDc30F && collarId == 8) {
       if (!hideOuter) {
         canvas.drawLine(outerRect.topLeft, outerRect.topRight, highlightPaint);
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, highlightPaint);
+        canvas.drawLine(
+          outerRect.topLeft,
+          outerRect.bottomLeft,
+          highlightPaint,
+        );
         canvas.drawLine(outerRect.topLeft, innerRect.topLeft, highlightPaint);
         canvas.drawLine(outerRect.topRight, innerRect.topRight, highlightPaint);
         canvas.drawLine(
@@ -493,7 +514,11 @@ class _SlidingPainter extends CustomPainter {
     // left/right rails + all corner links with HL/HR
     if (highlightDc30F && collarId == 9) {
       if (!hideOuter) {
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, highlightPaint);
+        canvas.drawLine(
+          outerRect.topLeft,
+          outerRect.bottomLeft,
+          highlightPaint,
+        );
         canvas.drawLine(
           outerRect.topRight,
           outerRect.bottomRight,
@@ -581,7 +606,11 @@ class _SlidingPainter extends CustomPainter {
     // left rails + left corner links with HL
     if (highlightDc30F && collarId == 14) {
       if (!hideOuter) {
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, highlightPaint);
+        canvas.drawLine(
+          outerRect.topLeft,
+          outerRect.bottomLeft,
+          highlightPaint,
+        );
         canvas.drawLine(outerRect.topLeft, innerRect.topLeft, highlightPaint);
         canvas.drawLine(
           outerRect.bottomLeft,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../models/window_type.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/window_line_graphic.dart';
+import '../models/window_type.dart';
 
 class WindowNavigationCard extends StatelessWidget {
   final WindowType node;
@@ -22,156 +22,163 @@ class WindowNavigationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color borderColor = isSelected
-        ? AppTheme.violet
-        : (isFocused ? AppTheme.sky : AppTheme.ice.withValues(alpha: 0.85));
+    final bool highlight = isSelected || isFocused;
+    final Color accent = node.hasChildren
+        ? AppTheme.tealAccent
+        : AppTheme.royalBlue;
+    final String resolvedCode = (node.codeName ?? '').trim();
+    final bool isMSectionCard =
+        node.label.contains('M_Section') ||
+        node.label.contains('M Section') ||
+        resolvedCode.startsWith('M');
+    final List<Color> diagramColors = isMSectionCard
+        ? <Color>[const Color(0xFFEAF8EB), const Color(0xFFD4F0D7)]
+        : <Color>[const Color(0xFFEFF6FF), const Color(0xFFDCEBFF)];
 
-    final Color titleColor = isFocused ? AppTheme.deepTeal : AppTheme.slate;
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool compact =
+            constraints.maxWidth < 240 || constraints.maxHeight < 320;
+        final double cardPadding = compact ? AppTheme.space5 : AppTheme.space6;
+        final double iconSize = compact ? 36 : 40;
+        final double graphicHeight = compact ? 92 : 122;
+        final int titleLines = compact ? 3 : 2;
+        final int subtitleLines = compact ? 2 : 3;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(28),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeInOutCubic,
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFF8FBFD), Color(0xFFEAF1F5)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            onTap: onTap,
+            child: Ink(
+              decoration: AppTheme.elevatedCardDecoration(
+                selected: highlight,
+                accent: accent,
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(cardPadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppTheme.space3,
+                              vertical: AppTheme.space2,
+                            ),
+                            decoration: AppTheme.infoChipDecoration(
+                              emphasized: highlight,
+                            ),
+                            child: Text(
+                              node.codeName ?? 'Gateway',
+                              key: highlight
+                                  ? const Key('focused_code_name')
+                                  : null,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    color: highlight
+                                        ? accent
+                                        : AppTheme.textPrimary,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.space3),
+                        Container(
+                          width: iconSize,
+                          height: iconSize,
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            node.hasChildren
+                                ? Icons.dashboard_customize_rounded
+                                : Icons.arrow_forward_rounded,
+                            color: accent,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.space4),
+                    SizedBox(
+                      height: graphicHeight,
+                      width: double.infinity,
+                      child: Container(
+                        padding: EdgeInsets.all(
+                          compact ? AppTheme.space4 : AppTheme.space5,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: diagramColors,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: AppTheme.line.withValues(alpha: 0.85),
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMd,
+                          ),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: SizedBox(
+                            width: compact ? 118 : 150,
+                            height: compact ? 72 : 88,
+                            child: WindowLineGraphic(
+                              graphicKey: node.graphicKey,
+                              windowLabel: node.label,
+                              displayIndex: node.displayIndex,
+                              windowCode: node.codeName,
+                              strokeColor: highlight
+                                  ? AppTheme.royalBlue
+                                  : AppTheme.deepTeal,
+                              horizontalShift: parallaxShift,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.space4),
+                    Text(
+                      node.label,
+                      maxLines: titleLines,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        height: 1.08,
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.space2),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: Text(
+                          node.subtitle ??
+                              (node.hasChildren
+                                  ? 'Open this family to continue'
+                                  : 'Open the detailed input page'),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(height: 1.32),
+                          maxLines: subtitleLines,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: borderColor,
-              width: isSelected ? 2.4 : 1.3,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.deepTeal.withValues(alpha: 0.11),
-                blurRadius: 28,
-                offset: const Offset(0, 16),
-              ),
-            ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (node.displayIndex != null)
-                    _Pill(
-                      label: '#${node.displayIndex}',
-                      color: AppTheme.deepTeal,
-                      textColor: Colors.white,
-                    )
-                  else
-                    const _Pill(
-                      label: 'Gateway',
-                      color: AppTheme.slate,
-                      textColor: Colors.white,
-                    ),
-                  if (isSelected)
-                    const _Pill(
-                      label: 'Selected',
-                      color: AppTheme.violet,
-                      textColor: Colors.white,
-                    ),
-                ],
-              ),
-              if (node.codeName != null) ...[
-                const SizedBox(height: 35),
-                Center(
-                  child: Text(
-                    node.codeName!,
-                    key: isFocused ? const Key('focused_code_name') : null,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.deepTeal.withValues(alpha: 0.92),
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 0),
-              Expanded(
-                child: Center(
-                  child: Transform.translate(
-                    offset: Offset(0, node.codeName != null ? -5 : 0),
-                    child: WindowLineGraphic(
-                      graphicKey: node.graphicKey,
-                      windowLabel: node.label,
-                      displayIndex: node.displayIndex,
-                      windowCode: node.codeName,
-                      strokeColor: isFocused
-                          ? AppTheme.deepTeal
-                          : AppTheme.slate,
-                      horizontalShift: parallaxShift,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: Text(
-                  node.label,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: titleColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Center(
-                child: Text(
-                  node.hasChildren
-                      ? 'Tap to open options'
-                      : 'Tap to open input',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  final String label;
-  final Color color;
-  final Color textColor;
-
-  const _Pill({
-    required this.label,
-    required this.color,
-    required this.textColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: textColor,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+        );
+      },
     );
   }
 }
