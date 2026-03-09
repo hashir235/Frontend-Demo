@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../auth/state/auth_controller.dart';
 import '../data/billing_settings_repository.dart';
 import '../data/estimation_settings_repository.dart';
 import '../data/fabrication_settings_repository.dart';
@@ -1076,6 +1077,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildAccountCard(BuildContext context) {
+    return AnimatedBuilder(
+      animation: AuthController.instance,
+      builder: (BuildContext context, _) {
+        final AuthController authController = AuthController.instance;
+        final String displayName =
+            authController.currentUser?.fullName.trim().isNotEmpty == true
+            ? authController.currentUser!.fullName
+            : 'Signed-in user';
+        final String email = authController.currentUser?.email ?? '';
+
+        return _buildSettingsCard(
+          context,
+          icon: Icons.manage_accounts_rounded,
+          title: 'Account',
+          subtitle:
+              'You stay signed in on this device until you choose to sign out.',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _buildSettingsCluster(
+                context,
+                title: displayName,
+                subtitle: email.isEmpty ? 'Current session is active.' : email,
+                children: const <Widget>[
+                  Text(
+                    'Use sign out only when you want to remove this account from the device.',
+                  ),
+                ],
+              ),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: authController.isBusy
+                      ? null
+                      : () async {
+                          await authController.signOut();
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.deepTeal,
+                  ),
+                  icon: authController.isBusy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.logout_rounded),
+                  label: Text(
+                    authController.isBusy ? 'Signing Out...' : 'Sign Out',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1101,6 +1165,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildEstimationSettingsCard(context),
               const SizedBox(height: 20),
               _buildFabricationSettingsCard(context),
+              const SizedBox(height: 20),
+              _buildAccountCard(context),
             ],
           ),
         ),

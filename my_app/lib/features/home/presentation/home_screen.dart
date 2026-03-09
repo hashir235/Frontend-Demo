@@ -17,26 +17,32 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(title: const Text('Quick Aluminium')),
+      appBar: AppBar(title: const Text('Quick AL')),
       body: AppScreenShell(
         child: ListView(
           children: <Widget>[
             AppHeroHeader(
-              eyebrow: 'QUICK ALUMINIUM',
-              title: 'Premium estimation and fabrication workspace',
+              eyebrow: 'QUICK AL',
+              title: 'Estimation & Fabrication Workspace',
               subtitle:
                   'A refined business tool for aluminium windows, fabrication operations, and project settings.',
               trailing: Container(
-                width: 86,
-                height: 86,
+                width: 132,
+                height: 132,
+                padding: const EdgeInsets.all(AppTheme.space2),
                 decoration: BoxDecoration(
-                  gradient: AppTheme.brandGradient,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                ),
-                child: const Icon(
-                  Icons.precision_manufacturing_rounded,
                   color: Colors.white,
-                  size: 42,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(color: AppTheme.line),
+                  boxShadow: AppTheme.softShadow(),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  child: Image.asset(
+                    'assets/images/quick_al_icon.png',
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                  ),
                 ),
               ),
             ),

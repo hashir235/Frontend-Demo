@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:my_app/core/config/api_config.dart';
+import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -21,12 +22,6 @@ import 'glass_report_screen.dart';
 class FabricationMenuScreen extends StatelessWidget {
   const FabricationMenuScreen({super.key});
 
-  String _apiBaseUrl() {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://127.0.0.1:8080';
-  }
 
   Future<_ProjectDraft?> _showProjectDialog(BuildContext context) async {
     return showDialog<_ProjectDraft>(
@@ -44,9 +39,9 @@ class FabricationMenuScreen extends StatelessWidget {
 
     String? resetWarning;
     try {
-      final http.Response response = await http
+      final http.Response response = await AuthHttpClient()
           .post(
-            Uri.parse('${_apiBaseUrl()}/api/estimation/reset-session'),
+            ApiConfig.buildUri('/api/estimation/reset-session'),
             headers: const <String, String>{'Content-Type': 'application/json'},
             body: jsonEncode(const <String, Object?>{}),
           )

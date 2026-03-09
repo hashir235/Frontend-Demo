@@ -1,6 +1,7 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:my_app/core/config/api_config.dart';
+import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -155,12 +156,6 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     );
   }
 
-  String _apiBaseUrl() {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://127.0.0.1:8080';
-  }
 
   Future<void> _generateCuttingPdf({
     String successMessage = 'PDF generated.',
@@ -169,10 +164,10 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     messenger.hideCurrentSnackBar();
 
     try {
-      final http.Response response = await http.post(
-        Uri.parse('${_apiBaseUrl()}/api/pdf/cutting'),
+      final http.Response response = await AuthHttpClient().post(
+        ApiConfig.buildUri('/api/pdf/cutting'),
         headers: const <String, String>{'Content-Type': 'application/json'},
-        body: jsonEncode(const <String, Object?>{}),
+        body: jsonEncode(<String, Object?>{'projectId': widget.projectId}),
       );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -589,7 +584,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     CuttingReportGroup group,
   ) {
     final String wastageText =
-        'Wastage: ${group.wastageDisplay}${group.offcut ? ' • Offcut' : ''}';
+        'Wastage: ${group.wastageDisplay}${group.offcut ? ' | Offcut' : ''}';
     return SectionSurfaceCard(
       title: 'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}',
       trailing: Container(

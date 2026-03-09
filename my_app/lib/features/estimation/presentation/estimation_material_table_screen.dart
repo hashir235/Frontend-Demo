@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:my_app/core/config/api_config.dart';
+import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -110,12 +111,6 @@ class _EstimationMaterialTableScreenState
         .replaceFirst(RegExp(r'\.$'), '');
   }
 
-  String _apiBaseUrl() {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://127.0.0.1:8080';
-  }
 
   Future<void> _generateMaterialPdf({
     String successMessage = 'Material PDF generated.',
@@ -124,10 +119,10 @@ class _EstimationMaterialTableScreenState
     messenger.hideCurrentSnackBar();
 
     try {
-      final http.Response response = await http.post(
-        Uri.parse('${_apiBaseUrl()}/api/pdf/material'),
+      final http.Response response = await AuthHttpClient().post(
+        ApiConfig.buildUri('/api/pdf/material'),
         headers: const <String, String>{'Content-Type': 'application/json'},
-        body: jsonEncode(const <String, Object?>{}),
+        body: jsonEncode(<String, Object?>{'projectId': widget.projectId}),
       );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {

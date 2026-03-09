@@ -69,7 +69,7 @@ class PrimaryCardButton extends StatelessWidget {
                           emphasized: true,
                         ),
                         child: Text(
-                          'Quick Aluminium',
+                          'Quick AL',
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
                                 color: accentColor,

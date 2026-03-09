@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:my_app/core/config/api_config.dart';
+import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/rate_review.dart';
@@ -21,9 +22,9 @@ class RateReviewApiClient {
   final Uri _endpointUri;
 
   RateReviewApiClient({http.Client? httpClient, String? baseUrl})
-    : _httpClient = httpClient ?? http.Client(),
+    : _httpClient = httpClient ?? AuthHttpClient(),
       _endpointUri = Uri.parse(
-        '${baseUrl ?? _defaultBaseUrl()}/api/rate-review',
+        '${baseUrl ?? ApiConfig.baseUrl}/api/rate-review',
       );
 
   Future<RateReview> fetchRateReview({
@@ -87,12 +88,6 @@ class RateReviewApiClient {
     return review;
   }
 
-  static String _defaultBaseUrl() {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://127.0.0.1:8080';
-  }
 
   Map<String, dynamic>? _decodeObject(String body) {
     if (body.trim().isEmpty) {

@@ -1,16 +1,19 @@
-# my_app
+# Quick AL Flutter App
 
-A new Flutter project.
+## Run locally
 
-## Getting Started
+Use `QUICKAL_API_BASE_URL` to point the app at the backend you want to test.
 
-This project is a starting point for a Flutter application.
+```bash
+flutter run --dart-define=QUICKAL_API_BASE_URL=http://127.0.0.1:8080
+```
 
-A few resources to get you started if this is your first Flutter project:
+Android emulator fallback is still `http://10.0.2.2:8080` when no value is provided.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Release builds
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Internal testing and production-style builds should point to a deployed HTTPS API.
+
+```bash
+flutter build appbundle --dart-define=QUICKAL_API_BASE_URL=https://your-api.example.com
+```

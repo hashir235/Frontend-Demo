@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:my_app/core/config/api_config.dart';
+import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -89,12 +90,6 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
     return snapshot.totals.grandTotal / snapshot.totals.totalArea;
   }
 
-  String _apiBaseUrl() {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://127.0.0.1:8080';
-  }
 
   Future<void> _generateInvoicePdf({
     String successMessage = 'Invoice PDF generated.',
@@ -103,10 +98,12 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
     messenger.hideCurrentSnackBar();
 
     try {
-      final http.Response response = await http.post(
-        Uri.parse('${_apiBaseUrl()}/api/pdf/invoice'),
+      final http.Response response = await AuthHttpClient().post(
+        ApiConfig.buildUri('/api/pdf/invoice'),
         headers: const <String, String>{'Content-Type': 'application/json'},
-        body: jsonEncode(const <String, Object?>{}),
+        body: jsonEncode(
+          <String, Object?>{'projectId': widget.request.projectId},
+        ),
       );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -174,6 +171,10 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
     );
   }
 
+  void _goHome() {
+    Navigator.of(context).popUntil((Route<dynamic> route) => route.isFirst);
+  }
+
   Widget? _buildBottomActions() {
     if (_isLoading || _errorMessage != null || _snapshot == null) {
       return null;
@@ -187,6 +188,12 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
             icon: const Icon(Icons.download_rounded),
             label: const Text('Download PDF'),
           ),
+        ),
+        const SizedBox(width: AppTheme.space4),
+        FilledButton.tonalIcon(
+          onPressed: _goHome,
+          icon: const Icon(Icons.home_rounded),
+          label: const Text('Home'),
         ),
         const SizedBox(width: AppTheme.space4),
         IconButton.filledTonal(
