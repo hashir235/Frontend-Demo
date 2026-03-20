@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../data/window_input_preferences_store.dart';
 import 'window_input_handler.dart';
 import '../../data/project_repository.dart';
 import '../../models/window_review_item.dart';
@@ -40,6 +42,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   static const double _collarCardWidthFactor = 1.16;
   static const double _collarViewportFraction = 0.78;
   final ProjectRepository _projectRepository = ProjectRepository();
+  final WindowInputPreferencesStore _preferencesStore =
+      WindowInputPreferencesStore();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _heightInchController = TextEditingController();
@@ -55,7 +59,32 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   final TextEditingController _archController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _winNoController = TextEditingController();
+  final FocusNode _winNoFocusNode = FocusNode();
   final FocusNode _heightFocusNode = FocusNode();
+  final FocusNode _heightSuterFocusNode = FocusNode();
+  final FocusNode _widthFocusNode = FocusNode();
+  final FocusNode _widthSuterFocusNode = FocusNode();
+  final FocusNode _leftWidthFocusNode = FocusNode();
+  final FocusNode _leftWidthSuterFocusNode = FocusNode();
+  final FocusNode _archFocusNode = FocusNode();
+  final FocusNode _descriptionFocusNode = FocusNode();
+  final GlobalKey _winNoFieldKey = GlobalKey(debugLabel: 'winNoField');
+  final GlobalKey _heightFieldKey = GlobalKey(debugLabel: 'heightField');
+  final GlobalKey _heightSuterFieldKey = GlobalKey(
+    debugLabel: 'heightSuterField',
+  );
+  final GlobalKey _widthFieldKey = GlobalKey(debugLabel: 'widthField');
+  final GlobalKey _widthSuterFieldKey = GlobalKey(debugLabel: 'widthSuterField');
+  final GlobalKey _leftWidthFieldKey = GlobalKey(
+    debugLabel: 'leftWidthField',
+  );
+  final GlobalKey _leftWidthSuterFieldKey = GlobalKey(
+    debugLabel: 'leftWidthSuterField',
+  );
+  final GlobalKey _archFieldKey = GlobalKey(debugLabel: 'archField');
+  final GlobalKey _descriptionFieldKey = GlobalKey(
+    debugLabel: 'descriptionField',
+  );
 
   late final PageController _collarPageController;
   double _collarPageValue = 0;
@@ -70,6 +99,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   String? _leftWidthError;
   String? _archError;
   late final WindowInputHandler _handler;
+  Future<void> _pendingProjectSync = Future<void>.value();
 
   int get _visibleWinNo {
     if (widget.isEditMode) {
@@ -170,6 +200,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         _selectedSectionCode = null;
       }
     });
+    _persistSidebarSelections();
   }
 
   void _setDoorD52Enabled(bool enabled) {
@@ -187,6 +218,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         _selectedSectionCode = null;
       }
     });
+    _persistSidebarSelections();
   }
 
   bool get _openableNetEnabled {
@@ -208,6 +240,136 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       if (!enabled && _selectedSectionCode == 'D29') {
         _selectedSectionCode = null;
       }
+    });
+    _persistSidebarSelections();
+  }
+
+  String? _normalizedSelectedSectionCode(String? sectionCode, int collarIndex) {
+    final String? normalized =
+        sectionCode == null || sectionCode.trim().isEmpty
+        ? null
+        : sectionCode.trim();
+    if (normalized == null) {
+      return null;
+    }
+    final List<String> availableSections = _handler.sectionsForCollar(
+      collarIndex,
+    );
+    return availableSections.contains(normalized) ? normalized : null;
+  }
+
+  WindowInputSidebarPreferences _currentSidebarPreferences() {
+    return WindowInputSidebarPreferences(
+      selectedCollar: _selectedCollar,
+      selectedSectionCode: _selectedSectionCode,
+      lockType: _showsLockTypeSelector ? _lockTypeCode(_lockType) : null,
+      rubberType: _isFabricationFlow ? (_rubberType == _RubberType.u ? 'U' : 'F') : null,
+      addBottom: _showsDoorSectionToggles ? _doorD46Enabled : null,
+      addTee: _showsDoorSectionToggles ? _doorD52Enabled : null,
+      addNet: _showsOpenableNetToggle ? _openableNetEnabled : null,
+    );
+  }
+
+  void _persistSidebarSelections() {
+    unawaited(
+      _preferencesStore.persistUnitMode(widget.session.flow, _unitMode),
+    );
+    if (_windowCode.trim().isEmpty) {
+      return;
+    }
+    unawaited(
+      _preferencesStore.persistSidebar(
+        flow: widget.session.flow,
+        windowCode: _windowCode,
+        preferencesState: _currentSidebarPreferences(),
+      ),
+    );
+  }
+
+  Future<void> _restorePersistedSidebarState() async {
+    if (widget.isEditMode) {
+      return;
+    }
+
+    final UnitMode? storedUnitMode = await _preferencesStore.restoreUnitMode(
+      widget.session.flow,
+    );
+    final WindowInputSidebarPreferences? preferencesState =
+        await _preferencesStore.restoreSidebar(
+          flow: widget.session.flow,
+          windowCode: _windowCode,
+        );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      if (storedUnitMode != null) {
+        _unitMode = storedUnitMode;
+      }
+      if (preferencesState != null) {
+        final int? storedCollar = preferencesState.selectedCollar;
+        if (storedCollar != null) {
+          _selectedCollar = storedCollar.clamp(1, _handler.collarCount);
+        }
+        if (_showsDoorSectionToggles) {
+          if (_handler is DoorSingleInputHandler) {
+            if (preferencesState.addBottom != null) {
+              _handler.d46Enabled = preferencesState.addBottom!;
+            }
+            if (preferencesState.addTee != null) {
+              _handler.d52Enabled = preferencesState.addTee!;
+            }
+          } else if (_handler is DoorDoubleInputHandler) {
+            if (preferencesState.addBottom != null) {
+              _handler.d46Enabled = preferencesState.addBottom!;
+            }
+            if (preferencesState.addTee != null) {
+              _handler.d52Enabled = preferencesState.addTee!;
+            }
+          }
+        }
+        final WindowInputHandler activeHandler = _handler;
+        if (_showsOpenableNetToggle &&
+            preferencesState.addNet != null &&
+            activeHandler is OpenableInputHandler) {
+          activeHandler.netEnabled = preferencesState.addNet!;
+        }
+        if (_showsLockTypeSelector && preferencesState.lockType != null) {
+          _lockType = _lockTypeFromStored(preferencesState.lockType);
+        }
+        if (_isFabricationFlow && preferencesState.rubberType != null) {
+          _rubberType = _rubberTypeFromStored(preferencesState.rubberType);
+        }
+        _selectedSectionCode = _normalizedSelectedSectionCode(
+          preferencesState.selectedSectionCode,
+          _selectedCollar,
+        );
+      }
+      if (_isFixOnlyRubberWindow) {
+        _rubberType = _RubberType.fix;
+      }
+      _normalizeLockTypeSelectionForWindow();
+      if (!_doorD46Enabled && _selectedSectionCode == 'D46') {
+        _selectedSectionCode = null;
+      }
+      if (!_doorD52Enabled && _selectedSectionCode == 'D52') {
+        _selectedSectionCode = null;
+      }
+      if (!_openableNetEnabled && _selectedSectionCode == 'D29') {
+        _selectedSectionCode = null;
+      }
+      if (_isFabricationInchesMode) {
+        _syncFabricationSplitControllersFromCombined();
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_collarPageController.hasClients) {
+        return;
+      }
+      _collarPageController.jumpToPage(_selectedCollar - 1);
     });
   }
 
@@ -347,12 +509,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
     _collarPageValue = (_selectedCollar - 1).toDouble();
     _collarPageController.addListener(_onCollarScroll);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _heightFocusNode.requestFocus();
-      }
-    });
+    unawaited(_restorePersistedSidebarState());
   }
 
   void _onCollarScroll() {
@@ -370,6 +527,93 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     });
   }
 
+  List<({FocusNode node, GlobalKey key})> get _focusTargets {
+    final List<({FocusNode node, GlobalKey key})> targets =
+        <({FocusNode node, GlobalKey key})>[];
+    if (_numberingMode == NumberingMode.manual && !widget.isEditMode) {
+      targets.add((node: _winNoFocusNode, key: _winNoFieldKey));
+    }
+    if (_isFabricationInchesMode) {
+      targets.add((node: _heightFocusNode, key: _heightFieldKey));
+      targets.add((node: _heightSuterFocusNode, key: _heightSuterFieldKey));
+      targets.add((node: _widthFocusNode, key: _widthFieldKey));
+      targets.add((node: _widthSuterFocusNode, key: _widthSuterFieldKey));
+      if (_usesSplitWidthInputs) {
+        targets.add((node: _leftWidthFocusNode, key: _leftWidthFieldKey));
+        targets.add((
+          node: _leftWidthSuterFocusNode,
+          key: _leftWidthSuterFieldKey,
+        ));
+      }
+    } else {
+      targets.add((node: _heightFocusNode, key: _heightFieldKey));
+      targets.add((node: _widthFocusNode, key: _widthFieldKey));
+      if (_usesSplitWidthInputs) {
+        targets.add((node: _leftWidthFocusNode, key: _leftWidthFieldKey));
+      }
+      if (_usesArchInput) {
+        targets.add((node: _archFocusNode, key: _archFieldKey));
+      }
+    }
+    targets.add((node: _descriptionFocusNode, key: _descriptionFieldKey));
+
+    return targets;
+  }
+
+  TextInputAction _textInputActionForField(FocusNode node) {
+    final List<({FocusNode node, GlobalKey key})> targets = _focusTargets;
+    if (targets.isEmpty) {
+      return TextInputAction.done;
+    }
+    return identical(targets.last.node, node)
+        ? TextInputAction.done
+        : TextInputAction.next;
+  }
+
+  void _focusFirstField() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final List<({FocusNode node, GlobalKey key})> targets = _focusTargets;
+      if (targets.isEmpty) {
+        return;
+      }
+      Future<void>.delayed(const Duration(milliseconds: 80), () {
+        if (!mounted) {
+          return;
+        }
+        targets.first.node.requestFocus();
+      });
+    });
+  }
+
+  bool _focusNextField(FocusNode currentNode) {
+    final List<({FocusNode node, GlobalKey key})> targets = _focusTargets;
+    if (targets.isEmpty) {
+      return false;
+    }
+    final int currentIndex = targets.indexWhere(
+      (({FocusNode node, GlobalKey key}) target) =>
+          identical(target.node, currentNode),
+    );
+    if (currentIndex == -1 || currentIndex == targets.length - 1) {
+      return false;
+    }
+    final ({FocusNode node, GlobalKey key}) nextTarget =
+        targets[currentIndex + 1];
+    nextTarget.node.requestFocus();
+    return true;
+  }
+
+  void _submitFromField(FocusNode currentNode) {
+    final bool movedToNextField = _focusNextField(currentNode);
+    if (movedToNextField) {
+      return;
+    }
+    _onSavePressed();
+  }
+
   @override
   void dispose() {
     _heightController.dispose();
@@ -384,7 +628,15 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _archController.dispose();
     _descriptionController.dispose();
     _winNoController.dispose();
+    _winNoFocusNode.dispose();
     _heightFocusNode.dispose();
+    _heightSuterFocusNode.dispose();
+    _widthFocusNode.dispose();
+    _widthSuterFocusNode.dispose();
+    _leftWidthFocusNode.dispose();
+    _leftWidthSuterFocusNode.dispose();
+    _archFocusNode.dispose();
+    _descriptionFocusNode.dispose();
     _collarPageController.removeListener(_onCollarScroll);
     _collarPageController.dispose();
     super.dispose();
@@ -645,6 +897,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           ? _validateDimension(_archController.text)
           : null;
     });
+    _persistSidebarSelections();
   }
 
   String? _validateDimension(String rawValue) {
@@ -772,6 +1025,35 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     return trimmed;
   }
 
+  void _resetInputsForNextEntry() {
+    setState(() {
+      _heightController.clear();
+      _heightInchController.clear();
+      _heightSuterController.clear();
+      _widthController.clear();
+      _widthInchController.clear();
+      _widthSuterController.clear();
+      _leftWidthController.clear();
+      _leftWidthInchController.clear();
+      _leftWidthSuterController.clear();
+      _archController.clear();
+      _descriptionController.clear();
+      if (_numberingMode == NumberingMode.manual) {
+        _winNoController.clear();
+      }
+      _heightError = null;
+      _widthError = null;
+      _leftWidthError = null;
+      _archError = null;
+      _winNoError = null;
+    });
+    _focusFirstField();
+  }
+
+  void _scheduleProjectSessionSync() {
+    _pendingProjectSync = _pendingProjectSync.then((_) => _syncProjectSession());
+  }
+
   Future<void> _onSavePressed() async {
     if (!_validateAndShowErrors()) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -878,33 +1160,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return;
     }
 
-    await _syncProjectSession();
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _heightController.clear();
-      _heightInchController.clear();
-      _heightSuterController.clear();
-      _widthController.clear();
-      _widthInchController.clear();
-      _widthSuterController.clear();
-      _leftWidthController.clear();
-      _leftWidthInchController.clear();
-      _leftWidthSuterController.clear();
-      _archController.clear();
-      _descriptionController.clear();
-      if (_numberingMode == NumberingMode.manual) {
-        _winNoController.clear();
-      }
-      _heightError = null;
-      _widthError = null;
-      _leftWidthError = null;
-      _archError = null;
-      _winNoError = null;
-    });
-    _heightFocusNode.requestFocus();
+    _persistSidebarSelections();
+    _resetInputsForNextEntry();
+    _scheduleProjectSessionSync();
   }
 
   Future<void> _syncProjectSession() async {
@@ -935,8 +1193,12 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       onTap: () {
         setState(() {
           _selectedCollar = collarIndex;
-          _selectedSectionCode = null;
+          _selectedSectionCode = _normalizedSelectedSectionCode(
+            _selectedSectionCode,
+            collarIndex,
+          );
         });
+        _persistSidebarSelections();
         _collarPageController.animateToPage(
           index,
           duration: const Duration(milliseconds: 220),
@@ -1010,7 +1272,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }
 
   Widget _buildSingleDimensionField({
-    required Key fieldKey,
+    required GlobalKey fieldKey,
     required TextEditingController controller,
     required String label,
     required String? errorText,
@@ -1018,15 +1280,18 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     required TextStyle? hintStyle,
     required String hintText,
     required ValueChanged<String> onChanged,
-    FocusNode? focusNode,
+    required FocusNode focusNode,
   }) {
     return TextField(
       key: fieldKey,
       controller: controller,
       focusNode: focusNode,
+      textInputAction: _textInputActionForField(focusNode),
       style: numberInputStyle,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+      onSubmitted: (_) => _submitFromField(focusNode),
+      scrollPadding: EdgeInsets.zero,
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
@@ -1039,23 +1304,30 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
 
   Widget _buildFabricationInchesDimensionField({
     required String label,
+    required GlobalKey inchFieldKey,
+    required GlobalKey suterFieldKey,
     required TextEditingController inchController,
     required TextEditingController suterController,
     required String? errorText,
     required TextStyle? numberInputStyle,
     required VoidCallback onChanged,
-    FocusNode? inchFocusNode,
+    required FocusNode inchFocusNode,
+    required FocusNode suterFocusNode,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: TextField(
+            key: inchFieldKey,
             controller: inchController,
             focusNode: inchFocusNode,
+            textInputAction: _textInputActionForField(inchFocusNode),
             style: numberInputStyle,
             keyboardType: const TextInputType.numberWithOptions(signed: false),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onSubmitted: (_) => _submitFromField(inchFocusNode),
+            scrollPadding: EdgeInsets.zero,
             onChanged: (_) => onChanged(),
             decoration: InputDecoration(
               labelText: '$label (Inch)',
@@ -1067,12 +1339,17 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: TextField(
+            key: suterFieldKey,
             controller: suterController,
+            focusNode: suterFocusNode,
+            textInputAction: _textInputActionForField(suterFocusNode),
             style: numberInputStyle,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],
+            onSubmitted: (_) => _submitFromField(suterFocusNode),
+            scrollPadding: EdgeInsets.zero,
             onChanged: (_) => onChanged(),
             decoration: const InputDecoration(
               labelText: 'Suter',
@@ -1094,6 +1371,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           fontWeight: FontWeight.w700,
           fontSize: 22,
         );
+    final double keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final List<ButtonSegment<_RubberType>> rubberSegments =
         _isFixOnlyRubberWindow
         ? const <ButtonSegment<_RubberType>>[
@@ -1114,6 +1392,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           ];
     return Scaffold(
       key: _scaffoldKey,
+      resizeToAvoidBottomInset: false,
       endDrawer: Drawer(
         key: const Key('settings_drawer'),
         width: _handler.showDrawerForCollar(_selectedCollar)
@@ -1231,6 +1510,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                               setState(() {
                                 _selectedSectionCode = isSelected ? null : code;
                               });
+                              _persistSidebarSelections();
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
@@ -1284,6 +1564,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           setState(() {
                             _lockType = _LockType.latch;
                           });
+                          _persistSidebarSelections();
                         },
                       ),
                       const SizedBox(height: 6),
@@ -1294,6 +1575,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           setState(() {
                             _lockType = _LockType.self;
                           });
+                          _persistSidebarSelections();
                         },
                       ),
                       if (_allowsHandalLockType) ...[
@@ -1305,6 +1587,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             setState(() {
                               _lockType = _LockType.handal;
                             });
+                            _persistSidebarSelections();
                           },
                         ),
                       ],
@@ -1312,31 +1595,34 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                Text(
-                  'Rubber Type',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.deepTeal,
-                    fontWeight: FontWeight.w700,
+                if (_isFabricationFlow) ...[
+                  Text(
+                    'Rubber Type',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                SegmentedButton<_RubberType>(
-                  key: const Key('rubber_type_segmented_control'),
-                  segments: rubberSegments,
-                  selected: <_RubberType>{_rubberType},
-                  showSelectedIcon: false,
-                  onSelectionChanged: (Set<_RubberType> selection) {
-                    if (selection.isEmpty) {
-                      return;
-                    }
-                    setState(() {
-                      _rubberType = _isFixOnlyRubberWindow
-                          ? _RubberType.fix
-                          : selection.first;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  SegmentedButton<_RubberType>(
+                    key: const Key('rubber_type_segmented_control'),
+                    segments: rubberSegments,
+                    selected: <_RubberType>{_rubberType},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (Set<_RubberType> selection) {
+                      if (selection.isEmpty) {
+                        return;
+                      }
+                      setState(() {
+                        _rubberType = _isFixOnlyRubberWindow
+                            ? _RubberType.fix
+                            : selection.first;
+                      });
+                      _persistSidebarSelections();
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Text(
                   'Units',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -1438,65 +1724,80 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                   ],
                 ),
               ),
-              Container(
-                key: const Key('current_win_no_label'),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.deepTeal,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Text(
-                  'winNo: ${_numberingMode == NumberingMode.manual ? (_winNoController.text.trim().isEmpty ? '--' : _winNoController.text.trim()) : _visibleWinNo}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: _collarCardSize + 30,
-                child: LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                    final double availableWidth = constraints.maxWidth;
-                    final double side = math.min(
-                      _collarCardSize,
-                      availableWidth * _collarViewportFraction * 0.9,
-                    );
-                    return PageView.builder(
-                      key: const Key('collar_page_view'),
-                      controller: _collarPageController,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: _handler.collarCount,
-                      onPageChanged: (int index) {
-                        setState(() {
-                          _selectedCollar = index + 1;
-                        });
-                      },
-                      itemBuilder: (BuildContext context, int index) {
-                        return _buildCollarCard(
-                          index,
-                          isFocused: true,
-                          side: side,
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(18, 6, 18, 16),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    18,
+                    6,
+                    18,
+                    math.max(24, keyboardInset + 140),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Container(
+                        key: const Key('current_win_no_label'),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.deepTeal,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Text(
+                          'winNo: ${_numberingMode == NumberingMode.manual ? (_winNoController.text.trim().isEmpty ? '--' : _winNoController.text.trim()) : _visibleWinNo}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: _collarCardSize + 30,
+                        child: LayoutBuilder(
+                          builder: (BuildContext context, BoxConstraints constraints) {
+                            final double availableWidth = constraints.maxWidth;
+                            final double side = math.min(
+                              _collarCardSize,
+                              availableWidth * _collarViewportFraction * 0.9,
+                            );
+                            return PageView.builder(
+                              key: const Key('collar_page_view'),
+                              controller: _collarPageController,
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: _handler.collarCount,
+                              onPageChanged: (int index) {
+                                setState(() {
+                                  _selectedCollar = index + 1;
+                                  _selectedSectionCode =
+                                      _normalizedSelectedSectionCode(
+                                        _selectedSectionCode,
+                                        _selectedCollar,
+                                      );
+                                });
+                                _persistSidebarSelections();
+                              },
+                              itemBuilder: (BuildContext context, int index) {
+                                return _buildCollarCard(
+                                  index,
+                                  isFocused: true,
+                                  side: side,
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       if (_numberingMode == NumberingMode.manual) ...[
                         TextField(
-                          key: const Key('input_win_no_field'),
+                          key: _winNoFieldKey,
                           controller: _winNoController,
+                          focusNode: _winNoFocusNode,
                           enabled: !widget.isEditMode,
                           keyboardType: const TextInputType.numberWithOptions(
                             signed: false,
@@ -1504,6 +1805,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
                           ],
+                          textInputAction: _textInputActionForField(
+                            _winNoFocusNode,
+                          ),
+                          onSubmitted: (_) => _submitFromField(_winNoFocusNode),
                           onChanged: (_) {
                             if (_winNoError != null) {
                               setState(() {
@@ -1543,11 +1848,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       if (_isFabricationInchesMode)
                         _buildFabricationInchesDimensionField(
                           label: 'Height',
+                          inchFieldKey: _heightFieldKey,
+                          suterFieldKey: _heightSuterFieldKey,
                           inchController: _heightInchController,
                           suterController: _heightSuterController,
                           errorText: _heightError,
                           numberInputStyle: numberInputStyle,
                           inchFocusNode: _heightFocusNode,
+                          suterFocusNode: _heightSuterFocusNode,
                           onChanged: () {
                             setState(() {
                               _heightController.text =
@@ -1564,7 +1872,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         )
                       else
                         _buildSingleDimensionField(
-                          fieldKey: const Key('input_height_field'),
+                          fieldKey: _heightFieldKey,
                           controller: _heightController,
                           focusNode: _heightFocusNode,
                           label: 'Height',
@@ -1594,10 +1902,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           label: _usesSplitWidthInputs
                               ? 'Right Width'
                               : 'Width',
+                          inchFieldKey: _widthFieldKey,
+                          suterFieldKey: _widthSuterFieldKey,
                           inchController: _widthInchController,
                           suterController: _widthSuterController,
                           errorText: _widthError,
                           numberInputStyle: numberInputStyle,
+                          inchFocusNode: _widthFocusNode,
+                          suterFocusNode: _widthSuterFocusNode,
                           onChanged: () {
                             setState(() {
                               _widthController.text =
@@ -1614,8 +1926,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         )
                       else
                         _buildSingleDimensionField(
-                          fieldKey: const Key('input_width_field'),
+                          fieldKey: _widthFieldKey,
                           controller: _widthController,
+                          focusNode: _widthFocusNode,
                           label: _usesSplitWidthInputs
                               ? 'Right Width'
                               : 'Width',
@@ -1642,10 +1955,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         if (_isFabricationInchesMode)
                           _buildFabricationInchesDimensionField(
                             label: 'Left Width',
+                            inchFieldKey: _leftWidthFieldKey,
+                            suterFieldKey: _leftWidthSuterFieldKey,
                             inchController: _leftWidthInchController,
                             suterController: _leftWidthSuterController,
                             errorText: _leftWidthError,
                             numberInputStyle: numberInputStyle,
+                            inchFocusNode: _leftWidthFocusNode,
+                            suterFocusNode: _leftWidthSuterFocusNode,
                             onChanged: () {
                               setState(() {
                                 _leftWidthController.text =
@@ -1664,8 +1981,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           )
                         else
                           _buildSingleDimensionField(
-                            fieldKey: const Key('input_left_width_field'),
+                            fieldKey: _leftWidthFieldKey,
                             controller: _leftWidthController,
+                            focusNode: _leftWidthFocusNode,
                             label: 'Left Width',
                             errorText: _leftWidthError,
                             numberInputStyle: numberInputStyle,
@@ -1691,8 +2009,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       if (_usesArchInput) ...[
                         const SizedBox(height: 12),
                         _buildSingleDimensionField(
-                          fieldKey: const Key('input_arch_field'),
+                          fieldKey: _archFieldKey,
                           controller: _archController,
+                          focusNode: _archFocusNode,
                           label: 'Arch',
                           errorText: _archError,
                           numberInputStyle: numberInputStyle,
@@ -1715,27 +2034,42 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       ],
                       const SizedBox(height: 12),
                       TextField(
-                        key: const Key('input_description_field'),
+                        key: _descriptionFieldKey,
                         controller: _descriptionController,
+                        focusNode: _descriptionFocusNode,
+                        textInputAction: _textInputActionForField(
+                          _descriptionFocusNode,
+                        ),
                         maxLength: _maxDescriptionLength,
                         maxLines: 2,
+                        onSubmitted: (_) => _submitFromField(_descriptionFocusNode),
                         decoration: InputDecoration(
                           labelText: 'Description (Optional)',
                           hintText: 'e.g. bath room window',
                           hintStyle: hintStyle,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          key: const Key('input_save_button'),
-                          onPressed: _onSavePressed,
-                          icon: const Icon(Icons.save_outlined),
-                          label: Text(widget.isEditMode ? 'Update' : 'Save'),
-                        ),
-                      ),
+
                     ],
+                  ),
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                padding: EdgeInsets.fromLTRB(
+                  18,
+                  8,
+                  18,
+                  math.max(16, keyboardInset + 16),
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    key: const Key('input_save_button'),
+                    onPressed: _onSavePressed,
+                    icon: const Icon(Icons.save_outlined),
+                    label: Text(widget.isEditMode ? 'Update' : 'Save'),
                   ),
                 ),
               ),
@@ -1806,3 +2140,15 @@ class _ArchPainter extends CustomPainter {
   bool shouldRepaint(covariant _ArchPainter oldDelegate) =>
       oldDelegate.color != color;
 }
+
+
+
+
+
+
+
+
+
+
+
+

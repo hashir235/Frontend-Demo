@@ -49,6 +49,32 @@ class AuthController extends ChangeNotifier {
     );
   }
 
+  Future<bool> resetPassword({
+    required String email,
+    required String password,
+  }) async {
+    _busy = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _apiClient.resetPassword(email: email, password: password);
+      _busy = false;
+      notifyListeners();
+      return true;
+    } on AuthApiException catch (error) {
+      _errorMessage = error.message;
+      _busy = false;
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _errorMessage = 'Password reset failed unexpectedly.';
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> signOut() async {
     _busy = true;
     _errorMessage = null;

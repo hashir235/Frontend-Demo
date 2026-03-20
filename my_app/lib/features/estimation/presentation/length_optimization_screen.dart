@@ -1,9 +1,5 @@
-﻿import 'dart:convert';
-
-import 'package:my_app/core/config/api_config.dart';
-import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_hero_header.dart';
@@ -16,6 +12,7 @@ import '../../../shared/widgets/state_message_card.dart';
 import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
 import '../models/window_review_item.dart';
+import '../state/estimate_session_store.dart';
 import 'material_selection_screen.dart';
 import 'section_recalculation_screen.dart';
 
@@ -28,6 +25,7 @@ typedef MaterialSelectionBuilder =
     );
 
 class LengthOptimizationScreen extends StatefulWidget {
+  final EstimateSessionStore session;
   final List<WindowReviewItem> items;
   final String? projectId;
   final String projectName;
@@ -39,6 +37,7 @@ class LengthOptimizationScreen extends StatefulWidget {
 
   const LengthOptimizationScreen({
     super.key,
+    required this.session,
     required this.items,
     this.projectId,
     required this.projectName,
@@ -157,43 +156,24 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
   }
 
 
-  Future<void> _generateCuttingPdf({
-    String successMessage = 'PDF generated.',
-  }) async {
+  Future<void> _downloadCuttingPdf() async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
 
     try {
-      final http.Response response = await AuthHttpClient().post(
-        ApiConfig.buildUri('/api/pdf/cutting'),
-        headers: const <String, String>{'Content-Type': 'application/json'},
-        body: jsonEncode(<String, Object?>{'projectId': widget.projectId}),
+      final String fileName = await PdfDownloadWorkflow.generateAndDownload(
+        endpoint: '/api/pdf/cutting',
+        payload: <String, Object?>{'projectId': widget.projectId},
+        generationFailureMessage: 'Unable to generate cutting PDF.',
       );
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Unable to generate cutting PDF.')),
-        );
-        return;
-      }
-
-      String resolvedMessage = successMessage;
-      try {
-        final Object? decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic>) {
-          final String? fileName = decoded['fileName'] as String?;
-          if (fileName != null && fileName.isNotEmpty) {
-            resolvedMessage = 'PDF ready: $fileName';
-          }
-        }
-      } on FormatException {
-        // keep fallback
-      }
-
-      messenger.showSnackBar(SnackBar(content: Text(resolvedMessage)));
-    } on Exception {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Unable to reach local PDF service.')),
+        SnackBar(content: Text('PDF downloaded to Downloads: $fileName')),
+      );
+    } on PdfDownloadException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Unable to reach PDF service.')),
       );
     }
   }
@@ -212,19 +192,20 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                 title: const Text('Download PDF'),
                 onTap: () async {
                   Navigator.of(context).pop();
-                  await _generateCuttingPdf(
-                    successMessage: 'PDF generated in local downloads.',
-                  );
+                  await _downloadCuttingPdf();
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.share_outlined),
                 title: const Text('Share PDF'),
-                onTap: () async {
+                onTap: () {
                   Navigator.of(context).pop();
-                  await _generateCuttingPdf(
-                    successMessage:
-                        'PDF generated. Native share can be wired next.',
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Native share abhi wire nahi hui. Filhal Download PDF use karein.',
+                      ),
+                    ),
                   );
                 },
               ),
@@ -294,6 +275,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           widget.projectLocation,
         ) ??
         MaterialSelectionScreen(
+          session: widget.session,
           projectId: widget.projectId,
           projectName: widget.projectName,
           projectLocation: widget.projectLocation,
@@ -319,7 +301,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         if (widget.showPdfActions)
           Expanded(
             child: FilledButton.icon(
-              onPressed: _generateCuttingPdf,
+              onPressed: _downloadCuttingPdf,
               icon: const Icon(Icons.download_rounded),
               label: const Text('Download PDF'),
             ),
@@ -682,3 +664,8 @@ class _MetaChip extends StatelessWidget {
     );
   }
 }
+
+
+
+
+

@@ -8,9 +8,12 @@ import '../../../shared/widgets/bottom_action_bar.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../models/bill_request.dart';
+import '../models/estimate_flow_state.dart';
+import '../state/estimate_session_store.dart';
 import 'actual_bill_screen.dart';
 
 class BillInputsScreen extends StatefulWidget {
+  final EstimateSessionStore session;
   final double aluminiumTotal;
   final String gaugeLabel;
   final String gaugeValue;
@@ -22,6 +25,7 @@ class BillInputsScreen extends StatefulWidget {
 
   const BillInputsScreen({
     super.key,
+    required this.session,
     required this.aluminiumTotal,
     required this.gaugeLabel,
     required this.gaugeValue,
@@ -65,6 +69,25 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       <TextInputFormatter>[LengthLimitingTextInputFormatter(80)];
   static final List<TextInputFormatter> _addressInputFormatters =
       <TextInputFormatter>[LengthLimitingTextInputFormatter(200)];
+
+  @override
+  void initState() {
+    super.initState();
+    final EstimateBillDraft? draft = widget.session.billDraft;
+    if (draft == null) {
+      return;
+    }
+    _glassRateController.text = draft.glassRatePerSqFt;
+    _laborRateController.text = draft.laborRatePerSqFt;
+    _hardwareRateController.text = draft.hardwareRatePerWindow;
+    _discountController.text = draft.aluminiumDiscountPercent;
+    _extraChargesController.text = draft.extraCharges;
+    _advancePaidController.text = draft.advancePaid;
+    _glassColorController.text = draft.glassColor;
+    _customerNameController.text = draft.customerName;
+    _phoneController.text = draft.customerPhone;
+    _addressController.text = draft.customerAddress;
+  }
 
   @override
   void dispose() {
@@ -163,6 +186,19 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       return;
     }
 
+    final EstimateBillDraft draft = EstimateBillDraft(
+      glassRatePerSqFt: _glassRateController.text.trim(),
+      laborRatePerSqFt: _laborRateController.text.trim(),
+      hardwareRatePerWindow: _hardwareRateController.text.trim(),
+      aluminiumDiscountPercent: _discountController.text.trim(),
+      extraCharges: _extraChargesController.text.trim(),
+      advancePaid: _advancePaidController.text.trim(),
+      glassColor: _glassColorController.text.trim(),
+      customerName: _customerNameController.text.trim(),
+      customerPhone: _phoneController.text.trim(),
+      customerAddress: _addressController.text.trim(),
+    );
+    widget.session.setBillDraft(draft);
     final BillRequest request = BillRequest(
       projectId: widget.projectId,
       glassRatePerSqFt: _parseRequiredNumber(_glassRateController),
@@ -184,7 +220,10 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (BuildContext context) => ActualBillScreen(request: request),
+        builder: (BuildContext context) => ActualBillScreen(
+          session: widget.session,
+          request: request,
+        ),
       ),
     );
   }

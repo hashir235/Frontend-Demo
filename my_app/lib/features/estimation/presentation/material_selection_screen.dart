@@ -7,9 +7,12 @@ import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../data/cost_table_api_client.dart';
 import '../data/rate_review_api_client.dart';
+import '../models/estimate_flow_state.dart';
+import '../state/estimate_session_store.dart';
 import 'rate_review_screen.dart';
 
 class MaterialSelectionScreen extends StatefulWidget {
+  final EstimateSessionStore session;
   final String? projectId;
   final String projectName;
   final String projectLocation;
@@ -22,6 +25,7 @@ class MaterialSelectionScreen extends StatefulWidget {
 
   const MaterialSelectionScreen({
     super.key,
+    required this.session,
     this.projectId,
     required this.projectName,
     required this.projectLocation,
@@ -55,10 +59,45 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
   _MaterialChoice _selectedGage = _gageOptions.first;
   _MaterialChoice _selectedColor = _colorOptions.first;
 
+  @override
+  void initState() {
+    super.initState();
+    final EstimateMaterialSelection? selection =
+        widget.session.materialSelection;
+    _selectedGage = _choiceByValue(_gageOptions, selection?.gaugeValue);
+    _selectedColor = _choiceByValue(_colorOptions, selection?.colorValue);
+  }
+
+  _MaterialChoice _choiceByValue(
+    List<_MaterialChoice> options,
+    String? value,
+  ) {
+    if (value == null || value.trim().isEmpty) {
+      return options.first;
+    }
+    for (final _MaterialChoice option in options) {
+      if (option.value == value) {
+        return option;
+      }
+    }
+    return options.first;
+  }
+
+  void _persistMaterialSelection() {
+    widget.session.setMaterialSelection(
+      EstimateMaterialSelection(
+        gaugeValue: _selectedGage.value,
+        colorValue: _selectedColor.value,
+      ),
+    );
+  }
+
   void _handleNextPressed() {
+    _persistMaterialSelection();
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (BuildContext context) => RateReviewScreen(
+          session: widget.session,
           gaugeLabel: _selectedGage.label,
           gaugeValue: _selectedGage.value,
           colorLabel: _selectedColor.label,
@@ -112,6 +151,7 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
                             setState(() {
                               _selectedGage = option;
                             });
+                            _persistMaterialSelection();
                           },
                         ),
                       ),
@@ -136,6 +176,7 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
                             setState(() {
                               _selectedColor = option;
                             });
+                            _persistMaterialSelection();
                           },
                         ),
                       ),

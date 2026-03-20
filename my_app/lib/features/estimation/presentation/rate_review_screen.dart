@@ -11,10 +11,13 @@ import '../../../shared/widgets/state_message_card.dart';
 import '../data/cost_table_api_client.dart';
 import '../data/rate_review_api_client.dart';
 import '../models/cost_table.dart';
+import '../models/estimate_flow_state.dart';
 import '../models/rate_review.dart';
+import '../state/estimate_session_store.dart';
 import 'estimation_material_table_screen.dart';
 
 class RateReviewScreen extends StatefulWidget {
+  final EstimateSessionStore session;
   final String gaugeLabel;
   final String gaugeValue;
   final String colorLabel;
@@ -31,6 +34,7 @@ class RateReviewScreen extends StatefulWidget {
 
   const RateReviewScreen({
     super.key,
+    required this.session,
     required this.gaugeLabel,
     required this.gaugeValue,
     required this.colorLabel,
@@ -60,6 +64,12 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
   void initState() {
     super.initState();
     _apiClient = widget.apiClient ?? RateReviewApiClient();
+    widget.session.setMaterialSelection(
+      EstimateMaterialSelection(
+        gaugeValue: widget.gaugeValue,
+        colorValue: widget.colorValue,
+      ),
+    );
     _loadRates();
   }
 
@@ -80,13 +90,19 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
         return;
       }
       setState(() {
+        final Map<String, double> overridesBySection = <String, double>{
+          for (final RateOverrideInput override in widget.session.rateOverrides)
+            override.section: override.rate,
+        };
         _editableRows = review.rows
             .map(
               (RateReviewRow row) => _EditableRateRow(
                 section: row.section,
                 totalFt: row.totalFt,
                 totalFtDisplay: row.totalFtDisplay,
-                rateText: _formatDecimal(row.rate),
+                rateText: _formatDecimal(
+                  overridesBySection[row.section] ?? row.rate,
+                ),
               ),
             )
             .toList();
@@ -132,9 +148,11 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
       overrides.add(RateOverrideInput(section: row.section, rate: parsed));
     }
 
+    widget.session.setRateOverrides(overrides);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (BuildContext context) => EstimationMaterialTableScreen(
+          session: widget.session,
           gaugeLabel: widget.gaugeLabel,
           gaugeValue: widget.gaugeValue,
           colorLabel: widget.colorLabel,

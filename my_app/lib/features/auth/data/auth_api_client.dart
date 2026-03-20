@@ -56,6 +56,18 @@ class AuthApiClient {
     return AuthSessionResult.fromJson(payload);
   }
 
+  Future<void> resetPassword({
+    required String email,
+    required String password,
+  }) async {
+    await _postJson(
+      Uri.parse('$_baseUrl/api/auth/reset-password'),
+      <String, Object?>{'email': email, 'password': password},
+      failureMessage: 'Password reset failed.',
+      unreachableMessage: 'Unable to reach authentication service.',
+    );
+  }
+
   Future<AuthSessionResult> fetchCurrentSession({String? token}) async {
     final String sessionToken = (token ?? AuthSession.token ?? '').trim();
     if (sessionToken.isEmpty) {

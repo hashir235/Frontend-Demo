@@ -1,9 +1,5 @@
-import 'dart:convert';
-
-import 'package:my_app/core/config/api_config.dart';
-import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_hero_header.dart';
@@ -16,12 +12,20 @@ import '../../../shared/widgets/state_message_card.dart';
 import '../data/billing_repository.dart';
 import '../models/bill_request.dart';
 import '../models/bill_snapshot.dart';
+import '../models/estimate_flow_state.dart';
+import '../state/estimate_session_store.dart';
 
 class ActualBillScreen extends StatefulWidget {
+  final EstimateSessionStore session;
   final BillRequest request;
   final BillingRepository? repository;
 
-  const ActualBillScreen({super.key, required this.request, this.repository});
+  const ActualBillScreen({
+    super.key,
+    required this.session,
+    required this.request,
+    this.repository,
+  });
 
   @override
   State<ActualBillScreen> createState() => _ActualBillScreenState();
@@ -53,6 +57,30 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
       if (!mounted) {
         return;
       }
+      widget.session.setMaterialSelection(
+        EstimateMaterialSelection(
+          gaugeValue: snapshot.gauge,
+          colorValue: snapshot.aluminiumColor,
+        ),
+      );
+      widget.session.setBillDraft(
+        EstimateBillDraft(
+          glassRatePerSqFt: _formatNumber(snapshot.rates.glassPerSqFt),
+          laborRatePerSqFt: _formatNumber(snapshot.rates.laborPerSqFt),
+          hardwareRatePerWindow: _formatNumber(
+            snapshot.rates.hardwarePerWindow,
+          ),
+          aluminiumDiscountPercent: _formatNumber(
+            snapshot.rates.aluminiumDiscountPercent,
+          ),
+          extraCharges: _formatNumber(snapshot.totals.extraCharges),
+          advancePaid: _formatNumber(snapshot.totals.advancePaid),
+          glassColor: snapshot.glassColor,
+          customerName: snapshot.customer.name,
+          customerPhone: snapshot.customer.phone,
+          customerAddress: snapshot.customer.address,
+        ),
+      );
       setState(() {
         _snapshot = snapshot;
         _isLoading = false;
@@ -91,45 +119,24 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
   }
 
 
-  Future<void> _generateInvoicePdf({
-    String successMessage = 'Invoice PDF generated.',
-  }) async {
+  Future<void> _downloadInvoicePdf() async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
 
     try {
-      final http.Response response = await AuthHttpClient().post(
-        ApiConfig.buildUri('/api/pdf/invoice'),
-        headers: const <String, String>{'Content-Type': 'application/json'},
-        body: jsonEncode(
-          <String, Object?>{'projectId': widget.request.projectId},
-        ),
+      final String fileName = await PdfDownloadWorkflow.generateAndDownload(
+        endpoint: '/api/pdf/invoice',
+        payload: <String, Object?>{'projectId': widget.request.projectId},
+        generationFailureMessage: 'Unable to generate invoice PDF.',
       );
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Unable to generate invoice PDF.')),
-        );
-        return;
-      }
-
-      String resolvedMessage = successMessage;
-      try {
-        final Object? decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic>) {
-          final String? fileName = decoded['fileName'] as String?;
-          if (fileName != null && fileName.isNotEmpty) {
-            resolvedMessage = 'PDF ready: $fileName';
-          }
-        }
-      } on FormatException {
-        // keep fallback
-      }
-
-      messenger.showSnackBar(SnackBar(content: Text(resolvedMessage)));
-    } on Exception {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Unable to reach local PDF service.')),
+        SnackBar(content: Text('PDF downloaded to Downloads: $fileName')),
+      );
+    } on PdfDownloadException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Unable to reach PDF service.')),
       );
     }
   }
@@ -148,19 +155,20 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
                 title: const Text('Download PDF'),
                 onTap: () async {
                   Navigator.of(context).pop();
-                  await _generateInvoicePdf(
-                    successMessage: 'Invoice PDF generated in local downloads.',
-                  );
+                  await _downloadInvoicePdf();
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.share_outlined),
                 title: const Text('Share PDF'),
-                onTap: () async {
+                onTap: () {
                   Navigator.of(context).pop();
-                  await _generateInvoicePdf(
-                    successMessage:
-                        'Invoice PDF generated. Native share can be wired next.',
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Native share abhi wire nahi hui. Filhal Download PDF use karein.',
+                      ),
+                    ),
                   );
                 },
               ),
@@ -184,7 +192,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
       children: <Widget>[
         Expanded(
           child: FilledButton.icon(
-            onPressed: _generateInvoicePdf,
+            onPressed: _downloadInvoicePdf,
             icon: const Icon(Icons.download_rounded),
             label: const Text('Download PDF'),
           ),
@@ -674,3 +682,9 @@ class _MetaChip extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+

@@ -67,6 +67,7 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
         numberingMode: AppSettings.instance.numberingMode,
       );
       session.replaceItems(detail.windows);
+      session.restoreOutputs(detail.outputs);
 
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -324,6 +325,7 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
         numberingMode: AppSettings.instance.numberingMode,
       );
       session.replaceItems(detail.windows);
+      session.restoreOutputs(detail.outputs);
 
       await Navigator.of(context).push(
         MaterialPageRoute<void>(

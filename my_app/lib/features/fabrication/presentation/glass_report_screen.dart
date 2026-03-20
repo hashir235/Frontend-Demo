@@ -1,9 +1,5 @@
-import 'dart:convert';
-
-import 'package:my_app/core/config/api_config.dart';
-import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_hero_header.dart';
@@ -77,43 +73,24 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     }
   }
 
-  Future<void> _generateGlassPdf({
-    String successMessage = 'Glass PDF generated.',
-  }) async {
+  Future<void> _downloadGlassPdf() async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
 
     try {
-      final http.Response response = await AuthHttpClient().post(
-        ApiConfig.buildUri('/api/pdf/glass'),
-        headers: const <String, String>{'Content-Type': 'application/json'},
-        body: jsonEncode(<String, Object?>{'projectId': widget.projectId}),
+      final String fileName = await PdfDownloadWorkflow.generateAndDownload(
+        endpoint: '/api/pdf/glass',
+        payload: <String, Object?>{'projectId': widget.projectId},
+        generationFailureMessage: 'Unable to generate glass PDF.',
       );
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Unable to generate glass PDF.')),
-        );
-        return;
-      }
-
-      String resolvedMessage = successMessage;
-      try {
-        final Object? decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic>) {
-          final String? fileName = decoded['fileName'] as String?;
-          if (fileName != null && fileName.isNotEmpty) {
-            resolvedMessage = 'PDF ready: $fileName';
-          }
-        }
-      } on FormatException {
-        // keep fallback
-      }
-
-      messenger.showSnackBar(SnackBar(content: Text(resolvedMessage)));
-    } on Exception {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Unable to reach local PDF service.')),
+        SnackBar(content: Text('PDF downloaded to Downloads: $fileName')),
+      );
+    } on PdfDownloadException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Unable to reach PDF service.')),
       );
     }
   }
@@ -132,19 +109,20 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
                 title: const Text('Download PDF'),
                 onTap: () async {
                   Navigator.of(context).pop();
-                  await _generateGlassPdf(
-                    successMessage: 'Glass PDF generated in local downloads.',
-                  );
+                  await _downloadGlassPdf();
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.share_outlined),
                 title: const Text('Share PDF'),
-                onTap: () async {
+                onTap: () {
                   Navigator.of(context).pop();
-                  await _generateGlassPdf(
-                    successMessage:
-                        'Glass PDF generated. Native share can be wired next.',
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Native share abhi wire nahi hui. Filhal Download PDF use karein.',
+                      ),
+                    ),
                   );
                 },
               ),
@@ -167,7 +145,7 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
       children: <Widget>[
         Expanded(
           child: FilledButton.icon(
-            onPressed: _generateGlassPdf,
+            onPressed: _downloadGlassPdf,
             icon: const Icon(Icons.download_rounded),
             label: const Text('Download PDF'),
           ),
@@ -320,3 +298,8 @@ class _MetaChip extends StatelessWidget {
     );
   }
 }
+
+
+
+
+

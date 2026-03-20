@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/cost_table.dart';
+import '../models/estimate_flow_state.dart';
 import '../models/window_review_item.dart';
 import '../../settings/state/numbering_mode.dart';
 
@@ -13,6 +15,9 @@ class EstimateSessionStore extends ChangeNotifier {
   final List<WindowReviewItem> _items = <WindowReviewItem>[];
   int _nextWinNo = 1;
   NumberingMode _numberingMode;
+  EstimateMaterialSelection? _materialSelection;
+  List<RateOverrideInput> _rateOverrides = const <RateOverrideInput>[];
+  EstimateBillDraft? _billDraft;
 
   EstimateSessionStore({
     this.projectId,
@@ -34,6 +39,10 @@ class EstimateSessionStore extends ChangeNotifier {
 
   int get nextWinNo => _nextWinNo;
   NumberingMode get numberingMode => _numberingMode;
+  EstimateMaterialSelection? get materialSelection => _materialSelection;
+  List<RateOverrideInput> get rateOverrides =>
+      List<RateOverrideInput>.unmodifiable(_rateOverrides);
+  EstimateBillDraft? get billDraft => _billDraft;
 
   void replaceItems(Iterable<WindowReviewItem> items) {
     _items
@@ -48,6 +57,28 @@ class EstimateSessionStore extends ChangeNotifier {
       return;
     }
     _numberingMode = mode;
+    notifyListeners();
+  }
+
+  void setMaterialSelection(EstimateMaterialSelection? selection) {
+    _materialSelection = selection;
+    notifyListeners();
+  }
+
+  void setRateOverrides(Iterable<RateOverrideInput> overrides) {
+    _rateOverrides = List<RateOverrideInput>.from(overrides);
+    notifyListeners();
+  }
+
+  void setBillDraft(EstimateBillDraft? draft) {
+    _billDraft = draft;
+    notifyListeners();
+  }
+
+  void restoreOutputs(Map<String, dynamic>? outputs) {
+    _materialSelection = estimateMaterialSelectionFromProjectOutputs(outputs);
+    _rateOverrides = estimateRateOverridesFromProjectOutputs(outputs);
+    _billDraft = estimateBillDraftFromProjectOutputs(outputs);
     notifyListeners();
   }
 

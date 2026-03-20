@@ -25,8 +25,20 @@ class ApiConfig {
     return _compatBaseUrl.trim();
   }
 
+  static String resolveUrl(String pathOrUrl) {
+    final String trimmed = pathOrUrl.trim();
+    if (trimmed.isEmpty) {
+      return baseUrl;
+    }
+    final Uri? parsed = Uri.tryParse(trimmed);
+    if (parsed != null && parsed.hasScheme) {
+      return trimmed;
+    }
+    final String normalizedPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    return '$baseUrl$normalizedPath';
+  }
+
   static Uri buildUri(String path) {
-    final String normalizedPath = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$baseUrl$normalizedPath');
+    return Uri.parse(resolveUrl(path));
   }
 }
