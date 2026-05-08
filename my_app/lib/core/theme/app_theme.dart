@@ -319,8 +319,14 @@ class AppTheme {
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
+          minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
+          fixedSize: const WidgetStatePropertyAll(Size.fromHeight(44)),
+          visualDensity: VisualDensity.compact,
+          textStyle: WidgetStatePropertyAll(
+            textTheme.labelLarge?.copyWith(height: 1.0),
+          ),
           padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           ),
         ),
       ),

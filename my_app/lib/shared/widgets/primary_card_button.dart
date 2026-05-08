@@ -5,7 +5,7 @@ import '../../core/theme/app_theme.dart';
 class PrimaryCardButton extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final VoidCallback onTap;
   final Color? accent;
 
@@ -13,7 +13,7 @@ class PrimaryCardButton extends StatelessWidget {
     super.key,
     required this.icon,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.onTap,
     this.accent,
   });
@@ -60,25 +60,6 @@ class PrimaryCardButton extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.space3,
-                          vertical: AppTheme.space2,
-                        ),
-                        decoration: AppTheme.infoChipDecoration(
-                          emphasized: true,
-                        ),
-                        child: Text(
-                          'Quick AL',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: accentColor,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.space4),
                       Text(
                         title,
                         style: Theme.of(context).textTheme.headlineSmall
@@ -86,13 +67,6 @@ class PrimaryCardButton extends StatelessWidget {
                               fontWeight: FontWeight.w900,
                               color: AppTheme.textPrimary,
                             ),
-                      ),
-                      const SizedBox(height: AppTheme.space2),
-                      Text(
-                        subtitle,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
                       ),
                     ],
                   ),

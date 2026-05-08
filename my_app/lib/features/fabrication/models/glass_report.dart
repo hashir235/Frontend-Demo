@@ -27,6 +27,16 @@ class GlassReport {
           .toList(growable: false),
     );
   }
+
+  Map<String, Object?> toJson() {
+    return <String, Object?>{
+      'ok': ok,
+      'errors': errors,
+      'projectName': projectName,
+      'projectLocation': projectLocation,
+      'rows': rows.map((GlassReportRow row) => row.toJson()).toList(),
+    };
+  }
 }
 
 class GlassReportRow {
@@ -64,6 +74,20 @@ class GlassReportRow {
       heightDisplay: (json['heightDisplay'] as String?) ?? '',
       widthDisplay: (json['widthDisplay'] as String?) ?? '',
     );
+  }
+
+  Map<String, Object?> toJson() {
+    return <String, Object?>{
+      'windowName': windowName,
+      'windowNo': windowNo,
+      'inputSize': inputSize,
+      'rubberType': rubberType,
+      'quantity': quantity,
+      'heightCm': heightCm,
+      'widthCm': widthCm,
+      'heightDisplay': heightDisplay,
+      'widthDisplay': widthDisplay,
+    };
   }
 }
 

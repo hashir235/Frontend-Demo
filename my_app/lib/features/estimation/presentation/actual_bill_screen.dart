@@ -118,7 +118,6 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
     return snapshot.totals.grandTotal / snapshot.totals.totalArea;
   }
 
-
   Future<void> _downloadInvoicePdf() async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
@@ -131,6 +130,28 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
       );
       messenger.showSnackBar(
         SnackBar(content: Text('PDF downloaded to Downloads: $fileName')),
+      );
+    } on PdfDownloadException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Unable to reach PDF service.')),
+      );
+    }
+  }
+
+  Future<void> _shareInvoicePdf() async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+
+    try {
+      final String fileName = await PdfDownloadWorkflow.generateAndShare(
+        endpoint: '/api/pdf/invoice',
+        payload: <String, Object?>{'projectId': widget.request.projectId},
+        generationFailureMessage: 'Unable to generate invoice PDF.',
+      );
+      messenger.showSnackBar(
+        SnackBar(content: Text('Opening share sheet: $fileName')),
       );
     } on PdfDownloadException catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(error.message)));
@@ -161,15 +182,9 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
               ListTile(
                 leading: const Icon(Icons.share_outlined),
                 title: const Text('Share PDF'),
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Native share abhi wire nahi hui. Filhal Download PDF use karein.',
-                      ),
-                    ),
-                  );
+                  await _shareInvoicePdf();
                 },
               ),
             ],
@@ -682,9 +697,3 @@ class _MetaChip extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-

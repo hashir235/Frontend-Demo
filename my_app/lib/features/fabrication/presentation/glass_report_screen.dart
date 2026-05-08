@@ -11,6 +11,7 @@ import '../../../shared/widgets/section_surface_card.dart';
 import '../../../shared/widgets/state_message_card.dart';
 import '../data/glass_report_api_client.dart';
 import '../models/glass_report.dart';
+import 'glass_sheet_optimization_screen.dart';
 
 class GlassReportScreen extends StatefulWidget {
   final String? projectId;
@@ -41,9 +42,8 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
   }
 
   String _glassSizeForRow(GlassReportRow row) {
-    return '${row.heightDisplay} x ${row.widthDisplay}';
+    return '${row.widthDisplay} x ${row.heightDisplay}';
   }
-
 
   Future<void> _loadReport() async {
     setState(() {
@@ -95,6 +95,28 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     }
   }
 
+  Future<void> _shareGlassPdf() async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+
+    try {
+      final String fileName = await PdfDownloadWorkflow.generateAndShare(
+        endpoint: '/api/pdf/glass',
+        payload: <String, Object?>{'projectId': widget.projectId},
+        generationFailureMessage: 'Unable to generate glass PDF.',
+      );
+      messenger.showSnackBar(
+        SnackBar(content: Text('Opening share sheet: $fileName')),
+      );
+    } on PdfDownloadException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Unable to reach PDF service.')),
+      );
+    }
+  }
+
   Future<void> _showShareOptions() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -115,15 +137,9 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
               ListTile(
                 leading: const Icon(Icons.share_outlined),
                 title: const Text('Share PDF'),
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Native share abhi wire nahi hui. Filhal Download PDF use karein.',
-                      ),
-                    ),
-                  );
+                  await _shareGlassPdf();
                 },
               ),
             ],
@@ -133,12 +149,23 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     );
   }
 
-  void _goHome() {
-    Navigator.of(context).popUntil((Route<dynamic> route) => route.isFirst);
+  void _openGlassSheets() {
+    final GlassReport? report = _report;
+    if (report == null || report.rows.isEmpty) {
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => GlassSheetOptimizationScreen(
+          projectId: widget.projectId,
+          glassReport: report,
+        ),
+      ),
+    );
   }
 
   Widget? _buildBottomActions() {
-    if (_isLoading || _errorMessage != null) {
+    if (_isLoading || _errorMessage != null || _report == null) {
       return null;
     }
     return BottomActionBar(
@@ -151,10 +178,17 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
           ),
         ),
         const SizedBox(width: AppTheme.space4),
-        IconButton.filledTonal(
-          tooltip: 'Home',
-          onPressed: _goHome,
-          icon: const Icon(Icons.home_rounded),
+        Expanded(
+          child: FilledButton.tonalIcon(
+            onPressed: _openGlassSheets,
+            icon: const Icon(Icons.auto_awesome_mosaic_rounded),
+            label: const Text(
+              'Glass Sheets',
+              maxLines: 1,
+              overflow: TextOverflow.visible,
+              softWrap: false,
+            ),
+          ),
         ),
         const SizedBox(width: AppTheme.space4),
         IconButton.filledTonal(
@@ -298,8 +332,3 @@ class _MetaChip extends StatelessWidget {
     );
   }
 }
-
-
-
-
-

@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/auth_screen.dart';
 import 'features/auth/state/auth_controller.dart';
 import 'features/home/presentation/home_screen.dart';
+import 'features/subscription/presentation/subscription_gate_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -29,7 +30,7 @@ class MyApp extends StatelessWidget {
           home: !authController.isInitialized
               ? const _AuthBootstrapScreen()
               : authController.isAuthenticated
-              ? const HomeScreen()
+              ? const SubscriptionGateScreen(child: HomeScreen())
               : const AuthScreen(),
         );
       },

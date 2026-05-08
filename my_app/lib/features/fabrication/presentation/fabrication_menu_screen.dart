@@ -23,6 +23,34 @@ class FabricationMenuScreen extends StatelessWidget {
   const FabricationMenuScreen({super.key});
 
 
+  Future<void> _openLatestGlassReport(BuildContext context) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    String? projectId;
+    try {
+      final projects = await ProjectRepository().fetchRecentProjects(
+        flow: EstimateFlow.fabrication,
+        limit: 1,
+      );
+      if (projects.isNotEmpty) {
+        projectId = projects.first.id;
+      }
+    } on Exception catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Recent fabrication project load failed: $error')),
+      );
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => GlassReportScreen(projectId: projectId),
+      ),
+    );
+  }
+
   Future<_ProjectDraft?> _showProjectDialog(BuildContext context) async {
     return showDialog<_ProjectDraft>(
       context: context,
@@ -158,13 +186,7 @@ class FabricationMenuScreen extends StatelessWidget {
                     subtitle:
                         'Open the latest fabrication glass table and PDF tools.',
                     accent: AppTheme.amberAccent,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const GlassReportScreen(),
-                        ),
-                      );
-                    },
+                    onTap: () => _openLatestGlassReport(context),
                   ),
                   const SizedBox(height: AppTheme.space5),
                   const RecentProjectsListSection(

@@ -17,6 +17,31 @@ class AuthApiException implements Exception {
   String toString() => message;
 }
 
+class PasswordResetRequestResult {
+  final String message;
+  final String maskedEmail;
+  final String? devResetCode;
+  final int expiresInMinutes;
+
+  const PasswordResetRequestResult({
+    required this.message,
+    required this.maskedEmail,
+    required this.expiresInMinutes,
+    this.devResetCode,
+  });
+
+  factory PasswordResetRequestResult.fromJson(Map<String, dynamic> json) {
+    return PasswordResetRequestResult(
+      message:
+          (json['message'] as String?) ??
+          'If this email is registered, a password reset code has been sent.',
+      maskedEmail: (json['maskedEmail'] as String?) ?? '',
+      devResetCode: json['devResetCode'] as String?,
+      expiresInMinutes: (json['expiresInMinutes'] as num?)?.round() ?? 15,
+    );
+  }
+}
+
 class AuthApiClient {
   final http.Client _httpClient;
   final String _baseUrl;
@@ -56,13 +81,26 @@ class AuthApiClient {
     return AuthSessionResult.fromJson(payload);
   }
 
-  Future<void> resetPassword({
+  Future<PasswordResetRequestResult> requestPasswordReset({
     required String email,
+  }) async {
+    final Map<String, dynamic> payload = await _postJson(
+      Uri.parse('$_baseUrl/api/auth/password-reset/request'),
+      <String, Object?>{'email': email},
+      failureMessage: 'Password reset request failed.',
+      unreachableMessage: 'Unable to reach authentication service.',
+    );
+    return PasswordResetRequestResult.fromJson(payload);
+  }
+
+  Future<void> confirmPasswordReset({
+    required String email,
+    required String code,
     required String password,
   }) async {
     await _postJson(
-      Uri.parse('$_baseUrl/api/auth/reset-password'),
-      <String, Object?>{'email': email, 'password': password},
+      Uri.parse('$_baseUrl/api/auth/password-reset/confirm'),
+      <String, Object?>{'email': email, 'code': code, 'password': password},
       failureMessage: 'Password reset failed.',
       unreachableMessage: 'Unable to reach authentication service.',
     );

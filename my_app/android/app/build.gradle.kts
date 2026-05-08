@@ -35,6 +35,19 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("play") {
+            dimension = "distribution"
+            applicationId = "com.quickal.app"
+        }
+        create("direct") {
+            dimension = "distribution"
+            applicationId = "com.quickal.app.direct"
+            versionNameSuffix = "-direct"
+        }
+    }
+
     signingConfigs {
         if (keystorePropertiesFile.exists()) {
             create("release") {

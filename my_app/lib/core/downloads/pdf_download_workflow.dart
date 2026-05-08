@@ -23,6 +23,64 @@ class PdfDownloadWorkflow {
     required Map<String, Object?> payload,
     required String generationFailureMessage,
   }) async {
+    final _PdfLink pdf = await _generatePdfLink(
+      endpoint: endpoint,
+      payload: payload,
+      generationFailureMessage: generationFailureMessage,
+    );
+
+    _ensureAndroidSupport(
+      'PDF download to Downloads is currently supported on Android only.',
+    );
+
+    try {
+      await _channel.invokeMethod<void>('downloadPdf', <String, String>{
+        'url': ApiConfig.resolveUrl(pdf.downloadUrl),
+        'fileName': pdf.fileName,
+        'description': 'Downloading PDF to Downloads',
+      });
+    } on PlatformException catch (error) {
+      throw PdfDownloadException(
+        error.message ?? 'Unable to save PDF in Downloads.',
+      );
+    }
+
+    return pdf.fileName;
+  }
+
+  static Future<String> generateAndShare({
+    required String endpoint,
+    required Map<String, Object?> payload,
+    required String generationFailureMessage,
+  }) async {
+    final _PdfLink pdf = await _generatePdfLink(
+      endpoint: endpoint,
+      payload: payload,
+      generationFailureMessage: generationFailureMessage,
+    );
+
+    _ensureAndroidSupport(
+      'PDF sharing is currently supported on Android only.',
+    );
+
+    try {
+      await _channel.invokeMethod<void>('sharePdf', <String, String>{
+        'url': ApiConfig.resolveUrl(pdf.downloadUrl),
+        'fileName': pdf.fileName,
+        'description': 'Preparing PDF to share',
+      });
+    } on PlatformException catch (error) {
+      throw PdfDownloadException(error.message ?? 'Unable to share PDF.');
+    }
+
+    return pdf.fileName;
+  }
+
+  static Future<_PdfLink> _generatePdfLink({
+    required String endpoint,
+    required Map<String, Object?> payload,
+    required String generationFailureMessage,
+  }) async {
     final http.Response response = await AuthHttpClient().post(
       ApiConfig.buildUri(endpoint),
       headers: const <String, String>{'Content-Type': 'application/json'},
@@ -52,28 +110,23 @@ class PdfDownloadWorkflow {
       throw const PdfDownloadException('PDF file link not returned by server.');
     }
 
+    return _PdfLink(fileName: fileName, downloadUrl: downloadUrl);
+  }
+
+  static void _ensureAndroidSupport(String message) {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      throw const PdfDownloadException(
-        'PDF download to Downloads is currently supported on Android only.',
-      );
+      throw PdfDownloadException(message);
     }
-
-    try {
-      await _channel.invokeMethod<void>('downloadPdf', <String, String>{
-        'url': ApiConfig.resolveUrl(downloadUrl),
-        'fileName': fileName,
-        'description': 'Downloading PDF to Downloads',
-      });
-    } on PlatformException catch (error) {
-      throw PdfDownloadException(
-        error.message ?? 'Unable to save PDF in Downloads.',
-      );
-    }
-
-    return fileName;
   }
 
   static String _readString(Object? value) {
     return value is String ? value.trim() : '';
   }
+}
+
+class _PdfLink {
+  final String fileName;
+  final String downloadUrl;
+
+  const _PdfLink({required this.fileName, required this.downloadUrl});
 }

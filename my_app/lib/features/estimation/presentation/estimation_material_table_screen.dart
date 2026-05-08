@@ -118,7 +118,6 @@ class _EstimationMaterialTableScreenState
         .replaceFirst(RegExp(r'\.$'), '');
   }
 
-
   Future<void> _downloadMaterialPdf() async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
@@ -131,6 +130,28 @@ class _EstimationMaterialTableScreenState
       );
       messenger.showSnackBar(
         SnackBar(content: Text('PDF downloaded to Downloads: $fileName')),
+      );
+    } on PdfDownloadException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Unable to reach PDF service.')),
+      );
+    }
+  }
+
+  Future<void> _shareMaterialPdf() async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+
+    try {
+      final String fileName = await PdfDownloadWorkflow.generateAndShare(
+        endpoint: '/api/pdf/material',
+        payload: <String, Object?>{'projectId': widget.projectId},
+        generationFailureMessage: 'Unable to generate material PDF.',
+      );
+      messenger.showSnackBar(
+        SnackBar(content: Text('Opening share sheet: $fileName')),
       );
     } on PdfDownloadException catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(error.message)));
@@ -161,15 +182,9 @@ class _EstimationMaterialTableScreenState
               ListTile(
                 leading: const Icon(Icons.share_outlined),
                 title: const Text('Share PDF'),
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Native share abhi wire nahi hui. Filhal Download PDF use karein.',
-                      ),
-                    ),
-                  );
+                  await _shareMaterialPdf();
                 },
               ),
             ],
@@ -464,8 +479,3 @@ class _MetaChip extends StatelessWidget {
     );
   }
 }
-
-
-
-
-

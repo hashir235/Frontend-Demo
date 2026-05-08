@@ -5,11 +5,21 @@ class ApiConfig {
     'QUICKAL_API_BASE_URL',
   );
   static const String _compatBaseUrl = String.fromEnvironment('API_BASE_URL');
+  static const String subscriptionChannel = String.fromEnvironment(
+    'QUICKAL_DISTRIBUTION_CHANNEL',
+    defaultValue: 'google_play',
+  );
+
+  static bool get isDirectWebsiteBuild =>
+      subscriptionChannel == 'direct_website';
 
   static String get baseUrl {
     final String configured = _firstConfiguredBaseUrl();
     if (configured.isNotEmpty) {
       return configured.replaceAll(RegExp(r'/+$'), '');
+    }
+    if (kReleaseMode) {
+      return 'https://api.quickalapp.com';
     }
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:8080';

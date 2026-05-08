@@ -58,6 +58,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       TextEditingController();
   final TextEditingController _archController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _winNoController = TextEditingController();
   final FocusNode _winNoFocusNode = FocusNode();
   final FocusNode _heightFocusNode = FocusNode();
@@ -74,10 +75,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     debugLabel: 'heightSuterField',
   );
   final GlobalKey _widthFieldKey = GlobalKey(debugLabel: 'widthField');
-  final GlobalKey _widthSuterFieldKey = GlobalKey(debugLabel: 'widthSuterField');
-  final GlobalKey _leftWidthFieldKey = GlobalKey(
-    debugLabel: 'leftWidthField',
+  final GlobalKey _widthSuterFieldKey = GlobalKey(
+    debugLabel: 'widthSuterField',
   );
+  final GlobalKey _leftWidthFieldKey = GlobalKey(debugLabel: 'leftWidthField');
   final GlobalKey _leftWidthSuterFieldKey = GlobalKey(
     debugLabel: 'leftWidthSuterField',
   );
@@ -245,8 +246,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }
 
   String? _normalizedSelectedSectionCode(String? sectionCode, int collarIndex) {
-    final String? normalized =
-        sectionCode == null || sectionCode.trim().isEmpty
+    final String? normalized = sectionCode == null || sectionCode.trim().isEmpty
         ? null
         : sectionCode.trim();
     if (normalized == null) {
@@ -263,7 +263,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       selectedCollar: _selectedCollar,
       selectedSectionCode: _selectedSectionCode,
       lockType: _showsLockTypeSelector ? _lockTypeCode(_lockType) : null,
-      rubberType: _isFabricationFlow ? (_rubberType == _RubberType.u ? 'U' : 'F') : null,
+      rubberType: _isFabricationFlow
+          ? (_rubberType == _RubberType.u ? 'U' : 'F')
+          : null,
       addBottom: _showsDoorSectionToggles ? _doorD46Enabled : null,
       addTee: _showsDoorSectionToggles ? _doorD52Enabled : null,
       addNet: _showsOpenableNetToggle ? _openableNetEnabled : null,
@@ -627,6 +629,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _leftWidthSuterController.dispose();
     _archController.dispose();
     _descriptionController.dispose();
+    _quantityController.dispose();
     _winNoController.dispose();
     _winNoFocusNode.dispose();
     _heightFocusNode.dispose();
@@ -1038,6 +1041,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _leftWidthSuterController.clear();
       _archController.clear();
       _descriptionController.clear();
+      _quantityController.clear();
       if (_numberingMode == NumberingMode.manual) {
         _winNoController.clear();
       }
@@ -1051,7 +1055,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }
 
   void _scheduleProjectSessionSync() {
-    _pendingProjectSync = _pendingProjectSync.then((_) => _syncProjectSession());
+    _pendingProjectSync = _pendingProjectSync.then(
+      (_) => _syncProjectSession(),
+    );
   }
 
   Future<void> _onSavePressed() async {
@@ -1133,26 +1139,36 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return;
     }
 
+    final int quantity =
+        (int.tryParse(_quantityController.text.trim()) ?? 1).clamp(1, 500);
+
     try {
-      widget.session.addItem(
-        winNo: winNo,
-        windowLabel: widget.node.label,
-        windowCode: windowCode,
-        windowIndex: windowIndex,
-        collarIndex: _selectedCollar,
-        unitMode: _unitMode,
-        heightValue: heightValue,
-        widthValue: rightWidthValue,
-        rightWidthValue: _usesSplitWidthInputs ? rightWidthValue : null,
-        leftWidthValue: leftWidthValue,
-        archValue: archValue,
-        addBottom: _doorD46Enabled,
-        addTee: _doorD52Enabled,
-        addNet: _openableNetEnabled,
-        lockType: lockTypeValue,
-        rubberType: rubberTypeValue,
-        description: description,
-      );
+      for (int q = 0; q < quantity; q++) {
+        // For quantity > 1 always use auto-numbering; for qty 1 respect manual mode
+        final int itemWinNo =
+            (quantity == 1 && _numberingMode == NumberingMode.manual)
+                ? winNo
+                : widget.session.nextWinNo;
+        widget.session.addItem(
+          winNo: itemWinNo,
+          windowLabel: widget.node.label,
+          windowCode: windowCode,
+          windowIndex: windowIndex,
+          collarIndex: _selectedCollar,
+          unitMode: _unitMode,
+          heightValue: heightValue,
+          widthValue: rightWidthValue,
+          rightWidthValue: _usesSplitWidthInputs ? rightWidthValue : null,
+          leftWidthValue: leftWidthValue,
+          archValue: archValue,
+          addBottom: _doorD46Enabled,
+          addTee: _doorD52Enabled,
+          addNet: _openableNetEnabled,
+          lockType: lockTypeValue,
+          rubberType: rubberTypeValue,
+          description: description,
+        );
+      }
     } on ArgumentError catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Window number already exists.')),
@@ -1639,11 +1655,22 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       label: Text(
                         _isFabricationFlow ? 'cm' : 'Feet',
                         key: const Key('unit_feet_radio'),
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
+                        softWrap: false,
+                        textAlign: TextAlign.center,
                       ),
                     ),
                     const ButtonSegment<UnitMode>(
                       value: UnitMode.inches,
-                      label: Text('Inches', key: Key('unit_inches_radio')),
+                      label: Text(
+                        'Inches',
+                        key: Key('unit_inches_radio'),
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
+                        softWrap: false,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ],
                   selected: <UnitMode>{_unitMode},
@@ -1749,47 +1776,56 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         ),
                         child: Text(
                           'winNo: ${_numberingMode == NumberingMode.manual ? (_winNoController.text.trim().isEmpty ? '--' : _winNoController.text.trim()) : _visibleWinNo}',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
                         ),
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
                         height: _collarCardSize + 30,
                         child: LayoutBuilder(
-                          builder: (BuildContext context, BoxConstraints constraints) {
-                            final double availableWidth = constraints.maxWidth;
-                            final double side = math.min(
-                              _collarCardSize,
-                              availableWidth * _collarViewportFraction * 0.9,
-                            );
-                            return PageView.builder(
-                              key: const Key('collar_page_view'),
-                              controller: _collarPageController,
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: _handler.collarCount,
-                              onPageChanged: (int index) {
-                                setState(() {
-                                  _selectedCollar = index + 1;
-                                  _selectedSectionCode =
-                                      _normalizedSelectedSectionCode(
-                                        _selectedSectionCode,
-                                        _selectedCollar,
-                                      );
-                                });
-                                _persistSidebarSelections();
-                              },
-                              itemBuilder: (BuildContext context, int index) {
-                                return _buildCollarCard(
-                                  index,
-                                  isFocused: true,
-                                  side: side,
+                          builder:
+                              (
+                                BuildContext context,
+                                BoxConstraints constraints,
+                              ) {
+                                final double availableWidth =
+                                    constraints.maxWidth;
+                                final double side = math.min(
+                                  _collarCardSize,
+                                  availableWidth *
+                                      _collarViewportFraction *
+                                      0.9,
+                                );
+                                return PageView.builder(
+                                  key: const Key('collar_page_view'),
+                                  controller: _collarPageController,
+                                  physics: const BouncingScrollPhysics(),
+                                  itemCount: _handler.collarCount,
+                                  onPageChanged: (int index) {
+                                    setState(() {
+                                      _selectedCollar = index + 1;
+                                      _selectedSectionCode =
+                                          _normalizedSelectedSectionCode(
+                                            _selectedSectionCode,
+                                            _selectedCollar,
+                                          );
+                                    });
+                                    _persistSidebarSelections();
+                                  },
+                                  itemBuilder:
+                                      (BuildContext context, int index) {
+                                        return _buildCollarCard(
+                                          index,
+                                          isFocused: true,
+                                          side: side,
+                                        );
+                                      },
                                 );
                               },
-                            );
-                          },
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -2042,14 +2078,34 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         ),
                         maxLength: _maxDescriptionLength,
                         maxLines: 2,
-                        onSubmitted: (_) => _submitFromField(_descriptionFocusNode),
+                        onSubmitted: (_) =>
+                            _submitFromField(_descriptionFocusNode),
                         decoration: InputDecoration(
                           labelText: 'Description (Optional)',
                           hintText: 'e.g. bath room window',
                           hintStyle: hintStyle,
                         ),
                       ),
-
+                      if (!widget.isEditMode) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _quantityController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            signed: false,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _onSavePressed(),
+                          decoration: InputDecoration(
+                            labelText: 'Quantity (Optional)',
+                            hintText: 'e.g. 6  (default: 1)',
+                            hintStyle: hintStyle,
+                            prefixIcon: const Icon(Icons.copy_all_rounded),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -2140,15 +2196,3 @@ class _ArchPainter extends CustomPainter {
   bool shouldRepaint(covariant _ArchPainter oldDelegate) =>
       oldDelegate.color != color;
 }
-
-
-
-
-
-
-
-
-
-
-
-

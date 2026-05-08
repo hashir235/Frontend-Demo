@@ -155,7 +155,6 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     );
   }
 
-
   Future<void> _downloadCuttingPdf() async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
@@ -178,6 +177,28 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     }
   }
 
+  Future<void> _shareCuttingPdf() async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+
+    try {
+      final String fileName = await PdfDownloadWorkflow.generateAndShare(
+        endpoint: '/api/pdf/cutting',
+        payload: <String, Object?>{'projectId': widget.projectId},
+        generationFailureMessage: 'Unable to generate cutting PDF.',
+      );
+      messenger.showSnackBar(
+        SnackBar(content: Text('Opening share sheet: $fileName')),
+      );
+    } on PdfDownloadException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Unable to reach PDF service.')),
+      );
+    }
+  }
+
   Future<void> _showShareOptions() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -189,7 +210,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             children: <Widget>[
               ListTile(
                 leading: const Icon(Icons.download_rounded),
-                title: const Text('Download PDF'),
+                title: const Text('PDF'),
                 onTap: () async {
                   Navigator.of(context).pop();
                   await _downloadCuttingPdf();
@@ -198,15 +219,9 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
               ListTile(
                 leading: const Icon(Icons.share_outlined),
                 title: const Text('Share PDF'),
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Native share abhi wire nahi hui. Filhal Download PDF use karein.',
-                      ),
-                    ),
-                  );
+                  await _shareCuttingPdf();
                 },
               ),
             ],
@@ -303,7 +318,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             child: FilledButton.icon(
               onPressed: _downloadCuttingPdf,
               icon: const Icon(Icons.download_rounded),
-              label: const Text('Download PDF'),
+              label: const Text('PDF'),
             ),
           ),
         if (widget.showPdfActions && canRecalculate)
@@ -313,7 +328,12 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             child: FilledButton.tonalIcon(
               onPressed: _openRecalculationScreen,
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Re Calculation'),
+              label: const Text(
+                'Recalc',
+                maxLines: 1,
+                overflow: TextOverflow.visible,
+                softWrap: false,
+              ),
             ),
           ),
         if (widget.showPdfActions) ...<Widget>[
@@ -664,8 +684,3 @@ class _MetaChip extends StatelessWidget {
     );
   }
 }
-
-
-
-
-

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/core/theme/app_theme.dart';
+import 'package:my_app/features/auth/data/auth_api_client.dart';
 import 'package:my_app/features/auth/state/auth_controller.dart';
 import 'package:my_app/shared/widgets/app_hero_header.dart';
 import 'package:my_app/shared/widgets/app_screen_shell.dart';
@@ -64,210 +65,39 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _openForgotPasswordDialog() async {
-    final TextEditingController emailController = TextEditingController(
-      text: _emailController.text.trim(),
-    );
-    final TextEditingController newPasswordController = TextEditingController();
-    final TextEditingController confirmPasswordController =
-        TextEditingController();
-
-    bool resetVisible = false;
-    bool confirmVisible = false;
-    bool isSubmitting = false;
-
-    final Map<String, String>? result = await showDialog<Map<String, String>>(
-      context: context,
-      barrierDismissible: !isSubmitting,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (
-            BuildContext context,
-            void Function(void Function()) setModalState,
-          ) {
-            Future<void> submitReset() async {
-              final String email = emailController.text.trim();
-              final String password = newPasswordController.text;
-              final String confirm = confirmPasswordController.text;
-              final ScaffoldMessengerState messenger =
-                  ScaffoldMessenger.of(context);
-              final NavigatorState navigator = Navigator.of(context);
-
-              if (!email.contains('@')) {
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('A valid email address is required.'),
-                  ),
-                );
-                return;
-              }
-              if (password.length < 8) {
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Your new password must be at least 8 characters long.',
-                    ),
-                  ),
-                );
-                return;
-              }
-              if (password != confirm) {
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('The passwords do not match.'),
-                  ),
-                );
-                return;
-              }
-
-              setModalState(() {
-                isSubmitting = true;
-              });
-              _authController.clearError();
-              final bool ok = await _authController.resetPassword(
-                email: email,
-                password: password,
-              );
-              if (!mounted) {
-                return;
-              }
-              if (!ok) {
-                setModalState(() {
-                  isSubmitting = false;
-                });
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      _authController.errorMessage ??
-                          'Password reset failed.',
-                    ),
-                  ),
-                );
-                return;
-              }
-
-              navigator.pop(<String, String>{
-                'email': email,
-                'password': password,
-              });
-            }
-
-            return AlertDialog(
-              title: const Text('Reset your password'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'Use your registered email and choose a fresh password to continue.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: AppTheme.space5),
-                    TextField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Registered email',
-                        hintText: 'you@example.com',
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.space4),
-                    TextField(
-                      controller: newPasswordController,
-                      obscureText: !resetVisible,
-                      textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        labelText: 'New password',
-                        hintText: 'At least 8 characters',
-                        suffixIcon: IconButton(
-                          onPressed: () {
-                            setModalState(() {
-                              resetVisible = !resetVisible;
-                            });
-                          },
-                          icon: Icon(
-                            resetVisible
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.space4),
-                    TextField(
-                      controller: confirmPasswordController,
-                      obscureText: !confirmVisible,
-                      onSubmitted: (_) => submitReset(),
-                      decoration: InputDecoration(
-                        labelText: 'Confirm password',
-                        hintText: 'Repeat your new password',
-                        suffixIcon: IconButton(
-                          onPressed: () {
-                            setModalState(() {
-                              confirmVisible = !confirmVisible;
-                            });
-                          },
-                          icon: Icon(
-                            confirmVisible
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: isSubmitting
-                      ? null
-                      : () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: isSubmitting ? null : submitReset,
-                  child: isSubmitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2.2),
-                        )
-                      : const Text('Reset password'),
-                ),
-              ],
-            );
-          },
+    FocusScope.of(context).unfocus();
+    final String? completedResetEmail = await Navigator.of(context)
+        .push<String>(
+          MaterialPageRoute<String>(
+            builder: (BuildContext context) => _PasswordResetScreen(
+              initialEmail: _emailController.text.trim(),
+            ),
+          ),
         );
-      },
-    );
 
-    emailController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
-
-    if (!mounted || result == null) {
+    if (!mounted || completedResetEmail == null) {
       return;
     }
 
     setState(() {
       _registerMode = false;
-      _emailController.text = result['email'] ?? '';
-      _passwordController.text = result['password'] ?? '';
+      _emailController.text = completedResetEmail;
+      _passwordController.clear();
       _passwordVisible = false;
     });
     _showMessage('Password updated. Sign in with your new password.');
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildHeroVisual() {
     return Container(
       width: 154,
-      height: 184,
+      height: 210,
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -352,10 +182,22 @@ class _AuthScreenState extends State<AuthScreen> {
             spacing: AppTheme.space3,
             runSpacing: AppTheme.space3,
             children: const <Widget>[
-              _AccessPill(icon: Icons.folder_copy_rounded, label: 'Saved project history'),
-              _AccessPill(icon: Icons.precision_manufacturing_rounded, label: 'Fabrication continuity'),
-              _AccessPill(icon: Icons.request_quote_rounded, label: 'Billing workflow'),
-              _AccessPill(icon: Icons.lock_person_rounded, label: 'Protected access'),
+              _AccessPill(
+                icon: Icons.folder_copy_rounded,
+                label: 'Saved project history',
+              ),
+              _AccessPill(
+                icon: Icons.precision_manufacturing_rounded,
+                label: 'Fabrication continuity',
+              ),
+              _AccessPill(
+                icon: Icons.request_quote_rounded,
+                label: 'Billing workflow',
+              ),
+              _AccessPill(
+                icon: Icons.lock_person_rounded,
+                label: 'Protected access',
+              ),
             ],
           ),
         ],
@@ -372,7 +214,8 @@ class _AuthScreenState extends State<AuthScreen> {
           _StoryCard(
             icon: Icons.space_dashboard_rounded,
             title: 'Estimation Workspace',
-            subtitle: 'Move from window input to optimization with a cleaner, structured flow.',
+            subtitle:
+                'Move from window input to optimization with a cleaner, structured flow.',
             tone: Color(0xFFE7F0F8),
             accent: AppTheme.royalBlue,
             bulletA: 'Organized window entry',
@@ -383,7 +226,8 @@ class _AuthScreenState extends State<AuthScreen> {
           _StoryCard(
             icon: Icons.precision_manufacturing_rounded,
             title: 'Fabrication Flow',
-            subtitle: 'Keep production outputs readable and connected to the original project.',
+            subtitle:
+                'Keep production outputs readable and connected to the original project.',
             tone: Color(0xFFE3F3F2),
             accent: AppTheme.tealAccent,
             bulletA: 'Glass and cutting reports',
@@ -394,7 +238,8 @@ class _AuthScreenState extends State<AuthScreen> {
           _StoryCard(
             icon: Icons.receipt_long_rounded,
             title: 'Billing Confidence',
-            subtitle: 'Review material totals, rates, and bill outputs from one polished place.',
+            subtitle:
+                'Review material totals, rates, and bill outputs from one polished place.',
             tone: Color(0xFFFBF1E3),
             accent: AppTheme.amberAccent,
             bulletA: 'Material tables',
@@ -440,9 +285,9 @@ class _AuthScreenState extends State<AuthScreen> {
               Expanded(
                 child: Text(
                   'Why use Quick AL?',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ),
             ],
@@ -583,8 +428,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed:
-                                _authController.isBusy ? null : _openForgotPasswordDialog,
+                            onPressed: _authController.isBusy
+                                ? null
+                                : _openForgotPasswordDialog,
                             child: const Text('Forgot Password?'),
                           ),
                         ),
@@ -598,7 +444,9 @@ class _AuthScreenState extends State<AuthScreen> {
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                  ),
                                 )
                               : Icon(
                                   _registerMode
@@ -619,6 +467,323 @@ class _AuthScreenState extends State<AuthScreen> {
                 _buildShowcaseRow(),
                 const SizedBox(height: AppTheme.space6),
                 _buildWhyUsePanel(context),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PasswordResetScreen extends StatefulWidget {
+  final String initialEmail;
+
+  const _PasswordResetScreen({required this.initialEmail});
+
+  @override
+  State<_PasswordResetScreen> createState() => _PasswordResetScreenState();
+}
+
+class _PasswordResetScreenState extends State<_PasswordResetScreen> {
+  final AuthController _authController = AuthController.instance;
+  late final TextEditingController _emailController = TextEditingController(
+    text: widget.initialEmail,
+  );
+  final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+
+  bool _codeSent = false;
+  bool _resetVisible = false;
+  bool _confirmVisible = false;
+  bool _isSubmitting = false;
+  String _sentMessage = '';
+  String _maskedEmail = '';
+  int _expiresInMinutes = 15;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _codeController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _requestCode() async {
+    final String email = _emailController.text.trim();
+    if (!email.contains('@')) {
+      _showMessage('A valid email address is required.');
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+    _authController.clearError();
+    final PasswordResetRequestResult? result = await _authController
+        .requestPasswordReset(email: email);
+    if (!mounted) {
+      return;
+    }
+
+    if (result == null) {
+      setState(() {
+        _isSubmitting = false;
+      });
+      _showMessage(
+        _authController.errorMessage ?? 'Password reset request failed.',
+      );
+      return;
+    }
+
+    setState(() {
+      _codeSent = true;
+      _isSubmitting = false;
+      _sentMessage = result.message;
+      _maskedEmail = result.maskedEmail;
+      _expiresInMinutes = result.expiresInMinutes;
+      _codeController.text = result.devResetCode ?? '';
+    });
+  }
+
+  Future<void> _submitReset() async {
+    final String email = _emailController.text.trim();
+    final String code = _codeController.text.replaceAll(RegExp(r'\D'), '');
+    final String password = _newPasswordController.text;
+    final String confirm = _confirmPasswordController.text;
+
+    if (!email.contains('@')) {
+      _showMessage('A valid email address is required.');
+      return;
+    }
+    if (code.length != 6) {
+      _showMessage('Enter the 6 digit reset code.');
+      return;
+    }
+    if (password.length < 8) {
+      _showMessage('Your new password must be at least 8 characters long.');
+      return;
+    }
+    if (password != confirm) {
+      _showMessage('The passwords do not match.');
+      return;
+    }
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _isSubmitting = true;
+    });
+    _authController.clearError();
+    final bool ok = await _authController.confirmPasswordReset(
+      email: email,
+      code: code,
+      password: password,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    if (!ok) {
+      setState(() {
+        _isSubmitting = false;
+      });
+      _showMessage(_authController.errorMessage ?? 'Password reset failed.');
+      return;
+    }
+
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pop(email);
+  }
+
+  void _changeEmail() {
+    setState(() {
+      _codeSent = false;
+      _codeController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+      _sentMessage = '';
+      _maskedEmail = '';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _authController,
+      builder: (BuildContext context, _) {
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(title: const Text('Reset Password')),
+          body: AppScreenShell(
+            child: ListView(
+              children: <Widget>[
+                AppHeroHeader(
+                  eyebrow: 'ACCOUNT RECOVERY',
+                  title: _codeSent ? 'Enter reset code' : 'Reset password',
+                  subtitle: '',
+                  trailing: Container(
+                    width: 82,
+                    height: 82,
+                    decoration: BoxDecoration(
+                      color: AppTheme.royalBlue.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    ),
+                    child: const Icon(
+                      Icons.lock_reset_rounded,
+                      color: AppTheme.royalBlue,
+                      size: 42,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppTheme.space6),
+                SectionSurfaceCard(
+                  title: _codeSent ? 'Verify your email' : 'Find your account',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        _codeSent
+                            ? (_maskedEmail.isEmpty
+                                  ? _sentMessage
+                                  : '$_sentMessage Check $_maskedEmail.')
+                            : 'Enter the email on your Quick AL account. A one time reset code is required before the password can be changed.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      if (_codeSent) ...<Widget>[
+                        const SizedBox(height: AppTheme.space3),
+                        Text(
+                          'Code expires in $_expiresInMinutes minutes and can be used only once.',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppTheme.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
+                      const SizedBox(height: AppTheme.space5),
+                      TextField(
+                        controller: _emailController,
+                        enabled: !_codeSent,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Registered email',
+                          hintText: 'you@example.com',
+                        ),
+                      ),
+                      if (_codeSent) ...<Widget>[
+                        const SizedBox(height: AppTheme.space4),
+                        TextField(
+                          controller: _codeController,
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.next,
+                          maxLength: 6,
+                          decoration: const InputDecoration(
+                            labelText: 'Reset code',
+                            hintText: '6 digit code',
+                            counterText: '',
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.space4),
+                        TextField(
+                          controller: _newPasswordController,
+                          obscureText: !_resetVisible,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'New password',
+                            hintText: 'At least 8 characters',
+                            suffixIcon: IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _resetVisible = !_resetVisible;
+                                });
+                              },
+                              icon: Icon(
+                                _resetVisible
+                                    ? Icons.visibility_off_rounded
+                                    : Icons.visibility_rounded,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.space4),
+                        TextField(
+                          controller: _confirmPasswordController,
+                          obscureText: !_confirmVisible,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _submitReset(),
+                          decoration: InputDecoration(
+                            labelText: 'Confirm password',
+                            hintText: 'Repeat your new password',
+                            suffixIcon: IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _confirmVisible = !_confirmVisible;
+                                });
+                              },
+                              icon: Icon(
+                                _confirmVisible
+                                    ? Icons.visibility_off_rounded
+                                    : Icons.visibility_rounded,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppTheme.space6),
+                      if (_codeSent)
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: _isSubmitting ? null : _changeEmail,
+                            child: const Text('Change email'),
+                          ),
+                        ),
+                      if (_codeSent) const SizedBox(height: AppTheme.space3),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _isSubmitting
+                              ? null
+                              : _codeSent
+                              ? _submitReset
+                              : _requestCode,
+                          icon: _isSubmitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                  ),
+                                )
+                              : Icon(
+                                  _codeSent
+                                      ? Icons.lock_open_rounded
+                                      : Icons.mark_email_read_rounded,
+                                ),
+                          label: Text(
+                            _codeSent ? 'Reset password' : 'Send code',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -654,9 +819,9 @@ class _AccessPill extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
@@ -703,10 +868,7 @@ class _StoryCard extends StatelessWidget {
             height: 92,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: <Color>[
-                  tone,
-                  accent.withValues(alpha: 0.18),
-                ],
+                colors: <Color>[tone, accent.withValues(alpha: 0.18)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -758,9 +920,9 @@ class _StoryCard extends StatelessWidget {
           const SizedBox(height: AppTheme.space5),
           Text(
             title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppTheme.space3),
           Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
@@ -804,9 +966,9 @@ class _StoryPoint extends StatelessWidget {
           child: Text(
             label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],
@@ -849,9 +1011,9 @@ class _MiniStatCard extends StatelessWidget {
           const SizedBox(height: AppTheme.space4),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppTheme.space2),
           Text(label, style: Theme.of(context).textTheme.bodyMedium),
