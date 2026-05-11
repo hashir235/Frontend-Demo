@@ -11,6 +11,8 @@ import '../../models/window_review_item.dart';
 import '../../models/window_type.dart';
 import '../../state/estimate_session_store.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../ar_measurement/models/inch_sutar.dart';
+import '../../../ar_measurement/presentation/ar_launcher.dart';
 import '../../../settings/state/numbering_mode.dart';
 import '../review_list_screen.dart';
 
@@ -1287,6 +1289,47 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
   }
 
+  Future<void> _launchArMeasurement() async {
+    final BuildContext currentContext = context;
+    final result =
+        await ArMeasurementLauncher().launch(currentContext);
+    if (!mounted || result == null) return;
+    _applyArMeasurement(width: result.width, height: result.height);
+  }
+
+  void _applyArMeasurement({
+    required InchSutar width,
+    required InchSutar height,
+  }) {
+    setState(() {
+      // AR always returns inches + sutar. If the user is currently in feet
+      // mode for this estimation flow, switch them to inches first so the
+      // storage format matches.
+      if (_unitMode == UnitMode.feet) {
+        _unitMode = UnitMode.inches;
+        _preferencesStore.persistUnitMode(widget.session.flow, _unitMode);
+      }
+      _heightController.text = height.storageFormat;
+      _widthController.text = width.storageFormat;
+      _heightInchController.text = height.inches.toString();
+      _heightSuterController.text = height.sutar == 0 ? '' : height.sutar.toString();
+      _widthInchController.text = width.inches.toString();
+      _widthSuterController.text = width.sutar == 0 ? '' : width.sutar.toString();
+      _heightError = null;
+      _widthError = null;
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text(
+            'AR applied — W: ${width.displayLabel}, H: ${height.displayLabel}',
+          ),
+        ),
+      );
+    }
+  }
+
   Widget _buildSingleDimensionField({
     required GlobalKey fieldKey,
     required TextEditingController controller,
@@ -1874,6 +1917,30 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                                 ),
                           ),
                           const Spacer(),
+                          if (!_isFabricationFlow)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: TextButton.icon(
+                                onPressed: _launchArMeasurement,
+                                icon: const Icon(
+                                  Icons.view_in_ar_rounded,
+                                  size: 20,
+                                ),
+                                label: const Text('AR'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppTheme.royalBlue,
+                                  backgroundColor: AppTheme.royalBlue
+                                      .withValues(alpha: 0.08),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
                           IconButton(
                             onPressed: _showDimensionInfo,
                             icon: const Icon(Icons.info_outline_rounded),
