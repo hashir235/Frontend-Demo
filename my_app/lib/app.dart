@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/network/auth_http_client.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/auth_screen.dart';
 import 'features/auth/state/auth_controller.dart';
@@ -30,7 +31,7 @@ class MyApp extends StatelessWidget {
           home: !authController.isInitialized
               ? const _AuthBootstrapScreen()
               : authController.isAuthenticated
-              ? const SubscriptionGateScreen(child: HomeScreen())
+              ? SubscriptionGateScreen(child: HomeScreen(authClient: AuthHttpClient()))
               : const AuthScreen(),
         );
       },
