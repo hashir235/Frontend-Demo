@@ -61,7 +61,20 @@ class EstimateSessionStore extends ChangeNotifier {
   }
 
   void setMaterialSelection(EstimateMaterialSelection? selection) {
+    final EstimateMaterialSelection? previous = _materialSelection;
     _materialSelection = selection;
+    // When the user changes gauge or color (e.g. switching from 1.2 to 1.6),
+    // any previously saved rate overrides and bill draft belong to the OLD
+    // gauge — reusing them would silently apply 1.2 rates to a 1.6 bill.
+    // Invalidate that cached state here so RateReviewScreen and BillInputs
+    // load fresh values for the new selection.
+    final bool selectionChanged =
+        previous?.gaugeValue != selection?.gaugeValue ||
+            previous?.colorValue != selection?.colorValue;
+    if (selectionChanged) {
+      _rateOverrides = const <RateOverrideInput>[];
+      _billDraft = null;
+    }
     notifyListeners();
   }
 
