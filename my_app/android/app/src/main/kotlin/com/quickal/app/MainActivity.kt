@@ -13,8 +13,6 @@ import android.provider.MediaStore
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
-import com.google.ar.core.ArCoreApk
-import com.quickal.app.ar.ARMeasurementActivity
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -30,7 +28,6 @@ import javax.crypto.spec.GCMParameterSpec
 
 class MainActivity : FlutterActivity() {
     private val shareExecutor = Executors.newSingleThreadExecutor()
-    private var pendingArResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -123,55 +120,6 @@ class MainActivity : FlutterActivity() {
                     }
                 }
 
-                else -> result.notImplemented()
-            }
-        }
-
-        MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger,
-            AR_CHANNEL_NAME,
-        ).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "checkAvailability" -> {
-                    try {
-                        val availability =
-                            ArCoreApk.getInstance().checkAvailability(this)
-                        val mapped = when {
-                            availability.isSupported && availability.isTransient ->
-                                "checking"
-                            availability.isSupported -> "supported"
-                            availability == ArCoreApk.Availability.UNKNOWN_CHECKING ->
-                                "checking"
-                            availability == ArCoreApk.Availability.UNKNOWN_ERROR ->
-                                "unknown_error"
-                            availability == ArCoreApk.Availability.UNKNOWN_TIMED_OUT ->
-                                "unknown_timeout"
-                            availability == ArCoreApk.Availability.UNSUPPORTED_DEVICE_NOT_CAPABLE ->
-                                "device_not_supported"
-                            else -> "not_installed"
-                        }
-                        result.success(mapped)
-                    } catch (error: Exception) {
-                        result.error(
-                            "ar_availability_failed",
-                            error.message ?: "Unable to check AR availability.",
-                            null,
-                        )
-                    }
-                }
-                "startMeasurement" -> {
-                    if (pendingArResult != null) {
-                        result.error(
-                            "ar_busy",
-                            "An AR measurement session is already in progress.",
-                            null,
-                        )
-                        return@setMethodCallHandler
-                    }
-                    pendingArResult = result
-                    val intent = Intent(this, ARMeasurementActivity::class.java)
-                    startActivityForResult(intent, AR_REQUEST_CODE)
-                }
                 else -> result.notImplemented()
             }
         }
@@ -338,47 +286,9 @@ class MainActivity : FlutterActivity() {
         return keyGenerator.generateKey()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == AR_REQUEST_CODE) {
-            val pending = pendingArResult
-            pendingArResult = null
-            if (pending == null) {
-                super.onActivityResult(requestCode, resultCode, data)
-                return
-            }
-            if (resultCode == RESULT_OK && data != null) {
-                val payload = HashMap<String, Any?>().apply {
-                    put(
-                        "width_meters",
-                        data.getDoubleExtra(ARMeasurementActivity.RESULT_WIDTH_METERS, 0.0),
-                    )
-                    put(
-                        "height_meters",
-                        data.getDoubleExtra(ARMeasurementActivity.RESULT_HEIGHT_METERS, 0.0),
-                    )
-                    put(
-                        "width_confidence",
-                        data.getStringExtra(ARMeasurementActivity.RESULT_WIDTH_CONFIDENCE) ?: "low",
-                    )
-                    put(
-                        "height_confidence",
-                        data.getStringExtra(ARMeasurementActivity.RESULT_HEIGHT_CONFIDENCE) ?: "low",
-                    )
-                }
-                pending.success(payload)
-            } else {
-                pending.success(null)
-            }
-            return
-        }
-        super.onActivityResult(requestCode, resultCode, data)
-    }
-
     companion object {
         private const val CHANNEL_NAME = "quick_al/downloads"
         private const val SECURE_STORE_CHANNEL_NAME = "quick_al/secure_store"
-        private const val AR_CHANNEL_NAME = "quick_al/ar_measurement"
-        private const val AR_REQUEST_CODE = 7321
         private const val PDF_MIME_TYPE = "application/pdf"
         private const val SECURE_PREFS_NAME = "quick_al_secure_store"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"

@@ -1,21 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
-    <uses-permission android:name="android.permission.CAMERA"/>
-
-    <!-- ARCore needs camera + OpenGL ES 2.0; both are optional so app installs everywhere. -->
-    <uses-feature android:name="android.hardware.camera.ar" android:required="false"/>
-    <uses-feature android:glEsVersion="0x00020000" android:required="false"/>
 
     <application
         android:label="Quick AL"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
-
-        <!-- AR is optional: app installs on devices without ARCore; we check at runtime. -->
-        <meta-data android:name="com.google.ar.core" android:value="optional"/>
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -34,14 +25,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".ar.ARMeasurementActivity"
-            android:exported="false"
-            android:configChanges="orientation|screenSize|keyboardHidden|keyboard"
-            android:theme="@style/Theme.AppCompat.NoActionBar"
-            android:screenOrientation="portrait"/>
-
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

@@ -71,12 +71,3 @@ android {
 flutter {
     source = "../.."
 }
-
-dependencies {
-    // ARCore SDK for camera-based AR measurement.
-    // Marked optional in the manifest so the app still installs on devices
-    // without ARCore support — we check availability at runtime.
-    implementation("com.google.ar:core:1.45.0")
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
-}
