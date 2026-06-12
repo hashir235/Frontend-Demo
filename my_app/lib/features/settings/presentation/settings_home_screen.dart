@@ -6,6 +6,7 @@ import '../../auth/state/auth_controller.dart';
 import '../data/billing_settings_repository.dart';
 import '../data/estimation_settings_repository.dart';
 import '../data/fabrication_settings_repository.dart';
+import '../data/payment_preferences_api_client.dart';
 import '../models/billing_settings.dart';
 import '../models/estimation_settings.dart';
 import '../models/fabrication_settings.dart';
@@ -44,6 +45,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final BillingSettingsRepository _billingSettingsRepository;
   late final EstimationSettingsRepository _estimationSettingsRepository;
   late final FabricationSettingsRepository _fabricationSettingsRepository;
+  late final PaymentPreferencesApiClient _paymentPreferencesApiClient;
+
+  RenewalMode _renewalMode = RenewalMode.manual;
+  bool _isLoadingPaymentPreferences = true;
+  bool _isSavingPaymentPreferences = false;
+  String? _paymentPreferencesError;
 
   bool _isLoadingBillingSettings = true;
   bool _isSavingBillingSettings = false;
@@ -65,10 +72,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _billingSettingsRepository = BillingSettingsRepository();
     _estimationSettingsRepository = EstimationSettingsRepository();
     _fabricationSettingsRepository = FabricationSettingsRepository();
+    _paymentPreferencesApiClient = PaymentPreferencesApiClient();
     AppSettings.instance.addListener(_onSettingsChanged);
     _loadBillingSettings();
     _loadEstimationSettings();
     _loadFabricationSettings();
+    _loadPaymentPreferences();
   }
 
   @override
@@ -219,6 +228,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _estimationSettingsError = error.toString();
         _isLoadingEstimationSettings = false;
       });
+    }
+  }
+
+  Future<void> _loadPaymentPreferences() async {
+    setState(() {
+      _isLoadingPaymentPreferences = true;
+      _paymentPreferencesError = null;
+    });
+
+    try {
+      final RenewalMode mode =
+          await _paymentPreferencesApiClient.fetchRenewalMode();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _renewalMode = mode;
+        _isLoadingPaymentPreferences = false;
+      });
+    } on Exception catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _paymentPreferencesError = error.toString();
+        _isLoadingPaymentPreferences = false;
+      });
+    }
+  }
+
+  Future<void> _updateRenewalMode(RenewalMode mode) async {
+    final RenewalMode previous = _renewalMode;
+    setState(() {
+      _renewalMode = mode;
+      _isSavingPaymentPreferences = true;
+    });
+
+    try {
+      final RenewalMode saved =
+          await _paymentPreferencesApiClient.saveRenewalMode(mode);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _renewalMode = saved;
+        _isSavingPaymentPreferences = false;
+      });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            saved == RenewalMode.auto
+                ? 'Auto renewal selected.'
+                : 'Manual renewal selected.',
+          ),
+        ),
+      );
+    } on Exception catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _renewalMode = previous;
+        _isSavingPaymentPreferences = false;
+      });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -1077,6 +1155,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildPaymentRenewalCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.payments_rounded,
+      title: 'Payment & Renewal',
+      subtitle:
+          'Choose how your subscription renews and review the refund policy.',
+      child: _isLoadingPaymentPreferences
+          ? _buildLoadingCard()
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                if (_paymentPreferencesError != null)
+                  _buildErrorBanner(
+                    context,
+                    _paymentPreferencesError!,
+                    _loadPaymentPreferences,
+                  ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.ice.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: AppTheme.violet.withValues(alpha: 0.10),
+                    ),
+                  ),
+                  child: RadioGroup<RenewalMode>(
+                    groupValue: _renewalMode,
+                    onChanged: (RenewalMode? value) {
+                      if (value != null && !_isSavingPaymentPreferences) {
+                        _updateRenewalMode(value);
+                      }
+                    },
+                    child: Column(
+                      children: const <Widget>[
+                        RadioListTile<RenewalMode>(
+                          value: RenewalMode.manual,
+                          title: Text('Manual renewal (default)'),
+                          subtitle: Text(
+                            'You renew yourself. The app reminds you before your subscription expires. No automatic charges.',
+                          ),
+                        ),
+                        Divider(height: 1),
+                        RadioListTile<RenewalMode>(
+                          value: RenewalMode.auto,
+                          title: Text('Auto renewal'),
+                          subtitle: Text(
+                            'Your subscription renews automatically when online payments are available. You will be notified before each renewal.',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildSettingsCluster(
+                  context,
+                  title: 'Refund Policy',
+                  children: <Widget>[
+                    const Text(
+                      'All subscription payments are final and non-refundable. '
+                      'If the app does not work after your payment because of '
+                      'a technical problem on our side, you can request a '
+                      'refund review by emailing quickal.dev@gmail.com from '
+                      'your registered email within 7 days of payment. '
+                      'Include your payment reference.',
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Google Play purchases follow Google Play\'s own refund process.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.deepTeal.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+    );
+  }
+
   Widget _buildAccountCard(BuildContext context) {
     return AnimatedBuilder(
       animation: AuthController.instance,
@@ -1165,6 +1324,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildEstimationSettingsCard(context),
               const SizedBox(height: 20),
               _buildFabricationSettingsCard(context),
+              const SizedBox(height: 20),
+              _buildPaymentRenewalCard(context),
               const SizedBox(height: 20),
               _buildAccountCard(context),
             ],

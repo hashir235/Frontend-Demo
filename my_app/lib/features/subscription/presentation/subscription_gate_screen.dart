@@ -143,6 +143,17 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
                         });
                       },
                     ),
+                    const SizedBox(height: AppTheme.space5),
+                    Text(
+                      'All payments are final and non-refundable. If the app '
+                      'does not work after payment due to a problem on our '
+                      'side, email quickal.dev@gmail.com within 7 days for a '
+                      'refund review.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
