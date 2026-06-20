@@ -20,11 +20,15 @@ class GlassReportApiException implements Exception {
 class GlassReportApiClient {
   final http.Client _httpClient;
   final Uri _endpointUri;
+  final Uri _saveEndpointUri;
 
   GlassReportApiClient({http.Client? httpClient, String? baseUrl})
     : _httpClient = httpClient ?? AuthHttpClient(),
       _endpointUri = Uri.parse(
         '${baseUrl ?? ApiConfig.baseUrl}/api/glass-report',
+      ),
+      _saveEndpointUri = Uri.parse(
+        '${baseUrl ?? ApiConfig.baseUrl}/api/glass-report/save',
       );
 
   Future<GlassReport> fetchGlassReport({String? projectId}) async {
@@ -78,6 +82,49 @@ class GlassReportApiClient {
       );
     }
     return report;
+  }
+
+  /// Persists an edited or manually-built glass report so the saved rows flow
+  /// into the glass PDF and stay attached to the project. Returns the
+  /// normalized report echoed back by the server.
+  Future<GlassReport> saveGlassReport({
+    required GlassReport report,
+    String? projectId,
+  }) async {
+    late final http.Response response;
+    try {
+      response = await _httpClient.post(
+        _saveEndpointUri,
+        headers: const <String, String>{'Content-Type': 'application/json'},
+        body: jsonEncode(<String, Object?>{
+          'projectId': projectId,
+          'projectName': report.projectName,
+          'projectLocation': report.projectLocation,
+          'rows': report.rows.map((GlassReportRow row) => row.toJson()).toList(),
+        }),
+      );
+    } on Exception catch (error) {
+      throw GlassReportApiException(
+        'Unable to reach local glass report service.',
+        detail: error,
+      );
+    }
+
+    final Map<String, dynamic>? payload = _decodeObject(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw GlassReportApiException(
+        (payload?['error'] as String?) ??
+            'Glass report save failed with status ${response.statusCode}.',
+        statusCode: response.statusCode,
+        detail: payload?['detail'],
+      );
+    }
+    if (payload == null) {
+      throw const GlassReportApiException(
+        'Glass report save returned invalid JSON.',
+      );
+    }
+    return GlassReport.fromJson(payload);
   }
 
 
