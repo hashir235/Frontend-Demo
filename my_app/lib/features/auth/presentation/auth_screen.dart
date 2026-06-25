@@ -23,6 +23,21 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _passwordVisible = false;
 
   @override
+  void initState() {
+    super.initState();
+    // If we arrived here because the session was invalidated remotely (account
+    // opened on another device), surface that reason once.
+    final String? pendingMessage = _authController.errorMessage;
+    if (pendingMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showMessage(pendingMessage);
+        _authController.clearError();
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();

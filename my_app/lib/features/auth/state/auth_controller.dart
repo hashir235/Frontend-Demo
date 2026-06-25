@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
+import '../../../core/network/auth_http_client.dart';
 import '../data/auth_api_client.dart';
 import '../data/auth_session_store.dart';
 import '../models/auth_session_result.dart';
@@ -7,7 +10,12 @@ import '../models/auth_user.dart';
 import 'auth_session.dart';
 
 class AuthController extends ChangeNotifier {
-  AuthController._();
+  AuthController._() {
+    // Single-device enforcement: when any authenticated request comes back 401
+    // (the server invalidated this session because the account signed in
+    // elsewhere), sign out locally so the app returns to the login screen.
+    AuthHttpClient.onUnauthorized = _onRemoteSessionInvalidated;
+  }
 
   static final AuthController instance = AuthController._();
 
@@ -128,6 +136,22 @@ class AuthController extends ChangeNotifier {
       return;
     }
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Called when the backend reports this session is no longer valid (401 on an
+  /// authenticated request) — almost always because the account was opened on
+  /// another device. Clears local state only; the server session is already
+  /// gone, so no logout call is made (which also avoids a request loop).
+  void _onRemoteSessionInvalidated() {
+    if (!AuthSession.isAuthenticated) {
+      return;
+    }
+    AuthSession.clear();
+    unawaited(_sessionStore.clear());
+    _busy = false;
+    _errorMessage =
+        'You were signed out because your account was opened on another device.';
     notifyListeners();
   }
 
