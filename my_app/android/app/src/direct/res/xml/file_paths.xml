@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Matches downloadApkForInstall(): cacheDir/updates/quickal-update.apk -->
+    <cache-path name="updates" path="updates/"/>
+</paths>

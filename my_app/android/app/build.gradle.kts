@@ -71,3 +71,9 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // FileProvider (used by the direct build's in-app updater) lives in
+    // androidx.core; declare it explicitly so it's on the compile classpath.
+    implementation("androidx.core:core-ktx:1.13.1")
+}

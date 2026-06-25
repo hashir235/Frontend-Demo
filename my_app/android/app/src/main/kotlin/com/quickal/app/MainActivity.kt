@@ -10,6 +10,7 @@ import android.os.Build
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -156,6 +157,111 @@ class MainActivity : FlutterActivity() {
                 )
             }
         }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            APP_UPDATE_CHANNEL_NAME,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "downloadAndInstallApk" -> {
+                    val url = call.argument<String>("url")?.trim().orEmpty()
+                    if (url.isEmpty()) {
+                        result.error("invalid_args", "Update URL is missing.", null)
+                        return@setMethodCallHandler
+                    }
+                    // On Android 8+ the user must allow "install unknown apps"
+                    // for this app. If not yet allowed, send them to that
+                    // settings screen and let them retry.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                        !packageManager.canRequestPackageInstalls()
+                    ) {
+                        try {
+                            startActivity(
+                                Intent(
+                                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    Uri.parse("package:$packageName"),
+                                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        } catch (_: Exception) {
+                            // Ignore — the result below still tells Flutter.
+                        }
+                        result.success("permission_required")
+                        return@setMethodCallHandler
+                    }
+
+                    shareExecutor.execute {
+                        try {
+                            val apkUri = downloadApkForInstall(url)
+                            runOnUiThread {
+                                try {
+                                    launchApkInstaller(apkUri)
+                                    result.success("install_started")
+                                } catch (error: Exception) {
+                                    result.error(
+                                        "install_failed",
+                                        error.message ?: "Unable to start installer.",
+                                        null,
+                                    )
+                                }
+                            }
+                        } catch (error: Exception) {
+                            runOnUiThread {
+                                result.error(
+                                    "download_failed",
+                                    error.message ?: "Unable to download update.",
+                                    null,
+                                )
+                            }
+                        }
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    private fun downloadApkForInstall(url: String): Uri {
+        // Download into app-private cache so no storage permission is needed.
+        val updatesDir = java.io.File(cacheDir, "updates")
+        if (!updatesDir.exists()) {
+            updatesDir.mkdirs()
+        }
+        // Fresh file each time so we never install a stale/partial download.
+        updatesDir.listFiles()?.forEach { it.delete() }
+        val apkFile = java.io.File(updatesDir, "quickal-update.apk")
+
+        val connection = URL(url).openConnection() as HttpURLConnection
+        try {
+            connection.connectTimeout = 15000
+            connection.readTimeout = 120000
+            connection.instanceFollowRedirects = true
+            val status = connection.responseCode
+            if (status !in 200..299) {
+                throw IOException("Update download failed with status $status.")
+            }
+            connection.inputStream.use { input ->
+                apkFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+
+        return androidx.core.content.FileProvider.getUriForFile(
+            this,
+            "$packageName.fileprovider",
+            apkFile,
+        )
+    }
+
+    private fun launchApkInstaller(apkUri: Uri) {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(apkUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(intent)
     }
 
     private fun downloadPdfForShare(url: String, fileName: String): Uri {
@@ -289,6 +395,7 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val CHANNEL_NAME = "quick_al/downloads"
         private const val SECURE_STORE_CHANNEL_NAME = "quick_al/secure_store"
+        private const val APP_UPDATE_CHANNEL_NAME = "quick_al/app_update"
         private const val PDF_MIME_TYPE = "application/pdf"
         private const val SECURE_PREFS_NAME = "quick_al_secure_store"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
