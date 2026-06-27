@@ -280,9 +280,14 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
     if (catalog.plans.isEmpty) {
       return null;
     }
+    // Pre-select the popular plan (3 months) to nudge it; fall back to the
+    // first plan if none is flagged.
     final SubscriptionPlan preferred = catalog.plans.firstWhere(
-      (SubscriptionPlan plan) => plan.id == 'monthly',
-      orElse: () => catalog.plans.first,
+      (SubscriptionPlan plan) => plan.popular,
+      orElse: () => catalog.plans.firstWhere(
+        (SubscriptionPlan plan) => plan.id == 'quarterly',
+        orElse: () => catalog.plans.first,
+      ),
     );
     return preferred.productId;
   }
@@ -492,45 +497,108 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final TrialStatus? trial = status?.trial;
+    final bool trialActive = trial?.active ?? false;
+    final int daysLeft = trial?.daysRemaining ?? 0;
+
+    String headline;
+    if (trialActive) {
+      headline = daysLeft > 0
+          ? '$daysLeft ${daysLeft == 1 ? 'day' : 'days'} left in your free trial'
+          : 'Your free trial ends today';
+    } else {
+      headline = 'Your free trial has ended';
+    }
+
     return Container(
       padding: const EdgeInsets.all(AppTheme.space6),
       decoration: AppTheme.accentPanelDecoration(radius: AppTheme.radiusLg),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.line),
-            ),
-            child: const Icon(
-              Icons.workspace_premium_rounded,
-              color: AppTheme.royalBlue,
-              size: 30,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppTheme.line),
+                ),
+                child: const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: AppTheme.royalBlue,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space5),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Go Pro with Quick AL',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.space2),
+                    Text(
+                      headline,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.royalBlue,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: AppTheme.space5),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Quick AL Subscription',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: AppTheme.space3),
-                Text(
-                  status?.enforcementMode == 'strict'
-                      ? 'Choose a plan to continue.'
-                      : 'Billing preview is active while Play Console setup is completed.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
+          const SizedBox(height: AppTheme.space5),
+          Wrap(
+            spacing: AppTheme.space3,
+            runSpacing: AppTheme.space3,
+            children: const <Widget>[
+              _BenefitChip(icon: Icons.calculate_rounded, label: 'Unlimited estimates'),
+              _BenefitChip(icon: Icons.picture_as_pdf_rounded, label: 'PDF reports'),
+              _BenefitChip(icon: Icons.auto_awesome_mosaic_rounded, label: 'Glass optimization'),
+              _BenefitChip(icon: Icons.devices_rounded, label: 'Secure on your device'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BenefitChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _BenefitChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppTheme.line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 14, color: AppTheme.tealAccent),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -556,75 +624,189 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = selected ? AppTheme.royalBlue : AppTheme.tealAccent;
+    final bool popular = plan.popular;
+    final Color accent = selected
+        ? AppTheme.royalBlue
+        : popular
+            ? AppTheme.amberAccent
+            : AppTheme.tealAccent;
+    final Color borderColor = selected
+        ? AppTheme.royalBlue
+        : popular
+            ? AppTheme.amberAccent.withValues(alpha: 0.55)
+            : AppTheme.line;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         onTap: onTap,
-        child: Ink(
-          decoration: AppTheme.elevatedCardDecoration(
-            selected: selected,
-            accent: accent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            border: Border.all(
+              color: borderColor,
+              width: (selected || popular) ? 2 : 1,
+            ),
+            boxShadow: AppTheme.softShadow(),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.space6),
-            child: Row(
-              children: <Widget>[
-                Icon(
-                  selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                  color: accent,
-                ),
-                const SizedBox(width: AppTheme.space5),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              if (popular)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  decoration: const BoxDecoration(
+                    color: AppTheme.amberAccent,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(AppTheme.radiusLg),
+                      topRight: Radius.circular(AppTheme.radiusLg),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
+                      const Icon(Icons.star_rounded,
+                          color: Colors.white, size: 16),
+                      const SizedBox(width: 6),
                       Text(
-                        plan.title,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+                        plan.badgeLabel.isNotEmpty
+                            ? plan.badgeLabel
+                            : 'MOST POPULAR',
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                            ),
                       ),
-                      const SizedBox(height: AppTheme.space2),
-                      Text(
-                        plan.durationLabel,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      if (plan.savingsLabel.isNotEmpty) ...<Widget>[
-                        const SizedBox(height: AppTheme.space3),
-                        Text(
-                          plan.savingsLabel,
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: AppTheme.success,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
-                const SizedBox(width: AppTheme.space4),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+              Padding(
+                padding: const EdgeInsets.all(AppTheme.space6),
+                child: Row(
                   children: <Widget>[
-                    Text(
-                      priceLabel,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w900,
+                    Icon(
+                      selected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      color: accent,
+                    ),
+                    const SizedBox(width: AppTheme.space5),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Row(
+                            children: <Widget>[
+                              Flexible(
+                                child: Text(
+                                  plan.title,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
+                                      ?.copyWith(fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                              if (!popular && plan.badgeLabel.isNotEmpty) ...<Widget>[
+                                const SizedBox(width: AppTheme.space3),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.tealAccent
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    plan.badgeLabel,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: AppTheme.deepTeal,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.5,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: AppTheme.space2),
+                          Text(
+                            plan.durationLabel,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          if (plan.savingsLabel.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: AppTheme.space3),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 9, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.danger,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                plan.savingsLabel,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    const SizedBox(height: AppTheme.space2),
-                    Icon(
-                      available ? Icons.verified_rounded : Icons.schedule_rounded,
-                      size: 18,
-                      color: available ? AppTheme.success : AppTheme.warning,
+                    const SizedBox(width: AppTheme.space4),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: <Widget>[
+                        if (plan.hasDiscount)
+                          Text(
+                            plan.fallbackOriginalPriceLabel,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: AppTheme.textSecondary,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                          ),
+                        Text(
+                          priceLabel,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(
+                                color: AppTheme.textPrimary,
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: AppTheme.space2),
+                        Icon(
+                          available
+                              ? Icons.verified_rounded
+                              : Icons.schedule_rounded,
+                          size: 18,
+                          color: available
+                              ? AppTheme.success
+                              : AppTheme.warning,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

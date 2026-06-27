@@ -4,7 +4,10 @@ class SubscriptionPlan {
   final String title;
   final String durationLabel;
   final int pricePkr;
+  final int originalPricePkr;
   final String savingsLabel;
+  final bool popular;
+  final String badgeLabel;
   final int sortOrder;
   final String channel;
 
@@ -14,7 +17,10 @@ class SubscriptionPlan {
     required this.title,
     required this.durationLabel,
     required this.pricePkr,
+    this.originalPricePkr = 0,
     required this.savingsLabel,
+    this.popular = false,
+    this.badgeLabel = '',
     required this.sortOrder,
     required this.channel,
   });
@@ -26,13 +32,22 @@ class SubscriptionPlan {
       title: (json['title'] as String?) ?? '',
       durationLabel: (json['durationLabel'] as String?) ?? '',
       pricePkr: (json['pricePkr'] as num?)?.round() ?? 0,
+      originalPricePkr: (json['originalPricePkr'] as num?)?.round() ?? 0,
       savingsLabel: (json['savingsLabel'] as String?) ?? '',
+      popular: (json['popular'] as bool?) ?? false,
+      badgeLabel: (json['badgeLabel'] as String?) ?? '',
       sortOrder: (json['sortOrder'] as num?)?.round() ?? 0,
       channel: (json['channel'] as String?) ?? 'google_play',
     );
   }
 
   String get fallbackPriceLabel => 'Rs $pricePkr';
+
+  String get fallbackOriginalPriceLabel =>
+      originalPricePkr > 0 ? 'Rs $originalPricePkr' : '';
+
+  /// Has a genuine discount worth showing (original strictly above current).
+  bool get hasDiscount => originalPricePkr > pricePkr && pricePkr > 0;
 }
 
 class UserSubscription {
