@@ -1,15 +1,49 @@
-enum UnitMode { inches, feet }
+enum UnitMode { inches, feet, cm }
 
 extension UnitModeLabels on UnitMode {
-  String get label => this == UnitMode.inches ? 'Inches' : 'Feet';
+  String get label {
+    switch (this) {
+      case UnitMode.inches:
+        return 'Inches';
+      case UnitMode.feet:
+        return 'Feet';
+      case UnitMode.cm:
+        return 'CM';
+    }
+  }
 
-  String get inputHint => this == UnitMode.inches ? 'inch.suter' : 'feet.inchs';
+  String get inputHint {
+    switch (this) {
+      case UnitMode.inches:
+        return 'inch.suter';
+      case UnitMode.feet:
+        return 'feet.inchs';
+      case UnitMode.cm:
+        return 'cm';
+    }
+  }
 
-  String get wireValue => this == UnitMode.inches ? 'inches' : 'feet';
+  String get wireValue {
+    switch (this) {
+      case UnitMode.inches:
+        return 'inches';
+      case UnitMode.feet:
+        return 'feet';
+      case UnitMode.cm:
+        return 'cm';
+    }
+  }
 }
 
 UnitMode unitModeFromWireValue(String? value) {
-  return value == 'inches' ? UnitMode.inches : UnitMode.feet;
+  switch (value) {
+    case 'inches':
+      return UnitMode.inches;
+    case 'cm':
+      return UnitMode.cm;
+    default:
+      return UnitMode.feet;
+  }
 }
 
 class WindowReviewItem {

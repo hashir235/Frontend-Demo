@@ -166,11 +166,13 @@ void main() {
       await tester.tap(find.byKey(const Key('unit_inches_radio')));
       await tester.pumpAndSettle();
 
-      final SegmentedButton<UnitMode> beforeRestart =
-          tester.widget<SegmentedButton<UnitMode>>(
-            find.byKey(const Key('unit_segmented_control')),
-          );
-      expect(beforeRestart.selected, <UnitMode>{UnitMode.inches});
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('unit_inches_radio')),
+          matching: find.byIcon(Icons.radio_button_checked),
+        ),
+        findsOneWidget,
+      );
 
       await pumpInput(
         EstimateSessionStore(
@@ -180,14 +182,20 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
-      await tester.pumpAndSettle();
+      // The endDrawer may still be open after re-pump (Scaffold state is
+      // reused); only tap to open it if the unit options aren't already shown.
+      if (find.byKey(const Key('unit_inches_radio')).evaluate().isEmpty) {
+        await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+        await tester.pumpAndSettle();
+      }
 
-      final SegmentedButton<UnitMode> afterRestart =
-          tester.widget<SegmentedButton<UnitMode>>(
-            find.byKey(const Key('unit_segmented_control')),
-          );
-      expect(afterRestart.selected, <UnitMode>{UnitMode.inches});
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('unit_inches_radio')),
+          matching: find.byIcon(Icons.radio_button_checked),
+        ),
+        findsOneWidget,
+      );
     },
   );
 }

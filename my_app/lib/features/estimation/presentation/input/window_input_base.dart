@@ -162,6 +162,22 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _isFabricationFlow && _unitMode == UnitMode.feet;
   bool get _isFabricationInchesMode =>
       _isFabricationFlow && _unitMode == UnitMode.inches;
+
+  /// True when the active input is in centimetres — either fabrication's
+  /// existing cm mode (which reuses the `feet` slot) or estimation's real
+  /// [UnitMode.cm]. Both render a single numeric cm field and validate the
+  /// same way.
+  bool get _isCmMode =>
+      _isFabricationCmMode ||
+      (!_isFabricationFlow && _unitMode == UnitMode.cm);
+
+  /// Estimation-only: cm input is a quotation convenience. On save it is
+  /// converted to inch + sutter so the rest of the estimation pipeline (which
+  /// only understands inch/feet) processes it unchanged. Cutting is never
+  /// performed from estimation, so snapping to the nearest 1/8" (real
+  /// inch-tape resolution) is exactly right here.
+  bool get _isEstimationCmMode =>
+      !_isFabricationFlow && _unitMode == UnitMode.cm;
   bool get _showsDoorSectionToggles =>
       _handler is DoorSingleInputHandler || _handler is DoorDoubleInputHandler;
   bool get _showsOpenableNetToggle => _handler is OpenableInputHandler;
@@ -413,6 +429,47 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                     ? Icons.radio_button_checked
                     : Icons.radio_button_unchecked,
                 size: 18,
+                color: selected ? AppTheme.violet : AppTheme.deepTeal,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: AppTheme.deepTeal,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnitOption({
+    required String optionKey,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      key: Key(optionKey),
+      color: selected
+          ? AppTheme.violet.withValues(alpha: 0.12)
+          : Colors.grey.shade200,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            children: <Widget>[
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                size: 20,
                 color: selected ? AppTheme.violet : AppTheme.deepTeal,
               ),
               const SizedBox(width: 10),
@@ -742,7 +799,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
   }
 
-  String? _validateFabricationCmDimension(String rawValue) {
+  String? _validateCmDimension(String rawValue) {
     final String value = rawValue.trim();
     if (value.isEmpty) {
       return 'Required';
@@ -802,11 +859,12 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
 
   void _showDimensionInfo() {
     final String instructionText;
-    if (_isFabricationCmMode) {
+    if (_isCmMode) {
       instructionText =
           'CM mode:\n'
           'Enter a single numeric value in cm.\n'
-          'Examples: 34 or 34.5';
+          'Examples: 34 or 34.5'
+          '${_isEstimationCmMode ? '\n\nFor the quotation, cm is converted to inches automatically.' : ''}';
     } else if (_isFabricationInchesMode) {
       instructionText =
           'Inches mode:\n'
@@ -851,8 +909,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     final bool wasFabricationInchesMode = _isFabricationInchesMode;
     final bool nextFabricationInchesMode =
         _isFabricationFlow && mode == UnitMode.inches;
-    final bool nextFabricationCmMode =
-        _isFabricationFlow && mode == UnitMode.feet;
+    final bool nextCmMode = (_isFabricationFlow && mode == UnitMode.feet) ||
+        (!_isFabricationFlow && mode == UnitMode.cm);
 
     setState(() {
       if (wasFabricationInchesMode && !nextFabricationInchesMode) {
@@ -880,14 +938,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             : null;
         return;
       }
-      if (nextFabricationCmMode) {
-        _heightError = _validateFabricationCmDimension(_heightController.text);
-        _widthError = _validateFabricationCmDimension(_widthController.text);
+      if (nextCmMode) {
+        _heightError = _validateCmDimension(_heightController.text);
+        _widthError = _validateCmDimension(_widthController.text);
         _leftWidthError = _usesSplitWidthInputs
-            ? _validateFabricationCmDimension(_leftWidthController.text)
+            ? _validateCmDimension(_leftWidthController.text)
             : null;
         _archError = _usesArchInput
-            ? _validateFabricationCmDimension(_archController.text)
+            ? _validateCmDimension(_archController.text)
             : null;
         return;
       }
@@ -949,6 +1007,24 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     return '$value.0';
   }
 
+  /// Converts a centimetre value into the estimation "inch.sutter" storage
+  /// string (sutter = eighths, 0..7), snapped to the nearest 1/8 inch — the
+  /// resolution of a real inch tape. 1 inch = 2.54 cm.
+  String _cmToInchEncoded(String cmText) {
+    final double cm = double.tryParse(cmText.trim()) ?? 0;
+    if (cm <= 0) {
+      return '0.0';
+    }
+    final double totalInches = cm / 2.54;
+    int inch = totalInches.floor();
+    int sutter = ((totalInches - inch) * 8).round();
+    if (sutter >= 8) {
+      inch += 1;
+      sutter = 0;
+    }
+    return '$inch.$sutter';
+  }
+
   String? _validateWinNo(String rawValue) {
     final String value = rawValue.trim();
     if (value.isEmpty) {
@@ -978,16 +1054,16 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             inchValue: _heightInchController.text,
             suterValue: _heightSuterController.text,
           )
-        : (_isFabricationCmMode
-              ? _validateFabricationCmDimension(_heightController.text)
+        : (_isCmMode
+              ? _validateCmDimension(_heightController.text)
               : _validateDimension(_heightController.text));
     final String? widthError = useFabricationInchesSplit
         ? _validateFabricationSplitDimension(
             inchValue: _widthInchController.text,
             suterValue: _widthSuterController.text,
           )
-        : (_isFabricationCmMode
-              ? _validateFabricationCmDimension(_widthController.text)
+        : (_isCmMode
+              ? _validateCmDimension(_widthController.text)
               : _validateDimension(_widthController.text));
     final String? leftWidthError = _usesSplitWidthInputs
         ? (useFabricationInchesSplit
@@ -995,13 +1071,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                   inchValue: _leftWidthInchController.text,
                   suterValue: _leftWidthSuterController.text,
                 )
-              : (_isFabricationCmMode
-                    ? _validateFabricationCmDimension(_leftWidthController.text)
+              : (_isCmMode
+                    ? _validateCmDimension(_leftWidthController.text)
                     : _validateDimension(_leftWidthController.text)))
         : null;
     final String? archError = _usesArchInput
-        ? (_isFabricationCmMode
-              ? _validateFabricationCmDimension(_archController.text)
+        ? (_isCmMode
+              ? _validateCmDimension(_archController.text)
               : _validateDimension(_archController.text))
         : null;
 
@@ -1083,17 +1159,23 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (_isFabricationInchesMode) {
       _syncCombinedControllersFromFabricationSplit();
     }
-    final String heightValue = _normalizeDimensionForStorage(
-      _heightController.text,
-    );
-    final String rightWidthValue = _normalizeDimensionForStorage(
-      _widthController.text,
-    );
+    // Estimation cm is a quotation convenience: convert each dimension to the
+    // inch + sutter encoding and store the item as inches, so the rest of the
+    // estimation pipeline runs unchanged. Other modes store as-is.
+    final bool estimationCm = _isEstimationCmMode;
+    final UnitMode storedUnitMode =
+        estimationCm ? UnitMode.inches : _unitMode;
+    String dimForStorage(String raw) => estimationCm
+        ? _cmToInchEncoded(raw)
+        : _normalizeDimensionForStorage(raw);
+
+    final String heightValue = dimForStorage(_heightController.text);
+    final String rightWidthValue = dimForStorage(_widthController.text);
     final String? leftWidthValue = _usesSplitWidthInputs
-        ? _normalizeDimensionForStorage(_leftWidthController.text)
+        ? dimForStorage(_leftWidthController.text)
         : null;
     final String? archValue = _usesArchInput
-        ? _normalizeDimensionForStorage(_archController.text)
+        ? dimForStorage(_archController.text)
         : null;
     final int? lockTypeValue = _showsLockTypeSelector
         ? _lockTypeCode(_lockType)
@@ -1111,7 +1193,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       final WindowReviewItem updated = widget.editingItem!.copyWith(
         winNo: winNo,
         collarIndex: _selectedCollar,
-        unitMode: _unitMode,
+        unitMode: storedUnitMode,
         heightValue: heightValue,
         widthValue: rightWidthValue,
         rightWidthValue: _usesSplitWidthInputs ? rightWidthValue : null,
@@ -1155,7 +1237,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           windowCode: windowCode,
           windowIndex: windowIndex,
           collarIndex: _selectedCollar,
-          unitMode: _unitMode,
+          unitMode: storedUnitMode,
           heightValue: heightValue,
           widthValue: rightWidthValue,
           rightWidthValue: _usesSplitWidthInputs ? rightWidthValue : null,
@@ -1647,40 +1729,43 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                SegmentedButton<UnitMode>(
-                  key: const Key('unit_segmented_control'),
-                  segments: <ButtonSegment<UnitMode>>[
-                    ButtonSegment<UnitMode>(
-                      value: UnitMode.feet,
-                      label: Text(
-                        _isFabricationFlow ? 'cm' : 'Feet',
-                        key: const Key('unit_feet_radio'),
-                        maxLines: 1,
-                        overflow: TextOverflow.visible,
-                        softWrap: false,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const ButtonSegment<UnitMode>(
-                      value: UnitMode.inches,
-                      label: Text(
-                        'Inches',
-                        key: Key('unit_inches_radio'),
-                        maxLines: 1,
-                        overflow: TextOverflow.visible,
-                        softWrap: false,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                  selected: <UnitMode>{_unitMode},
-                  showSelectedIcon: false,
-                  onSelectionChanged: (Set<UnitMode> selection) {
-                    if (selection.isNotEmpty) {
-                      _onUnitModeChanged(selection.first);
-                    }
-                  },
-                ),
+                if (_isFabricationFlow) ...<Widget>[
+                  _buildUnitOption(
+                    optionKey: 'unit_cm_radio',
+                    label: 'CM',
+                    // Fabrication keeps cm in the existing `feet` slot.
+                    selected: _unitMode == UnitMode.feet,
+                    onTap: () => _onUnitModeChanged(UnitMode.feet),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildUnitOption(
+                    optionKey: 'unit_inches_radio',
+                    label: 'Inches',
+                    selected: _unitMode == UnitMode.inches,
+                    onTap: () => _onUnitModeChanged(UnitMode.inches),
+                  ),
+                ] else ...<Widget>[
+                  _buildUnitOption(
+                    optionKey: 'unit_feet_radio',
+                    label: 'Feet',
+                    selected: _unitMode == UnitMode.feet,
+                    onTap: () => _onUnitModeChanged(UnitMode.feet),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildUnitOption(
+                    optionKey: 'unit_inches_radio',
+                    label: 'Inches',
+                    selected: _unitMode == UnitMode.inches,
+                    onTap: () => _onUnitModeChanged(UnitMode.inches),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildUnitOption(
+                    optionKey: 'unit_cm_radio',
+                    label: 'CM',
+                    selected: _unitMode == UnitMode.cm,
+                    onTap: () => _onUnitModeChanged(UnitMode.cm),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1915,14 +2000,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           errorText: _heightError,
                           numberInputStyle: numberInputStyle,
                           hintStyle: hintStyle,
-                          hintText: _isFabricationCmMode
+                          hintText: _isCmMode
                               ? 'cm'
                               : _unitMode.inputHint,
                           onChanged: (_) {
                             if (_heightError != null) {
                               setState(() {
-                                _heightError = _isFabricationCmMode
-                                    ? _validateFabricationCmDimension(
+                                _heightError = _isCmMode
+                                    ? _validateCmDimension(
                                         _heightController.text,
                                       )
                                     : _validateDimension(
@@ -1971,14 +2056,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           errorText: _widthError,
                           numberInputStyle: numberInputStyle,
                           hintStyle: hintStyle,
-                          hintText: _isFabricationCmMode
+                          hintText: _isCmMode
                               ? 'cm'
                               : _unitMode.inputHint,
                           onChanged: (_) {
                             if (_widthError != null) {
                               setState(() {
-                                _widthError = _isFabricationCmMode
-                                    ? _validateFabricationCmDimension(
+                                _widthError = _isCmMode
+                                    ? _validateCmDimension(
                                         _widthController.text,
                                       )
                                     : _validateDimension(_widthController.text);
@@ -2024,14 +2109,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             errorText: _leftWidthError,
                             numberInputStyle: numberInputStyle,
                             hintStyle: hintStyle,
-                            hintText: _isFabricationCmMode
+                            hintText: _isCmMode
                                 ? 'cm'
                                 : _unitMode.inputHint,
                             onChanged: (_) {
                               if (_leftWidthError != null) {
                                 setState(() {
-                                  _leftWidthError = _isFabricationCmMode
-                                      ? _validateFabricationCmDimension(
+                                  _leftWidthError = _isCmMode
+                                      ? _validateCmDimension(
                                           _leftWidthController.text,
                                         )
                                       : _validateDimension(
@@ -2052,14 +2137,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           errorText: _archError,
                           numberInputStyle: numberInputStyle,
                           hintStyle: hintStyle,
-                          hintText: _isFabricationCmMode
+                          hintText: _isCmMode
                               ? 'cm'
                               : _unitMode.inputHint,
                           onChanged: (_) {
                             if (_archError != null) {
                               setState(() {
-                                _archError = _isFabricationCmMode
-                                    ? _validateFabricationCmDimension(
+                                _archError = _isCmMode
+                                    ? _validateCmDimension(
                                         _archController.text,
                                       )
                                     : _validateDimension(_archController.text);
