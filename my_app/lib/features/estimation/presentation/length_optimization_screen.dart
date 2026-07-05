@@ -421,7 +421,11 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         child: StateMessageCard(
           icon: Icons.auto_graph_rounded,
           title: 'Optimization failed',
-          message: _errorMessage,
+          message:
+              '$_errorMessage\n\nTip: this usually means a window size was '
+              'entered in the wrong unit — for example inch numbers while the '
+              'unit was set to Feet, which makes the pieces too large to cut. '
+              'Please check your window sizes and unit, then try again.',
           iconColor: AppTheme.danger,
           action: FilledButton.icon(
             onPressed: _loadReport,

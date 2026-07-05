@@ -961,6 +961,70 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _persistSidebarSelections();
   }
 
+  // Aluminium stock tops out around 19 ft, and real windows are well under
+  // that. A feet-mode dimension this large almost always means the user typed
+  // inch numbers (e.g. 46) while the unit was set to Feet — which otherwise
+  // fails deep in optimization with a confusing "rate review failed".
+  static const double _feetWarnThresholdFt = 15;
+
+  /// Largest whole-feet value across the currently entered dimensions, used to
+  /// detect the "inches typed as feet" mistake. Only meaningful in feet mode.
+  double _maxEnteredFeet() {
+    double maxFeet = 0;
+    void consider(String raw) {
+      final String v = raw.trim();
+      if (v.isEmpty) return;
+      final double? feet = double.tryParse(v.split('.').first);
+      if (feet != null && feet > maxFeet) {
+        maxFeet = feet;
+      }
+    }
+
+    consider(_heightController.text);
+    consider(_widthController.text);
+    if (_usesSplitWidthInputs) consider(_leftWidthController.text);
+    if (_usesArchInput) consider(_archController.text);
+    return maxFeet;
+  }
+
+  /// Asks the user whether an oversized feet entry was meant to be inches.
+  /// Returns 'inches', 'feet', or null (cancel).
+  Future<String?> _showOversizedFeetDialog(double maxFeet) {
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          icon: const Icon(
+            Icons.straighten_rounded,
+            color: AppTheme.amberAccent,
+            size: 32,
+          ),
+          title: const Text('Check the unit'),
+          content: Text(
+            'A size of ${maxFeet.toStringAsFixed(0)} feet is very large for a '
+            'window. Aluminium sections are only about 19 feet long, so sizes '
+            'this big cannot be optimized and the bill will fail.\n\n'
+            'Did you mean inches?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('feet'),
+              child: const Text('Keep Feet'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop('inches'),
+              child: const Text('Switch to Inches'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   String? _validateDimension(String rawValue) {
     final String value = rawValue.trim();
     if (value.isEmpty) {
@@ -1144,6 +1208,30 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         ),
       );
       return;
+    }
+
+    // Catch the common "inches typed as feet" mistake before it fails later
+    // in optimization / rate review with a confusing backend-looking error.
+    if (!_isFabricationFlow && _unitMode == UnitMode.feet) {
+      final double maxFeet = _maxEnteredFeet();
+      if (maxFeet >= _feetWarnThresholdFt) {
+        final String? choice = await _showOversizedFeetDialog(maxFeet);
+        if (!mounted || choice == null) {
+          return;
+        }
+        if (choice == 'inches') {
+          setState(() => _unitMode = UnitMode.inches);
+          _preferencesStore.persistUnitMode(
+            widget.session.flow,
+            UnitMode.inches,
+          );
+          // The same numbers must still be valid as inches (sutter 0..7).
+          if (!_validateAndShowErrors()) {
+            return;
+          }
+        }
+        // 'feet' → the user confirmed; continue saving as feet.
+      }
     }
 
     final int? windowIndex = widget.node.displayIndex;

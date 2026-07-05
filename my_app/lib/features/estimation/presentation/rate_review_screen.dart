@@ -199,7 +199,11 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
         child: StateMessageCard(
           icon: Icons.price_change_outlined,
           title: 'Rate review failed',
-          message: _errorMessage,
+          message:
+              '$_errorMessage\n\nTip: this usually happens when a window size '
+              'was entered in the wrong unit — for example inch numbers while '
+              'the unit was set to Feet. Please check your window sizes and '
+              'unit, then try again.',
           iconColor: AppTheme.danger,
           action: FilledButton.icon(
             onPressed: _loadRates,
