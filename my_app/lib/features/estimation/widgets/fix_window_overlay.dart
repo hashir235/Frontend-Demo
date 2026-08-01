@@ -91,8 +91,16 @@ class _FixWindowPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint basePaint = Paint()
-      ..color = AppTheme.deepTeal.withValues(alpha: 0.68)
+    // Jis side outer aur inner dono lines banti hain (double line) wahan
+    // collar ha -> light blue. Jis side sirf inner line ha (single) wahan
+    // collar nahi -> light red.
+    final Paint collarPaint = Paint()
+      ..color = AppTheme.collarLine
+      ..strokeWidth = 2.2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final Paint noCollarPaint = Paint()
+      ..color = AppTheme.noCollarLine
       ..strokeWidth = 2.2
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -203,10 +211,6 @@ class _FixWindowPainter extends CustomPainter {
       canvas.drawLine(from, to, paint);
     }
 
-    void drawRect(Rect rect, Paint paint) {
-      canvas.drawRect(rect, paint);
-    }
-
     void drawLabel(String text, Offset center, {required bool highlight}) {
       if (_hasSelection && !highlight) {
         return;
@@ -224,32 +228,55 @@ class _FixWindowPainter extends CustomPainter {
       );
     }
 
+    // Outer lines sirf collar wali side par banti hain.
     if (_showOuterTop) {
-      drawLine(outerRect.topLeft, outerRect.topRight, basePaint);
+      drawLine(outerRect.topLeft, outerRect.topRight, collarPaint);
     }
     if (_showOuterRight) {
-      drawLine(outerRect.topRight, outerRect.bottomRight, basePaint);
+      drawLine(outerRect.topRight, outerRect.bottomRight, collarPaint);
     }
     if (_showOuterBottom) {
-      drawLine(outerRect.bottomLeft, outerRect.bottomRight, basePaint);
+      drawLine(outerRect.bottomLeft, outerRect.bottomRight, collarPaint);
     }
     if (_showOuterLeft) {
-      drawLine(outerRect.topLeft, outerRect.bottomLeft, basePaint);
+      drawLine(outerRect.topLeft, outerRect.bottomLeft, collarPaint);
     }
 
-    drawRect(innerRect, basePaint);
+    // Inner external lines: jahan upar outer bhi bani ha wahan double
+    // (collar), warna single (bagair collar).
+    drawLine(
+      innerRect.topLeft,
+      innerRect.topRight,
+      _showOuterTop ? collarPaint : noCollarPaint,
+    );
+    drawLine(
+      innerRect.topRight,
+      innerRect.bottomRight,
+      _showOuterRight ? collarPaint : noCollarPaint,
+    );
+    drawLine(
+      innerRect.bottomLeft,
+      innerRect.bottomRight,
+      _showOuterBottom ? collarPaint : noCollarPaint,
+    );
+    drawLine(
+      innerRect.topLeft,
+      innerRect.bottomLeft,
+      _showOuterLeft ? collarPaint : noCollarPaint,
+    );
 
+    // Corner links sirf wahan hote hain jahan collar ha, is liye blue.
     if (_showTopLeftCornerLink) {
-      drawLine(outerRect.topLeft, innerRect.topLeft, basePaint);
+      drawLine(outerRect.topLeft, innerRect.topLeft, collarPaint);
     }
     if (_showTopRightCornerLink) {
-      drawLine(outerRect.topRight, innerRect.topRight, basePaint);
+      drawLine(outerRect.topRight, innerRect.topRight, collarPaint);
     }
     if (_showBottomLeftCornerLink) {
-      drawLine(outerRect.bottomLeft, innerRect.bottomLeft, basePaint);
+      drawLine(outerRect.bottomLeft, innerRect.bottomLeft, collarPaint);
     }
     if (_showBottomRightCornerLink) {
-      drawLine(outerRect.bottomRight, innerRect.bottomRight, basePaint);
+      drawLine(outerRect.bottomRight, innerRect.bottomRight, collarPaint);
     }
 
     if (highlightOuterTopLine) {

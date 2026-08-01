@@ -54,8 +54,16 @@ class _ArchRoundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     const Color highlightColor = Color(0xFF5B45D6);
-    final Paint basePaint = Paint()
-      ..color = const Color(0xFFB7C0C7)
+    // Jis side outer aur inner dono lines banti hain (double line) wahan
+    // collar ha -> light blue. Jis side sirf inner line ha (single) wahan
+    // collar nahi -> light red.
+    final Paint collarPaint = Paint()
+      ..color = AppTheme.collarLine
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round;
+    final Paint noCollarPaint = Paint()
+      ..color = AppTheme.noCollarLine
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round;
@@ -138,32 +146,39 @@ class _ArchRoundPainter extends CustomPainter {
       );
     }
 
+    // Outer design sirf collar wali soorat mein banti ha.
     if (showOuterDesign) {
-      drawLine(leftBase, leftTop, basePaint);
-      drawLine(rightBase, rightTop, basePaint);
+      drawLine(leftBase, leftTop, collarPaint);
+      drawLine(rightBase, rightTop, collarPaint);
       drawArchCurve(
         left: leftTop,
         right: rightTop,
         rect: frameRect,
-        paint: basePaint,
+        paint: collarPaint,
       );
     }
 
-    drawLine(innerLeftBase, innerRightBase, basePaint);
-    drawLine(innerLeftBase, innerLeftTop, basePaint);
-    drawLine(innerRightBase, innerRightTop, basePaint);
+    // Inner external lines: jahan upar outer bhi bani ha wahan double
+    // (collar), warna single (bagair collar). Arch ke neeche kabhi outer
+    // line nahi hoti, is liye woh hamesha single ha.
+    final Paint archEdgePaint = showOuterDesign ? collarPaint : noCollarPaint;
+
+    drawLine(innerLeftBase, innerRightBase, noCollarPaint);
+    drawLine(innerLeftBase, innerLeftTop, archEdgePaint);
+    drawLine(innerRightBase, innerRightTop, archEdgePaint);
     drawArchCurve(
       left: innerLeftTop,
       right: innerRightTop,
       rect: innerRect,
-      paint: basePaint,
+      paint: archEdgePaint,
     );
 
+    // Corner links sirf wahan hote hain jahan collar ha, is liye blue.
     if (showOuterDesign) {
-      drawLine(leftBase, innerLeftBase, basePaint);
-      drawLine(rightBase, innerRightBase, basePaint);
-      drawLine(leftTop, innerLeftTop, basePaint);
-      drawLine(rightTop, innerRightTop, basePaint);
+      drawLine(leftBase, innerLeftBase, collarPaint);
+      drawLine(rightBase, innerRightBase, collarPaint);
+      drawLine(leftTop, innerLeftTop, collarPaint);
+      drawLine(rightTop, innerRightTop, collarPaint);
     }
 
     if (highlightD41) {

@@ -179,6 +179,19 @@ class _PanelCenterSlidePainter extends CustomPainter {
       ..strokeWidth = 3
       ..color = AppTheme.violet;
 
+    // Jis side outer aur inner dono lines banti hain (double line) wahan
+    // collar ha -> light blue. Jis side sirf inner line ha (single) wahan
+    // collar nahi -> light red.
+    final Paint collarPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = AppTheme.collarLine;
+
+    final Paint noCollarPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = AppTheme.noCollarLine;
+
     final List<_LineSpec> lines = <_LineSpec>[
       _LineSpec(
         id: 'outer_top',
@@ -291,13 +304,40 @@ class _PanelCenterSlidePainter extends CustomPainter {
       }
     }
 
+    // Outer aur corner links sirf collar wali soorat mein bante hain, is liye
+    // blue. Inner external edge tab hi double ha jab uske upar wali outer line
+    // bhi bani ho. Divider (andar ki) lines basePaint par hi rehti hain.
+    Paint basePaintFor(String id) {
+      switch (id) {
+        case 'outer_top':
+        case 'outer_bottom':
+        case 'outer_left':
+        case 'outer_right':
+        case 'corner_tl':
+        case 'corner_tr':
+        case 'corner_bl':
+        case 'corner_br':
+          return collarPaint;
+        case 'inner_top':
+          return isBaseVisible('outer_top') ? collarPaint : noCollarPaint;
+        case 'inner_bottom':
+          return isBaseVisible('outer_bottom') ? collarPaint : noCollarPaint;
+        case 'inner_left':
+          return isBaseVisible('outer_left') ? collarPaint : noCollarPaint;
+        case 'inner_right':
+          return isBaseVisible('outer_right') ? collarPaint : noCollarPaint;
+        default:
+          return basePaint;
+      }
+    }
+
     final Map<String, _LineSpec> lineById = <String, _LineSpec>{
       for (final _LineSpec line in lines) line.id: line,
     };
 
     for (final _LineSpec line in lines) {
       if (isBaseVisible(line.id)) {
-        canvas.drawLine(line.from, line.to, basePaint);
+        canvas.drawLine(line.from, line.to, basePaintFor(line.id));
       }
     }
 
@@ -309,6 +349,9 @@ class _PanelCenterSlidePainter extends CustomPainter {
     final bool highlightM23 = effectiveSection == 'M23';
     final bool highlightM24 = effectiveSection == 'M24';
     final bool highlightM28 = effectiveSection == 'M28';
+    // D31 is the centre-slide's single centre member: one vertical piece on the
+    // middle divider, labelled H.
+    final bool highlightD31 = effectiveSection == 'D31';
     final bool onlyHighlights = effectiveSection != null;
 
     final Set<String> highlightLineIds = <String>{
@@ -319,6 +362,7 @@ class _PanelCenterSlidePainter extends CustomPainter {
       if (highlightM24) ...<String>{'inner_top', 'inner_bottom'},
       if (highlightM28) ...<String>{'divider_25', 'divider_75'},
       if (highlightD29) ...<String>{'divider_25', 'divider_50', 'divider_75'},
+      if (highlightD31) ...<String>{'divider_50'},
     };
 
     for (final String id in highlightLineIds) {
@@ -402,6 +446,8 @@ class _PanelCenterSlidePainter extends CustomPainter {
       if (highlightM23) ...<String>{'H_1_R', 'H_3_L', 'H_3_R', 'H_5_L'},
       if (highlightM28) ...<String>{'H_2_L', 'H_2_R', 'H_4_L', 'H_4_R'},
       if (highlightD29) ...<String>{'H_2_R', 'H_3_L', 'H_3_R', 'H_4_L'},
+      // One piece, so a single H beside the centre divider.
+      if (highlightD31) ...<String>{'H_3_R'},
     };
 
     TextPainter buildPainter(String id, String text) => TextPainter(

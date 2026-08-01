@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
+
 class ArchRectOverlay extends StatelessWidget {
   final int collarId;
   final String? selectedSection;
@@ -69,8 +71,16 @@ class _ArchRectPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     const Color highlightColor = Color(0xFF5B45D6);
-    final Paint strokePaint = Paint()
-      ..color = const Color(0xFFB7C0C7)
+    // Jis side outer aur inner dono lines banti hain (double line) wahan
+    // collar ha -> light blue. Jis side sirf inner line ha (single) wahan
+    // collar nahi -> light red.
+    final Paint collarPaint = Paint()
+      ..color = AppTheme.collarLine
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round;
+    final Paint noCollarPaint = Paint()
+      ..color = AppTheme.noCollarLine
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round;
@@ -132,28 +142,49 @@ class _ArchRectPainter extends CustomPainter {
       );
     }
 
+    // Outer lines sirf collar wali side par banti hain.
     if (_showOuterTop) {
-      drawLine(outerRect.topLeft, outerRect.topRight, strokePaint);
+      drawLine(outerRect.topLeft, outerRect.topRight, collarPaint);
     }
     if (_showOuterLeft) {
-      drawLine(outerRect.topLeft, outerRect.bottomLeft, strokePaint);
+      drawLine(outerRect.topLeft, outerRect.bottomLeft, collarPaint);
     }
     if (_showOuterRight) {
-      drawLine(outerRect.topRight, outerRect.bottomRight, strokePaint);
+      drawLine(outerRect.topRight, outerRect.bottomRight, collarPaint);
     }
-    canvas.drawRect(innerRect, strokePaint);
 
+    // Inner external lines: jahan upar outer bhi bani ha wahan double
+    // (collar), warna single (bagair collar). Neeche kabhi outer line nahi
+    // hoti, is liye woh hamesha single ha.
+    drawLine(
+      innerRect.topLeft,
+      innerRect.topRight,
+      singleInnerTop ? noCollarPaint : collarPaint,
+    );
+    drawLine(
+      innerRect.topLeft,
+      innerRect.bottomLeft,
+      singleInnerLeft ? noCollarPaint : collarPaint,
+    );
+    drawLine(
+      innerRect.topRight,
+      innerRect.bottomRight,
+      singleInnerRight ? noCollarPaint : collarPaint,
+    );
+    drawLine(innerRect.bottomLeft, innerRect.bottomRight, noCollarPaint);
+
+    // Corner links sirf wahan hote hain jahan collar ha, is liye blue.
     if (_showTopLeftConnector) {
-      drawLine(outerRect.topLeft, innerRect.topLeft, strokePaint);
+      drawLine(outerRect.topLeft, innerRect.topLeft, collarPaint);
     }
     if (_showTopRightConnector) {
-      drawLine(outerRect.topRight, innerRect.topRight, strokePaint);
+      drawLine(outerRect.topRight, innerRect.topRight, collarPaint);
     }
     if (_showBottomLeftConnector) {
-      drawLine(outerRect.bottomLeft, innerRect.bottomLeft, strokePaint);
+      drawLine(outerRect.bottomLeft, innerRect.bottomLeft, collarPaint);
     }
     if (_showBottomRightConnector) {
-      drawLine(outerRect.bottomRight, innerRect.bottomRight, strokePaint);
+      drawLine(outerRect.bottomRight, innerRect.bottomRight, collarPaint);
     }
 
     if (highlightD41) {

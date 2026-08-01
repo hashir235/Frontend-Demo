@@ -64,61 +64,155 @@ class _SlidingPainter extends CustomPainter {
       ..strokeWidth = 3
       ..color = AppTheme.violet;
 
-    // Outer + inner boxes
+    // Jis side outer aur inner dono lines banti hain (double line) wahan
+    // collar ha -> light blue. Jis side sirf inner line ha (single) wahan
+    // collar nahi -> light red.
+    final Paint collarPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = AppTheme.collarLine;
+
+    final Paint noCollarPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = AppTheme.noCollarLine;
+
+    // Neeche wali if-else chain ke mutabiq har side ki outer line banti ha ya
+    // nahi -- isi se inner edge ka rang tay hota ha.
+    final bool showOuterTop =
+        !hideOuter &&
+        collarId != 3 &&
+        collarId != 7 &&
+        collarId != 9 &&
+        collarId != 12 &&
+        collarId != 13 &&
+        collarId != 14;
+    final bool showOuterBottom =
+        !hideOuter &&
+        collarId != 5 &&
+        collarId != 8 &&
+        collarId != 9 &&
+        collarId != 11 &&
+        collarId != 12 &&
+        collarId != 14;
+    final bool showOuterLeft =
+        !hideOuter &&
+        collarId != 6 &&
+        collarId != 7 &&
+        collarId != 10 &&
+        collarId != 11 &&
+        collarId != 12 &&
+        collarId != 13;
+    final bool showOuterRight =
+        !hideOuter &&
+        collarId != 4 &&
+        collarId != 8 &&
+        collarId != 10 &&
+        collarId != 11 &&
+        collarId != 13 &&
+        collarId != 14;
+
+    // Outer + inner boxes. Outer lines sirf collar wali side par banti hain.
     if (!hideOuter) {
       if (collarId == 3) {
         // Draw outer left, right, bottom only (no top line)
-        canvas.drawLine(outerRect.bottomLeft, outerRect.bottomRight, basePaint);
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, basePaint);
-        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, basePaint);
+        canvas.drawLine(
+          outerRect.bottomLeft,
+          outerRect.bottomRight,
+          collarPaint,
+        );
+        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, collarPaint);
+        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, collarPaint);
       } else if (collarId == 4) {
         // Draw outer top, left, bottom only (no right line)
-        canvas.drawLine(outerRect.topLeft, outerRect.topRight, basePaint);
-        canvas.drawLine(outerRect.bottomLeft, outerRect.bottomRight, basePaint);
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, basePaint);
+        canvas.drawLine(outerRect.topLeft, outerRect.topRight, collarPaint);
+        canvas.drawLine(
+          outerRect.bottomLeft,
+          outerRect.bottomRight,
+          collarPaint,
+        );
+        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, collarPaint);
       } else if (collarId == 5) {
         // Draw outer top, left, right only (no bottom line)
-        canvas.drawLine(outerRect.topLeft, outerRect.topRight, basePaint);
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, basePaint);
-        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, basePaint);
+        canvas.drawLine(outerRect.topLeft, outerRect.topRight, collarPaint);
+        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, collarPaint);
+        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, collarPaint);
       } else if (collarId == 6) {
         // Draw outer top, right, bottom only (no left line)
-        canvas.drawLine(outerRect.topLeft, outerRect.topRight, basePaint);
-        canvas.drawLine(outerRect.bottomLeft, outerRect.bottomRight, basePaint);
-        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, basePaint);
+        canvas.drawLine(outerRect.topLeft, outerRect.topRight, collarPaint);
+        canvas.drawLine(
+          outerRect.bottomLeft,
+          outerRect.bottomRight,
+          collarPaint,
+        );
+        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, collarPaint);
       } else if (collarId == 7) {
         // Draw outer right and bottom only (no top, no left)
-        canvas.drawLine(outerRect.bottomLeft, outerRect.bottomRight, basePaint);
-        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, basePaint);
+        canvas.drawLine(
+          outerRect.bottomLeft,
+          outerRect.bottomRight,
+          collarPaint,
+        );
+        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, collarPaint);
       } else if (collarId == 8) {
         // Draw outer top and left only (no right, no bottom)
-        canvas.drawLine(outerRect.topLeft, outerRect.topRight, basePaint);
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, basePaint);
+        canvas.drawLine(outerRect.topLeft, outerRect.topRight, collarPaint);
+        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, collarPaint);
       } else if (collarId == 9) {
         // Draw outer left and right only (no top, no bottom)
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, basePaint);
-        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, basePaint);
+        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, collarPaint);
+        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, collarPaint);
       } else if (collarId == 10) {
         // Draw outer top and bottom only (no left, no right)
-        canvas.drawLine(outerRect.topLeft, outerRect.topRight, basePaint);
-        canvas.drawLine(outerRect.bottomLeft, outerRect.bottomRight, basePaint);
+        canvas.drawLine(outerRect.topLeft, outerRect.topRight, collarPaint);
+        canvas.drawLine(
+          outerRect.bottomLeft,
+          outerRect.bottomRight,
+          collarPaint,
+        );
       } else if (collarId == 11) {
         // Draw outer top only (no left, no right, no bottom)
-        canvas.drawLine(outerRect.topLeft, outerRect.topRight, basePaint);
+        canvas.drawLine(outerRect.topLeft, outerRect.topRight, collarPaint);
       } else if (collarId == 12) {
         // Draw outer right only (no top, no left, no bottom)
-        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, basePaint);
+        canvas.drawLine(outerRect.topRight, outerRect.bottomRight, collarPaint);
       } else if (collarId == 13) {
         // Draw outer bottom only (no top, no right, no left)
-        canvas.drawLine(outerRect.bottomLeft, outerRect.bottomRight, basePaint);
+        canvas.drawLine(
+          outerRect.bottomLeft,
+          outerRect.bottomRight,
+          collarPaint,
+        );
       } else if (collarId == 14) {
         // Draw outer left only (no top, no right, no bottom)
-        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, basePaint);
+        canvas.drawLine(outerRect.topLeft, outerRect.bottomLeft, collarPaint);
       } else {
-        canvas.drawRect(outerRect, basePaint);
+        canvas.drawRect(outerRect, collarPaint);
       }
     }
-    canvas.drawRect(innerRect, basePaint);
+
+    // Inner external lines: jahan upar outer bhi bani ha wahan double
+    // (collar), warna single (bagair collar).
+    canvas.drawLine(
+      innerRect.topLeft,
+      innerRect.topRight,
+      showOuterTop ? collarPaint : noCollarPaint,
+    );
+    canvas.drawLine(
+      innerRect.bottomLeft,
+      innerRect.bottomRight,
+      showOuterBottom ? collarPaint : noCollarPaint,
+    );
+    canvas.drawLine(
+      innerRect.topLeft,
+      innerRect.bottomLeft,
+      showOuterLeft ? collarPaint : noCollarPaint,
+    );
+    canvas.drawLine(
+      innerRect.topRight,
+      innerRect.bottomRight,
+      showOuterRight ? collarPaint : noCollarPaint,
+    );
 
     // Center vertical line inside inner box
     final Offset innerTopCenter = Offset(
@@ -131,28 +225,37 @@ class _SlidingPainter extends CustomPainter {
     );
     canvas.drawLine(innerTopCenter, innerBottomCenter, basePaint);
 
-    // Corner links (outer corners to inner corners)
+    // Corner links (outer corners to inner corners) sirf wahan hote hain
+    // jahan collar ha, is liye blue.
     if (!hideOuter) {
       if (collarId != 7 && collarId != 12 && collarId != 13) {
-        canvas.drawLine(outerRect.topLeft, innerRect.topLeft, basePaint);
+        canvas.drawLine(outerRect.topLeft, innerRect.topLeft, collarPaint);
       }
       if (collarId == 14) {
-        canvas.drawLine(outerRect.topLeft, innerRect.topLeft, basePaint);
+        canvas.drawLine(outerRect.topLeft, innerRect.topLeft, collarPaint);
       }
       if (collarId != 13 && collarId != 14) {
-        canvas.drawLine(outerRect.topRight, innerRect.topRight, basePaint);
+        canvas.drawLine(outerRect.topRight, innerRect.topRight, collarPaint);
       }
       // Restore bottom-left link for collar 7, 13, 14
       if (collarId == 13 || collarId == 14) {
-        canvas.drawLine(outerRect.bottomLeft, innerRect.bottomLeft, basePaint);
+        canvas.drawLine(
+          outerRect.bottomLeft,
+          innerRect.bottomLeft,
+          collarPaint,
+        );
       } else if (collarId != 11 && collarId != 12) {
-        canvas.drawLine(outerRect.bottomLeft, innerRect.bottomLeft, basePaint);
+        canvas.drawLine(
+          outerRect.bottomLeft,
+          innerRect.bottomLeft,
+          collarPaint,
+        );
       }
       if (collarId != 8 && collarId != 11 && collarId != 14) {
         canvas.drawLine(
           outerRect.bottomRight,
           innerRect.bottomRight,
-          basePaint,
+          collarPaint,
         );
       }
     }

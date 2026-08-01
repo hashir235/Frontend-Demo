@@ -186,6 +186,19 @@ class _PanelCenterFixPainter extends CustomPainter {
       ..strokeWidth = 3
       ..color = AppTheme.violet;
 
+    // Jis side outer aur inner dono lines banti hain (double line) wahan
+    // collar ha -> light blue. Jis side sirf inner line ha (single) wahan
+    // collar nahi -> light red.
+    final Paint collarPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = AppTheme.collarLine;
+
+    final Paint noCollarPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = AppTheme.noCollarLine;
+
     final List<_LineSpec> lines = <_LineSpec>[
       _LineSpec(
         id: 'outer_top',
@@ -293,13 +306,40 @@ class _PanelCenterFixPainter extends CustomPainter {
       }
     }
 
+    // Outer aur corner links sirf collar wali soorat mein bante hain, is liye
+    // blue. Inner external edge tab hi double ha jab uske upar wali outer line
+    // bhi bani ho. Divider (andar ki) lines basePaint par hi rehti hain.
+    Paint basePaintFor(String id) {
+      switch (id) {
+        case 'outer_top':
+        case 'outer_bottom':
+        case 'outer_left':
+        case 'outer_right':
+        case 'corner_tl':
+        case 'corner_tr':
+        case 'corner_bl':
+        case 'corner_br':
+          return collarPaint;
+        case 'inner_top':
+          return isBaseVisible('outer_top') ? collarPaint : noCollarPaint;
+        case 'inner_bottom':
+          return isBaseVisible('outer_bottom') ? collarPaint : noCollarPaint;
+        case 'inner_left':
+          return isBaseVisible('outer_left') ? collarPaint : noCollarPaint;
+        case 'inner_right':
+          return isBaseVisible('outer_right') ? collarPaint : noCollarPaint;
+        default:
+          return basePaint;
+      }
+    }
+
     final Map<String, _LineSpec> lineById = <String, _LineSpec>{
       for (final _LineSpec line in lines) line.id: line,
     };
 
     for (final _LineSpec line in lines) {
       if (isBaseVisible(line.id)) {
-        canvas.drawLine(line.from, line.to, basePaint);
+        canvas.drawLine(line.from, line.to, basePaintFor(line.id));
       }
     }
 

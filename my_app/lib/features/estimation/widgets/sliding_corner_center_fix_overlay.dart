@@ -56,6 +56,17 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       ..strokeWidth = 2.8
       ..strokeCap = StrokeCap.round
       ..color = AppTheme.violet.withValues(alpha: 0.95);
+    // Jahan outer aur inner dono lines banti hain (double line) wahan collar
+    // ha -> light blue. Jahan sirf ek line ha (single) wahan collar nahi ->
+    // light red.
+    final Paint collarPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = AppTheme.collarLine;
+    final Paint noCollarPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = AppTheme.noCollarLine;
     final TextStyle labelStyle = TextStyle(
       color: basePaint.color,
       fontSize: 11,
@@ -273,34 +284,42 @@ class _SlidingCornerCenterFixPainter extends CustomPainter {
       canvas.drawLine(topApex, bottomApex, basePaint);
     }
 
+    // Ye frame sirf collar wali soorat mein banta ha, is liye hamesha blue.
     if (showPrimaryOuterGeometry) {
       // Outer V-frame + side edges.
-      canvas.drawLine(topLeftOuter, topApex, basePaint);
-      canvas.drawLine(topApex, topRightOuter, basePaint);
-      canvas.drawLine(bottomLeftOuter, bottomApex, basePaint);
-      canvas.drawLine(bottomApex, bottomRightOuter, basePaint);
-      canvas.drawLine(leftSideTop, leftSideBottom, basePaint);
-      canvas.drawLine(rightSideTop, rightSideBottom, basePaint);
+      canvas.drawLine(topLeftOuter, topApex, collarPaint);
+      canvas.drawLine(topApex, topRightOuter, collarPaint);
+      canvas.drawLine(bottomLeftOuter, bottomApex, collarPaint);
+      canvas.drawLine(bottomApex, bottomRightOuter, collarPaint);
+      canvas.drawLine(leftSideTop, leftSideBottom, collarPaint);
+      canvas.drawLine(rightSideTop, rightSideBottom, collarPaint);
     }
+
+    // Ye frame hamesha banta ha: agar saath wala frame bhi bana to double
+    // (collar), warna akela single (bagair collar).
+    final Paint externalPaint = showPrimaryOuterGeometry
+        ? collarPaint
+        : noCollarPaint;
 
     if (showSecondaryInnerFrame) {
       // Draw second top/side/bottom boundaries as a continuous joined frame.
-      canvas.drawLine(topLeftUpperJoin, topApexUpper, basePaint);
-      canvas.drawLine(topApexUpper, topRightUpperJoin, basePaint);
+      canvas.drawLine(topLeftUpperJoin, topApexUpper, externalPaint);
+      canvas.drawLine(topApexUpper, topRightUpperJoin, externalPaint);
 
-      canvas.drawLine(topLeftUpperJoin, bottomLeftLowerJoin, basePaint);
-      canvas.drawLine(topRightUpperJoin, bottomRightLowerJoin, basePaint);
+      canvas.drawLine(topLeftUpperJoin, bottomLeftLowerJoin, externalPaint);
+      canvas.drawLine(topRightUpperJoin, bottomRightLowerJoin, externalPaint);
 
-      canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, basePaint);
-      canvas.drawLine(bottomApexLower, bottomRightLowerJoin, basePaint);
+      canvas.drawLine(bottomLeftLowerJoin, bottomApexLower, externalPaint);
+      canvas.drawLine(bottomApexLower, bottomRightLowerJoin, externalPaint);
     }
 
+    // Corner links sirf wahan hote hain jahan collar ha, is liye blue.
     if (showCornerSmallLinks) {
       // Small links between outer and inner corner boundaries.
-      canvas.drawLine(topLeftOuter, topLeftUpperJoin, basePaint);
-      canvas.drawLine(topRightOuter, topRightUpperJoin, basePaint);
-      canvas.drawLine(bottomLeftOuter, bottomLeftLowerJoin, basePaint);
-      canvas.drawLine(bottomRightOuter, bottomRightLowerJoin, basePaint);
+      canvas.drawLine(topLeftOuter, topLeftUpperJoin, collarPaint);
+      canvas.drawLine(topRightOuter, topRightUpperJoin, collarPaint);
+      canvas.drawLine(bottomLeftOuter, bottomLeftLowerJoin, collarPaint);
+      canvas.drawLine(bottomRightOuter, bottomRightLowerJoin, collarPaint);
     }
 
     // Center small links (top and bottom).
