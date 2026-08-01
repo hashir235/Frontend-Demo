@@ -15,6 +15,13 @@ class AppTheme {
   static const Color mist = Color(0xFFF2F6F9);
   static const Color slate = Color(0xFF627787);
   static const Color line = Color(0xFFD7E2EA);
+
+  /// Collar wali (double) external line — light blue.
+  static const Color collarLine = Color(0xFF6FB1D6);
+
+  /// Bagair collar wali (single) external line — light red.
+  static const Color noCollarLine = Color(0xFFE08A8A);
+
   static const Color surface = Colors.white;
   static const Color surfaceAlt = Color(0xFFF7FAFC);
   static const Color surfaceMuted = Color(0xFFF0F5F8);
