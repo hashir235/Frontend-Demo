@@ -69,11 +69,10 @@ class SocialLinksCard extends StatelessWidget {
 class PaymentHelpCard extends StatelessWidget {
   const PaymentHelpCard({super.key});
 
-  // TODO: swap these for the specific "how to pay the bill" video links once
-  // they are recorded. Until then they open the general channel and page, so
-  // the buttons still lead somewhere useful.
-  static const String _youtubeUrl =
-      'https://www.youtube.com/playlist?list=PLHV3ATsOdETE';
+  // The payment walkthrough video.
+  static const String _youtubeUrl = 'https://youtu.be/XyeizHyTqOU';
+  // TODO: point this at the same walkthrough on Facebook once it is posted.
+  // For now it opens the page, so the button still leads somewhere useful.
   static const String _facebookUrl =
       'https://www.facebook.com/profile.php?id=61590000736332';
 
