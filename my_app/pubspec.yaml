@@ -1,7 +1,7 @@
-name: my_app
+﻿name: my_app
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.0.8+10
+version: 1.6.6+25
 
 environment:
   sdk: ^3.10.7
@@ -12,9 +12,25 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.2.2
   shared_preferences: ^2.2.3
+  # "Sign in with Google". Pinned to the 6.x line for the stable
+  # serverClientId + idToken flow the backend verifies (POST /api/auth/google).
+  google_sign_in: ^6.2.1
+  # Opens the YouTube "How to use" playlist and the Facebook page in the
+  # external app / browser from the Home screen.
+  url_launcher: ^6.3.1
   in_app_purchase: ^3.2.3
-  in_app_purchase_android: ^0.4.0+10
+  # Google Play Billing Library 8.x (required by Google from 31 Aug 2026).
+  # in_app_purchase_android 0.5.0+ ships Billing Library 8.
+  in_app_purchase_android: ^0.5.2
   package_info_plus: ^8.3.0
+  # Renders Safepay's hosted checkout in-app. Card details are entered on
+  # Safepay's page and never reach this app or our server.
+  webview_flutter: ^4.10.0
+  # Needed directly so the checkout WebView can allow third-party cookies:
+  # Safepay's card-number and CVV inputs are cross-origin iframes, and the
+  # Android WebView blocks their cookies by default, which leaves the Pay
+  # button permanently disabled.
+  webview_flutter_android: ^4.12.0
 
 dev_dependencies:
   flutter_test:
