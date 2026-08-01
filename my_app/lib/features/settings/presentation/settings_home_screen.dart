@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/config/api_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/state/auth_controller.dart';
+import '../../subscription/data/subscription_api_client.dart';
+import '../../subscription/models/subscription_models.dart';
+import '../../subscription/presentation/subscription_gate_screen.dart';
 import '../data/billing_settings_repository.dart';
 import '../data/estimation_settings_repository.dart';
 import '../data/fabrication_settings_repository.dart';
@@ -12,6 +16,8 @@ import '../models/estimation_settings.dart';
 import '../models/fabrication_settings.dart';
 import '../state/app_settings.dart';
 import '../state/numbering_mode.dart';
+import '../state/size_input_mode.dart';
+import 'legal_document_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -42,6 +48,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       TextEditingController();
 
   late NumberingMode _mode;
+  late SizeInputMode _sizeInputMode;
+
+  /// null = categories ka menu khula ha; warna wo section jo khula ha.
+  String? _openSectionId;
   late final BillingSettingsRepository _billingSettingsRepository;
   late final EstimationSettingsRepository _estimationSettingsRepository;
   late final FabricationSettingsRepository _fabricationSettingsRepository;
@@ -51,6 +61,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoadingPaymentPreferences = true;
   bool _isSavingPaymentPreferences = false;
   String? _paymentPreferencesError;
+
+  final SubscriptionApiClient _subscriptionApiClient = SubscriptionApiClient();
+  SubscriptionStatus? _subscriptionStatus;
+  bool _isLoadingSubscriptionStatus = true;
+  String? _subscriptionStatusError;
 
   bool _isLoadingBillingSettings = true;
   bool _isSavingBillingSettings = false;
@@ -69,6 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _mode = AppSettings.instance.numberingMode;
+    _sizeInputMode = AppSettings.instance.sizeInputMode;
     _billingSettingsRepository = BillingSettingsRepository();
     _estimationSettingsRepository = EstimationSettingsRepository();
     _fabricationSettingsRepository = FabricationSettingsRepository();
@@ -78,6 +94,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadEstimationSettings();
     _loadFabricationSettings();
     _loadPaymentPreferences();
+    _loadSubscriptionStatus();
+  }
+
+  Future<void> _loadSubscriptionStatus() async {
+    setState(() {
+      _isLoadingSubscriptionStatus = true;
+      _subscriptionStatusError = null;
+    });
+    try {
+      final SubscriptionStatus status = await _subscriptionApiClient
+          .fetchStatus();
+      if (!mounted) return;
+      setState(() {
+        _subscriptionStatus = status;
+        _isLoadingSubscriptionStatus = false;
+      });
+    } on SubscriptionApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingSubscriptionStatus = false;
+        _subscriptionStatusError = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingSubscriptionStatus = false;
+        _subscriptionStatusError = 'Subscription status failed to load.';
+      });
+    }
+  }
+
+  Future<void> _openBillingAndPlans() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => const SubscriptionGateScreen.manage(),
+      ),
+    );
+    if (mounted) {
+      _loadSubscriptionStatus();
+    }
+  }
+
+  String _subscriptionSummaryLine() {
+    if (_isLoadingSubscriptionStatus) {
+      return 'Checking your plan...';
+    }
+    if (_subscriptionStatusError != null) {
+      return 'Plan status is unavailable right now.';
+    }
+    final SubscriptionStatus? status = _subscriptionStatus;
+    if (status == null) {
+      return 'Plan status is unavailable right now.';
+    }
+    if (status.entitlement == 'subscription' && status.subscription != null) {
+      final String planName = status.plan != null
+          ? '${status.plan!.title} (${status.plan!.durationLabel})'
+          : 'Paid plan';
+      final String expires = formatQuickAlDate(status.subscription!.expiresAt);
+      return status.subscription!.autoRenewing
+          ? '$planName — renews on $expires.'
+          : '$planName — active until $expires.';
+    }
+    if (status.trialActive) {
+      final int days = status.trial?.daysRemaining ?? 0;
+      final String ends = formatQuickAlDate(status.trial?.expiresAt);
+      return days > 0
+          ? 'Free Trial — $days ${days == 1 ? 'day' : 'days'} left (ends $ends).'
+          : 'Free Trial — ends today ($ends).';
+    }
+    return 'No active plan. Buy a plan to keep full access.';
   }
 
   @override
@@ -105,11 +191,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _onSettingsChanged() {
     setState(() {
       _mode = AppSettings.instance.numberingMode;
+      _sizeInputMode = AppSettings.instance.sizeInputMode;
     });
   }
 
   void _updateMode(NumberingMode mode) {
     AppSettings.instance.setNumberingMode(mode);
+  }
+
+  void _updateSizeInputMode(SizeInputMode mode) {
+    AppSettings.instance.setSizeInputMode(mode);
   }
 
   Future<void> _loadBillingSettings() async {
@@ -875,6 +966,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildSizeInputCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.straighten_rounded,
+      title: 'Size Input Method',
+      subtitle:
+          'How feet, inch and cm sizes are entered in Estimation and Fabrication.',
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.ice.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
+        ),
+        child: RadioGroup<SizeInputMode>(
+          groupValue: _sizeInputMode,
+          onChanged: (SizeInputMode? value) {
+            if (value != null) {
+              _updateSizeInputMode(value);
+            }
+          },
+          child: Column(
+            children: const <Widget>[
+              RadioListTile<SizeInputMode>(
+                value: SizeInputMode.wheel,
+                title: Text('Wheel (default)'),
+                subtitle: Text(
+                  'Inch and suter are picked on a tape-style wheel.',
+                ),
+              ),
+              Divider(height: 1),
+              RadioListTile<SizeInputMode>(
+                value: SizeInputMode.keypad,
+                title: Text('Typing box'),
+                subtitle: Text(
+                  'Every part of the size is typed into an input box.',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCompanyInformationCard(BuildContext context) {
     return _buildSettingsCard(
       context,
@@ -1161,7 +1296,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       icon: Icons.payments_rounded,
       title: 'Payment & Renewal',
       subtitle:
-          'Choose how your subscription renews and review the refund policy.',
+          'See your current plan, buy or change plans, and choose how your '
+          'subscription renews.',
       child: _isLoadingPaymentPreferences
           ? _buildLoadingCard()
           : Column(
@@ -1173,6 +1309,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _paymentPreferencesError!,
                     _loadPaymentPreferences,
                   ),
+                _buildSettingsCluster(
+                  context,
+                  title: 'Your Plan',
+                  subtitle: _subscriptionSummaryLine(),
+                  children: <Widget>[
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _openBillingAndPlans,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppTheme.royalBlue,
+                        ),
+                        icon: const Icon(Icons.workspace_premium_rounded),
+                        label: Text(
+                          _subscriptionStatus?.entitlement == 'subscription'
+                              ? 'View / Change Plan'
+                              : 'View & Buy Plans',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 Container(
                   decoration: BoxDecoration(
                     color: AppTheme.ice.withValues(alpha: 0.72),
@@ -1229,10 +1387,149 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: AppTheme.deepTeal.withValues(alpha: 0.7),
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    _buildLegalLink(
+                      context,
+                      icon: Icons.receipt_long_rounded,
+                      label: 'Read the full Refund Policy',
+                      path: '/refund-policy',
+                      title: 'Refund Policy',
+                    ),
                   ],
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildLegalSupportCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.gavel_rounded,
+      title: 'Legal & Support',
+      subtitle:
+          'Our policies and how to reach us. Everything opens inside the app.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _buildSettingsCluster(
+            context,
+            title: 'Policies',
+            subtitle: 'The terms that apply to your subscription and your data.',
+            children: <Widget>[
+              _buildLegalLink(
+                context,
+                icon: Icons.description_rounded,
+                label: 'Terms and Conditions',
+                path: '/terms',
+                title: 'Terms and Conditions',
+              ),
+              _buildLegalLink(
+                context,
+                icon: Icons.privacy_tip_rounded,
+                label: 'Privacy Policy',
+                path: '/privacy-policy',
+                title: 'Privacy Policy',
+              ),
+              _buildLegalLink(
+                context,
+                icon: Icons.receipt_long_rounded,
+                label: 'Refund & Cancellation Policy',
+                path: '/refund-policy',
+                title: 'Refund Policy',
+              ),
+              _buildLegalLink(
+                context,
+                icon: Icons.person_remove_rounded,
+                label: 'Delete Account & Data',
+                path: '/delete-account',
+                title: 'Delete Account',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildSettingsCluster(
+            context,
+            title: 'Customer support',
+            subtitle: 'Quick AL by MMH Tech — we reply within 24 hours.',
+            children: <Widget>[
+              const _SupportRow(
+                icon: Icons.chat_rounded,
+                label: 'WhatsApp',
+                value: '0329 7590468',
+              ),
+              const SizedBox(height: 10),
+              const _SupportRow(
+                icon: Icons.mail_rounded,
+                label: 'Email',
+                value: 'quickal.dev@gmail.com',
+              ),
+              const SizedBox(height: 10),
+              const _SupportRow(
+                icon: Icons.language_rounded,
+                label: 'Website',
+                value: 'quickalapp.com',
+              ),
+              const SizedBox(height: 10),
+              const _SupportRow(
+                icon: Icons.storefront_rounded,
+                label: 'Merchant',
+                value: 'MMH Tech (Sole Proprietor), Pakistan',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Policies live on quickalapp.com so wording can be fixed without an app
+  // release; they open in-app so the user never loses their place.
+  Widget _buildLegalLink(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String path,
+    required String title,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (BuildContext context) => LegalDocumentScreen(
+                title: title,
+                url: ApiConfig.resolveUrl(path),
+              ),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          child: Row(
+            children: <Widget>[
+              Icon(icon, size: 20, color: AppTheme.violet),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.open_in_new_rounded,
+                size: 16,
+                color: AppTheme.slate,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1299,39 +1596,239 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('General Settings'), centerTitle: true),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[AppTheme.ice, AppTheme.mist],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+  /// Settings ab ek lambi list nahi. Pehle categories ka menu khulta ha, aur
+  /// kisi category par tap karne se sirf usi se related settings dikhti hain.
+  ///
+  /// Yahan Navigator use nahi kiya kyunke saare controllers aur loaders isi
+  /// State mein hain — section badalna sirf ek setState ha, is liye koi bhi
+  /// adhoora load ya likha hua text zaya nahi hota.
+  List<_SettingsSection> get _sections => <_SettingsSection>[
+    _SettingsSection(
+      id: 'numbering',
+      icon: Icons.pin_outlined,
+      title: 'Window Numbering',
+      subtitle: 'Auto ya manual window numbers.',
+      builder: _buildWindowNumberingCard,
+    ),
+    _SettingsSection(
+      id: 'size_input',
+      icon: Icons.straighten_rounded,
+      title: 'Size Input Method',
+      subtitle: 'Wheel ya typing box.',
+      builder: _buildSizeInputCard,
+    ),
+    _SettingsSection(
+      id: 'company',
+      icon: Icons.apartment_rounded,
+      title: 'Company Information',
+      subtitle: 'Workshop ka naam, phone aur address.',
+      builder: _buildCompanyInformationCard,
+    ),
+    _SettingsSection(
+      id: 'estimation',
+      icon: Icons.straighten_outlined,
+      title: 'Estimation Settings',
+      subtitle: 'Lengths, cutting margins, red zone, extra pieces.',
+      builder: _buildEstimationSettingsCard,
+    ),
+    _SettingsSection(
+      id: 'fabrication',
+      icon: Icons.handyman_outlined,
+      title: 'Fabrication Settings',
+      subtitle: 'Fabrication cutting margin.',
+      builder: _buildFabricationSettingsCard,
+    ),
+    _SettingsSection(
+      id: 'payment',
+      icon: Icons.credit_card_rounded,
+      title: 'Payment & Renewal',
+      subtitle: 'Aap ka plan aur renewal.',
+      builder: _buildPaymentRenewalCard,
+    ),
+    _SettingsSection(
+      id: 'legal',
+      icon: Icons.gavel_rounded,
+      title: 'Legal & Support',
+      subtitle: 'Policies aur customer support.',
+      builder: _buildLegalSupportCard,
+    ),
+    _SettingsSection(
+      id: 'account',
+      icon: Icons.person_outline_rounded,
+      title: 'Account',
+      subtitle: 'Sign out.',
+      builder: _buildAccountCard,
+    ),
+  ];
+
+  Widget _buildSectionTile(BuildContext context, _SettingsSection section) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => setState(() => _openSectionId = section.id),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
             children: <Widget>[
-              _buildPageHero(context),
-              const SizedBox(height: 20),
-              _buildWindowNumberingCard(context),
-              const SizedBox(height: 20),
-              _buildCompanyInformationCard(context),
-              const SizedBox(height: 20),
-              _buildEstimationSettingsCard(context),
-              const SizedBox(height: 20),
-              _buildFabricationSettingsCard(context),
-              const SizedBox(height: 20),
-              _buildPaymentRenewalCard(context),
-              const SizedBox(height: 20),
-              _buildAccountCard(context),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppTheme.ice.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(section.icon, color: AppTheme.violet, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      section.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      section.subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.slate,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppTheme.slate),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final _SettingsSection? openSection = _openSectionId == null
+        ? null
+        : _sections.where((s) => s.id == _openSectionId).firstOrNull;
+
+    return PopScope(
+      // Section khula ho to back button pehle menu par wapas laye, seedha
+      // settings se bahar na nikale.
+      canPop: openSection == null,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) {
+          setState(() => _openSectionId = null);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(openSection?.title ?? 'General Settings'),
+          centerTitle: true,
+          leading: openSection == null
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => setState(() => _openSectionId = null),
+                ),
+        ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: <Color>[AppTheme.ice, AppTheme.mist],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: SafeArea(
+            child: openSection == null
+                ? ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+                    itemCount: _sections.length + 1,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (BuildContext context, int index) {
+                      if (index == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _buildPageHero(context),
+                        );
+                      }
+                      return _buildSectionTile(context, _sections[index - 1]);
+                    },
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+                    children: <Widget>[openSection.builder(context)],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Settings menu ka ek option aur us se juri settings ka builder.
+class _SettingsSection {
+  final String id;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget Function(BuildContext) builder;
+
+  const _SettingsSection({
+    required this.id,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.builder,
+  });
+}
+
+/// One contact line in the Legal & Support card. Selectable so a user (or a
+/// reviewer) can copy the number or address straight out of the app.
+class _SupportRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _SupportRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, size: 20, color: AppTheme.tealAccent),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 78,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Expanded(
+          child: SelectableText(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
