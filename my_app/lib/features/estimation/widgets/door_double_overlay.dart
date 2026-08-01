@@ -73,6 +73,19 @@ class _DoorDoublePainter extends CustomPainter {
       ..strokeWidth = 2.8
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
+    // Jis side outer aur inner dono lines banti hain (double line) wahan
+    // collar ha -> light blue. Jis side sirf inner line ha (single) wahan
+    // collar nahi -> light red.
+    final Paint collarPaint = Paint()
+      ..color = AppTheme.collarLine
+      ..strokeWidth = 2.2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final Paint noCollarPaint = Paint()
+      ..color = AppTheme.noCollarLine
+      ..strokeWidth = 2.2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
     final TextStyle baseLabelStyle = TextStyle(
       color: AppTheme.deepTeal.withValues(alpha: 0.72),
       fontSize: size.width * 0.052,
@@ -133,34 +146,43 @@ class _DoorDoublePainter extends CustomPainter {
       canvas.drawLine(from, to, paint);
     }
 
+    // Outer lines sirf collar wali side par banti hain.
     if (_showOuterTop) {
-      drawLine(outerRect.topLeft, outerRect.topRight, basePaint);
+      drawLine(outerRect.topLeft, outerRect.topRight, collarPaint);
     }
     if (_showOuterLeft) {
-      drawLine(outerRect.topLeft, outerRect.bottomLeft, basePaint);
+      drawLine(outerRect.topLeft, outerRect.bottomLeft, collarPaint);
     }
     if (_showOuterRight) {
-      drawLine(outerRect.topRight, outerRect.bottomRight, basePaint);
+      drawLine(outerRect.topRight, outerRect.bottomRight, collarPaint);
     }
 
-    drawLine(innerRect.topLeft, Offset(centerX, innerRect.top), basePaint);
-    drawLine(Offset(centerX, innerRect.top), innerRect.topRight, basePaint);
-    drawLine(innerRect.topLeft, innerRect.bottomLeft, basePaint);
+    // Inner external lines: jahan upar outer bhi bani ha wahan double
+    // (collar), warna single (bagair collar). Door ke neeche kabhi outer
+    // line nahi hoti, is liye woh hamesha single ha.
+    final Paint topEdgePaint = _showOuterTop ? collarPaint : noCollarPaint;
+    final Paint leftEdgePaint = _showOuterLeft ? collarPaint : noCollarPaint;
+    final Paint rightEdgePaint = _showOuterRight ? collarPaint : noCollarPaint;
+
+    drawLine(innerRect.topLeft, Offset(centerX, innerRect.top), topEdgePaint);
+    drawLine(Offset(centerX, innerRect.top), innerRect.topRight, topEdgePaint);
+    drawLine(innerRect.topLeft, innerRect.bottomLeft, leftEdgePaint);
+    // Beech wali khari line dono patt ke darmiyan ha -- external nahi.
     drawLine(
       Offset(centerX, innerRect.top),
       Offset(centerX, innerRect.bottom),
       basePaint,
     );
-    drawLine(innerRect.topRight, innerRect.bottomRight, basePaint);
+    drawLine(innerRect.topRight, innerRect.bottomRight, rightEdgePaint);
     drawLine(
       innerRect.bottomLeft,
       Offset(centerX, innerRect.bottom),
-      basePaint,
+      noCollarPaint,
     );
     drawLine(
       Offset(centerX, innerRect.bottom),
       innerRect.bottomRight,
-      basePaint,
+      noCollarPaint,
     );
 
     if (d52Enabled) {
@@ -176,17 +198,18 @@ class _DoorDoublePainter extends CustomPainter {
       );
     }
 
+    // Corner links sirf wahan hote hain jahan collar ha, is liye blue.
     if (_showTopLeftCornerLink) {
-      drawLine(outerRect.topLeft, innerRect.topLeft, basePaint);
+      drawLine(outerRect.topLeft, innerRect.topLeft, collarPaint);
     }
     if (_showTopRightCornerLink) {
-      drawLine(outerRect.topRight, innerRect.topRight, basePaint);
+      drawLine(outerRect.topRight, innerRect.topRight, collarPaint);
     }
     if (_showBottomLeftCornerLink) {
-      drawLine(outerRect.bottomLeft, innerRect.bottomLeft, basePaint);
+      drawLine(outerRect.bottomLeft, innerRect.bottomLeft, collarPaint);
     }
     if (_showBottomRightCornerLink) {
-      drawLine(outerRect.bottomRight, innerRect.bottomRight, basePaint);
+      drawLine(outerRect.bottomRight, innerRect.bottomRight, collarPaint);
     }
 
     if (highlightD54F) {

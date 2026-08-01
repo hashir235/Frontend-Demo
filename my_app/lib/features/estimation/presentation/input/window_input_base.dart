@@ -1685,7 +1685,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             ? MediaQuery.sizeOf(context).width * 0.38
             : null,
         child: SafeArea(
-          child: Padding(
+          // Chhoti screen par sab options ek saath nahi aate, is liye poora
+          // sidebar upar-neeche scroll hota ha -- sirf sections ki list nahi.
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1795,14 +1797,18 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: _handler
-                          .sectionsForCollar(_selectedCollar)
-                          .length,
-                      separatorBuilder: (BuildContext context, int index) =>
-                          const SizedBox(height: 6),
-                      itemBuilder: (BuildContext context, int index) {
+                  // Poora drawer scroll hota ha, is liye ye list apna scroll
+                  // nahi chalati -- warna do scroll ek doosre sa larte hain.
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    itemCount: _handler
+                        .sectionsForCollar(_selectedCollar)
+                        .length,
+                    separatorBuilder: (BuildContext context, int index) =>
+                        const SizedBox(height: 6),
+                    itemBuilder: (BuildContext context, int index) {
                         final String code = _handler.sectionsForCollar(
                           _selectedCollar,
                         )[index];
@@ -1848,7 +1854,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           ),
                         );
                       },
-                    ),
                   ),
                   const SizedBox(height: 12),
                 ],

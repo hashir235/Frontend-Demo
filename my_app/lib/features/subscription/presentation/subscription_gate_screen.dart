@@ -7,13 +7,23 @@ import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
+import '../../../shared/widgets/social_links_card.dart';
 import '../data/subscription_api_client.dart';
 import '../models/subscription_models.dart';
+import 'safepay_checkout_screen.dart';
 
 class SubscriptionGateScreen extends StatefulWidget {
-  final Widget child;
+  final Widget? child;
 
-  const SubscriptionGateScreen({super.key, required this.child});
+  /// Manage mode ("Billing & Plans" from Settings): always shows the current
+  /// plan status and purchase options, even while a trial or subscription is
+  /// active — so users can buy during the trial and see when their plan ends.
+  final bool manage;
+
+  const SubscriptionGateScreen({super.key, required Widget this.child})
+    : manage = false;
+
+  const SubscriptionGateScreen.manage({super.key}) : child = null, manage = true;
 
   @override
   State<SubscriptionGateScreen> createState() => _SubscriptionGateScreenState();
@@ -73,13 +83,16 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
   @override
   Widget build(BuildContext context) {
     final SubscriptionStatus? status = _status;
-    if ((status != null && status.active) || _previewBypass) {
-      return widget.child;
+    if (!widget.manage &&
+        ((status != null && status.active) || _previewBypass)) {
+      return widget.child!;
     }
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(title: const Text('Quick AL')),
+      appBar: AppBar(
+        title: Text(widget.manage ? 'Billing & Plans' : 'Quick AL'),
+      ),
       body: AppScreenShell(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -88,7 +101,10 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: <Widget>[
-                    _Header(status: status),
+                    if (widget.manage)
+                      _CurrentPlanCard(status: status)
+                    else
+                      _Header(status: status),
                     const SizedBox(height: AppTheme.space6),
                     if (_error != null) ...<Widget>[
                       _StateBanner(
@@ -107,7 +123,10 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
                       const SizedBox(height: AppTheme.space5),
                     ],
                     ..._planCards(),
-                    if (ApiConfig.isDirectWebsiteBuild) ...<Widget>[
+                    // Manual bank-transfer fields only appear when the owner has
+                    // turned the option on; otherwise users only pay online.
+                    if (ApiConfig.isDirectWebsiteBuild &&
+                        (_catalog?.manualPaymentEnabled ?? false)) ...<Widget>[
                       const SizedBox(height: AppTheme.space2),
                       _DirectPaymentForm(
                         catalog: _catalog,
@@ -131,11 +150,21 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
                       canBuy: ApiConfig.isDirectWebsiteBuild
                           ? _selectedProductId != null
                           : _canBuySelectedPlan,
-                      previewMode: status?.enforcementMode != 'strict',
+                      // The "Continue" bypass exists only so Google Play's
+                      // closed-testing reviewers can reach the app without
+                      // buying. The direct/website build must never offer it:
+                      // once the trial ends there, paying is the only way in.
+                      previewMode:
+                          !ApiConfig.isDirectWebsiteBuild &&
+                          !widget.manage &&
+                          status?.enforcementMode != 'strict',
                       directMode: ApiConfig.isDirectWebsiteBuild,
+                      manualEnabled: _catalog?.manualPaymentEnabled ?? false,
+                      canPayOnline: !_purchaseBusy && _selectedProductId != null,
                       onBuy: ApiConfig.isDirectWebsiteBuild
                           ? _submitDirectPaymentRequest
                           : _buySelectedPlan,
+                      onPayOnline: _payOnlineWithSafepay,
                       onRestore: _restorePurchases,
                       onPreviewContinue: () {
                         setState(() {
@@ -143,6 +172,8 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
                         });
                       },
                     ),
+                    const SizedBox(height: AppTheme.space5),
+                    const PaymentHelpCard(),
                     const SizedBox(height: AppTheme.space5),
                     Text(
                       'All payments are final and non-refundable. If the app '
@@ -290,6 +321,115 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
       ),
     );
     return preferred.productId;
+  }
+
+  // Safepay hosted checkout (website/direct builds). Opens Safepay's page in a
+  // WebView; entitlement is granted server-side by Safepay's signed webhook, so
+  // on return we poll our own status rather than trusting the redirect.
+  Future<void> _payOnlineWithSafepay() async {
+    final String? productId = _selectedProductId;
+    SubscriptionPlan? plan;
+    for (final SubscriptionPlan candidate in _catalog?.plans ?? <SubscriptionPlan>[]) {
+      if (candidate.productId == productId) {
+        plan = candidate;
+        break;
+      }
+    }
+    if (plan == null) {
+      setState(() => _error = 'Select a plan first.');
+      return;
+    }
+
+    setState(() {
+      _purchaseBusy = true;
+      _error = null;
+      _message = null;
+    });
+
+    try {
+      final SafepayCheckout checkout =
+          await _apiClient.createSafepayCheckout(planId: plan.id);
+      if (!mounted) return;
+      if (checkout.checkoutUrl.isEmpty) {
+        setState(() {
+          _purchaseBusy = false;
+          _error = 'Could not start the online payment. Please try again.';
+        });
+        return;
+      }
+
+      final SafepayCheckoutResult? result =
+          await Navigator.of(context).push<SafepayCheckoutResult>(
+        MaterialPageRoute<SafepayCheckoutResult>(
+          builder: (BuildContext context) => SafepayCheckoutScreen(
+            checkoutUrl: checkout.checkoutUrl,
+            returnUrlPrefix: ApiConfig.resolveUrl('/api/subscription/safepay/return'),
+            cancelUrlPrefix: ApiConfig.resolveUrl('/api/subscription/safepay/cancel'),
+          ),
+        ),
+      );
+      if (!mounted) return;
+
+      if (result == SafepayCheckoutResult.paid) {
+        setState(() => _message = 'Confirming your payment…');
+        await _awaitSafepayActivation();
+        return;
+      }
+
+      setState(() {
+        _purchaseBusy = false;
+        _message = result == SafepayCheckoutResult.cancelled
+            ? 'Payment cancelled. No amount was charged.'
+            : null;
+      });
+    } on SubscriptionApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _purchaseBusy = false;
+        _error = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _purchaseBusy = false;
+        _error = 'Online payment could not be started.';
+      });
+    }
+  }
+
+  // The webhook lands a moment after the customer is redirected back, so give
+  // it a few seconds before deciding anything is wrong. Never conclude failure
+  // outright — a slow webhook is not a failed payment.
+  Future<void> _awaitSafepayActivation() async {
+    const List<int> delaysMs = <int>[1200, 1800, 2500, 3500, 5000];
+    for (final int delay in delaysMs) {
+      await Future<void>.delayed(Duration(milliseconds: delay));
+      if (!mounted) return;
+      try {
+        final SubscriptionStatus status = await _apiClient.fetchStatus();
+        if (!mounted) return;
+        if (status.entitlement == 'subscription') {
+          setState(() {
+            _status = status;
+            _purchaseBusy = false;
+            _error = null;
+            _message = 'Payment successful — your subscription is active.';
+          });
+          return;
+        }
+        setState(() => _status = status);
+      } catch (_) {
+        // Keep polling; a transient read failure is not a payment failure.
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _purchaseBusy = false;
+      _message =
+          'Your payment was received. Activation is taking a moment — pull down '
+          'to refresh, or contact support if it does not appear shortly.';
+    });
   }
 
   Future<void> _submitDirectPaymentRequest() async {
@@ -487,6 +627,122 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
         _error = 'Purchase verification failed.';
       });
     }
+  }
+}
+
+/// "Your Plan" summary shown in manage mode: free trial vs paid plan, which
+/// plan is active, and exactly when it ends.
+class _CurrentPlanCard extends StatelessWidget {
+  final SubscriptionStatus? status;
+
+  const _CurrentPlanCard({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final SubscriptionStatus? current = status;
+    final String entitlement = current?.entitlement ?? 'none';
+    final UserSubscription? subscription = current?.subscription;
+    final TrialStatus? trial = current?.trial;
+    final SubscriptionPlan? plan = current?.plan;
+
+    final String title;
+    final String detail;
+    final IconData icon;
+    final Color accent;
+    String sourceLabel = '';
+
+    if (entitlement == 'subscription' && subscription != null) {
+      title = plan != null
+          ? '${plan.title} — ${plan.durationLabel}'
+          : subscription.planId.isEmpty
+          ? 'Paid plan'
+          : subscription.planId;
+      final String expires = formatQuickAlDate(subscription.expiresAt);
+      detail = subscription.autoRenewing
+          ? 'Active — renews on $expires'
+          : 'Active — valid until $expires';
+      icon = Icons.verified_rounded;
+      accent = AppTheme.success;
+      sourceLabel = subscription.provider == 'direct_website'
+          ? 'Website plan'
+          : subscription.provider == 'google_play'
+          ? 'Google Play plan'
+          : '';
+    } else if (entitlement == 'trial' && (trial?.active ?? false)) {
+      final int days = trial?.daysRemaining ?? 0;
+      title = 'Free Trial';
+      detail = days > 0
+          ? '$days ${days == 1 ? 'day' : 'days'} left — ends ${formatQuickAlDate(trial?.expiresAt)}'
+          : 'Ends today (${formatQuickAlDate(trial?.expiresAt)})';
+      icon = Icons.timer_rounded;
+      accent = AppTheme.warning;
+      sourceLabel = 'Buy a plan below to continue after the trial.';
+    } else {
+      title = 'No active plan';
+      detail = 'Choose a plan below to keep full access to Quick AL.';
+      icon = Icons.lock_open_rounded;
+      accent = AppTheme.danger;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space6),
+      decoration: AppTheme.accentPanelDecoration(radius: AppTheme.radiusLg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppTheme.line),
+            ),
+            child: Icon(icon, color: accent, size: 30),
+          ),
+          const SizedBox(width: AppTheme.space5),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Your Plan',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.space2),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.space2),
+                Text(
+                  detail,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (sourceLabel.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: AppTheme.space2),
+                  Text(
+                    sourceLabel,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -945,7 +1201,10 @@ class _ActionBar extends StatelessWidget {
   final bool canBuy;
   final bool previewMode;
   final bool directMode;
+  final bool manualEnabled;
+  final bool canPayOnline;
   final VoidCallback onBuy;
+  final VoidCallback onPayOnline;
   final VoidCallback onRestore;
   final VoidCallback onPreviewContinue;
 
@@ -955,7 +1214,10 @@ class _ActionBar extends StatelessWidget {
     required this.canBuy,
     required this.previewMode,
     required this.directMode,
+    required this.manualEnabled,
+    required this.canPayOnline,
     required this.onBuy,
+    required this.onPayOnline,
     required this.onRestore,
     required this.onPreviewContinue,
   });
@@ -965,24 +1227,69 @@ class _ActionBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        FilledButton.icon(
-          onPressed: canBuy ? onBuy : null,
-          icon: busy
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(directMode ? Icons.receipt_long_rounded : Icons.lock_open_rounded),
-          label: Text(
-            busy
-                ? 'Processing'
-                : directMode
-                    ? 'Submit Payment Reference'
-                    : 'Subscribe',
+        if (directMode) ...<Widget>[
+          // Primary, and the only option most users see: pay online via Safepay.
+          FilledButton.icon(
+            onPressed: canPayOnline ? onPayOnline : null,
+            icon: busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.credit_card_rounded),
+            label: Text(busy ? 'Processing' : 'Pay Online (Card / Wallet)'),
           ),
-        ),
-        if (!directMode) ...<Widget>[
+          const SizedBox(height: AppTheme.space3),
+          Text(
+            'Instant activation. Secure payment powered by Safepay — your card '
+            'details are never stored by Quick AL.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: AppTheme.space5),
+          _DividerLabel(manualEnabled ? 'or pay by bank transfer' : 'other options'),
+          const SizedBox(height: AppTheme.space5),
+          // Manual bank transfer is only offered when the owner has turned it on
+          // from the admin panel. Otherwise it shows here, disabled, so users
+          // can see it exists but can only pay online.
+          if (manualEnabled)
+            OutlinedButton.icon(
+              onPressed: busy || !canBuy ? null : onBuy,
+              icon: const Icon(Icons.receipt_long_rounded),
+              label: const Text('Submit Payment Reference'),
+            )
+          else ...<Widget>[
+            OutlinedButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.account_balance_rounded),
+              label: const Text('Bank transfer (currently unavailable)'),
+            ),
+            const SizedBox(height: AppTheme.space2),
+            Text(
+              'Bank transfer is not available right now — please pay online above.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppTheme.textSecondary),
+            ),
+          ],
+        ] else ...<Widget>[
+          FilledButton.icon(
+            onPressed: canBuy ? onBuy : null,
+            icon: busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.lock_open_rounded),
+            label: Text(busy ? 'Processing' : 'Subscribe'),
+          ),
           const SizedBox(height: AppTheme.space4),
           OutlinedButton.icon(
             onPressed: busy ? null : onRestore,
@@ -997,6 +1304,31 @@ class _ActionBar extends StatelessWidget {
             child: const Text('Continue'),
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _DividerLabel extends StatelessWidget {
+  final String text;
+  const _DividerLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        const Expanded(child: Divider()),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
+          child: Text(
+            text,
+            style: Theme.of(context)
+                .textTheme
+                .labelMedium
+                ?.copyWith(color: AppTheme.textSecondary),
+          ),
+        ),
+        const Expanded(child: Divider()),
       ],
     );
   }

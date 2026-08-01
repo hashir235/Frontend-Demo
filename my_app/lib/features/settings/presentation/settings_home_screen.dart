@@ -14,6 +14,7 @@ import '../data/payment_preferences_api_client.dart';
 import '../models/billing_settings.dart';
 import '../models/estimation_settings.dart';
 import '../models/fabrication_settings.dart';
+import '../../../shared/widgets/social_links_card.dart';
 import '../state/app_settings.dart';
 import '../state/numbering_mode.dart';
 import '../state/size_input_mode.dart';
@@ -923,13 +924,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildWindowNumberingCard(BuildContext context) {
+  /// Numbering and size entry both decide how the window input page behaves,
+  /// so they live together on one page instead of two near-identical ones.
+  Widget _buildWindowInputCard(BuildContext context) {
     return _buildSettingsCard(
       context,
-      icon: Icons.pin_outlined,
-      title: 'Window Numbering',
-      subtitle: 'Choose how new windows receive numbers in Estimation.',
-      child: Container(
+      icon: Icons.tune_rounded,
+      title: 'Window Input',
+      subtitle: 'How window numbers and sizes are entered.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _buildSubSectionLabel(context, 'Window Numbering'),
+          const SizedBox(height: 8),
+          _buildNumberingOptions(context),
+          const SizedBox(height: 20),
+          _buildSubSectionLabel(context, 'Size Input Method'),
+          const SizedBox(height: 8),
+          _buildSizeInputOptions(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubSectionLabel(BuildContext context, String text) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+        color: AppTheme.deepTeal,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+
+  Widget _buildNumberingOptions(BuildContext context) {
+    return Container(
         decoration: BoxDecoration(
           color: AppTheme.ice.withValues(alpha: 0.72),
           borderRadius: BorderRadius.circular(22),
@@ -962,18 +991,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 
-  Widget _buildSizeInputCard(BuildContext context) {
-    return _buildSettingsCard(
-      context,
-      icon: Icons.straighten_rounded,
-      title: 'Size Input Method',
-      subtitle:
-          'How feet, inch and cm sizes are entered in Estimation and Fabrication.',
-      child: Container(
+  Widget _buildSizeInputOptions(BuildContext context) {
+    return Container(
         decoration: BoxDecoration(
           color: AppTheme.ice.withValues(alpha: 0.72),
           borderRadius: BorderRadius.circular(22),
@@ -1006,7 +1028,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -1397,6 +1418,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                const PaymentHelpCard(),
               ],
             ),
     );
@@ -1604,18 +1627,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// adhoora load ya likha hua text zaya nahi hota.
   List<_SettingsSection> get _sections => <_SettingsSection>[
     _SettingsSection(
-      id: 'numbering',
-      icon: Icons.pin_outlined,
-      title: 'Window Numbering',
-      subtitle: 'Auto ya manual window numbers.',
-      builder: _buildWindowNumberingCard,
-    ),
-    _SettingsSection(
-      id: 'size_input',
-      icon: Icons.straighten_rounded,
-      title: 'Size Input Method',
-      subtitle: 'Wheel ya typing box.',
-      builder: _buildSizeInputCard,
+      id: 'window_input',
+      icon: Icons.tune_rounded,
+      title: 'Window Input',
+      subtitle: 'Numbering aur size entry ka tareeqa.',
+      builder: _buildWindowInputCard,
     ),
     _SettingsSection(
       id: 'company',
