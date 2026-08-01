@@ -46,6 +46,41 @@ UnitMode unitModeFromWireValue(String? value) {
   }
 }
 
+/// Converts a centimetre dimension string into the estimation engine's
+/// "inch.sutter" wire encoding (sutter = eighths, 0..7), snapped to the
+/// nearest 1/8 inch — the resolution of a real inch tape. 1 inch = 2.54 cm.
+///
+/// Estimation items entered in cm are STORED in cm (so review/editing show
+/// the user's own numbers); this conversion is applied only when building
+/// the optimization request, because the estimation engine understands
+/// inches/feet.
+String cmDimensionToInchSutter(String cmText) {
+  final double cm = double.tryParse(cmText.trim()) ?? 0;
+  if (cm <= 0) {
+    return '0.0';
+  }
+  final double totalInches = cm / 2.54;
+  int inch = totalInches.floor();
+  int sutter = ((totalInches - inch) * 8).round();
+  if (sutter >= 8) {
+    inch += 1;
+    sutter = 0;
+  }
+  return '$inch.$sutter';
+}
+
+/// Door frame ke peeche wala collar sirf do naap ka hota ha.
+const double kBackCollarDefaultCm = 1.7;
+const double kBackCollarTwoCm = 2.0;
+
+/// Jo bhi aur value aaye, use purana 1.7cm hi mana jata ha.
+double backCollarFromJson(Object? value) {
+  final double? parsed = value is num
+      ? value.toDouble()
+      : double.tryParse('$value');
+  return parsed == kBackCollarTwoCm ? kBackCollarTwoCm : kBackCollarDefaultCm;
+}
+
 class WindowReviewItem {
   final int winNo;
   final String windowLabel;
@@ -61,6 +96,9 @@ class WindowReviewItem {
   final bool addBottom;
   final bool addTee;
   final bool addNet;
+
+  /// Door frame ke peeche wala collar: 1.7 (purana) ya 2.0 (naya).
+  final double backCollarCm;
   final int? lockType;
   final String? rubberType;
   final String? description;
@@ -80,6 +118,7 @@ class WindowReviewItem {
     this.addBottom = false,
     this.addTee = false,
     this.addNet = false,
+    this.backCollarCm = 1.7,
     this.lockType,
     this.rubberType,
     this.description,
@@ -100,6 +139,7 @@ class WindowReviewItem {
     bool? addBottom,
     bool? addTee,
     bool? addNet,
+    double? backCollarCm,
     int? lockType,
     String? rubberType,
     String? description,
@@ -129,6 +169,7 @@ class WindowReviewItem {
       addBottom: addBottom ?? this.addBottom,
       addTee: addTee ?? this.addTee,
       addNet: addNet ?? this.addNet,
+      backCollarCm: backCollarCm ?? this.backCollarCm,
       lockType: clearLockType ? null : (lockType ?? this.lockType),
       rubberType: clearRubberType ? null : (rubberType ?? this.rubberType),
       description: clearDescription ? null : (description ?? this.description),
@@ -151,6 +192,7 @@ class WindowReviewItem {
       addBottom: json['addBottom'] == true,
       addTee: json['addTee'] == true,
       addNet: json['addNet'] == true,
+      backCollarCm: backCollarFromJson(json['backCollarCm']),
       lockType: json['lockType'] == null ? null : _asInt(json['lockType']),
       rubberType: (json['rubberType'] as String?)?.trim(),
       description: (json['description'] as String?)?.trim(),
@@ -173,6 +215,7 @@ class WindowReviewItem {
       'addBottom': addBottom,
       'addTee': addTee,
       'addNet': addNet,
+      'backCollarCm': backCollarCm,
       'lockType': lockType,
       'rubberType': rubberType,
       'description': description,

@@ -13,6 +13,7 @@ class WindowInputSidebarPreferences {
   final bool? addBottom;
   final bool? addTee;
   final bool? addNet;
+  final double? backCollarCm;
 
   const WindowInputSidebarPreferences({
     this.selectedCollar,
@@ -22,6 +23,7 @@ class WindowInputSidebarPreferences {
     this.addBottom,
     this.addTee,
     this.addNet,
+    this.backCollarCm,
   });
 
   factory WindowInputSidebarPreferences.fromJson(Map<String, dynamic> json) {
@@ -33,6 +35,9 @@ class WindowInputSidebarPreferences {
       addBottom: _asBool(json['addBottom']),
       addTee: _asBool(json['addTee']),
       addNet: _asBool(json['addNet']),
+      backCollarCm: json['backCollarCm'] == null
+          ? null
+          : backCollarFromJson(json['backCollarCm']),
     );
   }
 
@@ -45,6 +50,7 @@ class WindowInputSidebarPreferences {
       'addBottom': addBottom,
       'addTee': addTee,
       'addNet': addNet,
+      'backCollarCm': backCollarCm,
     };
   }
 

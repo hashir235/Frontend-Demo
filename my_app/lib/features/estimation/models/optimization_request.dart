@@ -15,6 +15,7 @@ class OptimizationWindowRequest {
   final bool addBottom;
   final bool addTee;
   final bool addNet;
+  final double backCollarCm;
   final int? lockType;
   final String? rubberType;
 
@@ -33,6 +34,7 @@ class OptimizationWindowRequest {
     required this.addBottom,
     required this.addTee,
     required this.addNet,
+    required this.backCollarCm,
     required this.lockType,
     required this.rubberType,
   });
@@ -41,24 +43,34 @@ class OptimizationWindowRequest {
     WindowReviewItem item, {
     required bool isFabrication,
   }) {
+    // Estimation cm: items are stored in raw cm (what the user typed), but
+    // the estimation engine only understands inches/feet — so convert each
+    // dimension to the inch.sutter encoding on the wire.
+    final bool estimationCm = !isFabrication && item.unitMode == UnitMode.cm;
+    String dim(String value) =>
+        estimationCm ? cmDimensionToInchSutter(value) : value;
+    String? dimOrNull(String? value) =>
+        (value == null || value.trim().isEmpty) ? value : dim(value);
+
     final String unitMode = isFabrication
         ? (item.unitMode == UnitMode.inches ? 'inches' : 'cm')
-        : (item.unitMode == UnitMode.inches ? 'inches' : 'feet');
+        : (item.unitMode == UnitMode.feet ? 'feet' : 'inches');
     return OptimizationWindowRequest(
       winNo: item.winNo,
       windowCode: item.windowCode,
       windowLabel: item.windowLabel,
       collarIndex: item.collarIndex,
       unitMode: unitMode,
-      heightValue: item.heightValue,
-      widthValue: item.widthValue,
-      rightWidthValue: item.rightWidthValue,
-      leftWidthValue: item.leftWidthValue,
-      archValue: item.archValue,
+      heightValue: dim(item.heightValue),
+      widthValue: dim(item.widthValue),
+      rightWidthValue: dimOrNull(item.rightWidthValue),
+      leftWidthValue: dimOrNull(item.leftWidthValue),
+      archValue: dimOrNull(item.archValue),
       description: item.description,
       addBottom: item.addBottom,
       addTee: item.addTee,
       addNet: item.addNet,
+      backCollarCm: item.backCollarCm,
       lockType: item.lockType,
       rubberType: item.rubberType,
     );
@@ -80,6 +92,7 @@ class OptimizationWindowRequest {
       'addBottom': addBottom,
       'addTee': addTee,
       'addNet': addNet,
+      'backCollarCm': backCollarCm,
       'lockType': lockType,
       'rubberType': rubberType,
     };
@@ -112,10 +125,17 @@ class OptimizationRequest {
     required String projectLocation,
   }) {
     final bool isFabrication = context.toLowerCase() == 'fabrication';
+    // When an estimation session is entirely in cm, ask the engine to render
+    // the cutting report in cm too, so cut sizes read in the unit the user
+    // entered. Mixed-unit sessions keep the default feet display.
+    final bool allCm =
+        !isFabrication &&
+        items.isNotEmpty &&
+        items.every((WindowReviewItem item) => item.unitMode == UnitMode.cm);
     return OptimizationRequest(
       projectId: projectId,
       context: context,
-      displayUnit: displayUnit,
+      displayUnit: allCm ? 'cm' : displayUnit,
       projectName: projectName,
       projectLocation: projectLocation,
       windows: items

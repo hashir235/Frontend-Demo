@@ -11,7 +11,10 @@ import '../../models/window_review_item.dart';
 import '../../models/window_type.dart';
 import '../../state/estimate_session_store.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/suter_wheel.dart';
+import '../../../settings/state/app_settings.dart';
 import '../../../settings/state/numbering_mode.dart';
+import '../../../settings/state/size_input_mode.dart';
 import '../review_list_screen.dart';
 
 class WindowInputScreen extends StatefulWidget {
@@ -62,26 +65,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   final TextEditingController _winNoController = TextEditingController();
   final FocusNode _winNoFocusNode = FocusNode();
   final FocusNode _heightFocusNode = FocusNode();
-  final FocusNode _heightSuterFocusNode = FocusNode();
   final FocusNode _widthFocusNode = FocusNode();
-  final FocusNode _widthSuterFocusNode = FocusNode();
   final FocusNode _leftWidthFocusNode = FocusNode();
-  final FocusNode _leftWidthSuterFocusNode = FocusNode();
   final FocusNode _archFocusNode = FocusNode();
   final FocusNode _descriptionFocusNode = FocusNode();
   final GlobalKey _winNoFieldKey = GlobalKey(debugLabel: 'winNoField');
   final GlobalKey _heightFieldKey = GlobalKey(debugLabel: 'heightField');
-  final GlobalKey _heightSuterFieldKey = GlobalKey(
-    debugLabel: 'heightSuterField',
-  );
   final GlobalKey _widthFieldKey = GlobalKey(debugLabel: 'widthField');
-  final GlobalKey _widthSuterFieldKey = GlobalKey(
-    debugLabel: 'widthSuterField',
-  );
   final GlobalKey _leftWidthFieldKey = GlobalKey(debugLabel: 'leftWidthField');
-  final GlobalKey _leftWidthSuterFieldKey = GlobalKey(
-    debugLabel: 'leftWidthSuterField',
-  );
   final GlobalKey _archFieldKey = GlobalKey(debugLabel: 'archField');
   final GlobalKey _descriptionFieldKey = GlobalKey(
     debugLabel: 'descriptionField',
@@ -94,6 +85,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   late _LockType _lockType;
   late int _selectedCollar;
   String? _selectedSectionCode;
+
+  /// Door frame ke peeche wala collar: 1.7cm (purana) ya 2cm (naya).
+  double _backCollarCm = kBackCollarDefaultCm;
   String? _winNoError;
   String? _heightError;
   String? _widthError;
@@ -160,8 +154,15 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   bool get _isFabricationFlow => widget.session.isFabrication;
   bool get _isFabricationCmMode =>
       _isFabricationFlow && _unitMode == UnitMode.feet;
-  bool get _isFabricationInchesMode =>
-      _isFabricationFlow && _unitMode == UnitMode.inches;
+  /// The dimension inputs render as a "typed whole part + tape wheel" split
+  /// whenever the unit has a sub-part that is picked on a wheel: inches
+  /// (inch typed + suter wheel, both flows) and estimation feet (feet typed +
+  /// inch wheel). CM and the fabrication "feet" slot (which is really cm) stay
+  /// single typed fields.
+  bool get _usesInchSuterSplit => _unitMode == UnitMode.inches;
+  bool get _usesFeetInchSplit =>
+      !_isFabricationFlow && _unitMode == UnitMode.feet;
+  bool get _usesSplitInput => _usesInchSuterSplit || _usesFeetInchSplit;
 
   /// True when the active input is in centimetres — either fabrication's
   /// existing cm mode (which reuses the `feet` slot) or estimation's real
@@ -181,6 +182,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   bool get _showsDoorSectionToggles =>
       _handler is DoorSingleInputHandler || _handler is DoorDoubleInputHandler;
   bool get _showsOpenableNetToggle => _handler is OpenableInputHandler;
+
+  /// Back collar sirf fabrication ke door formula par asar karta ha, is liye
+  /// button bhi sirf fabrication flow ke doors mein dikhta ha.
+  bool get _showsBackCollarOption =>
+      _showsDoorSectionToggles && _isFabricationFlow;
 
   bool get _doorD46Enabled {
     if (_handler is DoorSingleInputHandler) {
@@ -238,6 +244,17 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _persistSidebarSelections();
   }
 
+  void _setBackCollarCm(double value) {
+    if (!_showsBackCollarOption || _backCollarCm == value) {
+      return;
+    }
+
+    setState(() {
+      _backCollarCm = value;
+    });
+    _persistSidebarSelections();
+  }
+
   bool get _openableNetEnabled {
     final WindowInputHandler handler = _handler;
     if (handler is OpenableInputHandler) {
@@ -285,6 +302,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       addBottom: _showsDoorSectionToggles ? _doorD46Enabled : null,
       addTee: _showsDoorSectionToggles ? _doorD52Enabled : null,
       addNet: _showsOpenableNetToggle ? _openableNetEnabled : null,
+      backCollarCm: _showsBackCollarOption ? _backCollarCm : null,
     );
   }
 
@@ -354,6 +372,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             activeHandler is OpenableInputHandler) {
           activeHandler.netEnabled = preferencesState.addNet!;
         }
+        if (_showsBackCollarOption && preferencesState.backCollarCm != null) {
+          _backCollarCm = preferencesState.backCollarCm!;
+        }
         if (_showsLockTypeSelector && preferencesState.lockType != null) {
           _lockType = _lockTypeFromStored(preferencesState.lockType);
         }
@@ -378,8 +399,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       if (!_openableNetEnabled && _selectedSectionCode == 'D29') {
         _selectedSectionCode = null;
       }
-      if (_isFabricationInchesMode) {
-        _syncFabricationSplitControllersFromCombined();
+      if (_usesSplitInput) {
+        _syncSplitControllersFromCombined();
       }
     });
 
@@ -395,6 +416,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (editingItem == null) {
       return;
     }
+
+    _backCollarCm = editingItem.backCollarCm;
 
     if (_handler is DoorSingleInputHandler) {
       _handler.d46Enabled = editingItem.addBottom;
@@ -557,7 +580,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _widthController.text = editingItem?.widthValue ?? '';
     }
     _archController.text = editingItem?.archValue ?? '';
-    _syncFabricationSplitControllersFromCombined();
+    _syncSplitControllersFromCombined();
     _descriptionController.text = widget.editingItem?.description ?? '';
     if (widget.editingItem != null) {
       _winNoController.text = widget.editingItem!.winNo.toString();
@@ -592,27 +615,16 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (_numberingMode == NumberingMode.manual && !widget.isEditMode) {
       targets.add((node: _winNoFocusNode, key: _winNoFieldKey));
     }
-    if (_isFabricationInchesMode) {
-      targets.add((node: _heightFocusNode, key: _heightFieldKey));
-      targets.add((node: _heightSuterFocusNode, key: _heightSuterFieldKey));
-      targets.add((node: _widthFocusNode, key: _widthFieldKey));
-      targets.add((node: _widthSuterFocusNode, key: _widthSuterFieldKey));
-      if (_usesSplitWidthInputs) {
-        targets.add((node: _leftWidthFocusNode, key: _leftWidthFieldKey));
-        targets.add((
-          node: _leftWidthSuterFocusNode,
-          key: _leftWidthSuterFieldKey,
-        ));
-      }
-    } else {
-      targets.add((node: _heightFocusNode, key: _heightFieldKey));
-      targets.add((node: _widthFocusNode, key: _widthFieldKey));
-      if (_usesSplitWidthInputs) {
-        targets.add((node: _leftWidthFocusNode, key: _leftWidthFieldKey));
-      }
-      if (_usesArchInput) {
-        targets.add((node: _archFocusNode, key: _archFieldKey));
-      }
+    // In split modes the sub-part (suter / inch) is picked on the tape wheel,
+    // not typed, so keyboard "next" simply hops between the typed whole-number
+    // fields (and arch, which stays a single typed field in every mode).
+    targets.add((node: _heightFocusNode, key: _heightFieldKey));
+    targets.add((node: _widthFocusNode, key: _widthFieldKey));
+    if (_usesSplitWidthInputs) {
+      targets.add((node: _leftWidthFocusNode, key: _leftWidthFieldKey));
+    }
+    if (_usesArchInput) {
+      targets.add((node: _archFocusNode, key: _archFieldKey));
     }
     targets.add((node: _descriptionFocusNode, key: _descriptionFieldKey));
 
@@ -690,11 +702,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _winNoController.dispose();
     _winNoFocusNode.dispose();
     _heightFocusNode.dispose();
-    _heightSuterFocusNode.dispose();
     _widthFocusNode.dispose();
-    _widthSuterFocusNode.dispose();
     _leftWidthFocusNode.dispose();
-    _leftWidthSuterFocusNode.dispose();
     _archFocusNode.dispose();
     _descriptionFocusNode.dispose();
     _collarPageController.removeListener(_onCollarScroll);
@@ -756,43 +765,99 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     return (inch: inchValue, suter: '${right[0]}.${right[1]}');
   }
 
-  void _syncFabricationSplitControllersFromCombined() {
-    if (!_isFabricationFlow) {
+  // For the feet+inch split, the "inch" slot of the shared split controllers
+  // holds the whole feet and the "suter" slot holds the whole inch (0..11)
+  // picked on the wheel. Storage stays in the shop's `feet.inch` notation.
+  String _combineFeetInchForStorage(String rawFeet, String rawInch) {
+    final String feet = rawFeet.trim();
+    if (feet.isEmpty) {
+      return '';
+    }
+    final int inch = int.tryParse(rawInch.trim()) ?? 0;
+    return '$feet.$inch';
+  }
+
+  ({String inch, String suter}) _splitStoredDimensionForFeet(String stored) {
+    final String value = stored.trim();
+    if (value.isEmpty) {
+      return (inch: '', suter: '');
+    }
+    final List<String> parts = value.split('.');
+    final String feet = parts.first;
+    if (parts.length < 2 || parts[1].trim().isEmpty) {
+      return (inch: feet, suter: '');
+    }
+    final int inch = int.tryParse(parts[1].trim()) ?? 0;
+    return (inch: feet, suter: InchWheel.snap(inch.toDouble()).round().toString());
+  }
+
+  /// Mode-aware split of a stored dimension into (whole, wheel) parts.
+  ({String inch, String suter}) _splitStoredForSplit(String stored) {
+    return _usesFeetInchSplit
+        ? _splitStoredDimensionForFeet(stored)
+        : _splitStoredDimensionForInches(stored);
+  }
+
+  /// Mode-aware combine of the split controllers back into stored notation.
+  String _combineSplitForStorage(String whole, String wheel) {
+    return _usesFeetInchSplit
+        ? _combineFeetInchForStorage(whole, wheel)
+        : _combineInchSuterForStorage(whole, wheel);
+  }
+
+  /// Feet-mode validation reuses the single-field feet rules on the combined
+  /// value, so behaviour matches exactly what typing `feet.inch` used to do.
+  String? _validateFeetSplitDimension(String feetValue, String inchValue) {
+    final String combined = _combineFeetInchForStorage(feetValue, inchValue);
+    if (combined.isEmpty) {
+      return 'Required';
+    }
+    return _validateDimension(combined);
+  }
+
+  String? _validateSplitDimension(String whole, String wheel) {
+    return _usesFeetInchSplit
+        ? _validateFeetSplitDimension(whole, wheel)
+        : _validateFabricationSplitDimension(
+            inchValue: whole,
+            suterValue: wheel,
+          );
+  }
+
+  void _syncSplitControllersFromCombined() {
+    if (!_usesSplitInput) {
       return;
     }
-    final ({String inch, String suter}) height = _splitStoredDimensionForInches(
-      _heightController.text,
-    );
-    final ({String inch, String suter}) width = _splitStoredDimensionForInches(
-      _widthController.text,
-    );
+    final ({String inch, String suter}) height =
+        _splitStoredForSplit(_heightController.text);
+    final ({String inch, String suter}) width =
+        _splitStoredForSplit(_widthController.text);
     _heightInchController.text = height.inch;
     _heightSuterController.text = height.suter;
     _widthInchController.text = width.inch;
     _widthSuterController.text = width.suter;
     if (_usesSplitWidthInputs) {
-      final ({String inch, String suter}) left = _splitStoredDimensionForInches(
-        _leftWidthController.text,
-      );
+      final ({String inch, String suter}) left =
+          _splitStoredForSplit(_leftWidthController.text);
       _leftWidthInchController.text = left.inch;
       _leftWidthSuterController.text = left.suter;
     }
   }
 
-  void _syncCombinedControllersFromFabricationSplit() {
-    if (!_isFabricationFlow) {
+  void _syncCombinedControllersFromSplit() {
+    if (!_usesSplitInput) {
       return;
     }
-    _heightController.text = _combineInchSuterForStorage(
+    _heightController.text = _combineSplitForStorage(
       _heightInchController.text,
       _heightSuterController.text,
     );
-    _widthController.text = _combineInchSuterForStorage(
+    _widthController.text = _combineSplitForStorage(
       _widthInchController.text,
       _widthSuterController.text,
     );
     if (_usesSplitWidthInputs) {
-      _leftWidthController.text = _combineInchSuterForStorage(
+      _leftWidthController.text = _combineSplitForStorage(
         _leftWidthInchController.text,
         _leftWidthSuterController.text,
       );
@@ -864,15 +929,20 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           'CM mode:\n'
           'Enter a single numeric value in cm.\n'
           'Examples: 34 or 34.5'
-          '${_isEstimationCmMode ? '\n\nFor the quotation, cm is converted to inches automatically.' : ''}';
-    } else if (_isFabricationInchesMode) {
+          '${_isEstimationCmMode ? '\n\nYour sizes stay in cm everywhere — review, cutting sizes and reports.' : ''}';
+    } else if (_usesInchSuterSplit) {
       instructionText =
           'Inches mode:\n'
-          'Use two fields for each dimension.\n'
-          'Inch = whole number (example: 45)\n'
-          'Suter = optional decimal (example: 3.5)\n'
-          'Suter range is 0 to less than 8,\n'
-          'with max one digit after decimal.';
+          'Type the inch (a whole number, e.g. 45) and pick the suter by '
+          'scrolling the tape wheel.\n'
+          'Suter runs 0 to 7.5 in half-suter steps — pick half or full, '
+          'whatever you need.';
+    } else if (_usesFeetInchSplit) {
+      instructionText =
+          'Feet mode:\n'
+          'Type the feet (a whole number, e.g. 4) and pick the inch by '
+          'scrolling the tape wheel.\n'
+          '12 inches make the next foot, so the inch wheel runs 0 to 11.';
     } else {
       instructionText =
           'eg. inch.suter => 45.7\n'
@@ -906,59 +976,61 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (_unitMode == mode) {
       return;
     }
-    final bool wasFabricationInchesMode = _isFabricationInchesMode;
-    final bool nextFabricationInchesMode =
-        _isFabricationFlow && mode == UnitMode.inches;
-    final bool nextCmMode = (_isFabricationFlow && mode == UnitMode.feet) ||
-        (!_isFabricationFlow && mode == UnitMode.cm);
+    final bool wasSplit = _usesSplitInput;
 
     setState(() {
-      if (wasFabricationInchesMode && !nextFabricationInchesMode) {
-        _syncCombinedControllersFromFabricationSplit();
+      // Leaving a split mode: fold the split controllers back into the single
+      // combined controller so the entered value survives the unit switch.
+      if (wasSplit) {
+        _syncCombinedControllersFromSplit();
       }
       _unitMode = mode;
-      if (nextFabricationInchesMode) {
-        _syncFabricationSplitControllersFromCombined();
-        _heightError = _validateFabricationSplitDimension(
-          inchValue: _heightInchController.text,
-          suterValue: _heightSuterController.text,
-        );
-        _widthError = _validateFabricationSplitDimension(
-          inchValue: _widthInchController.text,
-          suterValue: _widthSuterController.text,
-        );
-        _leftWidthError = _usesSplitWidthInputs
-            ? _validateFabricationSplitDimension(
-                inchValue: _leftWidthInchController.text,
-                suterValue: _leftWidthSuterController.text,
-              )
-            : null;
-        _archError = _usesArchInput
-            ? _validateDimension(_archController.text)
-            : null;
-        return;
+      // Entering a split mode: seed the split controllers from the combined one.
+      if (_usesSplitInput) {
+        _syncSplitControllersFromCombined();
       }
-      if (nextCmMode) {
-        _heightError = _validateCmDimension(_heightController.text);
-        _widthError = _validateCmDimension(_widthController.text);
-        _leftWidthError = _usesSplitWidthInputs
-            ? _validateCmDimension(_leftWidthController.text)
-            : null;
-        _archError = _usesArchInput
-            ? _validateCmDimension(_archController.text)
-            : null;
-        return;
-      }
-      _heightError = _validateDimension(_heightController.text);
-      _widthError = _validateDimension(_widthController.text);
+      _heightError = _dimensionErrorForCurrentMode(
+        _heightController,
+        _heightInchController,
+        _heightSuterController,
+      );
+      _widthError = _dimensionErrorForCurrentMode(
+        _widthController,
+        _widthInchController,
+        _widthSuterController,
+      );
       _leftWidthError = _usesSplitWidthInputs
-          ? _validateDimension(_leftWidthController.text)
+          ? _dimensionErrorForCurrentMode(
+              _leftWidthController,
+              _leftWidthInchController,
+              _leftWidthSuterController,
+            )
           : null;
+      // Arch stays a single typed field, even in split modes.
       _archError = _usesArchInput
-          ? _validateDimension(_archController.text)
+          ? (_isCmMode
+                ? _validateCmDimension(_archController.text)
+                : _validateDimension(_archController.text))
           : null;
     });
     _persistSidebarSelections();
+  }
+
+  /// Validates one dimension using whichever input style the current unit mode
+  /// shows: the split (whole + wheel) controllers, the cm field, or the plain
+  /// typed field.
+  String? _dimensionErrorForCurrentMode(
+    TextEditingController combined,
+    TextEditingController wholeController,
+    TextEditingController wheelController,
+  ) {
+    if (_usesSplitInput) {
+      return _validateSplitDimension(wholeController.text, wheelController.text);
+    }
+    if (_isCmMode) {
+      return _validateCmDimension(combined.text);
+    }
+    return _validateDimension(combined.text);
   }
 
   // Aluminium stock tops out around 19 ft, and real windows are well under
@@ -1071,24 +1143,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     return '$value.0';
   }
 
-  /// Converts a centimetre value into the estimation "inch.sutter" storage
-  /// string (sutter = eighths, 0..7), snapped to the nearest 1/8 inch — the
-  /// resolution of a real inch tape. 1 inch = 2.54 cm.
-  String _cmToInchEncoded(String cmText) {
-    final double cm = double.tryParse(cmText.trim()) ?? 0;
-    if (cm <= 0) {
-      return '0.0';
-    }
-    final double totalInches = cm / 2.54;
-    int inch = totalInches.floor();
-    int sutter = ((totalInches - inch) * 8).round();
-    if (sutter >= 8) {
-      inch += 1;
-      sutter = 0;
-    }
-    return '$inch.$sutter';
-  }
-
   String? _validateWinNo(String rawValue) {
     final String value = rawValue.trim();
     if (value.isEmpty) {
@@ -1112,32 +1166,22 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (_numberingMode == NumberingMode.manual) {
       winNoError = _validateWinNo(_winNoController.text);
     }
-    final bool useFabricationInchesSplit = _isFabricationInchesMode;
-    final String? heightError = useFabricationInchesSplit
-        ? _validateFabricationSplitDimension(
-            inchValue: _heightInchController.text,
-            suterValue: _heightSuterController.text,
-          )
-        : (_isCmMode
-              ? _validateCmDimension(_heightController.text)
-              : _validateDimension(_heightController.text));
-    final String? widthError = useFabricationInchesSplit
-        ? _validateFabricationSplitDimension(
-            inchValue: _widthInchController.text,
-            suterValue: _widthSuterController.text,
-          )
-        : (_isCmMode
-              ? _validateCmDimension(_widthController.text)
-              : _validateDimension(_widthController.text));
+    final String? heightError = _dimensionErrorForCurrentMode(
+      _heightController,
+      _heightInchController,
+      _heightSuterController,
+    );
+    final String? widthError = _dimensionErrorForCurrentMode(
+      _widthController,
+      _widthInchController,
+      _widthSuterController,
+    );
     final String? leftWidthError = _usesSplitWidthInputs
-        ? (useFabricationInchesSplit
-              ? _validateFabricationSplitDimension(
-                  inchValue: _leftWidthInchController.text,
-                  suterValue: _leftWidthSuterController.text,
-                )
-              : (_isCmMode
-                    ? _validateCmDimension(_leftWidthController.text)
-                    : _validateDimension(_leftWidthController.text)))
+        ? _dimensionErrorForCurrentMode(
+            _leftWidthController,
+            _leftWidthInchController,
+            _leftWidthSuterController,
+          )
         : null;
     final String? archError = _usesArchInput
         ? (_isCmMode
@@ -1210,6 +1254,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return;
     }
 
+    // Fold the split (whole + wheel) controllers into the single combined
+    // controller now, so the oversized-feet check and the storage below both
+    // read the final value the user picked.
+    if (_usesSplitInput) {
+      _syncCombinedControllersFromSplit();
+    }
+
     // Catch the common "inches typed as feet" mistake before it fails later
     // in optimization / rate review with a confusing backend-looking error.
     if (!_isFabricationFlow && _unitMode == UnitMode.feet) {
@@ -1220,7 +1271,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           return;
         }
         if (choice == 'inches') {
-          setState(() => _unitMode = UnitMode.inches);
+          setState(() {
+            _unitMode = UnitMode.inches;
+            // Re-seed the inch + suter wheel from the value just entered as feet.
+            _syncSplitControllersFromCombined();
+          });
           _preferencesStore.persistUnitMode(
             widget.session.flow,
             UnitMode.inches,
@@ -1244,18 +1299,12 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
 
     final String? description = _normalizedDescription();
-    if (_isFabricationInchesMode) {
-      _syncCombinedControllersFromFabricationSplit();
-    }
-    // Estimation cm is a quotation convenience: convert each dimension to the
-    // inch + sutter encoding and store the item as inches, so the rest of the
-    // estimation pipeline runs unchanged. Other modes store as-is.
-    final bool estimationCm = _isEstimationCmMode;
-    final UnitMode storedUnitMode =
-        estimationCm ? UnitMode.inches : _unitMode;
-    String dimForStorage(String raw) => estimationCm
-        ? _cmToInchEncoded(raw)
-        : _normalizeDimensionForStorage(raw);
+    // Every unit (including estimation cm) is stored exactly as entered so
+    // the review list and editing always show the user's own numbers. The
+    // engine-facing inch conversion for cm items happens on the wire, in
+    // OptimizationWindowRequest.fromReviewItem.
+    final UnitMode storedUnitMode = _unitMode;
+    String dimForStorage(String raw) => _normalizeDimensionForStorage(raw);
 
     final String heightValue = dimForStorage(_heightController.text);
     final String rightWidthValue = dimForStorage(_widthController.text);
@@ -1290,6 +1339,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         addBottom: _doorD46Enabled,
         addTee: _doorD52Enabled,
         addNet: _openableNetEnabled,
+        backCollarCm: _backCollarCm,
         lockType: lockTypeValue,
         rubberType: rubberTypeValue,
         description: description,
@@ -1334,6 +1384,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           addBottom: _doorD46Enabled,
           addTee: _doorD52Enabled,
           addNet: _openableNetEnabled,
+          backCollarCm: _backCollarCm,
           lockType: lockTypeValue,
           rubberType: rubberTypeValue,
           description: description,
@@ -1488,62 +1539,111 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
   }
 
-  Widget _buildFabricationInchesDimensionField({
+  /// A dimension entered as a typed whole part + a tape wheel for the sub-part.
+  /// Inches mode: inch (typed) + suter wheel (0..7.5). Feet mode: feet (typed) +
+  /// inch wheel (0..11). The two shared controllers carry the (whole, wheel)
+  /// parts for whichever mode is active.
+  Widget _buildSplitDimensionField({
     required String label,
-    required GlobalKey inchFieldKey,
-    required GlobalKey suterFieldKey,
-    required TextEditingController inchController,
-    required TextEditingController suterController,
+    required GlobalKey wholeFieldKey,
+    required TextEditingController wholeController,
+    required TextEditingController wheelController,
     required String? errorText,
     required TextStyle? numberInputStyle,
     required VoidCallback onChanged,
-    required FocusNode inchFocusNode,
-    required FocusNode suterFocusNode,
+    required FocusNode wholeFocusNode,
   }) {
+    final bool feetMode = _usesFeetInchSplit;
+    final double wheelValue = double.tryParse(wheelController.text.trim()) ?? 0;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: TextField(
-            key: inchFieldKey,
-            controller: inchController,
-            focusNode: inchFocusNode,
-            textInputAction: _textInputActionForField(inchFocusNode),
+            key: wholeFieldKey,
+            controller: wholeController,
+            focusNode: wholeFocusNode,
+            textInputAction: _textInputActionForField(wholeFocusNode),
             style: numberInputStyle,
             keyboardType: const TextInputType.numberWithOptions(signed: false),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onSubmitted: (_) => _submitFromField(inchFocusNode),
+            onSubmitted: (_) => _submitFromField(wholeFocusNode),
             scrollPadding: EdgeInsets.zero,
             onChanged: (_) => onChanged(),
             decoration: InputDecoration(
-              labelText: '$label (Inch)',
-              hintText: 'e.g. 45',
+              labelText: feetMode ? '$label (Feet)' : '$label (Inch)',
+              hintText: feetMode ? 'e.g. 4' : 'e.g. 45',
               errorText: errorText,
             ),
           ),
         ),
         const SizedBox(width: 10),
+        // The sub-part is picked on a tape wheel — inch (0..11) in feet mode,
+        // suter (0..7.5) in inches mode — so it always matches the real
+        // inchi-tape resolution. Kuch log seedha likhna pasand karte hain, is
+        // liye settings se ise typing box mein badla ja sakta ha.
         Expanded(
-          child: TextField(
-            key: suterFieldKey,
-            controller: suterController,
-            focusNode: suterFocusNode,
-            textInputAction: _textInputActionForField(suterFocusNode),
-            style: numberInputStyle,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-            ],
-            onSubmitted: (_) => _submitFromField(suterFocusNode),
-            scrollPadding: EdgeInsets.zero,
-            onChanged: (_) => onChanged(),
-            decoration: const InputDecoration(
-              labelText: 'Suter',
-              hintText: 'e.g. 3.5',
-            ),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: _usesKeypadSizeInput
+                ? _buildSubPartField(
+                    controller: wheelController,
+                    feetMode: feetMode,
+                    numberInputStyle: numberInputStyle,
+                    onChanged: onChanged,
+                  )
+                : feetMode
+                ? InchWheel(
+                    value: wheelValue,
+                    onChanged: (double value) {
+                      wheelController.text = InchWheel.format(value);
+                      onChanged();
+                    },
+                  )
+                : SuterWheel(
+                    value: wheelValue,
+                    onChanged: (double value) {
+                      wheelController.text = SuterWheel.format(value);
+                      onChanged();
+                    },
+                  ),
           ),
         ),
       ],
+    );
+  }
+
+  /// Settings se aane wala faisla: wheel ya seedha typing box.
+  bool get _usesKeypadSizeInput =>
+      AppSettings.instance.sizeInputMode == SizeInputMode.keypad;
+
+  /// Wheel ka typing-box wala badal. Feet mode mein inch (0..11), inches mode
+  /// mein suter (0..7.5) — wahi range jo wheel deta ha.
+  Widget _buildSubPartField({
+    required TextEditingController controller,
+    required bool feetMode,
+    required TextStyle? numberInputStyle,
+    required VoidCallback onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      style: numberInputStyle,
+      keyboardType: TextInputType.numberWithOptions(
+        signed: false,
+        decimal: !feetMode,
+      ),
+      inputFormatters: <TextInputFormatter>[
+        if (feetMode)
+          FilteringTextInputFormatter.digitsOnly
+        else
+          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d?')),
+      ],
+      scrollPadding: EdgeInsets.zero,
+      onChanged: (_) => onChanged(),
+      decoration: InputDecoration(
+        labelText: feetMode ? 'Inch' : 'Suter',
+        hintText: feetMode ? '0-11' : '0-7.5',
+      ),
     );
   }
 
@@ -1639,6 +1739,28 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                     label: 'D52 On',
                     selected: _doorD52Enabled,
                     onTap: () => _setDoorD52Enabled(true),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (_showsBackCollarOption) ...[
+                  Text(
+                    'Back Collar',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSidebarToggleOption(
+                    label: '1.7 cm',
+                    selected: _backCollarCm != kBackCollarTwoCm,
+                    onTap: () => _setBackCollarCm(kBackCollarDefaultCm),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSidebarToggleOption(
+                    label: '2 cm',
+                    selected: _backCollarCm == kBackCollarTwoCm,
+                    onTap: () => _setBackCollarCm(kBackCollarTwoCm),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -2054,27 +2176,24 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           ),
                         ],
                       ),
-                      if (_isFabricationInchesMode)
-                        _buildFabricationInchesDimensionField(
+                      if (_usesSplitInput)
+                        _buildSplitDimensionField(
                           label: 'Height',
-                          inchFieldKey: _heightFieldKey,
-                          suterFieldKey: _heightSuterFieldKey,
-                          inchController: _heightInchController,
-                          suterController: _heightSuterController,
+                          wholeFieldKey: _heightFieldKey,
+                          wholeController: _heightInchController,
+                          wheelController: _heightSuterController,
                           errorText: _heightError,
                           numberInputStyle: numberInputStyle,
-                          inchFocusNode: _heightFocusNode,
-                          suterFocusNode: _heightSuterFocusNode,
+                          wholeFocusNode: _heightFocusNode,
                           onChanged: () {
                             setState(() {
-                              _heightController.text =
-                                  _combineInchSuterForStorage(
-                                    _heightInchController.text,
-                                    _heightSuterController.text,
-                                  );
-                              _heightError = _validateFabricationSplitDimension(
-                                inchValue: _heightInchController.text,
-                                suterValue: _heightSuterController.text,
+                              _heightController.text = _combineSplitForStorage(
+                                _heightInchController.text,
+                                _heightSuterController.text,
+                              );
+                              _heightError = _validateSplitDimension(
+                                _heightInchController.text,
+                                _heightSuterController.text,
                               );
                             });
                           },
@@ -2106,29 +2225,26 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           },
                         ),
                       const SizedBox(height: 12),
-                      if (_isFabricationInchesMode)
-                        _buildFabricationInchesDimensionField(
+                      if (_usesSplitInput)
+                        _buildSplitDimensionField(
                           label: _usesSplitWidthInputs
                               ? 'Right Width'
                               : 'Width',
-                          inchFieldKey: _widthFieldKey,
-                          suterFieldKey: _widthSuterFieldKey,
-                          inchController: _widthInchController,
-                          suterController: _widthSuterController,
+                          wholeFieldKey: _widthFieldKey,
+                          wholeController: _widthInchController,
+                          wheelController: _widthSuterController,
                           errorText: _widthError,
                           numberInputStyle: numberInputStyle,
-                          inchFocusNode: _widthFocusNode,
-                          suterFocusNode: _widthSuterFocusNode,
+                          wholeFocusNode: _widthFocusNode,
                           onChanged: () {
                             setState(() {
-                              _widthController.text =
-                                  _combineInchSuterForStorage(
-                                    _widthInchController.text,
-                                    _widthSuterController.text,
-                                  );
-                              _widthError = _validateFabricationSplitDimension(
-                                inchValue: _widthInchController.text,
-                                suterValue: _widthSuterController.text,
+                              _widthController.text = _combineSplitForStorage(
+                                _widthInchController.text,
+                                _widthSuterController.text,
+                              );
+                              _widthError = _validateSplitDimension(
+                                _widthInchController.text,
+                                _widthSuterController.text,
                               );
                             });
                           },
@@ -2161,30 +2277,26 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         ),
                       if (_usesSplitWidthInputs) ...[
                         const SizedBox(height: 12),
-                        if (_isFabricationInchesMode)
-                          _buildFabricationInchesDimensionField(
+                        if (_usesSplitInput)
+                          _buildSplitDimensionField(
                             label: 'Left Width',
-                            inchFieldKey: _leftWidthFieldKey,
-                            suterFieldKey: _leftWidthSuterFieldKey,
-                            inchController: _leftWidthInchController,
-                            suterController: _leftWidthSuterController,
+                            wholeFieldKey: _leftWidthFieldKey,
+                            wholeController: _leftWidthInchController,
+                            wheelController: _leftWidthSuterController,
                             errorText: _leftWidthError,
                             numberInputStyle: numberInputStyle,
-                            inchFocusNode: _leftWidthFocusNode,
-                            suterFocusNode: _leftWidthSuterFocusNode,
+                            wholeFocusNode: _leftWidthFocusNode,
                             onChanged: () {
                               setState(() {
                                 _leftWidthController.text =
-                                    _combineInchSuterForStorage(
+                                    _combineSplitForStorage(
                                       _leftWidthInchController.text,
                                       _leftWidthSuterController.text,
                                     );
-                                _leftWidthError =
-                                    _validateFabricationSplitDimension(
-                                      inchValue: _leftWidthInchController.text,
-                                      suterValue:
-                                          _leftWidthSuterController.text,
-                                    );
+                                _leftWidthError = _validateSplitDimension(
+                                  _leftWidthInchController.text,
+                                  _leftWidthSuterController.text,
+                                );
                               });
                             },
                           )
@@ -2317,7 +2429,7 @@ class _CollarArchBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double w = 72;
+    const double w = 96;
     const double h = 30;
     final Color color = AppTheme.deepTeal;
 
@@ -2332,11 +2444,11 @@ class _CollarArchBadge extends StatelessWidget {
             painter: _ArchPainter(color: color),
           ),
           Text(
-            '$number',
+            'Collar $number',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w800,
-              fontSize: 14,
+              fontSize: 13,
             ),
           ),
         ],
