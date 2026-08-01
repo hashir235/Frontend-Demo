@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
-import '../../../shared/widgets/bottom_action_bar.dart';
+import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../models/bill_request.dart';
@@ -47,6 +47,8 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
   final TextEditingController _laborRateController = TextEditingController();
   final TextEditingController _hardwareRateController = TextEditingController();
   final TextEditingController _glassColorController = TextEditingController();
+  final TextEditingController _aluminiumCompanyController =
+      TextEditingController();
   final TextEditingController _discountController = TextEditingController();
   final TextEditingController _extraChargesController = TextEditingController();
   final TextEditingController _advancePaidController = TextEditingController();
@@ -84,6 +86,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     _extraChargesController.text = draft.extraCharges;
     _advancePaidController.text = draft.advancePaid;
     _glassColorController.text = draft.glassColor;
+    _aluminiumCompanyController.text = draft.aluminiumCompany;
     _customerNameController.text = draft.customerName;
     _phoneController.text = draft.customerPhone;
     _addressController.text = draft.customerAddress;
@@ -95,6 +98,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     _laborRateController.dispose();
     _hardwareRateController.dispose();
     _glassColorController.dispose();
+    _aluminiumCompanyController.dispose();
     _discountController.dispose();
     _extraChargesController.dispose();
     _advancePaidController.dispose();
@@ -194,6 +198,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       extraCharges: _extraChargesController.text.trim(),
       advancePaid: _advancePaidController.text.trim(),
       glassColor: _glassColorController.text.trim(),
+      aluminiumCompany: _aluminiumCompanyController.text.trim(),
       customerName: _customerNameController.text.trim(),
       customerPhone: _phoneController.text.trim(),
       customerAddress: _addressController.text.trim(),
@@ -211,6 +216,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       gauge: widget.gaugeValue,
       aluminiumColor: widget.colorValue,
       glassColor: _glassColorController.text.trim(),
+      aluminiumCompany: _aluminiumCompanyController.text.trim(),
       projectName: widget.projectName,
       projectLocation: widget.projectLocation,
       customerName: _customerNameController.text.trim(),
@@ -231,16 +237,9 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Bill Inputs')),
-      bottomNavigationBar: BottomActionBar(
-        children: <Widget>[
-          Expanded(
-            child: FilledButton(
-              onPressed: _handleNextPressed,
-              child: const Text('Next'),
-            ),
-          ),
-        ],
+      appBar: AppBar(
+        title: const Text('Bill Inputs'),
+        actions: <Widget>[NextStepAction(onPressed: _handleNextPressed)],
       ),
       body: AppScreenShell(
         child: Form(
@@ -317,6 +316,11 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
                       controller: _glassColorController,
                       label: 'Glass Color',
                       inputFormatters: _glassColorInputFormatters,
+                    ),
+                    _buildTextField(
+                      controller: _aluminiumCompanyController,
+                      label: 'Aluminium Company',
+                      inputFormatters: _nameInputFormatters,
                     ),
                     _buildTextField(
                       controller: _customerNameController,

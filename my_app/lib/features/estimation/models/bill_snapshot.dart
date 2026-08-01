@@ -153,6 +153,7 @@ class BillSnapshot {
   final String gauge;
   final String aluminiumColor;
   final String glassColor;
+  final String aluminiumCompany;
   final BillCustomer customer;
   final BillProject project;
   final BillCompany company;
@@ -166,6 +167,7 @@ class BillSnapshot {
     required this.gauge,
     required this.aluminiumColor,
     required this.glassColor,
+    this.aluminiumCompany = '',
     required this.customer,
     required this.project,
     required this.company,
@@ -186,6 +188,7 @@ class BillSnapshot {
       gauge: json['gauge'] as String? ?? '',
       aluminiumColor: json['aluminiumColor'] as String? ?? '',
       glassColor: json['glassColor'] as String? ?? '',
+      aluminiumCompany: json['aluminiumCompany'] as String? ?? '',
       customer: BillCustomer.fromJson(
         json['customer'] as Map<String, dynamic>? ?? const <String, dynamic>{},
       ),

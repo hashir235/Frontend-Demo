@@ -10,6 +10,7 @@ class BillRequest {
   final String gauge;
   final String aluminiumColor;
   final String glassColor;
+  final String aluminiumCompany;
   final String projectName;
   final String projectLocation;
   final String customerName;
@@ -28,6 +29,7 @@ class BillRequest {
     required this.gauge,
     required this.aluminiumColor,
     required this.glassColor,
+    this.aluminiumCompany = '',
     required this.projectName,
     required this.projectLocation,
     required this.customerName,
@@ -48,6 +50,7 @@ class BillRequest {
       'gauge': gauge,
       'aluminiumColor': aluminiumColor,
       'glassColor': glassColor,
+      'aluminiumCompany': aluminiumCompany,
       'projectName': projectName,
       'projectLocation': projectLocation,
       'customerName': customerName,

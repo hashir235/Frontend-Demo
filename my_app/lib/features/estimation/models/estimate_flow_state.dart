@@ -31,6 +31,7 @@ class EstimateBillDraft {
   final String extraCharges;
   final String advancePaid;
   final String glassColor;
+  final String aluminiumCompany;
   final String customerName;
   final String customerPhone;
   final String customerAddress;
@@ -43,6 +44,7 @@ class EstimateBillDraft {
     this.extraCharges = '',
     this.advancePaid = '',
     this.glassColor = '',
+    this.aluminiumCompany = '',
     this.customerName = '',
     this.customerPhone = '',
     this.customerAddress = '',
@@ -56,6 +58,7 @@ class EstimateBillDraft {
       extraCharges.trim().isNotEmpty ||
       advancePaid.trim().isNotEmpty ||
       glassColor.trim().isNotEmpty ||
+      aluminiumCompany.trim().isNotEmpty ||
       customerName.trim().isNotEmpty ||
       customerPhone.trim().isNotEmpty ||
       customerAddress.trim().isNotEmpty;
@@ -68,6 +71,7 @@ class EstimateBillDraft {
     String? extraCharges,
     String? advancePaid,
     String? glassColor,
+    String? aluminiumCompany,
     String? customerName,
     String? customerPhone,
     String? customerAddress,
@@ -82,6 +86,7 @@ class EstimateBillDraft {
       extraCharges: extraCharges ?? this.extraCharges,
       advancePaid: advancePaid ?? this.advancePaid,
       glassColor: glassColor ?? this.glassColor,
+      aluminiumCompany: aluminiumCompany ?? this.aluminiumCompany,
       customerName: customerName ?? this.customerName,
       customerPhone: customerPhone ?? this.customerPhone,
       customerAddress: customerAddress ?? this.customerAddress,
@@ -164,6 +169,7 @@ EstimateBillDraft? estimateBillDraftFromProjectOutputs(
     extraCharges: _formatNumericValue(totals?['extraCharges']),
     advancePaid: _formatNumericValue(totals?['advancePaid']),
     glassColor: _normalizeString(billResult['glassColor']),
+    aluminiumCompany: _normalizeString(billResult['aluminiumCompany']),
     customerName: _normalizeString(customer?['name']),
     customerPhone: _normalizeString(customer?['phone']),
     customerAddress: _normalizeString(customer?['address']),

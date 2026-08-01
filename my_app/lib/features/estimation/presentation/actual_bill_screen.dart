@@ -76,6 +76,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
           extraCharges: _formatNumber(snapshot.totals.extraCharges),
           advancePaid: _formatNumber(snapshot.totals.advancePaid),
           glassColor: snapshot.glassColor,
+          aluminiumCompany: snapshot.aluminiumCompany,
           customerName: snapshot.customer.name,
           customerPhone: snapshot.customer.phone,
           customerAddress: snapshot.customer.address,
@@ -373,6 +374,10 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
             MapEntry<String, String>(
               'Glass Color',
               _displayText(snapshot.glassColor),
+            ),
+            MapEntry<String, String>(
+              'Aluminium Company',
+              _displayText(snapshot.aluminiumCompany),
             ),
             MapEntry<String, String>(
               'Customer Name',
