@@ -6,6 +6,12 @@ import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
 import '../models/section_recalculation.dart';
 
+/// Aluminium stock comes in bars, not in arbitrary lengths. Anything outside
+/// this range is almost certainly a unit mix-up -- someone typing inches or
+/// centimetres into a field that counts feet.
+const int kMinStockLengthFt = 4;
+const int kMaxStockLengthFt = 30;
+
 class SectionRecalculationScreen extends StatefulWidget {
   final CuttingReportSection section;
   final String? projectId;
@@ -444,6 +450,14 @@ class _SectionRecalculationScreenState
                 final int? parsed = int.tryParse(lengthText);
                 if (parsed == null || parsed <= 0) {
                   return 'Enter a valid ft length';
+                }
+                // A user typed 238 here once, reading the field as inches.
+                // Nothing rejected it, and the optimizer then failed with a
+                // message that gave no hint where the trouble was.
+                if (parsed < kMinStockLengthFt || parsed > kMaxStockLengthFt) {
+                  return 'Lengths are in feet '
+                      '($kMinStockLengthFt-$kMaxStockLengthFt). '
+                      'Did you mean inches?';
                 }
                 return null;
               },

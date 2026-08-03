@@ -15,6 +15,8 @@ import '../models/billing_settings.dart';
 import '../models/estimation_settings.dart';
 import '../models/fabrication_settings.dart';
 import '../../../shared/widgets/social_links_card.dart';
+import '../../estimation/presentation/section_recalculation_screen.dart'
+    show kMinStockLengthFt, kMaxStockLengthFt;
 import '../state/app_settings.dart';
 import '../state/numbering_mode.dart';
 import '../state/size_input_mode.dart';
@@ -439,6 +441,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return null;
   }
 
+  /// Puts every section back to the mill's standard bars.
+  ///
+  /// Sections whose name ends in F come in 15/17/19 ft; everything else comes
+  /// in 14/16/18. Without this, a user who mistyped a length had no way back
+  /// except remembering what had been there before.
+  void _restoreStandardSectionLengths() {
+    setState(() {
+      for (final String key in _sectionLengthControllers.keys) {
+        final bool isF = key.toUpperCase().endsWith('F');
+        _sectionLengthControllers[key]!.text = isF
+            ? '15, 17, 19'
+            : '14, 16, 18';
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Standard lengths filled in. Save to apply them.'),
+      ),
+    );
+  }
+
   String? _sectionLengthsValidator(String? value) {
     final List<int>? lengths = _parseLengthList(value);
     if (lengths == null) {
@@ -446,6 +469,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     if (lengths.isEmpty) {
       return 'Enter at least one length';
+    }
+    // These are the bars the dealer stocks, in feet. A user once saved 238
+    // here -- reading the field as inches -- and every section then failed to
+    // optimize, with an error that pointed nowhere near this screen.
+    final Iterable<int> outOfRange = lengths.where(
+      (int ft) => ft < kMinStockLengthFt || ft > kMaxStockLengthFt,
+    );
+    if (outOfRange.isNotEmpty) {
+      return 'Lengths are in feet ($kMinStockLengthFt-$kMaxStockLengthFt). '
+          'Check ${outOfRange.first} — did you mean inches?';
     }
     return null;
   }
@@ -1128,21 +1161,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     context,
                     title: 'Assigned Lengths for Section',
                     subtitle:
-                        'Use comma-separated whole numbers, for example 14, 16, 18.',
-                    children: _sortedSectionKeys()
-                        .map((String key) {
-                          final TextEditingController controller =
-                              _sectionLengthControllers[key]!;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: TextFormField(
-                              controller: controller,
-                              validator: _sectionLengthsValidator,
-                              decoration: _inputDecoration(key),
-                            ),
-                          );
-                        })
-                        .toList(growable: false),
+                        'Lengths of the bars your dealer stocks, in feet. '
+                        'Use commas, for example 14, 16, 18.',
+                    children: <Widget>[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _restoreStandardSectionLengths,
+                          icon: const Icon(Icons.restart_alt_rounded, size: 18),
+                          label: const Text('Restore standard lengths'),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      ..._sortedSectionKeys().map((String key) {
+                        final TextEditingController controller =
+                            _sectionLengthControllers[key]!;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: TextFormField(
+                            controller: controller,
+                            validator: _sectionLengthsValidator,
+                            decoration: _inputDecoration(key),
+                          ),
+                        );
+                      }),
+                    ],
                   ),
                   _buildSettingsCluster(
                     context,

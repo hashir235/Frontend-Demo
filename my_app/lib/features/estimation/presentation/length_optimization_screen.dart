@@ -6,11 +6,13 @@ import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/bottom_action_bar.dart';
 import '../../../shared/widgets/metric_card.dart';
+import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../../../shared/widgets/state_message_card.dart';
 import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
+import '../models/optimization_error_text.dart';
 import '../models/window_review_item.dart';
 import '../state/estimate_session_store.dart';
 import 'material_selection_screen.dart';
@@ -107,6 +109,38 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         .replaceFirst(RegExp(r'\.$'), '');
     return '$compact ft';
   }
+
+  /// Length figures (stock, used, total) for an inch.sutter fabrication run are
+  /// shown in the fuller "feet' inch'' sutter'''" form the workshop reads off a
+  /// tape — e.g. 3.196 ft -> 3' 2'' 3'''. Sutter snaps to the nearest half, the
+  /// tape's finest mark. (Cut sizes stay in plain inch.sutter from the engine.)
+  String _lengthInchSutterDetailed(double ft) {
+    final double safe = ft < 0 ? 0 : ft;
+    int feet = safe.floor();
+    final double remInches = (safe - feet) * 12.0;
+    int inch = remInches.floor();
+    final double sutterRaw = (remInches - inch) * 8.0;
+    double sutter = (sutterRaw * 2).round() / 2.0; // nearest half-sutter
+    if (sutter >= 8.0) {
+      sutter = 0;
+      inch += 1;
+    }
+    if (inch >= 12) {
+      inch = 0;
+      feet += 1;
+    }
+    final String su = sutter == sutter.roundToDouble()
+        ? sutter.toInt().toString()
+        : sutter.toStringAsFixed(1);
+    return "$feet' $inch'' $su'''";
+  }
+
+  /// Picks the length format for the current report. Only inch.sutter
+  /// fabrication runs get the detailed feet/inch/sutter form; estimation (feet
+  /// or cm) keeps its existing decimal-feet display untouched.
+  String _lengthDisplay(double ft) => (_report?.displayUnit == 'inch_sutter')
+      ? _lengthInchSutterDetailed(ft)
+      : _stockDisplayInFeet(ft);
 
   String _cutRowKey(
     String sectionName,
@@ -397,12 +431,10 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
       appBar: AppBar(
         title: const Text('Length Optimization'),
         actions: <Widget>[
-          IconButton(
-            tooltip: 'Next',
+          NextStepAction(
             onPressed: _canProceedToMaterialSelection
                 ? _handleNextPressed
                 : null,
-            icon: const Icon(Icons.arrow_forward_rounded),
           ),
         ],
       ),
@@ -423,7 +455,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           title: 'Optimization failed',
           message:
               '$_errorMessage\n\nTip: this usually means a window size was '
-              'entered in the wrong unit — for example inch numbers while the '
+              'entered in the wrong unit Ã¢â‚¬â€ for example inch numbers while the '
               'unit was set to Feet, which makes the pieces too large to cut. '
               'Please check your window sizes and unit, then try again.',
           iconColor: AppTheme.danger,
@@ -452,7 +484,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           icon: Icons.layers_clear_rounded,
           title: 'No optimization data',
           message: report.errors.isNotEmpty
-              ? report.errors.join('\n')
+              ? OptimizationErrorText.friendlyAll(report.errors).join('\n\n')
               : 'No optimization data.',
         ),
       );
@@ -504,8 +536,8 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           const SizedBox(height: AppTheme.space5),
           StateMessageCard(
             icon: Icons.warning_amber_rounded,
-            title: 'Warnings',
-            message: report.errors.join('\n'),
+            title: 'Check these',
+            message: OptimizationErrorText.friendlyAll(report.errors).join('\n\n'),
             iconColor: AppTheme.warning,
           ),
         ],
@@ -557,7 +589,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
   Widget _buildSummaryCard(BuildContext context, CuttingReportSummary summary) {
     final String usedLengths = summary.usedLengths.isEmpty
         ? '--'
-        : summary.usedLengths.map(_stockDisplayInFeet).join(', ');
+        : summary.usedLengths.map(_lengthDisplay).join(', ');
     return SectionSurfaceCard(
       title: 'Section Summary',
       child: Row(
@@ -573,7 +605,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           Expanded(
             child: MetricCard(
               label: 'Total Length',
-              value: _stockDisplayInFeet(summary.totalLength),
+              value: _lengthDisplay(summary.totalLength),
               icon: Icons.stacked_line_chart_rounded,
               accent: AppTheme.tealAccent,
             ),
@@ -592,7 +624,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     final String wastageText =
         'Wastage: ${group.wastageDisplay}${group.offcut ? ' | Offcut' : ''}';
     return SectionSurfaceCard(
-      title: 'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}',
+      title: 'Lengths: ${_lengthDisplay(group.stockLenFt)}',
       trailing: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppTheme.space4,
