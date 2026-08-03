@@ -52,3 +52,12 @@ flutter:
         - asset: assets/fonts/Lato-BoldItalic.ttf
           weight: 700
           style: italic
+    # Urdu. Lato has no Arabic-script glyphs at all, so the tutorial needs its
+    # own faces. Nastaliq is the proper Urdu hand and carries the headings;
+    # Naskh is squarer and stays readable at small sizes, so it takes the body.
+    - family: NotoNastaliqUrdu
+      fonts:
+        - asset: assets/fonts/NotoNastaliqUrdu-VF.ttf
+    - family: NotoNaskhArabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic-VF.ttf

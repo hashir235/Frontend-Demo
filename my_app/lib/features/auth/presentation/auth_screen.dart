@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/core/config/api_config.dart';
 import 'package:my_app/core/theme/app_theme.dart';
-import 'package:my_app/features/auth/data/auth_api_client.dart';
 import 'package:my_app/features/auth/state/auth_controller.dart';
 import 'package:my_app/shared/widgets/app_hero_header.dart';
 import 'package:my_app/shared/widgets/app_screen_shell.dart';
 import 'package:my_app/shared/widgets/section_surface_card.dart';
+import 'package:my_app/shared/widgets/social_links_card.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -15,12 +16,6 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final AuthController _authController = AuthController.instance;
-  final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-
-  bool _registerMode = false;
-  bool _passwordVisible = false;
 
   @override
   void initState() {
@@ -37,76 +32,21 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _fullNameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    FocusScope.of(context).unfocus();
-    _authController.clearError();
-
-    final String fullName = _fullNameController.text.trim();
-    final String email = _emailController.text.trim();
-    final String password = _passwordController.text;
-
-    if (_registerMode && fullName.length < 2) {
-      _showMessage('Full name must be at least 2 characters long.');
-      return;
-    }
-    if (!email.contains('@')) {
-      _showMessage('A valid email address is required.');
-      return;
-    }
-    if (password.length < 8) {
-      _showMessage('Password must be at least 8 characters long.');
-      return;
-    }
-
-    final bool ok = _registerMode
-        ? await _authController.register(
-            fullName: fullName,
-            email: email,
-            password: password,
-          )
-        : await _authController.signIn(email: email, password: password);
-
-    if (!ok && mounted && _authController.errorMessage != null) {
-      _showMessage(_authController.errorMessage!);
-    }
-  }
-
-  Future<void> _openForgotPasswordDialog() async {
-    FocusScope.of(context).unfocus();
-    final String? completedResetEmail = await Navigator.of(context)
-        .push<String>(
-          MaterialPageRoute<String>(
-            builder: (BuildContext context) => _PasswordResetScreen(
-              initialEmail: _emailController.text.trim(),
-            ),
-          ),
-        );
-
-    if (!mounted || completedResetEmail == null) {
-      return;
-    }
-
-    setState(() {
-      _registerMode = false;
-      _emailController.text = completedResetEmail;
-      _passwordController.clear();
-      _passwordVisible = false;
-    });
-    _showMessage('Password updated. Sign in with your new password.');
-  }
-
   void _showMessage(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _signInWithGoogle() async {
+    FocusScope.of(context).unfocus();
+    _authController.clearError();
+    final bool ok = await _authController.signInWithGoogle();
+    // On success the auth gate rebuilds and routes to workshop onboarding (new
+    // account) or Home. A silent cancel leaves errorMessage null.
+    if (!ok && mounted && _authController.errorMessage != null) {
+      _showMessage(_authController.errorMessage!);
+    }
   }
 
   Widget _buildHeroVisual() {
@@ -357,125 +297,43 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: AppTheme.space6),
                 SectionSurfaceCard(
-                  title: _registerMode ? 'Create your account' : 'Welcome back',
+                  title: 'Sign in to Quick AL',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        _registerMode
-                            ? 'Create a workspace account to start saving projects, generating reports, and moving from estimate to fabrication with continuity.'
-                            : 'Sign in to continue with your saved projects, reports, and production workflow.',
+                        'Sign in with your Google account to open your '
+                        'estimation workspace, fabrication flow, saved '
+                        'projects, and reports.',
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
-                      const SizedBox(height: AppTheme.space5),
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: ChoiceChip(
-                              label: const Text('Sign In'),
-                              selected: !_registerMode,
-                              onSelected: (_) {
-                                setState(() {
-                                  _registerMode = false;
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: AppTheme.space4),
-                          Expanded(
-                            child: ChoiceChip(
-                              label: const Text('Create Account'),
-                              selected: _registerMode,
-                              onSelected: (_) {
-                                setState(() {
-                                  _registerMode = true;
-                                });
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: AppTheme.space6),
-                      if (_registerMode) ...<Widget>[
-                        TextField(
-                          controller: _fullNameController,
-                          textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'Full name',
-                            hintText: 'Muhammad Ali',
-                          ),
+                      if (ApiConfig.isGoogleSignInEnabled)
+                        _GoogleSignInButton(
+                          busy: _authController.isBusy,
+                          onPressed:
+                              _authController.isBusy ? null : _signInWithGoogle,
+                        )
+                      else
+                        Text(
+                          'Sign-in is temporarily unavailable. Please update '
+                          'the app from the website and try again.',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppTheme.danger),
                         ),
-                        const SizedBox(height: AppTheme.space5),
-                      ],
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Email address',
-                          hintText: 'you@example.com',
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.space5),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: !_passwordVisible,
-                        onSubmitted: (_) => _submit(),
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          hintText: 'At least 8 characters',
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _passwordVisible = !_passwordVisible;
-                              });
-                            },
-                            icon: Icon(
-                              _passwordVisible
-                                  ? Icons.visibility_off_rounded
-                                  : Icons.visibility_rounded,
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (!_registerMode) ...<Widget>[
-                        const SizedBox(height: AppTheme.space2),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: _authController.isBusy
-                                ? null
-                                : _openForgotPasswordDialog,
-                            child: const Text('Forgot Password?'),
-                          ),
-                        ),
-                      ] else
-                        const SizedBox(height: AppTheme.space6),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _authController.isBusy ? null : _submit,
-                          icon: _authController.isBusy
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                  ),
-                                )
-                              : Icon(
-                                  _registerMode
-                                      ? Icons.person_add_alt_1_rounded
-                                      : Icons.login_rounded,
-                                ),
-                          label: Text(
-                            _registerMode ? 'Create Account' : 'Sign In',
-                          ),
+                      const SizedBox(height: AppTheme.space3),
+                      Text(
+                        'New here? Signing in with Google creates your account '
+                        'automatically — then you\'ll add your workshop details.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: AppTheme.space6),
+                const SocialLinksCard(),
                 const SizedBox(height: AppTheme.space6),
                 _buildAccessPanel(context),
                 const SizedBox(height: AppTheme.space6),
@@ -491,319 +349,128 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
-class _PasswordResetScreen extends StatefulWidget {
-  final String initialEmail;
+/// Signing in is the only thing to do on this screen, so the button carries a
+/// blue neon glow to pull the eye straight to it. The face of the button stays
+/// white with Google's own mark -- their branding rules require that -- so the
+/// glow sits outside it.
+class _GoogleSignInButton extends StatefulWidget {
+  final bool busy;
+  final VoidCallback? onPressed;
 
-  const _PasswordResetScreen({required this.initialEmail});
+  const _GoogleSignInButton({required this.busy, required this.onPressed});
 
   @override
-  State<_PasswordResetScreen> createState() => _PasswordResetScreenState();
+  State<_GoogleSignInButton> createState() => _GoogleSignInButtonState();
 }
 
-class _PasswordResetScreenState extends State<_PasswordResetScreen> {
-  final AuthController _authController = AuthController.instance;
-  late final TextEditingController _emailController = TextEditingController(
-    text: widget.initialEmail,
-  );
-  final TextEditingController _codeController = TextEditingController();
-  final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-
-  bool _codeSent = false;
-  bool _resetVisible = false;
-  bool _confirmVisible = false;
-  bool _isSubmitting = false;
-  String _sentMessage = '';
-  String _maskedEmail = '';
-  int _expiresInMinutes = 15;
+class _GoogleSignInButtonState extends State<_GoogleSignInButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _glow = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat(reverse: true);
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _codeController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
+    _glow.dispose();
     super.dispose();
-  }
-
-  void _showMessage(String message) {
-    if (!mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  Future<void> _requestCode() async {
-    final String email = _emailController.text.trim();
-    if (!email.contains('@')) {
-      _showMessage('A valid email address is required.');
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-    });
-    _authController.clearError();
-    final PasswordResetRequestResult? result = await _authController
-        .requestPasswordReset(email: email);
-    if (!mounted) {
-      return;
-    }
-
-    if (result == null) {
-      setState(() {
-        _isSubmitting = false;
-      });
-      _showMessage(
-        _authController.errorMessage ?? 'Password reset request failed.',
-      );
-      return;
-    }
-
-    setState(() {
-      _codeSent = true;
-      _isSubmitting = false;
-      _sentMessage = result.message;
-      _maskedEmail = result.maskedEmail;
-      _expiresInMinutes = result.expiresInMinutes;
-      _codeController.text = result.devResetCode ?? '';
-    });
-  }
-
-  Future<void> _submitReset() async {
-    final String email = _emailController.text.trim();
-    final String code = _codeController.text.replaceAll(RegExp(r'\D'), '');
-    final String password = _newPasswordController.text;
-    final String confirm = _confirmPasswordController.text;
-
-    if (!email.contains('@')) {
-      _showMessage('A valid email address is required.');
-      return;
-    }
-    if (code.length != 6) {
-      _showMessage('Enter the 6 digit reset code.');
-      return;
-    }
-    if (password.length < 8) {
-      _showMessage('Your new password must be at least 8 characters long.');
-      return;
-    }
-    if (password != confirm) {
-      _showMessage('The passwords do not match.');
-      return;
-    }
-
-    FocusManager.instance.primaryFocus?.unfocus();
-    setState(() {
-      _isSubmitting = true;
-    });
-    _authController.clearError();
-    final bool ok = await _authController.confirmPasswordReset(
-      email: email,
-      code: code,
-      password: password,
-    );
-    if (!mounted) {
-      return;
-    }
-
-    if (!ok) {
-      setState(() {
-        _isSubmitting = false;
-      });
-      _showMessage(_authController.errorMessage ?? 'Password reset failed.');
-      return;
-    }
-
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    if (!mounted) {
-      return;
-    }
-    Navigator.of(context).pop(email);
-  }
-
-  void _changeEmail() {
-    setState(() {
-      _codeSent = false;
-      _codeController.clear();
-      _newPasswordController.clear();
-      _confirmPasswordController.clear();
-      _sentMessage = '';
-      _maskedEmail = '';
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Someone who has asked the system to cut animations gets a steady glow
+    // instead of a pulsing one.
+    final bool animate = !MediaQuery.disableAnimationsOf(context);
     return AnimatedBuilder(
-      animation: _authController,
-      builder: (BuildContext context, _) {
-        return Scaffold(
-          extendBodyBehindAppBar: true,
-          appBar: AppBar(title: const Text('Reset Password')),
-          body: AppScreenShell(
-            child: ListView(
-              children: <Widget>[
-                AppHeroHeader(
-                  eyebrow: 'ACCOUNT RECOVERY',
-                  title: _codeSent ? 'Enter reset code' : 'Reset password',
-                  subtitle: '',
-                  trailing: Container(
-                    width: 82,
-                    height: 82,
-                    decoration: BoxDecoration(
-                      color: AppTheme.royalBlue.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                    ),
-                    child: const Icon(
-                      Icons.lock_reset_rounded,
-                      color: AppTheme.royalBlue,
-                      size: 42,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppTheme.space6),
-                SectionSurfaceCard(
-                  title: _codeSent ? 'Verify your email' : 'Find your account',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        _codeSent
-                            ? (_maskedEmail.isEmpty
-                                  ? _sentMessage
-                                  : '$_sentMessage Check $_maskedEmail.')
-                            : 'Enter the email on your Quick AL account. A one time reset code is required before the password can be changed.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      if (_codeSent) ...<Widget>[
-                        const SizedBox(height: AppTheme.space3),
-                        Text(
-                          'Code expires in $_expiresInMinutes minutes and can be used only once.',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: AppTheme.textSecondary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ],
-                      const SizedBox(height: AppTheme.space5),
-                      TextField(
-                        controller: _emailController,
-                        enabled: !_codeSent,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Registered email',
-                          hintText: 'you@example.com',
-                        ),
-                      ),
-                      if (_codeSent) ...<Widget>[
-                        const SizedBox(height: AppTheme.space4),
-                        TextField(
-                          controller: _codeController,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.next,
-                          maxLength: 6,
-                          decoration: const InputDecoration(
-                            labelText: 'Reset code',
-                            hintText: '6 digit code',
-                            counterText: '',
-                          ),
-                        ),
-                        const SizedBox(height: AppTheme.space4),
-                        TextField(
-                          controller: _newPasswordController,
-                          obscureText: !_resetVisible,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'New password',
-                            hintText: 'At least 8 characters',
-                            suffixIcon: IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _resetVisible = !_resetVisible;
-                                });
-                              },
-                              icon: Icon(
-                                _resetVisible
-                                    ? Icons.visibility_off_rounded
-                                    : Icons.visibility_rounded,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppTheme.space4),
-                        TextField(
-                          controller: _confirmPasswordController,
-                          obscureText: !_confirmVisible,
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _submitReset(),
-                          decoration: InputDecoration(
-                            labelText: 'Confirm password',
-                            hintText: 'Repeat your new password',
-                            suffixIcon: IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _confirmVisible = !_confirmVisible;
-                                });
-                              },
-                              icon: Icon(
-                                _confirmVisible
-                                    ? Icons.visibility_off_rounded
-                                    : Icons.visibility_rounded,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: AppTheme.space6),
-                      if (_codeSent)
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: _isSubmitting ? null : _changeEmail,
-                            child: const Text('Change email'),
-                          ),
-                        ),
-                      if (_codeSent) const SizedBox(height: AppTheme.space3),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _isSubmitting
-                              ? null
-                              : _codeSent
-                              ? _submitReset
-                              : _requestCode,
-                          icon: _isSubmitting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                  ),
-                                )
-                              : Icon(
-                                  _codeSent
-                                      ? Icons.lock_open_rounded
-                                      : Icons.mark_email_read_rounded,
-                                ),
-                          label: Text(
-                            _codeSent ? 'Reset password' : 'Send code',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+      animation: _glow,
+      builder: (BuildContext context, Widget? child) {
+        final double t = animate ? _glow.value : 0.5;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: const Color(0xFF4DA3FF).withValues(alpha: 0.45 + 0.30 * t),
+                blurRadius: 14 + 12 * t,
+                spreadRadius: 0.5 + 1.5 * t,
+              ),
+              BoxShadow(
+                color: const Color(0xFF2E8BFF).withValues(alpha: 0.28 + 0.22 * t),
+                blurRadius: 34 + 22 * t,
+                spreadRadius: 1 + 3 * t,
+              ),
+            ],
           ),
+          child: child,
         );
       },
+      child: _buildButton(context),
+    );
+  }
+
+  Widget _buildButton(BuildContext context) {
+    final bool busy = widget.busy;
+    final VoidCallback? onPressed = widget.onPressed;
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFF3C4043),
+          side: const BorderSide(color: Color(0xFF9CC9FF), width: 1.4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            if (busy)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2.2),
+              )
+            else
+              const _GoogleGlyph(),
+            const SizedBox(width: 12),
+            const Text(
+              'Continue with Google',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A lightweight stand-in for the official multi-colour Google "G". Drop the
+/// official logo asset in here later to fully match Google's branding.
+class _GoogleGlyph extends StatelessWidget {
+  const _GoogleGlyph();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 22,
+      height: 22,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Text(
+        'G',
+        style: TextStyle(
+          fontWeight: FontWeight.w900,
+          fontSize: 18,
+          height: 1.0,
+          color: Color(0xFF4285F4),
+        ),
+      ),
     );
   }
 }
