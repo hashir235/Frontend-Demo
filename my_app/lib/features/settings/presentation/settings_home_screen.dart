@@ -21,6 +21,7 @@ import '../state/app_settings.dart';
 import '../state/numbering_mode.dart';
 import '../state/size_input_mode.dart';
 import 'legal_document_screen.dart';
+import 'rates_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -439,6 +440,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return 'Enter a valid whole number';
     }
     return null;
+  }
+
+  /// Rates get their own full screen -- the table is far too wide to sit
+  /// inside a settings card -- so this card is the door to it.
+  Widget _buildRatesCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.price_change_rounded,
+      title: 'Rates',
+      subtitle:
+          'The rate for every section, by gauge and colour. Change any of '
+          'them to price with your own.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (BuildContext _) => const RatesScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.table_chart_rounded),
+            label: const Text('Open rate list'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Puts every section back to the mill's standard bars.
@@ -1675,6 +1705,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'Window Input',
       subtitle: 'Numbering aur size entry ka tareeqa.',
       builder: _buildWindowInputCard,
+    ),
+    _SettingsSection(
+      id: 'rates',
+      icon: Icons.price_change_rounded,
+      title: 'Rates',
+      subtitle: 'Section ke rates dekhein aur apne mutabiq badlein.',
+      builder: _buildRatesCard,
     ),
     _SettingsSection(
       id: 'company',
