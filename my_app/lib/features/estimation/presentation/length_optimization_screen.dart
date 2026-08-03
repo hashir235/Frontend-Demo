@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_overlay.dart';
+import '../../tutorial/tutorial_step.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/bottom_action_bar.dart';
@@ -439,7 +441,10 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         ],
       ),
       bottomNavigationBar: _buildBottomActions(context),
-      body: AppScreenShell(child: _buildBody(context)),
+      body: TutorialOverlay(
+        screen: TutorialScreen.lengthOptimization,
+        child: AppScreenShell(child: _buildBody(context)),
+      ),
     );
   }
 

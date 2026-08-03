@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_overlay.dart';
+import '../../tutorial/tutorial_step.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/next_step_action.dart';
@@ -241,7 +243,9 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
         title: const Text('Bill Inputs'),
         actions: <Widget>[NextStepAction(onPressed: _handleNextPressed)],
       ),
-      body: AppScreenShell(
+      body: TutorialOverlay(
+        screen: TutorialScreen.billInputs,
+        child: AppScreenShell(
         child: Form(
           key: _formKey,
           child: ListView(
@@ -346,6 +350,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

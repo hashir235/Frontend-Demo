@@ -11,6 +11,10 @@ import '../../models/window_review_item.dart';
 import '../../models/window_type.dart';
 import '../../state/estimate_session_store.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../tutorial/tutorial_controller.dart';
+import '../../../tutorial/tutorial_overlay.dart';
+import '../../../tutorial/tutorial_step.dart';
+import '../../../tutorial/tutorial_target.dart';
 import '../../../../shared/widgets/suter_wheel.dart';
 import '../../../settings/state/app_settings.dart';
 import '../../../settings/state/numbering_mode.dart';
@@ -712,6 +716,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }
 
   void _openSettings() {
+    // Opening the sidebar is itself a step of the tour.
+    TutorialController.instance.advanceAfterTap();
     _scaffoldKey.currentState?.openEndDrawer();
   }
 
@@ -2064,7 +2070,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           ),
         ),
       ),
-      body: Container(
+      body: TutorialOverlay(
+        screen: TutorialScreen.windowInput,
+        child: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [AppTheme.mist, AppTheme.ice],
@@ -2120,11 +2128,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      key: const Key('open_settings_drawer_button'),
-                      onPressed: _openSettings,
-                      icon: const Icon(Icons.more_horiz_rounded),
-                      color: AppTheme.deepTeal,
+                    TutorialTarget(
+                      id: 'input.threeDots',
+                      child: IconButton(
+                        key: const Key('open_settings_drawer_button'),
+                        onPressed: _openSettings,
+                        icon: const Icon(Icons.more_horiz_rounded),
+                        color: AppTheme.deepTeal,
+                      ),
                     ),
                   ],
                 ),
@@ -2262,7 +2273,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       // The unit used to live only behind the three dots, so
                       // people typed a size without being sure whether it was
                       // feet, inches or cm. It sits with the size fields now.
-                      _buildInlineUnitSelector(context),
+                      TutorialTarget(
+                        id: 'input.unit',
+                        child: _buildInlineUnitSelector(context),
+                      ),
                       const SizedBox(height: 12),
                       if (_usesSplitInput)
                         _buildSplitDimensionField(
@@ -2442,7 +2456,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         ),
                       ],
                       const SizedBox(height: 12),
-                      TextField(
+                      TutorialTarget(
+                        id: 'input.description',
+                        child: TextField(
                         key: _descriptionFieldKey,
                         controller: _descriptionController,
                         focusNode: _descriptionFocusNode,
@@ -2458,6 +2474,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           hintText: 'e.g. bath room window',
                           hintStyle: hintStyle,
                         ),
+                      ),
                       ),
                       if (!widget.isEditMode) ...[
                         const SizedBox(height: 12),
@@ -2505,6 +2522,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_controller.dart';
+import '../../tutorial/tutorial_overlay.dart';
+import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
@@ -167,7 +171,9 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
         ),
       ),
-      body: AppScreenShell(
+      body: TutorialOverlay(
+        screen: TutorialScreen.windowLibrary,
+        child: AppScreenShell(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
             final bool useMobileCarousel = constraints.maxWidth < 560;
@@ -245,17 +251,26 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
                           itemBuilder: (BuildContext context, int index) {
                             final WindowType node = widget.nodes[index];
                             final bool isSelected = index == _selectedIndex;
-                            return WindowNavigationCard(
-                              node: node,
-                              isFocused: isSelected,
-                              isSelected: isSelected,
-                              parallaxShift: 0,
-                              onTap: () {
-                                setState(() {
-                                  _selectedIndex = index;
-                                });
-                                _onNodeTap(node);
-                              },
+                            // The tour points at the first card -- Sliding
+                            // Window at the top of the catalogue -- as its
+                            // worked example.
+                            return TutorialTarget(
+                              id: index == 0
+                                  ? 'library.sliding'
+                                  : 'library.card.$index',
+                              child: WindowNavigationCard(
+                                node: node,
+                                isFocused: isSelected,
+                                isSelected: isSelected,
+                                parallaxShift: 0,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedIndex = index;
+                                  });
+                                  TutorialController.instance.advanceAfterTap();
+                                  _onNodeTap(node);
+                                },
+                              ),
                             );
                           },
                         ),
@@ -264,6 +279,7 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
             );
           },
         ),
+      ),
       ),
     );
   }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_overlay.dart';
+import '../../tutorial/tutorial_step.dart';
 import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
 import '../models/section_recalculation.dart';
@@ -235,7 +237,9 @@ class _SectionRecalculationScreenState
             ),
           ),
         ),
-        body: Container(
+        body: TutorialOverlay(
+          screen: TutorialScreen.sectionRecalculation,
+          child: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: <Color>[AppTheme.mist, AppTheme.ice],
@@ -282,6 +286,7 @@ class _SectionRecalculationScreenState
             ),
           ),
         ),
+      ),
       ),
     );
   }

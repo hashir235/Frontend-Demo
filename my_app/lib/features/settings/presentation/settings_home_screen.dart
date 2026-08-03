@@ -17,6 +17,8 @@ import '../models/fabrication_settings.dart';
 import '../../../shared/widgets/social_links_card.dart';
 import '../../estimation/presentation/section_recalculation_screen.dart'
     show kMinStockLengthFt, kMaxStockLengthFt;
+import '../../tutorial/tutorial_controller.dart';
+import '../../tutorial/urdu_text.dart';
 import '../state/app_settings.dart';
 import '../state/numbering_mode.dart';
 import '../state/size_input_mode.dart';
@@ -440,6 +442,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return 'Enter a valid whole number';
     }
     return null;
+  }
+
+  /// Starting the tour pops the user back to Home, because that is where it
+  /// begins and where its first step points.
+  Widget _buildTutorialCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.play_circle_outline_rounded,
+      title: 'App kaise istemal karein',
+      subtitle:
+          'Poora Estimation ka safar — window ke naap se le kar tayyar bill '
+          'tak — asli screens par, Urdu mein.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          FilledButton.icon(
+            onPressed: () {
+              TutorialController.instance.start();
+              Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
+            },
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: Text(
+              'رہنمائی شروع کریں',
+              style: UrduText.body(color: Colors.white, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Rates get their own full screen -- the table is far too wide to sit
@@ -1705,6 +1736,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'Window Input',
       subtitle: 'Numbering aur size entry ka tareeqa.',
       builder: _buildWindowInputCard,
+    ),
+    _SettingsSection(
+      id: 'tutorial',
+      icon: Icons.play_circle_outline_rounded,
+      title: 'App kaise istemal karein',
+      subtitle: 'Qadam ba qadam rehnumai — Urdu mein.',
+      builder: _buildTutorialCard,
     ),
     _SettingsSection(
       id: 'rates',

@@ -5,9 +5,9 @@ import 'core/theme/app_theme.dart';
 import 'features/app_update/app_update_service.dart';
 import 'features/app_update/presentation/force_update_screen.dart';
 import 'features/auth/presentation/auth_screen.dart';
+import 'features/auth/presentation/workshop_onboarding_screen.dart';
 import 'features/auth/state/auth_controller.dart';
 import 'features/home/presentation/home_screen.dart';
-import 'features/subscription/presentation/subscription_gate_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -95,17 +95,22 @@ class _AuthGate extends StatelessWidget {
           key: ValueKey<String>(
             !authController.isInitialized
                 ? 'launching'
-                : authController.isAuthenticated
-                ? 'authenticated'
-                : 'guest',
+                : !authController.isAuthenticated
+                ? 'guest'
+                : authController.needsWorkshopSetup
+                ? 'onboarding'
+                : 'authenticated',
           ),
           child: !authController.isInitialized
               ? const _AuthBootstrapScreen()
-              : authController.isAuthenticated
-              ? SubscriptionGateScreen(
-                  child: HomeScreen(authClient: AuthHttpClient()),
-                )
-              : const AuthScreen(),
+              : !authController.isAuthenticated
+              ? const AuthScreen()
+              : authController.needsWorkshopSetup
+              ? const WorkshopOnboardingScreen()
+              // Home and Settings stay reachable without a subscription; the
+              // paywall now guards the Estimation and Fabrication modules
+              // individually (see HomeScreen).
+              : HomeScreen(authClient: AuthHttpClient()),
         );
       },
     );

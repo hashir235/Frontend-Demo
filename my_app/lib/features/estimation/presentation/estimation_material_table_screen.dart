@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_overlay.dart';
+import '../../tutorial/tutorial_step.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/bottom_action_bar.dart';
 import '../../../shared/widgets/metric_card.dart';
+import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../../../shared/widgets/state_message_card.dart';
@@ -232,7 +235,9 @@ class _EstimationMaterialTableScreenState
     }
     final bool showGlassReport =
         widget.requestContext.toLowerCase() == 'fabrication';
-    if (!widget.showPdfActions && !widget.showNextToBill && !showGlassReport) {
+    // "Next" now lives in the AppBar (NextStepAction), so the bottom bar only
+    // exists for the PDF/glass actions.
+    if (!widget.showPdfActions && !showGlassReport) {
       return null;
     }
 
@@ -253,13 +258,6 @@ class _EstimationMaterialTableScreenState
             onPressed: _openGlassReport,
             icon: const Icon(Icons.table_view_rounded),
             label: const Text('Glass Report'),
-          ),
-        if ((widget.showPdfActions || showGlassReport) && widget.showNextToBill)
-          const SizedBox(width: AppTheme.space4),
-        if (widget.showNextToBill)
-          FilledButton(
-            onPressed: _handleNextPressed,
-            child: const Text('Next'),
           ),
         if (widget.showPdfActions) ...<Widget>[
           const SizedBox(width: AppTheme.space4),
@@ -311,9 +309,24 @@ class _EstimationMaterialTableScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.screenTitle)),
+      appBar: AppBar(
+        title: Text(widget.screenTitle),
+        actions: <Widget>[
+          // Fabrication reuses this screen with no bill step after it, so the
+          // action only appears when there is somewhere to go next.
+          if (widget.showNextToBill)
+            NextStepAction(
+              onPressed: _isLoading || _errorMessage != null || _table == null
+                  ? null
+                  : _handleNextPressed,
+            ),
+        ],
+      ),
       bottomNavigationBar: _buildBottomActions(),
-      body: AppScreenShell(child: _buildBody(context)),
+      body: TutorialOverlay(
+        screen: TutorialScreen.materialTable,
+        child: AppScreenShell(child: _buildBody(context)),
+      ),
     );
   }
 

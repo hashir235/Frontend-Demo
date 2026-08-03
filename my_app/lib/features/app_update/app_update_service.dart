@@ -120,12 +120,33 @@ class AppUpdateService {
   /// Returns one of: `install_started`, `permission_required`, or a thrown
   /// [PlatformException] on failure. `permission_required` means the user was
   /// sent to enable "install unknown apps" and should retry afterwards.
-  Future<String> downloadAndInstall(String apkUrl) async {
-    final String? outcome = await _channel.invokeMethod<String>(
-      'downloadAndInstallApk',
-      <String, Object?>{'url': apkUrl},
-    );
-    return outcome ?? 'unknown';
+  ///
+  /// [onProgress] receives 0..100 download percentages while the (large) APK
+  /// downloads, so the UI can show a live progress bar instead of appearing to
+  /// hang.
+  Future<String> downloadAndInstall(
+    String apkUrl, {
+    void Function(int percent)? onProgress,
+  }) async {
+    if (onProgress != null) {
+      _channel.setMethodCallHandler((MethodCall call) async {
+        if (call.method == 'downloadProgress') {
+          final int percent = (call.arguments as num?)?.round() ?? 0;
+          onProgress(percent.clamp(0, 100));
+        }
+        return null;
+      });
+    }
+    try {
+      final String? outcome = await _channel.invokeMethod<String>(
+        'downloadAndInstallApk',
+        <String, Object?>{'url': apkUrl},
+      );
+      return outcome ?? 'unknown';
+    } finally {
+      // Stop listening so a later call (or another instance) starts clean.
+      _channel.setMethodCallHandler(null);
+    }
   }
 
   int _toInt(dynamic value) {

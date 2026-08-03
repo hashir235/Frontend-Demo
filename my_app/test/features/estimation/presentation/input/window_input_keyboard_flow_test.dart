@@ -162,6 +162,10 @@ void main() {
 
       await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
       await tester.pumpAndSettle();
+      // The sidebar scrolls now that it carries more options, so the unit
+      // buttons can sit below the fold on a small screen.
+      await tester.ensureVisible(find.byKey(const Key('unit_inches_radio')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('unit_inches_radio')));
       await tester.pumpAndSettle();
 

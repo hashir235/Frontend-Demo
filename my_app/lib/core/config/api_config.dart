@@ -10,6 +10,17 @@ class ApiConfig {
     defaultValue: 'google_play',
   );
 
+  /// The Google Cloud **Web** OAuth client id (the "server client id"). It is
+  /// passed to the google_sign_in plugin as `serverClientId` so the returned ID
+  /// token is minted for our backend, which verifies it against this same id.
+  /// Not a secret — it ships inside every app. Supplied at build time via
+  /// `--dart-define=QUICKAL_GOOGLE_WEB_CLIENT_ID=...`; empty disables the button.
+  static const String googleWebClientId = String.fromEnvironment(
+    'QUICKAL_GOOGLE_WEB_CLIENT_ID',
+  );
+
+  static bool get isGoogleSignInEnabled => googleWebClientId.trim().isNotEmpty;
+
   static bool get isDirectWebsiteBuild =>
       subscriptionChannel == 'direct_website';
 

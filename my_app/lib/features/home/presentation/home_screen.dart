@@ -43,6 +43,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     _notificationsController.load();
     _loadVersion();
+    _offerTutorialOnFirstRun();
+  }
+
+  /// A first-time user lands here straight after workshop setup, so the tour
+  /// starts itself once and never again -- skipping counts as having seen it.
+  Future<void> _offerTutorialOnFirstRun() async {
+    if (await TutorialController.instance.hasSeen()) return;
+    if (!mounted) return;
+    // Let Home finish laying out, otherwise the first step has nothing to
+    // point at yet.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) TutorialController.instance.start();
+    });
   }
 
   Future<void> _loadVersion() async {

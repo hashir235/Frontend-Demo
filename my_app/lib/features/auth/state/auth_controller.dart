@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/auth_http_client.dart';
 import '../data/auth_api_client.dart';
 import '../data/auth_session_store.dart';
+import '../data/google_sign_in_service.dart';
 import '../models/auth_session_result.dart';
 import '../models/auth_user.dart';
 import 'auth_session.dart';
@@ -21,15 +22,22 @@ class AuthController extends ChangeNotifier {
 
   final AuthApiClient _apiClient = AuthApiClient();
   final AuthSessionStore _sessionStore = AuthSessionStore();
+  final GoogleSignInService _googleSignIn = GoogleSignInService();
 
   bool _busy = false;
   bool _initialized = false;
+  bool _needsWorkshopSetup = false;
   String? _errorMessage;
   Future<void>? _restoreFuture;
 
   bool get isBusy => _busy;
   bool get isInitialized => _initialized;
   bool get isAuthenticated => AuthSession.isAuthenticated;
+
+  /// True while the signed-in account still has to enter its workshop details.
+  /// The app gate shows the workshop onboarding screen instead of Home until
+  /// the user saves them (or skips for the session).
+  bool get needsWorkshopSetup => _needsWorkshopSetup && isAuthenticated;
   String? get errorMessage => _errorMessage;
   AuthUser? get currentUser => AuthSession.user;
 
@@ -47,14 +55,90 @@ class AuthController extends ChangeNotifier {
     required String fullName,
     required String email,
     required String password,
+    String workshopName = '',
+    String workshopPhone = '',
+    String workshopAddress = '',
   }) {
     return _runSessionAction(
       () => _apiClient.register(
         fullName: fullName,
         email: email,
         password: password,
+        workshopName: workshopName,
+        workshopPhone: workshopPhone,
+        workshopAddress: workshopAddress,
       ),
     );
+  }
+
+  /// Runs the Google account picker, exchanges the ID token for an app session,
+  /// and signs the user in. Returns true on success. A user who dismisses the
+  /// Google chooser gets `false` with no error message (a silent cancel).
+  Future<bool> signInWithGoogle() async {
+    _busy = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final GoogleSignInResult google = await _googleSignIn.signIn();
+    if (google.outcome == GoogleSignInOutcome.cancelled) {
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
+    if (google.outcome == GoogleSignInOutcome.failed) {
+      _errorMessage = google.errorMessage ?? 'Google sign-in failed.';
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      final AuthSessionResult session = await _apiClient.signInWithGoogle(
+        idToken: google.idToken!,
+      );
+      AuthSession.apply(session);
+      _needsWorkshopSetup = session.needsWorkshopSetup;
+      await _persistSession(session);
+      _busy = false;
+      notifyListeners();
+      return true;
+    } on AuthApiException catch (error) {
+      _errorMessage = error.message;
+      _busy = false;
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _errorMessage = 'Google sign-in failed unexpectedly.';
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Called when the user saves their workshop details from the onboarding
+  /// screen. Clears the flag and re-persists the session so the app never shows
+  /// onboarding again for this account, even offline.
+  Future<void> markWorkshopSetupComplete() async {
+    if (!_needsWorkshopSetup) {
+      return;
+    }
+    _needsWorkshopSetup = false;
+    final AuthSessionResult? stored = await _sessionStore.restore();
+    if (stored != null) {
+      await _persistSession(stored.copyWith(needsWorkshopSetup: false));
+    }
+    notifyListeners();
+  }
+
+  /// Dismisses the workshop onboarding for this session only (the "Skip for now"
+  /// action). The stored flag is left as-is, so the prompt returns on the next
+  /// launch until the details are actually saved.
+  void skipWorkshopSetupForNow() {
+    if (!_needsWorkshopSetup) {
+      return;
+    }
+    _needsWorkshopSetup = false;
+    notifyListeners();
   }
 
   Future<PasswordResetRequestResult?> requestPasswordReset({
@@ -125,8 +209,10 @@ class AuthController extends ChangeNotifier {
       // Ignore logout failures and clear local state regardless.
     }
 
+    await _googleSignIn.signOut();
     AuthSession.clear();
     await _sessionStore.clear();
+    _needsWorkshopSetup = false;
     _busy = false;
     notifyListeners();
   }
@@ -149,6 +235,8 @@ class AuthController extends ChangeNotifier {
     }
     AuthSession.clear();
     unawaited(_sessionStore.clear());
+    unawaited(_googleSignIn.signOut());
+    _needsWorkshopSetup = false;
     _busy = false;
     _errorMessage =
         'You were signed out because your account was opened on another device.';
@@ -165,6 +253,7 @@ class AuthController extends ChangeNotifier {
     try {
       final AuthSessionResult session = await action();
       AuthSession.apply(session);
+      _needsWorkshopSetup = session.needsWorkshopSetup;
       await _persistSession(session);
       _busy = false;
       notifyListeners();
@@ -214,11 +303,14 @@ class AuthController extends ChangeNotifier {
 
       if (activeSession == null) {
         AuthSession.clear();
+        _needsWorkshopSetup = false;
       } else {
         AuthSession.apply(activeSession);
+        _needsWorkshopSetup = activeSession.needsWorkshopSetup;
       }
     } catch (_) {
       AuthSession.clear();
+      _needsWorkshopSetup = false;
     }
 
     _initialized = true;

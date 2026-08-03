@@ -177,6 +177,10 @@ class SubscriptionCatalog {
   final String channel;
   final DirectPaymentInfo? directPayment;
 
+  /// Whether manual bank-transfer is offered to users. Off by default — the
+  /// owner turns it on from the admin panel; until then users only see Safepay.
+  final bool manualPaymentEnabled;
+
   const SubscriptionCatalog({
     required this.plans,
     required this.googlePlayConfigured,
@@ -185,6 +189,7 @@ class SubscriptionCatalog {
     required this.trialDays,
     required this.channel,
     this.directPayment,
+    this.manualPaymentEnabled = false,
   });
 
   factory SubscriptionCatalog.fromJson(Map<String, dynamic> json) {
@@ -210,6 +215,7 @@ class SubscriptionCatalog {
               (json['directPayment'] as Map).cast<String, dynamic>(),
             )
           : null,
+      manualPaymentEnabled: (json['manualPaymentEnabled'] as bool?) ?? false,
     );
   }
 }
@@ -227,6 +233,59 @@ class DirectPaymentInfo {
     return DirectPaymentInfo(
       instructions: (json['instructions'] as String?) ?? '',
       supportWhatsApp: (json['supportWhatsApp'] as String?) ?? '',
+    );
+  }
+}
+
+/// Short human date for plan/trial expiry lines, e.g. "12 Jan 2027".
+String formatQuickAlDate(DateTime? value) {
+  if (value == null) {
+    return '--';
+  }
+  const List<String> months = <String>[
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final DateTime local = value.toLocal();
+  return '${local.day} ${months[local.month - 1]} ${local.year}';
+}
+
+/// A Safepay hosted-checkout session opened for one plan. The app only hands
+/// [checkoutUrl] to a WebView — it never touches card details and never decides
+/// entitlement itself. The subscription turns on when Safepay's signed webhook
+/// reaches our server, so after checkout the app just re-reads
+/// /api/subscription/status.
+class SafepayCheckout {
+  final String checkoutUrl;
+  final String orderId;
+  final String planId;
+  final int pricePkr;
+
+  const SafepayCheckout({
+    required this.checkoutUrl,
+    required this.orderId,
+    required this.planId,
+    required this.pricePkr,
+  });
+
+  factory SafepayCheckout.fromJson(Map<String, dynamic> json) {
+    final Map<String, dynamic> plan =
+        (json['plan'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+    return SafepayCheckout(
+      checkoutUrl: (json['checkoutUrl'] as String?) ?? '',
+      orderId: (json['orderId'] as String?) ?? '',
+      planId: (plan['id'] as String?) ?? '',
+      pricePkr: (plan['pricePkr'] as num?)?.round() ?? 0,
     );
   }
 }

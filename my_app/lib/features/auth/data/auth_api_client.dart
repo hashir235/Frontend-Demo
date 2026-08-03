@@ -50,10 +50,16 @@ class AuthApiClient {
     : _httpClient = httpClient ?? http.Client(),
       _baseUrl = baseUrl ?? ApiConfig.baseUrl;
 
+  /// Registers an account. The workshop fields are optional and seed the user's
+  /// billing settings, so invoices and PDFs carry the company identity from the
+  /// first project instead of printing "--" until Settings is opened.
   Future<AuthSessionResult> register({
     required String fullName,
     required String email,
     required String password,
+    String workshopName = '',
+    String workshopPhone = '',
+    String workshopAddress = '',
   }) async {
     final Map<String, dynamic> payload = await _postJson(
       Uri.parse('$_baseUrl/api/auth/register'),
@@ -61,6 +67,10 @@ class AuthApiClient {
         'fullName': fullName,
         'email': email,
         'password': password,
+        if (workshopName.trim().isNotEmpty) 'workshopName': workshopName.trim(),
+        if (workshopPhone.trim().isNotEmpty) 'workshopPhone': workshopPhone.trim(),
+        if (workshopAddress.trim().isNotEmpty)
+          'workshopAddress': workshopAddress.trim(),
       },
       failureMessage: 'Registration failed.',
       unreachableMessage: 'Unable to reach authentication service.',
@@ -76,6 +86,19 @@ class AuthApiClient {
       Uri.parse('$_baseUrl/api/auth/login'),
       <String, Object?>{'email': email, 'password': password},
       failureMessage: 'Login failed.',
+      unreachableMessage: 'Unable to reach authentication service.',
+    );
+    return AuthSessionResult.fromJson(payload);
+  }
+
+  /// Exchanges a verified Google ID token for an app session. The backend
+  /// verifies the token, finds-or-creates the account, and returns
+  /// `needsWorkshopSetup` so a first-time Google user is sent to onboarding.
+  Future<AuthSessionResult> signInWithGoogle({required String idToken}) async {
+    final Map<String, dynamic> payload = await _postJson(
+      Uri.parse('$_baseUrl/api/auth/google'),
+      <String, Object?>{'idToken': idToken},
+      failureMessage: 'Google sign-in failed.',
       unreachableMessage: 'Unable to reach authentication service.',
     );
     return AuthSessionResult.fromJson(payload);
@@ -139,6 +162,7 @@ class AuthApiClient {
       ),
       token: sessionToken,
       expiresAt: DateTime.tryParse(payload['expiresAt'] as String? ?? ''),
+      needsWorkshopSetup: payload['needsWorkshopSetup'] == true,
     );
   }
 

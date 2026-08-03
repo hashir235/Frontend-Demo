@@ -43,6 +43,17 @@ class SubscriptionApiClient {
     return SubscriptionStatus.fromJson(payload);
   }
 
+  /// Opens a Safepay hosted-checkout session for [planId] and returns the URL
+  /// to load. Website/direct builds only — Play builds use Google Play Billing.
+  Future<SafepayCheckout> createSafepayCheckout({required String planId}) async {
+    final Map<String, dynamic> payload = await _postJson(
+      Uri.parse('$_baseUrl/api/subscription/safepay/checkout'),
+      <String, Object?>{'planId': planId},
+      failureMessage: 'Could not start the online payment.',
+    );
+    return SafepayCheckout.fromJson(payload);
+  }
+
   Future<({DirectPaymentRequest request, SubscriptionStatus status})>
   submitDirectPaymentRequest({
     required String planId,

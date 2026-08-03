@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/suter_wheel.dart';
 import '../models/glass_report.dart';
 
 /// Modal editor used for both adding a new glass row and editing an existing
 /// one. Glass size (width + height) is required; every other field is optional.
 /// Size uses the shop convention: whole inches + sutter eighths (half-sutter
 /// allowed), matching how the rest of the system reads glass dimensions.
+/// The sutter part is picked on a tape-style [SuterWheel] instead of a
+/// dropdown, so it feels like reading a real inchi tape.
 ///
 /// Returns the built [GlassReportRow], or `null` if the user cancels.
 class GlassRowEditorSheet extends StatefulWidget {
@@ -56,14 +59,10 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
   late final TextEditingController _widthInchController;
   late final TextEditingController _heightInchController;
 
-  // Sutter is chosen from a fixed 0..7.5 (half-step) list to avoid invalid
-  // entries — this keeps the value compatible with the shop convention.
+  // Sutter comes from the tape wheel, which only produces 0..7.5 in half
+  // steps — this keeps the value compatible with the shop convention.
   late double _widthSutter;
   late double _heightSutter;
-
-  static const List<double> _sutterOptions = <double>[
-    0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5,
-  ];
 
   bool get _isEditing => widget.existingRow != null;
 
@@ -92,12 +91,8 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
     _heightInchController = TextEditingController(
       text: height.inches > 0 ? height.inches.toString() : '',
     );
-    _widthSutter = _nearestSutterOption(width.sutter);
-    _heightSutter = _nearestSutterOption(height.sutter);
-  }
-
-  double _nearestSutterOption(double value) {
-    return _sutterOptions.contains(value) ? value : 0;
+    _widthSutter = SuterWheel.snap(width.sutter);
+    _heightSutter = SuterWheel.snap(height.sutter);
   }
 
   @override
@@ -229,7 +224,6 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
                   label: 'Width',
                   inchController: _widthInchController,
                   sutterValue: _widthSutter,
-                  sutterOptions: _sutterOptions,
                   onSutterChanged: (double value) {
                     setState(() => _widthSutter = value);
                   },
@@ -240,7 +234,6 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
                   label: 'Height',
                   inchController: _heightInchController,
                   sutterValue: _heightSutter,
-                  sutterOptions: _sutterOptions,
                   onSutterChanged: (double value) {
                     setState(() => _heightSutter = value);
                   },
@@ -347,12 +340,12 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
   }
 }
 
-/// One labelled width/height input: an inch text field plus a sutter dropdown.
+/// One labelled width/height input: an inch text field plus the tape-style
+/// sutter wheel (scroll left/right to pick 0..7.5 in half steps).
 class _DimensionRow extends StatelessWidget {
   final String label;
   final TextEditingController inchController;
   final double sutterValue;
-  final List<double> sutterOptions;
   final ValueChanged<double> onSutterChanged;
   final FormFieldValidator<String> inchValidator;
 
@@ -360,16 +353,9 @@ class _DimensionRow extends StatelessWidget {
     required this.label,
     required this.inchController,
     required this.sutterValue,
-    required this.sutterOptions,
     required this.onSutterChanged,
     required this.inchValidator,
   });
-
-  String _sutterLabel(double value) {
-    return value == value.roundToDouble()
-        ? value.toInt().toString()
-        : value.toStringAsFixed(1);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -407,27 +393,10 @@ class _DimensionRow extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: DropdownButtonFormField<double>(
-            initialValue: sutterValue,
-            isDense: true,
-            decoration: const InputDecoration(
-              labelText: 'Sutter',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-            items: sutterOptions
-                .map(
-                  (double value) => DropdownMenuItem<double>(
-                    value: value,
-                    child: Text(_sutterLabel(value)),
-                  ),
-                )
-                .toList(growable: false),
-            onChanged: (double? value) {
-              if (value != null) {
-                onSutterChanged(value);
-              }
-            },
+          child: SuterWheel(
+            value: sutterValue,
+            onChanged: onSutterChanged,
+            label: 'Sutter',
           ),
         ),
       ],

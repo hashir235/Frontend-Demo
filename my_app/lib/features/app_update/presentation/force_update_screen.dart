@@ -6,7 +6,7 @@ import '../app_update_service.dart';
 /// Full-screen, non-dismissible "update required" gate shown when the installed
 /// direct build is below the minimum supported version. The user cannot reach
 /// the app until they update.
-class ForceUpdateScreen extends StatefulWidget {
+class ForceUpdateScreen extends StatelessWidget {
   final AppUpdateStatus status;
   final AppUpdateService service;
 
@@ -15,43 +15,6 @@ class ForceUpdateScreen extends StatefulWidget {
     required this.status,
     required this.service,
   });
-
-  @override
-  State<ForceUpdateScreen> createState() => _ForceUpdateScreenState();
-}
-
-class _ForceUpdateScreenState extends State<ForceUpdateScreen> {
-  bool _busy = false;
-  String? _hint;
-
-  Future<void> _update() async {
-    setState(() {
-      _busy = true;
-      _hint = null;
-    });
-    try {
-      final String outcome =
-          await widget.service.downloadAndInstall(widget.status.apkUrl);
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        if (outcome == 'permission_required') {
-          _hint =
-              'Please allow "Install unknown apps" for Quick AL, then tap '
-              'Update again.';
-        } else {
-          // install_started — the system installer is now open.
-          _hint = 'Follow the installer to finish updating.';
-        }
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _hint = 'Update could not start. Check your connection and try again.';
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,8 +55,8 @@ class _ForceUpdateScreenState extends State<ForceUpdateScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      widget.status.message.isNotEmpty
-                          ? widget.status.message
+                      status.message.isNotEmpty
+                          ? status.message
                           : 'A new version of Quick AL is required to continue.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -101,10 +64,10 @@ class _ForceUpdateScreenState extends State<ForceUpdateScreen> {
                         height: 1.5,
                       ),
                     ),
-                    if (widget.status.latestVersionName.isNotEmpty) ...<Widget>[
+                    if (status.latestVersionName.isNotEmpty) ...<Widget>[
                       const SizedBox(height: 8),
                       Text(
-                        'Latest version: ${widget.status.latestVersionName}',
+                        'Latest version: ${status.latestVersionName}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.textSecondary,
                           fontWeight: FontWeight.w700,
@@ -112,33 +75,11 @@ class _ForceUpdateScreenState extends State<ForceUpdateScreen> {
                       ),
                     ],
                     const SizedBox(height: 28),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _busy ? null : _update,
-                        icon: _busy
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.download_rounded),
-                        label: Text(_busy ? 'Downloading…' : 'Update Now'),
-                      ),
+                    UpdateActionArea(
+                      apkUrl: status.apkUrl,
+                      service: service,
+                      idleLabel: 'Update Now',
                     ),
-                    if (_hint != null) ...<Widget>[
-                      const SizedBox(height: 16),
-                      Text(
-                        _hint!,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -150,7 +91,9 @@ class _ForceUpdateScreenState extends State<ForceUpdateScreen> {
   }
 }
 
-/// Dismissible "update available" dialog for optional updates.
+/// Dismissible "update available" dialog for optional updates. The download now
+/// runs *inside* the dialog with a live progress bar, so tapping Update no
+/// longer just closes the dialog and appears to do nothing.
 Future<void> showOptionalUpdateDialog(
   BuildContext context, {
   required AppUpdateStatus status,
@@ -166,32 +109,169 @@ Future<void> showOptionalUpdateDialog(
           size: 32,
         ),
         title: const Text('Update available'),
-        content: Text(
-          status.message.isNotEmpty
-              ? status.message
-              : 'A newer version of Quick AL is available.'
-                  '${status.latestVersionName.isNotEmpty ? ' (${status.latestVersionName})' : ''}',
-          textAlign: TextAlign.center,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              status.message.isNotEmpty
+                  ? status.message
+                  : 'A newer version of Quick AL is available.'
+                        '${status.latestVersionName.isNotEmpty ? ' (${status.latestVersionName})' : ''}',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            UpdateActionArea(
+              apkUrl: status.apkUrl,
+              service: service,
+              idleLabel: 'Update',
+            ),
+          ],
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Later'),
           ),
-          FilledButton.icon(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              try {
-                await service.downloadAndInstall(status.apkUrl);
-              } catch (_) {
-                // Optional update — silent failure is acceptable.
-              }
-            },
-            icon: const Icon(Icons.download_rounded),
-            label: const Text('Update'),
-          ),
         ],
       );
     },
   );
+}
+
+/// The download/install button with its live states, shared by the forced gate
+/// and the optional dialog. It always shows the user what is happening:
+/// a progress bar while the APK downloads, a clear hint + Retry if the install
+/// permission is missing or something fails, and "opening installer" once the
+/// system installer is handed the file.
+class UpdateActionArea extends StatefulWidget {
+  final String apkUrl;
+  final AppUpdateService service;
+  final String idleLabel;
+
+  const UpdateActionArea({
+    super.key,
+    required this.apkUrl,
+    required this.service,
+    this.idleLabel = 'Update Now',
+  });
+
+  @override
+  State<UpdateActionArea> createState() => _UpdateActionAreaState();
+}
+
+enum _UpdatePhase { idle, downloading, installing, permission, error }
+
+class _UpdateActionAreaState extends State<UpdateActionArea> {
+  _UpdatePhase _phase = _UpdatePhase.idle;
+  int _percent = 0;
+  String? _message;
+
+  Future<void> _run() async {
+    setState(() {
+      _phase = _UpdatePhase.downloading;
+      _percent = 0;
+      _message = null;
+    });
+    try {
+      final String outcome = await widget.service.downloadAndInstall(
+        widget.apkUrl,
+        onProgress: (int percent) {
+          if (!mounted) return;
+          setState(() {
+            _phase = _UpdatePhase.downloading;
+            _percent = percent;
+          });
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        if (outcome == 'permission_required') {
+          _phase = _UpdatePhase.permission;
+          _message =
+              'Allow "Install unknown apps" for Quick AL in the screen that '
+              'just opened, then come back and tap Retry.';
+        } else if (outcome == 'install_started') {
+          _phase = _UpdatePhase.installing;
+          _message =
+              'Opening the installer… follow the on-screen steps to finish. '
+              'If nothing appears, tap Retry.';
+        } else {
+          _phase = _UpdatePhase.error;
+          _message = 'Update could not start. Please tap Retry.';
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _UpdatePhase.error;
+        _message = 'Download failed. Check your internet and tap Retry.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool downloading = _phase == _UpdatePhase.downloading;
+    final bool showRetry = _phase == _UpdatePhase.permission ||
+        _phase == _UpdatePhase.error ||
+        _phase == _UpdatePhase.installing;
+
+    final String label = downloading
+        ? 'Downloading $_percent%'
+        : showRetry
+            ? 'Retry'
+            : widget.idleLabel;
+
+    final Color messageColor = _phase == _UpdatePhase.error
+        ? AppTheme.danger
+        : AppTheme.textSecondary;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (downloading) ...<Widget>[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: _percent > 0 ? _percent / 100 : null,
+              minHeight: 8,
+              backgroundColor: AppTheme.royalBlue.withValues(alpha: 0.12),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: downloading ? null : _run,
+            icon: downloading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(
+                    showRetry
+                        ? Icons.refresh_rounded
+                        : Icons.download_rounded,
+                  ),
+            label: Text(label),
+          ),
+        ),
+        if (_message != null) ...<Widget>[
+          const SizedBox(height: 12),
+          Text(
+            _message!,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: messageColor,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }

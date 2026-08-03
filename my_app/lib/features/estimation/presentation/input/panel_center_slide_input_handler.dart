@@ -2,20 +2,20 @@ part of 'window_input_handler.dart';
 
 class PanelCenterSlideInputHandler extends WindowInputHandler {
   static final Map<int, List<String>> _sections = <int, List<String>>{
-    1: const <String>['DC30F', 'DC26F', 'D29', 'M23', 'M24', 'M28'],
-    2: const <String>['DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28'],
-    3: const <String>['DC30F', 'DC30C', 'DC26F', 'D29', 'M23', 'M24', 'M28'],
-    4: const <String>['DC30F', 'DC30C', 'DC26F', 'D29', 'M23', 'M24', 'M28'],
-    5: const <String>['DC30F', 'DC26C', 'D29', 'M23', 'M24', 'M28'],
-    6: const <String>['DC30F', 'DC30C', 'DC26F', 'D29', 'M23', 'M24', 'M28'],
-    7: const <String>['DC30F', 'DC30C', 'DC26F', 'D29', 'M23', 'M24', 'M28'],
-    8: const <String>['DC30F', 'DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28'],
-    9: const <String>['DC30F', 'DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28'],
-    10: const <String>['DC30F', 'DC30C', 'DC26F', 'D29', 'M23', 'M24', 'M28'],
-    11: const <String>['DC30F', 'DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28'],
-    12: const <String>['DC30F', 'DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28'],
-    13: const <String>['DC30C', 'DC26F', 'D29', 'M23', 'M24', 'M28'],
-    14: const <String>['DC30F', 'DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28'],
+    1: const <String>['DC30F', 'DC26F', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    2: const <String>['DC30C', 'DC26C', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    3: const <String>['DC30F', 'DC30C', 'DC26F', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    4: const <String>['DC30F', 'DC30C', 'DC26F', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    5: const <String>['DC30F', 'DC26C', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    6: const <String>['DC30F', 'DC30C', 'DC26F', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    7: const <String>['DC30F', 'DC30C', 'DC26F', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    8: const <String>['DC30F', 'DC30C', 'DC26C', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    9: const <String>['DC30F', 'DC30C', 'DC26C', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    10: const <String>['DC30F', 'DC30C', 'DC26F', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    11: const <String>['DC30F', 'DC30C', 'DC26C', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    12: const <String>['DC30F', 'DC30C', 'DC26C', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    13: const <String>['DC30C', 'DC26F', 'D29', 'D31', 'M23', 'M24', 'M28'],
+    14: const <String>['DC30F', 'DC30C', 'DC26C', 'D29', 'D31', 'M23', 'M24', 'M28'],
   };
 
   static final Map<int, Map<String, String>> _aliases =

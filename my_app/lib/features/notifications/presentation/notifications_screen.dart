@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/config/api_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../app_update/app_update_service.dart';
 import '../models/app_notification.dart';
 import '../state/notifications_controller.dart';
 
@@ -48,6 +50,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (diff.inHours > 0) return '${diff.inHours}h ago';
     if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
     return 'Just now';
+  }
+
+  // A version_update notification carries the APK url, so a user who dismissed
+  // the startup update prompt can still update straight from here. Direct/website
+  // build only — the Play build updates through Google Play.
+  bool _canUpdateFrom(AppNotification n) =>
+      n.type == 'version_update' &&
+      ApiConfig.isDirectWebsiteBuild &&
+      (n.updateApkUrl?.isNotEmpty ?? false);
+
+  Future<void> _startUpdate(String apkUrl) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      final String outcome = await AppUpdateService().downloadAndInstall(apkUrl);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            outcome == 'permission_required'
+                ? 'Allow "install unknown apps", then tap Update Now again.'
+                : 'Downloading the update…',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not start the update. Try again from quickalapp.com.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -154,6 +188,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                       color: AppTheme.textSecondary,
                                     ),
                           ),
+                          if (_canUpdateFrom(n)) ...<Widget>[
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: FilledButton.icon(
+                                onPressed: () => _startUpdate(n.updateApkUrl!),
+                                icon: const Icon(
+                                  Icons.system_update_rounded,
+                                  size: 18,
+                                ),
+                                label: const Text('Update Now'),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

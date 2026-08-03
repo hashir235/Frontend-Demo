@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_overlay.dart';
+import '../../tutorial/tutorial_step.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
+import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../data/cost_table_api_client.dart';
@@ -119,8 +122,13 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Material Selection')),
-      body: AppScreenShell(
+      appBar: AppBar(
+        title: const Text('Material Selection'),
+        actions: <Widget>[NextStepAction(onPressed: _handleNextPressed)],
+      ),
+      body: TutorialOverlay(
+        screen: TutorialScreen.materialSelection,
+        child: AppScreenShell(
         child: ListView(
           children: <Widget>[
             const AppHeroHeader(
@@ -184,13 +192,9 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
                     .toList(growable: false),
               ),
             ),
-            const SizedBox(height: AppTheme.space6),
-            FilledButton(
-              onPressed: _handleNextPressed,
-              child: const Text('Next'),
-            ),
           ],
         ),
+      ),
       ),
     );
   }

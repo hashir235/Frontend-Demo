@@ -91,6 +91,42 @@ void main() {
     expect(TutorialController.instance.isRunning, isFalse);
   });
 
+  testWidgets('a tap-step whose target is missing still offers a way on', (
+    WidgetTester t,
+  ) async {
+    // Points at an id nothing registers -- a screen not wired yet, or a
+    // widget scrolled out of view. Without a fallback the user would be
+    // staring at a dimmed screen with nothing to press.
+    const List<TutorialStep> orphan = <TutorialStep>[
+      TutorialStep(
+        screen: TutorialScreen.home,
+        targetId: 'nobody.registers.this',
+        title: 'اٹکا ہوا',
+        body: 'یہاں دبانا تھا',
+        requiresTap: true,
+        tapHint: 'یہاں دبائیں',
+      ),
+      TutorialStep(
+        screen: TutorialScreen.home,
+        title: 'اگلا',
+        body: 'آگے بڑھ گئے',
+      ),
+    ];
+
+    await t.pumpWidget(harness());
+    await t.pumpAndSettle();
+    TutorialController.instance.start(steps: orphan);
+    await t.pumpAndSettle();
+
+    expect(find.text('اٹکا ہوا'), findsOneWidget);
+    // The tap hint would be a lie with nothing to tap.
+    expect(find.text('یہاں دبائیں'), findsNothing);
+
+    await t.tap(find.text('آگے'));
+    await t.pumpAndSettle();
+    expect(find.text('اگلا'), findsOneWidget);
+  });
+
   test('the real Estimation script is not empty and names its targets', () {
     TutorialController.instance.start();
     expect(TutorialController.instance.stepCount, greaterThan(20));

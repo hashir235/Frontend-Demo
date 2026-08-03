@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
-import '../../../shared/widgets/bottom_action_bar.dart';
+import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../../../shared/widgets/state_message_card.dart';
@@ -174,15 +174,10 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Rate Setting')),
-      bottomNavigationBar: BottomActionBar(
-        children: <Widget>[
-          Expanded(
-            child: FilledButton(
-              onPressed: _isLoading ? null : _handleNextPressed,
-              child: const Text('Next'),
-            ),
-          ),
+      appBar: AppBar(
+        title: const Text('Rate Setting'),
+        actions: <Widget>[
+          NextStepAction(onPressed: _isLoading ? null : _handleNextPressed),
         ],
       ),
       body: AppScreenShell(child: _buildBody(context)),
@@ -201,7 +196,7 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
           title: 'Rate review failed',
           message:
               '$_errorMessage\n\nTip: this usually happens when a window size '
-              'was entered in the wrong unit — for example inch numbers while '
+              'was entered in the wrong unit ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â for example inch numbers while '
               'the unit was set to Feet. Please check your window sizes and '
               'unit, then try again.',
           iconColor: AppTheme.danger,

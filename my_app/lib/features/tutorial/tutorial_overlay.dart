@@ -109,6 +109,12 @@ class _SpotlightLayer extends StatelessWidget {
     required this.onSkip,
   });
 
+  /// A step can ask the user to tap the thing it is pointing at -- but only if
+  /// that thing is actually on screen. When the target is missing (not laid
+  /// out, scrolled away, or simply never wired up) the step falls back to a
+  /// Next button, otherwise there would be nothing to tap and no way forward.
+  bool get _awaitingTap => step.requiresTap && targetRect != null;
+
   @override
   Widget build(BuildContext context) {
     final Size screen = MediaQuery.sizeOf(context);
@@ -116,14 +122,14 @@ class _SpotlightLayer extends StatelessWidget {
 
     return Stack(
       children: <Widget>[
-        // The dimmer. On a requiresTap step the hole is left untouched so the
-        // real widget underneath still receives the tap.
+        // The dimmer. While waiting for a tap the hole is left live so the
+        // real widget underneath still receives it.
         Positioned.fill(
           child: IgnorePointer(
-            ignoring: step.requiresTap && targetRect != null,
+            ignoring: _awaitingTap,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: step.requiresTap ? null : onNext,
+              onTap: _awaitingTap ? null : onNext,
               child: CustomPaint(
                 painter: _SpotlightPainter(rect: targetRect, shape: step.shape),
                 size: screen,
@@ -231,7 +237,7 @@ class _SpotlightLayer extends StatelessWidget {
               Text(step.title, style: UrduText.heading()),
               const SizedBox(height: 6),
               Text(step.body, style: UrduText.body()),
-              if (step.tapHint != null) ...<Widget>[
+              if (step.tapHint != null && _awaitingTap) ...<Widget>[
                 const SizedBox(height: 10),
                 Row(
                   children: <Widget>[
@@ -260,7 +266,7 @@ class _SpotlightLayer extends StatelessWidget {
                       onPressed: onBack,
                       child: Text('پیچھے', style: UrduText.body(fontSize: 14)),
                     ),
-                  if (!step.requiresTap) ...<Widget>[
+                  if (!_awaitingTap) ...<Widget>[
                     const SizedBox(width: 4),
                     FilledButton(
                       onPressed: onNext,

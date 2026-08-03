@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/next_step_action.dart';
 import '../data/project_repository.dart';
 import '../data/window_catalog.dart';
 import '../models/window_review_item.dart';
@@ -432,7 +433,25 @@ class ReviewListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Review'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('Review'),
+        centerTitle: true,
+        actions: <Widget>[
+          // Stays disabled (not hidden) until a window is saved, so the step is
+          // still discoverable on an empty list.
+          AnimatedBuilder(
+            animation: session,
+            builder: (BuildContext context, Widget? child) {
+              return NextStepAction(
+                key: const Key('review_next_button'),
+                onPressed: session.items.isEmpty
+                    ? null
+                    : () => _openLengthOptimization(context),
+              );
+            },
+          ),
+        ],
+      ),
       body: AnimatedBuilder(
         animation: session,
         builder: (BuildContext context, Widget? child) {
@@ -466,26 +485,6 @@ class ReviewListScreen extends StatelessWidget {
                   );
                 }),
               ],
-            ),
-          );
-        },
-      ),
-      bottomNavigationBar: AnimatedBuilder(
-        animation: session,
-        builder: (BuildContext context, Widget? child) {
-          if (session.items.isEmpty) {
-            return const SizedBox.shrink();
-          }
-          return SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: FilledButton.icon(
-                key: const Key('review_next_button'),
-                onPressed: () => _openLengthOptimization(context),
-                icon: const Icon(Icons.arrow_forward_rounded),
-                label: const Text('Next'),
-              ),
             ),
           );
         },
