@@ -11,9 +11,16 @@ import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/metric_card.dart';
 import '../../../shared/widgets/primary_card_button.dart';
 import '../../../shared/widgets/section_surface_card.dart';
+import '../../../shared/widgets/social_links_card.dart';
 import '../../estimation/presentation/estimation_menu_screen.dart';
 import '../../fabrication/presentation/fabrication_menu_screen.dart';
 import '../../settings/presentation/settings_home_screen.dart';
+import '../../subscription/presentation/subscription_gate_screen.dart';
+import '../../tutorial/tutorial_controller.dart';
+import '../../tutorial/tutorial_overlay.dart';
+import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
+import '../../tutorial/urdu_text.dart';
 
 class HomeScreen extends StatefulWidget {
   final AuthHttpClient authClient;
@@ -60,6 +67,56 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute<void>(
         builder: (_) => NotificationsScreen(
           controller: _notificationsController,
+        ),
+      ),
+    );
+  }
+
+  /// Anyone who gets lost can replay the walkthrough from here, and it is the
+  /// first thing on Home so it is easy to find when you need it.
+  Widget _buildTutorialButton(BuildContext context) {
+    return Material(
+      color: AppTheme.tealAccent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        onTap: () => TutorialController.instance.start(),
+        child: Padding(
+          padding: const EdgeInsets.all(AppTheme.space4),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppTheme.tealAccent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.play_circle_fill_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space4),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'ایپ کیسے استعمال کریں',
+                      style: UrduText.heading(fontSize: 18),
+                    ),
+                    Text(
+                      'قدم بہ قدم رہنمائی — اردو میں',
+                      style: UrduText.caption(),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppTheme.slate),
+            ],
+          ),
         ),
       ),
     );
@@ -114,7 +171,9 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: AppScreenShell(
+      body: TutorialOverlay(
+        screen: TutorialScreen.home,
+        child: AppScreenShell(
         child: ListView(
           children: <Widget>[
             AppHeroHeader(
@@ -143,24 +202,33 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: AppTheme.space6),
+            _buildTutorialButton(context),
+            const SizedBox(height: AppTheme.space6),
             SectionSurfaceCard(
               title: 'Workspace',
               subtitle:
                   'Choose the module that matches the current project phase.',
               child: Column(
                 children: <Widget>[
-                  PrimaryCardButton(
-                    icon: Icons.calculate_rounded,
-                    title: 'Estimation',
-                    subtitle:
-                        'Window selection, review flow, optimization, rates, material table, and billing.',
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const EstimationMenuScreen(),
-                        ),
-                      );
-                    },
+                  TutorialTarget(
+                    id: 'home.estimation',
+                    child: PrimaryCardButton(
+                      icon: Icons.calculate_rounded,
+                      title: 'Estimation',
+                      subtitle:
+                          'Window selection, review flow, optimization, rates, material table, and billing.',
+                      onTap: () {
+                        // While the tour is on this step, tapping is the step.
+                        TutorialController.instance.advanceAfterTap();
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const SubscriptionGateScreen(
+                              child: EstimationMenuScreen(),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(height: AppTheme.space5),
                   PrimaryCardButton(
@@ -172,7 +240,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const FabricationMenuScreen(),
+                          builder: (_) => const SubscriptionGateScreen(
+                            child: FabricationMenuScreen(),
+                          ),
                         ),
                       );
                     },
@@ -196,6 +266,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: AppTheme.space6),
+            const SocialLinksCard(),
+            const SizedBox(height: AppTheme.space6),
             Row(
               children: <Widget>[
                 Expanded(
@@ -218,6 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

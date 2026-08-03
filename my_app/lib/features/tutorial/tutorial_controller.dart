@@ -120,13 +120,23 @@ class TutorialController extends ChangeNotifier {
   // --- persistence ---
 
   Future<bool> hasSeen() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_seenKey) ?? false;
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_seenKey) ?? false;
+    } catch (_) {
+      // Storage unavailable -- better to offer the tour again than to crash.
+      return false;
+    }
   }
 
   Future<void> markSeen() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_seenKey, true);
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_seenKey, true);
+    } catch (_) {
+      // Not worth interrupting anyone over; the tour simply offers itself
+      // again next launch.
+    }
   }
 
   /// Fire-and-forget wrapper so [finish] stays synchronous for callers.
