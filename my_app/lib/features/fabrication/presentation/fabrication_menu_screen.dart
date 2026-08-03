@@ -13,6 +13,7 @@ import '../../../shared/widgets/metric_card.dart';
 import '../../../shared/widgets/primary_card_button.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../../estimation/data/project_repository.dart';
+import '../../estimation/models/saved_project.dart';
 import '../../estimation/presentation/recent_projects_screen.dart';
 import '../../estimation/presentation/window_navigation_screen.dart';
 import '../../estimation/state/estimate_session_store.dart';
@@ -23,30 +24,27 @@ class FabricationMenuScreen extends StatelessWidget {
   const FabricationMenuScreen({super.key});
 
 
-  Future<void> _openLatestGlassReport(BuildContext context) async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    String? projectId;
-    try {
-      final projects = await ProjectRepository().fetchRecentProjects(
-        flow: EstimateFlow.fabrication,
-        limit: 1,
-      );
-      if (projects.isNotEmpty) {
-        projectId = projects.first.id;
-      }
-    } on Exception catch (error) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Recent fabrication project load failed: $error')),
-      );
-    }
-
-    if (!context.mounted) {
-      return;
-    }
-
+  /// Glass cutting report starts at the project list, not at whatever project
+  /// happened to be saved last.
+  ///
+  /// It used to grab the single most recent fabrication project and open that,
+  /// which meant a user who had just been working on aluminium windows opened
+  /// the glass report and found the windows from that other job staring back at
+  /// them. Showing the history lets them say which job's glass they mean.
+  void _openGlassReport(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => GlassReportScreen(projectId: projectId),
+        builder: (_) => RecentProjectsScreen(
+          flow: EstimateFlow.fabrication,
+          moduleTitle: 'Glass Cutting Report',
+          onProjectSelected: (BuildContext listContext, SavedProjectSummary project) {
+            Navigator.of(listContext).push(
+              MaterialPageRoute<void>(
+                builder: (_) => GlassReportScreen(projectId: project.id),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -184,9 +182,9 @@ class FabricationMenuScreen extends StatelessWidget {
                     icon: Icons.table_view_rounded,
                     title: 'Glass Report',
                     subtitle:
-                        'Open the latest fabrication glass table and PDF tools.',
+                        'Pick a project to open its glass table and PDF tools.',
                     accent: AppTheme.amberAccent,
-                    onTap: () => _openLatestGlassReport(context),
+                    onTap: () => _openGlassReport(context),
                   ),
                   const SizedBox(height: AppTheme.space5),
                   const RecentProjectsListSection(

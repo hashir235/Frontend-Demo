@@ -15,10 +15,17 @@ class RecentProjectsScreen extends StatefulWidget {
   final EstimateFlow flow;
   final String moduleTitle;
 
+  /// When set, tapping a project hands its id back instead of opening it in the
+  /// window flow. The glass cutting report uses this: it needs the user to pick
+  /// which project's glass to look at, not to reopen the windows themselves.
+  final void Function(BuildContext context, SavedProjectSummary project)?
+      onProjectSelected;
+
   const RecentProjectsScreen({
     super.key,
     required this.flow,
     required this.moduleTitle,
+    this.onProjectSelected,
   });
 
   @override
@@ -26,6 +33,9 @@ class RecentProjectsScreen extends StatefulWidget {
 }
 
 class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
+  /// Set by [_openProject] when the caller supplied its own handler.
+  bool get _hasCustomHandler => widget.onProjectSelected != null;
+
   final ProjectRepository _projectRepository = ProjectRepository();
   late Future<List<SavedProjectSummary>> _projectsFuture;
   String? _openingProjectId;
@@ -47,6 +57,13 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
   }
 
   Future<void> _openProject(SavedProjectSummary project) async {
+    // The glass cutting report passes its own handler: it needs the user to
+    // pick which project's glass to open, not to reopen the windows.
+    if (_hasCustomHandler) {
+      widget.onProjectSelected!(context, project);
+      return;
+    }
+
     setState(() {
       _openingProjectId = project.id;
     });
