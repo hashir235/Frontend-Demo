@@ -53,6 +53,46 @@ class UrduText {
     height: 1.6,
     color: color ?? AppTheme.textSecondary,
   );
+
+  /// A theme that turns a whole screen Urdu.
+  ///
+  /// The shared cards take plain strings, not styles, so the only way to give
+  /// their titles and captions Urdu faces is through the inherited text theme.
+  /// Display and headline sizes get Nastaliq, which is what makes the screen
+  /// look like Urdu rather than English in a different alphabet; everything
+  /// smaller gets Naskh so it stays readable.
+  static ThemeData theme(BuildContext context) {
+    final ThemeData base = Theme.of(context);
+    final TextTheme t = base.textTheme;
+
+    TextStyle? nas(TextStyle? s) => s?.copyWith(
+      fontFamily: nastaliq,
+      height: _nastaliqHeight,
+      fontWeight: FontWeight.w700,
+    );
+    TextStyle? nsk(TextStyle? s, {FontWeight w = FontWeight.w600}) =>
+        s?.copyWith(fontFamily: naskh, height: _naskhHeight, fontWeight: w);
+
+    return base.copyWith(
+      textTheme: t.copyWith(
+        displayLarge: nas(t.displayLarge),
+        displayMedium: nas(t.displayMedium),
+        displaySmall: nas(t.displaySmall),
+        headlineLarge: nas(t.headlineLarge),
+        headlineMedium: nas(t.headlineMedium),
+        headlineSmall: nas(t.headlineSmall),
+        titleLarge: nas(t.titleLarge),
+        titleMedium: nsk(t.titleMedium, w: FontWeight.w700),
+        titleSmall: nsk(t.titleSmall, w: FontWeight.w700),
+        bodyLarge: nsk(t.bodyLarge),
+        bodyMedium: nsk(t.bodyMedium),
+        bodySmall: nsk(t.bodySmall),
+        labelLarge: nsk(t.labelLarge, w: FontWeight.w700),
+        labelMedium: nsk(t.labelMedium),
+        labelSmall: nsk(t.labelSmall),
+      ),
+    );
+  }
 }
 
 /// Wraps [child] so Urdu lays out right-to-left.

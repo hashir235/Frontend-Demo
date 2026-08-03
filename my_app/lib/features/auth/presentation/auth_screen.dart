@@ -5,6 +5,7 @@ import 'package:my_app/features/auth/state/auth_controller.dart';
 import 'package:my_app/shared/widgets/app_hero_header.dart';
 import 'package:my_app/shared/widgets/app_screen_shell.dart';
 import 'package:my_app/shared/widgets/section_surface_card.dart';
+import 'package:my_app/features/tutorial/urdu_text.dart';
 import 'package:my_app/shared/widgets/social_links_card.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -81,11 +82,11 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
           const Spacer(),
-          _buildVisualChip(Icons.grid_view_rounded, 'Projects'),
+          _buildVisualChip(Icons.grid_view_rounded, 'پروجیکٹ'),
           const SizedBox(height: AppTheme.space3),
-          _buildVisualChip(Icons.picture_as_pdf_rounded, 'Reports'),
+          _buildVisualChip(Icons.picture_as_pdf_rounded, 'رپورٹیں'),
           const SizedBox(height: AppTheme.space3),
-          _buildVisualChip(Icons.verified_user_rounded, 'Secure access'),
+          _buildVisualChip(Icons.verified_user_rounded, 'محفوظ رسائی'),
         ],
       ),
     );
@@ -124,12 +125,12 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildAccessPanel(BuildContext context) {
     return SectionSurfaceCard(
       accented: true,
-      title: 'What your account unlocks',
+      title: 'آپ کے اکاؤنٹ میں کیا محفوظ رہتا ہے',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            'Your Quick AL account keeps your projects, report flow, and fabrication context tied to one protected workspace.',
+            'آپ کے سارے پروجیکٹ، رپورٹیں اور فیبریکیشن کا کام ایک ہی محفوظ جگہ پر رہتا ہے — کچھ گم نہیں ہوتا۔',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: AppTheme.space5),
@@ -139,19 +140,19 @@ class _AuthScreenState extends State<AuthScreen> {
             children: const <Widget>[
               _AccessPill(
                 icon: Icons.folder_copy_rounded,
-                label: 'Saved project history',
+                label: 'پرانے پروجیکٹ محفوظ',
               ),
               _AccessPill(
                 icon: Icons.precision_manufacturing_rounded,
-                label: 'Fabrication continuity',
+                label: 'فیبریکیشن کا تسلسل',
               ),
               _AccessPill(
                 icon: Icons.request_quote_rounded,
-                label: 'Billing workflow',
+                label: 'بل بنانے کا نظام',
               ),
               _AccessPill(
                 icon: Icons.lock_person_rounded,
-                label: 'Protected access',
+                label: 'محفوظ رسائی',
               ),
             ],
           ),
@@ -168,38 +169,38 @@ class _AuthScreenState extends State<AuthScreen> {
         children: const <Widget>[
           _StoryCard(
             icon: Icons.space_dashboard_rounded,
-            title: 'Estimation Workspace',
+            title: 'ایسٹیمیشن',
             subtitle:
-                'Move from window input to optimization with a cleaner, structured flow.',
+                'ونڈو کا ناپ ڈالیں اور سیدھا لینتھ آپٹیمائزیشن تک پہنچیں۔',
             tone: Color(0xFFE7F0F8),
             accent: AppTheme.royalBlue,
-            bulletA: 'Organized window entry',
-            bulletB: 'Section-aware review',
-            bulletC: 'Project continuity',
+            bulletA: 'ونڈو کی ترتیب سے انٹری',
+            bulletB: 'سیکشن کے مطابق جائزہ',
+            bulletC: 'پروجیکٹ محفوظ رہتا ہے',
           ),
           SizedBox(width: AppTheme.space4),
           _StoryCard(
             icon: Icons.precision_manufacturing_rounded,
-            title: 'Fabrication Flow',
+            title: 'فیبریکیشن',
             subtitle:
-                'Keep production outputs readable and connected to the original project.',
+                'کٹنگ اور شیشے کی رپورٹ، کاریگر کے پڑھنے کے قابل۔',
             tone: Color(0xFFE3F3F2),
             accent: AppTheme.tealAccent,
-            bulletA: 'Glass and cutting reports',
-            bulletB: 'Workshop-ready detail',
-            bulletC: 'Cleaner handoff',
+            bulletA: 'شیشہ اور کٹنگ رپورٹ',
+            bulletB: 'ورکشاپ کے قابلِ استعمال',
+            bulletC: 'کاریگر کو صاف ہدایت',
           ),
           SizedBox(width: AppTheme.space4),
           _StoryCard(
             icon: Icons.receipt_long_rounded,
-            title: 'Billing Confidence',
+            title: 'بل اور حساب',
             subtitle:
-                'Review material totals, rates, and bill outputs from one polished place.',
+                'مال کا میزان، ریٹ اور تیار بل — سب ایک جگہ۔',
             tone: Color(0xFFFBF1E3),
             accent: AppTheme.amberAccent,
-            bulletA: 'Material tables',
-            bulletB: 'Invoice-ready totals',
-            bulletC: 'PDF delivery flow',
+            bulletA: 'مال کی سمری',
+            bulletB: 'بل کے لیے تیار میزان',
+            bulletC: 'PDF بنا کر بھیجیں',
           ),
         ],
       ),
@@ -239,7 +240,7 @@ class _AuthScreenState extends State<AuthScreen> {
               const SizedBox(width: AppTheme.space4),
               Expanded(
                 child: Text(
-                  'Why use Quick AL?',
+                  'کوئیک اے ایل کیوں؟',
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -249,7 +250,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           const SizedBox(height: AppTheme.space5),
           Text(
-            'Quick AL keeps estimation, fabrication, and billing in one connected workspace so teams spend less time translating data and more time finishing projects accurately.',
+            'اندازہ، فیبریکیشن اور بل — تینوں ایک ہی جگہ جڑے ہوئے۔ حساب دوبارہ لکھنے میں وقت ضائع نہیں ہوتا، کام جلدی اور درست ہوتا ہے۔',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: AppTheme.space5),
@@ -258,16 +259,16 @@ class _AuthScreenState extends State<AuthScreen> {
               Expanded(
                 child: _MiniStatCard(
                   icon: Icons.layers_rounded,
-                  value: 'One flow',
-                  label: 'Input to PDF without losing context',
+                  value: 'ایک ہی نظام',
+                  label: 'ناپ سے PDF تک، بغیر کچھ دوبارہ لکھے',
                 ),
               ),
               SizedBox(width: AppTheme.space4),
               Expanded(
                 child: _MiniStatCard(
                   icon: Icons.bolt_rounded,
-                  value: 'Less friction',
-                  label: 'Fewer manual steps between decisions',
+                  value: 'کم محنت',
+                  label: 'ہاتھ سے کم کام، غلطی کم',
                 ),
               ),
             ],
@@ -282,29 +283,35 @@ class _AuthScreenState extends State<AuthScreen> {
     return AnimatedBuilder(
       animation: _authController,
       builder: (BuildContext context, _) {
-        return Scaffold(
+        // The first screen a new user ever sees, and most of them are
+        // Pakistani workshop owners -- so it speaks Urdu, right to left, in
+        // Nastaliq for the headings.
+        return UrduDirection(
+          child: Theme(
+            data: UrduText.theme(context),
+            child: Scaffold(
           extendBodyBehindAppBar: true,
-          appBar: AppBar(title: const Text('Quick AL Access')),
+          appBar: AppBar(title: const Text('کوئیک اے ایل')),
           body: AppScreenShell(
             child: ListView(
               children: <Widget>[
                 AppHeroHeader(
-                  eyebrow: 'SECURE ACCESS',
-                  title: 'Sign in to Quick AL',
+                  eyebrow: 'محفوظ رسائی',
+                  title: 'کوئیک اے ایل میں داخل ہوں',
                   subtitle:
-                      'Access your estimation workspace, fabrication flow, saved projects, and PDF-ready reporting from one account.',
+                      'ایلومینیم ونڈوز کا اندازہ، کٹنگ رپورٹ، شیشے کا حساب اور بل — سب ایک ہی اکاؤنٹ میں محفوظ رہتا ہے۔',
                   trailing: _buildHeroVisual(),
                 ),
                 const SizedBox(height: AppTheme.space6),
                 SectionSurfaceCard(
-                  title: 'Sign in to Quick AL',
+                  title: 'اپنے اکاؤنٹ میں داخل ہوں',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Sign in with your Google account to open your '
-                        'estimation workspace, fabrication flow, saved '
-                        'projects, and reports.',
+                        'اپنے گوگل اکاؤنٹ سے داخل ہوں۔ اس کے بعد آپ کے سارے '
+                        'پروجیکٹ، رپورٹیں اور بل محفوظ رہیں گے — فون بدلنے پر '
+                        'بھی۔',
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
                       const SizedBox(height: AppTheme.space6),
@@ -316,15 +323,16 @@ class _AuthScreenState extends State<AuthScreen> {
                         )
                       else
                         Text(
-                          'Sign-in is temporarily unavailable. Please update '
-                          'the app from the website and try again.',
+                          'اس وقت سائن اِن دستیاب نہیں۔ براہِ کرم ویب سائٹ سے '
+                          'ایپ اپ ڈیٹ کر کے دوبارہ کوشش کریں۔',
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(color: AppTheme.danger),
                         ),
                       const SizedBox(height: AppTheme.space3),
                       Text(
-                        'New here? Signing in with Google creates your account '
-                        'automatically — then you\'ll add your workshop details.',
+                        'پہلی بار آ رہے ہیں؟ گوگل سے داخل ہوتے ہی آپ کا اکاؤنٹ '
+                        'خود بن جائے گا — پھر آپ اپنی ورکشاپ کی تفصیل درج '
+                        'کریں گے۔',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppTheme.textSecondary,
                         ),
@@ -341,6 +349,8 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: AppTheme.space6),
                 _buildWhyUsePanel(context),
               ],
+            ),
+          ),
             ),
           ),
         );
@@ -437,7 +447,7 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton>
               const _GoogleGlyph(),
             const SizedBox(width: 12),
             const Text(
-              'Continue with Google',
+              'گوگل کے ساتھ جاری رکھیں',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
             ),
           ],
