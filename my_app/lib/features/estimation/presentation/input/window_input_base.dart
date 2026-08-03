@@ -972,6 +972,84 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
   }
 
+  /// The unit picker that sits on the input page itself, right above the size
+  /// fields, so the chosen unit is never in doubt while typing a measurement.
+  /// The same options still exist in the sidebar; this is the one people see.
+  Widget _buildInlineUnitSelector(BuildContext context) {
+    final List<(UnitMode, String)> options = _isFabricationFlow
+        ? const <(UnitMode, String)>[
+            (UnitMode.inches, 'Inches'),
+            (UnitMode.cm, 'CM'),
+          ]
+        : const <(UnitMode, String)>[
+            (UnitMode.feet, 'Feet'),
+            (UnitMode.inches, 'Inches'),
+            (UnitMode.cm, 'CM'),
+          ];
+
+    return Row(
+      children: <Widget>[
+        Text(
+          'Unit',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppTheme.slate,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              for (final (UnitMode mode, String label) in options)
+                _buildInlineUnitChip(
+                  label: label,
+                  selected: _unitMode == mode,
+                  onTap: () => _onUnitModeChanged(mode),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInlineUnitChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: selected ? AppTheme.tealAccent : Colors.grey.shade200,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (selected) ...<Widget>[
+                const Icon(Icons.check_rounded, size: 16, color: Colors.white),
+                const SizedBox(width: 5),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : AppTheme.deepTeal,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _onUnitModeChanged(UnitMode mode) {
     if (_unitMode == mode) {
       return;
@@ -2181,6 +2259,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           ),
                         ],
                       ),
+                      // The unit used to live only behind the three dots, so
+                      // people typed a size without being sure whether it was
+                      // feet, inches or cm. It sits with the size fields now.
+                      _buildInlineUnitSelector(context),
+                      const SizedBox(height: 12),
                       if (_usesSplitInput)
                         _buildSplitDimensionField(
                           label: 'Height',
