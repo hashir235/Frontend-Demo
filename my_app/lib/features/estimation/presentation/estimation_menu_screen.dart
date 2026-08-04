@@ -7,6 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_controller.dart';
+import '../../tutorial/tutorial_overlay.dart';
+import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/metric_card.dart';
@@ -105,7 +109,9 @@ class EstimationMenuScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Estimation')),
-      body: AppScreenShell(
+      body: TutorialOverlay(
+        screen: TutorialScreen.projectMenu,
+        child: AppScreenShell(
         child: ListView(
           children: <Widget>[
             AppHeroHeader(
@@ -134,12 +140,18 @@ class EstimationMenuScreen extends StatelessWidget {
                   'Create a new estimation project or continue from a saved one.',
               child: Column(
                 children: <Widget>[
-                  PrimaryCardButton(
-                    icon: Icons.add_box_outlined,
-                    title: 'Create Project',
-                    subtitle:
-                        'Capture project details and open the full window catalogue.',
-                    onTap: () => _handleCreateProject(context),
+                  TutorialTarget(
+                    id: 'menu.createProject',
+                    child: PrimaryCardButton(
+                      icon: Icons.add_box_outlined,
+                      title: 'Create Project',
+                      subtitle:
+                          'Capture project details and open the full window catalogue.',
+                      onTap: () {
+                        TutorialController.instance.advanceAfterTap();
+                        _handleCreateProject(context);
+                      },
+                    ),
                   ),
                   const SizedBox(height: AppTheme.space5),
                   const RecentProjectsListSection(
@@ -163,6 +175,7 @@ class EstimationMenuScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

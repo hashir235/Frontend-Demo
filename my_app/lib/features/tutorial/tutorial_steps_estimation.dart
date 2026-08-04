@@ -33,6 +33,19 @@ const List<TutorialStep> estimationTutorialSteps = <TutorialStep>[
     requiresTap: true,
   ),
 
+  // --------------------------------------------------------- Project menu
+  TutorialStep(
+    screen: TutorialScreen.projectMenu,
+    targetId: 'menu.createProject',
+    title: 'نیا پروجیکٹ',
+    body:
+        'ہر کام ایک پروجیکٹ سے شروع ہوتا ہے۔ یہاں پروجیکٹ کا نام اور جگہ لکھیں '
+        '— بعد میں اسی نام سے آپ اپنا کام دوبارہ کھول سکیں گے۔ پرانے پروجیکٹ '
+        'نیچے فہرست میں ملیں گے۔',
+    tapHint: 'نیا پروجیکٹ بنائیں',
+    requiresTap: true,
+  ),
+
   // ------------------------------------------------------- Window library
   TutorialStep(
     screen: TutorialScreen.windowLibrary,

@@ -28,9 +28,19 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   void initState() {
     super.initState();
     _c.addListener(_onChange);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _claimIfOnTop());
+  }
+
+  /// A pushed screen leaves the one below it mounted, and that one keeps
+  /// rebuilding. Without this check Home would go on insisting it was the
+  /// visible screen after the user had moved past it, and every later step
+  /// would stay hidden -- the tour looked like it had simply stopped.
+  void _claimIfOnTop() {
+    if (!mounted) return;
+    final ModalRoute<Object?>? route = ModalRoute.of(context);
+    if (route == null || route.isCurrent) {
       _c.setVisibleScreen(widget.screen);
-    });
+    }
   }
 
   @override
@@ -61,10 +71,8 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    // Keep the screen reported as visible -- a rebuild can follow a push/pop.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _c.setVisibleScreen(widget.screen);
-    });
+    // Re-claim after a pop brings this screen back to the top.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _claimIfOnTop());
 
     final TutorialStep? step = _c.visibleStep;
     if (step == null) return widget.child;

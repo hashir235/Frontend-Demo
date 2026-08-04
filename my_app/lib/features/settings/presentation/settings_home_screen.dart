@@ -11,6 +11,7 @@ import '../data/billing_settings_repository.dart';
 import '../data/estimation_settings_repository.dart';
 import '../data/fabrication_settings_repository.dart';
 import '../data/payment_preferences_api_client.dart';
+import '../data/settings_defaults_api_client.dart';
 import '../models/billing_settings.dart';
 import '../models/estimation_settings.dart';
 import '../models/fabrication_settings.dart';
@@ -62,6 +63,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final EstimationSettingsRepository _estimationSettingsRepository;
   late final FabricationSettingsRepository _fabricationSettingsRepository;
   late final PaymentPreferencesApiClient _paymentPreferencesApiClient;
+  final SettingsDefaultsApiClient _settingsDefaultsApiClient =
+      SettingsDefaultsApiClient();
 
   RenewalMode _renewalMode = RenewalMode.manual;
   bool _isLoadingPaymentPreferences = true;
@@ -500,6 +503,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  /// A "restore defaults" button for one block of settings.
+  ///
+  /// Every group that can be edited needs a way back -- a mistyped figure in
+  /// here is otherwise permanent unless the user remembers what was there.
+  Widget _buildRestoreButton({
+    required String label,
+    required Future<void> Function() onRestore,
+  }) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: () async {
+          final bool? sure = await showDialog<bool>(
+            context: context,
+            builder: (BuildContext ctx) => AlertDialog(
+              title: Text('Restore $label?'),
+              content: const Text(
+                'Your values here will be replaced by the ones Quick AL '
+                'ships with.',
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Keep mine'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Restore'),
+                ),
+              ],
+            ),
+          );
+          if (sure != true) return;
+          await onRestore();
+        },
+        icon: const Icon(Icons.restart_alt_rounded, size: 18),
+        label: Text('Restore $label'),
+      ),
+    );
+  }
+
+  /// Asks the server to copy its shipped template over this user's copy, then
+  /// reloads so the fields show what actually landed.
+  Future<void> _restoreFromServer(
+    List<SettingsGroup> groups,
+    Future<void> Function() reload,
+  ) async {
+    try {
+      await _settingsDefaultsApiClient.restore(groups);
+      await reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Default values restored.')),
+      );
+    } on SettingsDefaultsException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   /// Puts every section back to the mill's standard bars.
@@ -1253,7 +1318,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Cutting Margin of Each Section',
                     subtitle:
                         'These margins are applied per section during estimation calculations.',
-                    children: _sortedCuttingMarginKeys()
+                    children: <Widget>[
+                      _buildRestoreButton(
+                        label: 'cutting margins',
+                        onRestore: () => _restoreFromServer(
+                          <SettingsGroup>[SettingsGroup.cuttingMargins],
+                          _loadEstimationSettings,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      ..._sortedCuttingMarginKeys()
                         .map((String key) {
                           final TextEditingController controller =
                               _cuttingMarginControllers[key]!;
@@ -1269,8 +1343,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               decoration: _inputDecoration(key),
                             ),
                           );
-                        })
-                        .toList(growable: false),
+                        }),
+                    ],
                   ),
                   _buildSettingsCluster(
                     context,
@@ -1278,6 +1352,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     subtitle:
                         'These thresholds control when the optimizer may keep a custom extra piece before rounding up to the smallest stock length.',
                     children: <Widget>[
+                      _buildRestoreButton(
+                        label: 'red zone and extra pieces',
+                        onRestore: () => _restoreFromServer(
+                          <SettingsGroup>[SettingsGroup.lengthRules],
+                          _loadEstimationSettings,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
                       TextFormField(
                         controller: _redZone1Controller,
                         keyboardType: const TextInputType.numberWithOptions(
@@ -1379,6 +1461,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Fabrication Cutting Margin',
                     subtitle: 'This value is in cm. Current default is 1.2.',
                     children: <Widget>[
+                      _buildRestoreButton(
+                        label: 'fabrication margin',
+                        onRestore: () => _restoreFromServer(
+                          <SettingsGroup>[SettingsGroup.fabricator],
+                          _loadFabricationSettings,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
                       TextFormField(
                         controller: _fabricationCuttingMarginController,
                         keyboardType: const TextInputType.numberWithOptions(

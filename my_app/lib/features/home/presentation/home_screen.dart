@@ -47,9 +47,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// A first-time user lands here straight after workshop setup, so the tour
-  /// starts itself once and never again -- skipping counts as having seen it.
+  /// starts itself -- once, ever. After this it only runs when someone asks
+  /// for it from Home or Settings.
   Future<void> _offerTutorialOnFirstRun() async {
     if (await TutorialController.instance.hasSeen()) return;
+    if (!mounted) return;
+    // Written before the tour opens, not when it closes. Someone who kills
+    // the app halfway through has still had their one automatic showing --
+    // otherwise it would greet them again on every launch.
+    await TutorialController.instance.markSeen();
     if (!mounted) return;
     // Let Home finish laying out, otherwise the first step has nothing to
     // point at yet.

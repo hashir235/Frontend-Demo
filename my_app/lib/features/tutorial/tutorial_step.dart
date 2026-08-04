@@ -5,6 +5,8 @@ import 'package:flutter/widgets.dart';
 /// shows a step once the matching screen is on top.
 enum TutorialScreen {
   home,
+  /// The Estimation landing screen -- recent projects and "Create Project".
+  projectMenu,
   windowLibrary,
   windowInput,
   lengthOptimization,

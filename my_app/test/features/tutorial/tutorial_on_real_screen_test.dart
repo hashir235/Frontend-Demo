@@ -4,6 +4,7 @@ import 'package:my_app/features/estimation/models/window_type.dart';
 import 'package:my_app/features/estimation/presentation/input/window_input_base.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 import 'package:my_app/features/tutorial/tutorial_controller.dart';
+import 'package:my_app/features/tutorial/tutorial_overlay.dart';
 import 'package:my_app/features/tutorial/tutorial_step.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -89,6 +90,52 @@ void main() {
 
     // Window input must not paint the bill screen's step.
     expect(find.text('بل'), findsNothing);
+  });
+
+  testWidgets('a pushed screen takes over, so the tour does not stall', (
+    WidgetTester t,
+  ) async {
+    // The bug this guards: Home stayed mounted under the screen the user had
+    // moved to and kept reporting itself as visible, so every later step was
+    // hidden and the tour looked like it had simply ended after Estimation.
+    final GlobalKey<NavigatorState> nav = GlobalKey<NavigatorState>();
+    await t.pumpWidget(
+      MaterialApp(
+        navigatorKey: nav,
+        home: const TutorialOverlay(
+          screen: TutorialScreen.home,
+          child: Scaffold(body: Center(child: Text('home'))),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    TutorialController.instance.start(
+      steps: const <TutorialStep>[
+        TutorialStep(
+          screen: TutorialScreen.projectMenu,
+          title: 'نیا پروجیکٹ',
+          body: 'یہاں سے شروع کریں',
+        ),
+      ],
+    );
+    await t.pumpAndSettle();
+
+    // Home must not paint a step belonging to the next screen.
+    expect(find.text('نیا پروجیکٹ'), findsNothing);
+
+    nav.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const TutorialOverlay(
+          screen: TutorialScreen.projectMenu,
+          child: Scaffold(body: Center(child: Text('menu'))),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    // Now that it is on top, the step shows.
+    expect(find.text('نیا پروجیکٹ'), findsOneWidget);
   });
 
   testWidgets('skip leaves the real screen usable again', (
