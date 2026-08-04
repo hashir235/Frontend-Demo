@@ -101,7 +101,6 @@ class OptimizationApiClient {
     return report;
   }
 
-
   Map<String, dynamic>? _decodeObject(String body) {
     if (body.trim().isEmpty) {
       return null;

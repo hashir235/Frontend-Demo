@@ -119,17 +119,24 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
                 padding: EdgeInsets.only(
                   right: index == widget.nodes.length - 1 ? 0 : AppTheme.space4,
                 ),
-                child: WindowNavigationCard(
-                  node: node,
-                  isFocused: isSelected,
-                  isSelected: isSelected,
-                  parallaxShift: 0,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = index;
-                    });
-                    _onNodeTap(node);
-                  },
+                // Phones get this carousel, not the grid below, so the tour's
+                // targets have to be registered on both paths -- without this
+                // the spotlight simply never appeared for real users.
+                child: TutorialTarget(
+                  id: index == 0 ? 'library.sliding' : 'library.card.$index',
+                  child: WindowNavigationCard(
+                    node: node,
+                    isFocused: isSelected,
+                    isSelected: isSelected,
+                    parallaxShift: 0,
+                    onTap: () {
+                      setState(() {
+                        _selectedIndex = index;
+                      });
+                      TutorialController.instance.advanceAfterTap();
+                      _onNodeTap(node);
+                    },
+                  ),
                 ),
               );
             },
@@ -174,112 +181,116 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
       body: TutorialOverlay(
         screen: TutorialScreen.windowLibrary,
         child: AppScreenShell(
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            final bool useMobileCarousel = constraints.maxWidth < 560;
-            final int crossAxisCount = _crossAxisCount(constraints.maxWidth);
-            final double aspectRatio = crossAxisCount == 2 ? 0.70 : 0.82;
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool useMobileCarousel = constraints.maxWidth < 560;
+              final int crossAxisCount = _crossAxisCount(constraints.maxWidth);
+              final double aspectRatio = crossAxisCount == 2 ? 0.70 : 0.82;
 
-            return ListView(
-              children: <Widget>[
-                AppHeroHeader(
-                  eyebrow: widget.moduleTitle.toUpperCase(),
-                  title: 'Choose a window system',
-                  subtitle:
-                      'Browse the catalogue visually, then move directly into the detailed input workflow.',
-                  trailing: Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.brandGradient,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              return ListView(
+                children: <Widget>[
+                  AppHeroHeader(
+                    eyebrow: widget.moduleTitle.toUpperCase(),
+                    title: 'Choose a window system',
+                    subtitle:
+                        'Browse the catalogue visually, then move directly into the detailed input workflow.',
+                    trailing: Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.brandGradient,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                      ),
+                      child: const Icon(
+                        Icons.window_rounded,
+                        size: 38,
+                        color: Colors.white,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.window_rounded,
-                      size: 38,
-                      color: Colors.white,
+                  ),
+                  const SizedBox(height: AppTheme.space4),
+                  Text(
+                    widget.moduleTitle,
+                    key: const Key('navigation_estimation_heading'),
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      fontSize: 0,
+                      color: Colors.transparent,
+                      height: 0,
                     ),
                   ),
-                ),
-                const SizedBox(height: AppTheme.space4),
-                Text(
-                  widget.moduleTitle,
-                  key: const Key('navigation_estimation_heading'),
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontSize: 0,
-                    color: Colors.transparent,
-                    height: 0,
+                  Text(
+                    '${widget.path.join(' / ')} / $currentLabel',
+                    key: const Key('navigation_context_label'),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontSize: 0,
+                      color: Colors.transparent,
+                      height: 0,
+                    ),
                   ),
-                ),
-                Text(
-                  '${widget.path.join(' / ')} / $currentLabel',
-                  key: const Key('navigation_context_label'),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: 0,
-                    color: Colors.transparent,
-                    height: 0,
+                  const SizedBox(height: AppTheme.space5),
+                  ProjectMetaStrip(
+                    projectName: widget.session.projectName,
+                    projectLocation: widget.session.projectLocation,
+                    extras: <Widget>[
+                      _InfoBadge(label: 'Flow', value: widget.moduleTitle),
+                      _InfoBadge(label: 'Path', value: widget.path.join(' / ')),
+                    ],
                   ),
-                ),
-                const SizedBox(height: AppTheme.space5),
-                ProjectMetaStrip(
-                  projectName: widget.session.projectName,
-                  projectLocation: widget.session.projectLocation,
-                  extras: <Widget>[
-                    _InfoBadge(label: 'Flow', value: widget.moduleTitle),
-                    _InfoBadge(label: 'Path', value: widget.path.join(' / ')),
-                  ],
-                ),
-                const SizedBox(height: AppTheme.space6),
-                SectionSurfaceCard(
-                  title: 'Window Library',
-                  subtitle:
-                      'Selected: $currentLabel. Tap any tile to open a family or start detailed input.',
-                  child: useMobileCarousel
-                      ? _buildMobileCardCarousel(context, constraints.maxWidth)
-                      : GridView.builder(
-                          key: const Key('window_page_view'),
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: widget.nodes.length,
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                crossAxisSpacing: AppTheme.space5,
-                                mainAxisSpacing: AppTheme.space5,
-                                childAspectRatio: aspectRatio,
-                              ),
-                          itemBuilder: (BuildContext context, int index) {
-                            final WindowType node = widget.nodes[index];
-                            final bool isSelected = index == _selectedIndex;
-                            // The tour points at the first card -- Sliding
-                            // Window at the top of the catalogue -- as its
-                            // worked example.
-                            return TutorialTarget(
-                              id: index == 0
-                                  ? 'library.sliding'
-                                  : 'library.card.$index',
-                              child: WindowNavigationCard(
-                                node: node,
-                                isFocused: isSelected,
-                                isSelected: isSelected,
-                                parallaxShift: 0,
-                                onTap: () {
-                                  setState(() {
-                                    _selectedIndex = index;
-                                  });
-                                  TutorialController.instance.advanceAfterTap();
-                                  _onNodeTap(node);
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            );
-          },
+                  const SizedBox(height: AppTheme.space6),
+                  SectionSurfaceCard(
+                    title: 'Window Library',
+                    subtitle:
+                        'Selected: $currentLabel. Tap any tile to open a family or start detailed input.',
+                    child: useMobileCarousel
+                        ? _buildMobileCardCarousel(
+                            context,
+                            constraints.maxWidth,
+                          )
+                        : GridView.builder(
+                            key: const Key('window_page_view'),
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: widget.nodes.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  crossAxisSpacing: AppTheme.space5,
+                                  mainAxisSpacing: AppTheme.space5,
+                                  childAspectRatio: aspectRatio,
+                                ),
+                            itemBuilder: (BuildContext context, int index) {
+                              final WindowType node = widget.nodes[index];
+                              final bool isSelected = index == _selectedIndex;
+                              // The tour points at the first card -- Sliding
+                              // Window at the top of the catalogue -- as its
+                              // worked example.
+                              return TutorialTarget(
+                                id: index == 0
+                                    ? 'library.sliding'
+                                    : 'library.card.$index',
+                                child: WindowNavigationCard(
+                                  node: node,
+                                  isFocused: isSelected,
+                                  isSelected: isSelected,
+                                  parallaxShift: 0,
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedIndex = index;
+                                    });
+                                    TutorialController.instance
+                                        .advanceAfterTap();
+                                    _onNodeTap(node);
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
-      ),
       ),
     );
   }

@@ -154,11 +154,10 @@ class GlassSheetLayout {
           .whereType<Map<String, dynamic>>()
           .map(GlassSheetPlacement.fromJson)
           .toList(growable: false),
-      wasteRects:
-          ((json['wasteRects'] as List<dynamic>?) ?? const <dynamic>[])
-              .whereType<Map<String, dynamic>>()
-              .map(GlassSheetWasteRect.fromJson)
-              .toList(growable: false),
+      wasteRects: ((json['wasteRects'] as List<dynamic>?) ?? const <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(GlassSheetWasteRect.fromJson)
+          .toList(growable: false),
     );
   }
 }

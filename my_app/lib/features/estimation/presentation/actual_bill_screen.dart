@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/bottom_action_bar.dart';
@@ -209,17 +211,31 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
     return BottomActionBar(
       children: <Widget>[
         Expanded(
-          child: FilledButton.icon(
-            onPressed: _downloadInvoicePdf,
-            icon: const Icon(Icons.download_rounded),
-            label: const Text('Download PDF'),
+          child: TutorialTarget(
+            id: 'bill.downloadPdf',
+            child: FilledButton.icon(
+              onPressed: () {
+                TutorialController.instance.advanceAfterTap();
+                _downloadInvoicePdf();
+              },
+              icon: const Icon(Icons.download_rounded),
+              label: const Text('Download PDF'),
+            ),
           ),
         ),
         const SizedBox(width: AppTheme.space4),
-        FilledButton.tonalIcon(
-          onPressed: _goHome,
-          icon: const Icon(Icons.home_rounded),
-          label: const Text('Home'),
+        TutorialTarget(
+          id: 'bill.home',
+          child: FilledButton.tonalIcon(
+            onPressed: () {
+              // Ending the tour here: the Home screen below is still mounted
+              // and would otherwise try to resume it at an earlier step.
+              TutorialController.instance.finish();
+              _goHome();
+            },
+            icon: const Icon(Icons.home_rounded),
+            label: const Text('Home'),
+          ),
         ),
         const SizedBox(width: AppTheme.space4),
         IconButton.filledTonal(
@@ -233,12 +249,14 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Final Bill')),
-      bottomNavigationBar: _buildBottomActions(),
-      body: TutorialOverlay(
-        screen: TutorialScreen.actualBill,
-        child: AppScreenShell(child: _buildBody(context)),
+    // Wraps the Scaffold: the tour ends on the Download PDF and Home buttons,
+    // which live in the bottom bar rather than the body.
+    return TutorialOverlay(
+      screen: TutorialScreen.actualBill,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Final Bill')),
+        bottomNavigationBar: _buildBottomActions(),
+        body: AppScreenShell(child: _buildBody(context)),
       ),
     );
   }
@@ -298,19 +316,25 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
         Row(
           children: <Widget>[
             Expanded(
-              child: MetricCard(
-                label: 'Grand Total',
-                value: _formatNumber(snapshot.totals.grandTotal),
-                icon: Icons.account_balance_wallet_rounded,
+              child: TutorialTarget(
+                id: 'bill.grandTotal',
+                child: MetricCard(
+                  label: 'Grand Total',
+                  value: _formatNumber(snapshot.totals.grandTotal),
+                  icon: Icons.account_balance_wallet_rounded,
+                ),
               ),
             ),
             const SizedBox(width: AppTheme.space4),
             Expanded(
-              child: MetricCard(
-                label: 'Remaining Due',
-                value: _formatNumber(snapshot.totals.remainingDue),
-                icon: Icons.payments_rounded,
-                accent: AppTheme.tealAccent,
+              child: TutorialTarget(
+                id: 'bill.remainingDue',
+                child: MetricCard(
+                  label: 'Remaining Due',
+                  value: _formatNumber(snapshot.totals.remainingDue),
+                  icon: Icons.payments_rounded,
+                  accent: AppTheme.tealAccent,
+                ),
               ),
             ),
           ],
@@ -370,6 +394,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
         _buildDetailCard(
           context,
           title: 'Input Details',
+          tourId: 'bill.inputDetails',
           entries: <MapEntry<String, String>>[
             MapEntry<String, String>('Gage', _displayText(snapshot.gauge)),
             MapEntry<String, String>(
@@ -402,6 +427,10 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
         _buildDetailCard(
           context,
           title: 'Company / Workshop',
+          // Not 'bill.company' -- that id belongs to the Aluminium Company
+          // field on Bill Inputs, which is still mounted underneath this
+          // screen and would fight over the same registration.
+          tourId: 'bill.companyCard',
           entries: <MapEntry<String, String>>[
             MapEntry<String, String>(
               'Contractor Name',
@@ -425,6 +454,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
         _buildDetailCard(
           context,
           title: 'Rates Used',
+          tourId: 'bill.ratesUsed',
           entries: <MapEntry<String, String>>[
             MapEntry<String, String>(
               'Glass Rate / sq.ft',
@@ -483,6 +513,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
         _buildDetailCard(
           context,
           title: 'Cost Breakdown',
+          tourId: 'bill.costBreakdown',
           entries: <MapEntry<String, String>>[
             MapEntry<String, String>(
               'Glass Cost',
@@ -533,6 +564,22 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
   }
 
   Widget _buildDetailCard(
+    BuildContext context, {
+    required String title,
+    required List<MapEntry<String, String>> entries,
+    // The tour walks card by card, so each one it explains carries an id.
+    String? tourId,
+  }) {
+    if (tourId != null) {
+      return TutorialTarget(
+        id: tourId,
+        child: _buildDetailCardBody(context, title: title, entries: entries),
+      );
+    }
+    return _buildDetailCardBody(context, title: title, entries: entries);
+  }
+
+  Widget _buildDetailCardBody(
     BuildContext context, {
     required String title,
     required List<MapEntry<String, String>> entries,

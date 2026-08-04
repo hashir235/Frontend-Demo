@@ -84,22 +84,54 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openNotifications() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => NotificationsScreen(
-          controller: _notificationsController,
-        ),
+        builder: (_) =>
+            NotificationsScreen(controller: _notificationsController),
       ),
     );
   }
 
-  /// Anyone who gets lost can replay the walkthrough from here, and it is the
-  /// first thing on Home so it is easy to find when you need it.
-  Widget _buildTutorialButton(BuildContext context) {
+  /// Anyone who gets lost can replay a walkthrough from here, and these are the
+  /// first things on Home so they are easy to find when you need them.
+  ///
+  /// Two separate tours: quoting a customer and cutting the job are different
+  /// work, and plenty of people only ever do one of them.
+  Widget _buildTutorialButtons(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        _buildTutorialButton(
+          context,
+          title: 'ایسٹیمیشن کیسے کریں',
+          subtitle: 'ناپ سے گاہک کے بل تک — اردو میں',
+          accent: AppTheme.tealAccent,
+          onTap: () =>
+              TutorialController.instance.start(tour: TutorialTour.estimation),
+        ),
+        const SizedBox(height: AppTheme.space4),
+        _buildTutorialButton(
+          context,
+          title: 'فیبریکیشن کیسے کریں',
+          subtitle: 'کٹنگ لسٹ اور شیشے کی رپورٹ — اردو میں',
+          accent: AppTheme.amberAccent,
+          onTap: () =>
+              TutorialController.instance.start(tour: TutorialTour.fabrication),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTutorialButton(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required Color accent,
+    required VoidCallback onTap,
+  }) {
     return Material(
-      color: AppTheme.tealAccent.withValues(alpha: 0.12),
+      color: accent.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        onTap: () => TutorialController.instance.start(),
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.space4),
           child: Row(
@@ -108,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppTheme.tealAccent,
+                  color: accent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -122,14 +154,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      'ایپ کیسے استعمال کریں',
-                      style: UrduText.heading(fontSize: 18),
-                    ),
-                    Text(
-                      'قدم بہ قدم رہنمائی — اردو میں',
-                      style: UrduText.caption(),
-                    ),
+                    Text(title, style: UrduText.heading(fontSize: 18)),
+                    Text(subtitle, style: UrduText.caption()),
                   ],
                 ),
               ),
@@ -193,123 +219,127 @@ class _HomeScreenState extends State<HomeScreen> {
       body: TutorialOverlay(
         screen: TutorialScreen.home,
         child: AppScreenShell(
-        child: ListView(
-          children: <Widget>[
-            AppHeroHeader(
-              eyebrow: 'QUICK AL',
-              title: 'Estimation & Fabrication Workspace',
-              subtitle:
-                  'A refined business tool for aluminium windows, fabrication operations, and project settings.',
-              trailing: Container(
-                width: 132,
-                height: 132,
-                padding: const EdgeInsets.all(AppTheme.space2),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(color: AppTheme.line),
-                  boxShadow: AppTheme.softShadow(),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  child: Image.asset(
-                    'assets/images/quick_al_icon.png',
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
+          child: ListView(
+            children: <Widget>[
+              AppHeroHeader(
+                eyebrow: 'QUICK AL',
+                title: 'Estimation & Fabrication Workspace',
+                subtitle:
+                    'A refined business tool for aluminium windows, fabrication operations, and project settings.',
+                trailing: Container(
+                  width: 132,
+                  height: 132,
+                  padding: const EdgeInsets.all(AppTheme.space2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    border: Border.all(color: AppTheme.line),
+                    boxShadow: AppTheme.softShadow(),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    child: Image.asset(
+                      'assets/images/quick_al_icon.png',
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: AppTheme.space6),
-            _buildTutorialButton(context),
-            const SizedBox(height: AppTheme.space6),
-            SectionSurfaceCard(
-              title: 'Workspace',
-              subtitle:
-                  'Choose the module that matches the current project phase.',
-              child: Column(
-                children: <Widget>[
-                  TutorialTarget(
-                    id: 'home.estimation',
-                    child: PrimaryCardButton(
-                      icon: Icons.calculate_rounded,
-                      title: 'Estimation',
+              const SizedBox(height: AppTheme.space6),
+              _buildTutorialButtons(context),
+              const SizedBox(height: AppTheme.space6),
+              SectionSurfaceCard(
+                title: 'Workspace',
+                subtitle:
+                    'Choose the module that matches the current project phase.',
+                child: Column(
+                  children: <Widget>[
+                    TutorialTarget(
+                      id: 'home.estimation',
+                      child: PrimaryCardButton(
+                        icon: Icons.calculate_rounded,
+                        title: 'Estimation',
+                        subtitle:
+                            'Window selection, review flow, optimization, rates, material table, and billing.',
+                        onTap: () {
+                          // While the tour is on this step, tapping is the step.
+                          TutorialController.instance.advanceAfterTap();
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const SubscriptionGateScreen(
+                                child: EstimationMenuScreen(),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.space5),
+                    TutorialTarget(
+                      id: 'home.fabrication',
+                      child: PrimaryCardButton(
+                        icon: Icons.construction_rounded,
+                        title: 'Fabrication',
+                        subtitle:
+                            'Production-ready windows, cutting workflow, glass reporting, and fabrication outputs.',
+                        accent: AppTheme.tealAccent,
+                        onTap: () {
+                          TutorialController.instance.advanceAfterTap();
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const SubscriptionGateScreen(
+                                child: FabricationMenuScreen(),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.space5),
+                    PrimaryCardButton(
+                      icon: Icons.settings_suggest_rounded,
+                      title: 'Settings',
                       subtitle:
-                          'Window selection, review flow, optimization, rates, material table, and billing.',
+                          'General, estimation, and fabrication configuration with structured controls.',
+                      accent: AppTheme.amberAccent,
                       onTap: () {
-                        // While the tour is on this step, tapping is the step.
-                        TutorialController.instance.advanceAfterTap();
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => const SubscriptionGateScreen(
-                              child: EstimationMenuScreen(),
-                            ),
+                            builder: (_) => const SettingsScreen(),
                           ),
                         );
                       },
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppTheme.space6),
+              const SocialLinksCard(),
+              const SizedBox(height: AppTheme.space6),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: MetricCard(
+                      label: 'App version',
+                      value: _appVersion.isEmpty ? 'v1.0.1' : _appVersion,
+                      icon: Icons.verified_rounded,
+                    ),
                   ),
-                  const SizedBox(height: AppTheme.space5),
-                  PrimaryCardButton(
-                    icon: Icons.construction_rounded,
-                    title: 'Fabrication',
-                    subtitle:
-                        'Production-ready windows, cutting workflow, glass reporting, and fabrication outputs.',
-                    accent: AppTheme.tealAccent,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const SubscriptionGateScreen(
-                            child: FabricationMenuScreen(),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: AppTheme.space5),
-                  PrimaryCardButton(
-                    icon: Icons.settings_suggest_rounded,
-                    title: 'Settings',
-                    subtitle:
-                        'General, estimation, and fabrication configuration with structured controls.',
-                    accent: AppTheme.amberAccent,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const SettingsScreen(),
-                        ),
-                      );
-                    },
+                  const SizedBox(width: AppTheme.space4),
+                  Expanded(
+                    child: MetricCard(
+                      label: 'Modules',
+                      value: '3',
+                      icon: Icons.dashboard_customize_rounded,
+                      accent: AppTheme.tealAccent,
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: AppTheme.space6),
-            const SocialLinksCard(),
-            const SizedBox(height: AppTheme.space6),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: MetricCard(
-                    label: 'App version',
-                    value: _appVersion.isEmpty ? 'v1.0.1' : _appVersion,
-                    icon: Icons.verified_rounded,
-                  ),
-                ),
-                const SizedBox(width: AppTheme.space4),
-                Expanded(
-                  child: MetricCard(
-                    label: 'Modules',
-                    value: '3',
-                    icon: Icons.dashboard_customize_rounded,
-                    accent: AppTheme.tealAccent,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

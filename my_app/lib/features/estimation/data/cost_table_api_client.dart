@@ -85,7 +85,6 @@ class CostTableApiClient {
     return table;
   }
 
-
   Map<String, dynamic>? _decodeObject(String body) {
     if (body.trim().isEmpty) {
       return null;

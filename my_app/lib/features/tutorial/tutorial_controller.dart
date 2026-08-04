@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'tutorial_step.dart';
 import 'tutorial_steps_estimation.dart';
+import 'tutorial_steps_fabrication.dart';
 
 /// Drives the guided tour.
 ///
@@ -15,9 +16,23 @@ class TutorialController extends ChangeNotifier {
 
   static final TutorialController instance = TutorialController._internal();
 
-  /// Set once the user has seen (or skipped) the tour, so it does not reappear
+  /// Set once the user has seen (or skipped) a tour, so it does not reappear
   /// on every launch. AppSettings is memory-only, so this goes to disk itself.
-  static const String _seenKey = 'quick_al.tutorial.estimation_seen.v1';
+  /// Each tour keeps its own flag -- seeing the Estimation walkthrough should
+  /// not silence the Fabrication one.
+  static String _seenKeyFor(TutorialTour tour) =>
+      'quick_al.tutorial.${tour.name}_seen.v1';
+
+  static List<TutorialStep> _defaultStepsFor(TutorialTour tour) =>
+      switch (tour) {
+        TutorialTour.estimation => estimationTutorialSteps,
+        TutorialTour.fabrication => fabricationTutorialSteps,
+      };
+
+  TutorialTour _tour = TutorialTour.estimation;
+
+  /// Which walkthrough is running (or ran last).
+  TutorialTour get tour => _tour;
 
   List<TutorialStep> _steps = const <TutorialStep>[];
   int _index = 0;
@@ -77,8 +92,12 @@ class TutorialController extends ChangeNotifier {
 
   // --- running ---
 
-  void start({List<TutorialStep>? steps}) {
-    _steps = steps ?? estimationTutorialSteps;
+  void start({
+    TutorialTour tour = TutorialTour.estimation,
+    List<TutorialStep>? steps,
+  }) {
+    _tour = tour;
+    _steps = steps ?? _defaultStepsFor(tour);
     _index = 0;
     _running = true;
     notifyListeners();
@@ -119,20 +138,20 @@ class TutorialController extends ChangeNotifier {
 
   // --- persistence ---
 
-  Future<bool> hasSeen() async {
+  Future<bool> hasSeen([TutorialTour tour = TutorialTour.estimation]) async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      return prefs.getBool(_seenKey) ?? false;
+      return prefs.getBool(_seenKeyFor(tour)) ?? false;
     } catch (_) {
       // Storage unavailable -- better to offer the tour again than to crash.
       return false;
     }
   }
 
-  Future<void> markSeen() async {
+  Future<void> markSeen([TutorialTour tour = TutorialTour.estimation]) async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_seenKey, true);
+      await prefs.setBool(_seenKeyFor(tour), true);
     } catch (_) {
       // Not worth interrupting anyone over; the tour simply offers itself
       // again next launch.
@@ -141,13 +160,13 @@ class TutorialController extends ChangeNotifier {
 
   /// Fire-and-forget wrapper so [finish] stays synchronous for callers.
   void unawaitedMarkSeen() {
-    markSeen();
+    markSeen(_tour);
   }
 
   /// Clears the flag so the tour plays again on next launch. Handy for testing
   /// and for a "show me again from the start" option later.
-  Future<void> resetSeen() async {
+  Future<void> resetSeen([TutorialTour tour = TutorialTour.estimation]) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_seenKey);
+    await prefs.remove(_seenKeyFor(tour));
   }
 }

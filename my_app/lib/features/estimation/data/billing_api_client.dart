@@ -70,7 +70,6 @@ class BillingApiClient {
     return snapshot;
   }
 
-
   Map<String, dynamic>? _decodeObject(String body) {
     if (body.trim().isEmpty) {
       return null;

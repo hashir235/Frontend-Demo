@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/next_step_action.dart';
+import '../../tutorial/tutorial_controller.dart';
+import '../../tutorial/tutorial_overlay.dart';
+import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
 import '../data/project_repository.dart';
 import '../data/window_catalog.dart';
 import '../models/window_review_item.dart';
@@ -405,9 +409,8 @@ class ReviewListScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _buildDimensionText(context, item, accentColor),
-          if (item.description != null && item.description!.isNotEmpty) ...<
-            Widget
-          >[
+          if (item.description != null &&
+              item.description!.isNotEmpty) ...<Widget>[
             const SizedBox(height: 10),
             Text(
               'Description',
@@ -432,62 +435,84 @@ class ReviewListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Review'),
-        centerTitle: true,
-        actions: <Widget>[
-          // Stays disabled (not hidden) until a window is saved, so the step is
-          // still discoverable on an empty list.
-          AnimatedBuilder(
-            animation: session,
-            builder: (BuildContext context, Widget? child) {
-              return NextStepAction(
-                key: const Key('review_next_button'),
-                onPressed: session.items.isEmpty
-                    ? null
-                    : () => _openLengthOptimization(context),
-              );
-            },
-          ),
-        ],
-      ),
-      body: AnimatedBuilder(
-        animation: session,
-        builder: (BuildContext context, Widget? child) {
-          final List<WindowReviewItem> items = session.items;
-          if (items.isEmpty) {
-            return Center(
-              child: Text(
-                'No saved windows yet.',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.deepTeal,
-                  fontWeight: FontWeight.w700,
+    // Wraps the Scaffold rather than the body so the tour can spotlight the
+    // Next arrow, which lives in the AppBar.
+    return TutorialOverlay(
+      screen: TutorialScreen.reviewList,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Review'),
+          centerTitle: true,
+          actions: <Widget>[
+            // Stays disabled (not hidden) until a window is saved, so the step is
+            // still discoverable on an empty list.
+            AnimatedBuilder(
+              animation: session,
+              builder: (BuildContext context, Widget? child) {
+                return TutorialTarget(
+                  id: 'review.next',
+                  child: NextStepAction(
+                    key: const Key('review_next_button'),
+                    onPressed: session.items.isEmpty
+                        ? null
+                        : () {
+                            TutorialController.instance.advanceAfterTap();
+                            _openLengthOptimization(context);
+                          },
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: AnimatedBuilder(
+          animation: session,
+          builder: (BuildContext context, Widget? child) {
+            final List<WindowReviewItem> items = session.items;
+            if (items.isEmpty) {
+              return Center(
+                child: Text(
+                  'No saved windows yet.',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.deepTeal,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
+              );
+            }
+
+            return Container(
+              decoration: AppTheme.pageDecoration(),
+              child: ListView(
+                key: const Key('review_list_view'),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+                children: <Widget>[
+                  _buildSummaryCard(context, items.length),
+                  const SizedBox(height: 12),
+                  ...List<Widget>.generate(items.length, (int index) {
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index == items.length - 1 ? 0 : 10,
+                      ),
+                      // The tour explains recheck / edit / delete on the first
+                      // card, so only that one carries a target.
+                      child: index == 0
+                          ? TutorialTarget(
+                              id: 'review.card',
+                              child: _buildReviewCard(
+                                context,
+                                items[index],
+                                index,
+                              ),
+                            )
+                          : _buildReviewCard(context, items[index], index),
+                    );
+                  }),
+                ],
               ),
             );
-          }
-
-          return Container(
-            decoration: AppTheme.pageDecoration(),
-            child: ListView(
-              key: const Key('review_list_view'),
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-              children: <Widget>[
-                _buildSummaryCard(context, items.length),
-                const SizedBox(height: 12),
-                ...List<Widget>.generate(items.length, (int index) {
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      bottom: index == items.length - 1 ? 0 : 10,
-                    ),
-                    child: _buildReviewCard(context, items[index], index),
-                  );
-                }),
-              ],
-            ),
-          );
-        },
+          },
+        ),
       ),
     );
   }

@@ -100,7 +100,9 @@ class GlassReportApiClient {
           'projectId': projectId,
           'projectName': report.projectName,
           'projectLocation': report.projectLocation,
-          'rows': report.rows.map((GlassReportRow row) => row.toJson()).toList(),
+          'rows': report.rows
+              .map((GlassReportRow row) => row.toJson())
+              .toList(),
         }),
       );
     } on Exception catch (error) {
@@ -126,7 +128,6 @@ class GlassReportApiClient {
     }
     return GlassReport.fromJson(payload);
   }
-
 
   Map<String, dynamic>? _decodeObject(String body) {
     if (body.trim().isEmpty) {

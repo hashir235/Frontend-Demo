@@ -158,6 +158,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   bool get _isFabricationFlow => widget.session.isFabrication;
   bool get _isFabricationCmMode =>
       _isFabricationFlow && _unitMode == UnitMode.feet;
+
   /// The dimension inputs render as a "typed whole part + tape wheel" split
   /// whenever the unit has a sub-part that is picked on a wheel: inches
   /// (inch typed + suter wheel, both flows) and estimation feet (feet typed +
@@ -173,8 +174,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// [UnitMode.cm]. Both render a single numeric cm field and validate the
   /// same way.
   bool get _isCmMode =>
-      _isFabricationCmMode ||
-      (!_isFabricationFlow && _unitMode == UnitMode.cm);
+      _isFabricationCmMode || (!_isFabricationFlow && _unitMode == UnitMode.cm);
 
   /// Estimation-only: cm input is a quotation convenience. On save it is
   /// converted to inch + sutter so the rest of the estimation pipeline (which
@@ -794,7 +794,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return (inch: feet, suter: '');
     }
     final int inch = int.tryParse(parts[1].trim()) ?? 0;
-    return (inch: feet, suter: InchWheel.snap(inch.toDouble()).round().toString());
+    return (
+      inch: feet,
+      suter: InchWheel.snap(inch.toDouble()).round().toString(),
+    );
   }
 
   /// Mode-aware split of a stored dimension into (whole, wheel) parts.
@@ -834,17 +837,20 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (!_usesSplitInput) {
       return;
     }
-    final ({String inch, String suter}) height =
-        _splitStoredForSplit(_heightController.text);
-    final ({String inch, String suter}) width =
-        _splitStoredForSplit(_widthController.text);
+    final ({String inch, String suter}) height = _splitStoredForSplit(
+      _heightController.text,
+    );
+    final ({String inch, String suter}) width = _splitStoredForSplit(
+      _widthController.text,
+    );
     _heightInchController.text = height.inch;
     _heightSuterController.text = height.suter;
     _widthInchController.text = width.inch;
     _widthSuterController.text = width.suter;
     if (_usesSplitWidthInputs) {
-      final ({String inch, String suter}) left =
-          _splitStoredForSplit(_leftWidthController.text);
+      final ({String inch, String suter}) left = _splitStoredForSplit(
+        _leftWidthController.text,
+      );
       _leftWidthInchController.text = left.inch;
       _leftWidthSuterController.text = left.suter;
     }
@@ -1109,7 +1115,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     TextEditingController wheelController,
   ) {
     if (_usesSplitInput) {
-      return _validateSplitDimension(wholeController.text, wheelController.text);
+      return _validateSplitDimension(
+        wholeController.text,
+        wheelController.text,
+      );
     }
     if (_isCmMode) {
       return _validateCmDimension(combined.text);
@@ -1443,16 +1452,16 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return;
     }
 
-    final int quantity =
-        (int.tryParse(_quantityController.text.trim()) ?? 1).clamp(1, 500);
+    final int quantity = (int.tryParse(_quantityController.text.trim()) ?? 1)
+        .clamp(1, 500);
 
     try {
       for (int q = 0; q < quantity; q++) {
         // For quantity > 1 always use auto-numbering; for qty 1 respect manual mode
         final int itemWinNo =
             (quantity == 1 && _numberingMode == NumberingMode.manual)
-                ? winNo
-                : widget.session.nextWinNo;
+            ? winNo
+            : widget.session.nextWinNo;
         widget.session.addItem(
           winNo: itemWinNo,
           windowLabel: widget.node.label,
@@ -1636,6 +1645,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     required TextStyle? numberInputStyle,
     required VoidCallback onChanged,
     required FocusNode wholeFocusNode,
+    // Only the first field on screen carries the tour's wheel target; ids are
+    // unique, so registering it on all three would leave the spotlight
+    // pointing at whichever built last.
+    bool isTourWheelExample = false,
   }) {
     final bool feetMode = _usesFeetInchSplit;
     final double wheelValue = double.tryParse(wheelController.text.trim()) ?? 0;
@@ -1669,32 +1682,47 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: _usesKeypadSizeInput
-                ? _buildSubPartField(
-                    controller: wheelController,
-                    feetMode: feetMode,
-                    numberInputStyle: numberInputStyle,
-                    onChanged: onChanged,
-                  )
-                : feetMode
-                ? InchWheel(
-                    value: wheelValue,
-                    onChanged: (double value) {
-                      wheelController.text = InchWheel.format(value);
-                      onChanged();
-                    },
-                  )
-                : SuterWheel(
-                    value: wheelValue,
-                    onChanged: (double value) {
-                      wheelController.text = SuterWheel.format(value);
-                      onChanged();
-                    },
-                  ),
+            child: _maybeTourTarget(
+              id: 'input.wheel',
+              enabled: isTourWheelExample,
+              child: _usesKeypadSizeInput
+                  ? _buildSubPartField(
+                      controller: wheelController,
+                      feetMode: feetMode,
+                      numberInputStyle: numberInputStyle,
+                      onChanged: onChanged,
+                    )
+                  : feetMode
+                  ? InchWheel(
+                      value: wheelValue,
+                      onChanged: (double value) {
+                        wheelController.text = InchWheel.format(value);
+                        onChanged();
+                      },
+                    )
+                  : SuterWheel(
+                      value: wheelValue,
+                      onChanged: (double value) {
+                        wheelController.text = SuterWheel.format(value);
+                        onChanged();
+                      },
+                    ),
+            ),
           ),
         ),
       ],
     );
+  }
+
+  /// Wraps [child] in a tour target only where the tour actually wants one,
+  /// so a builder shared by several fields registers the id just once.
+  Widget _maybeTourTarget({
+    required String id,
+    required bool enabled,
+    required Widget child,
+  }) {
+    if (!enabled) return child;
+    return TutorialTarget(id: id, child: child);
   }
 
   /// Settings se aane wala faisla: wheel ya seedha typing box.
@@ -1760,769 +1788,820 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
               label: Text('U', key: Key('rubber_u_option')),
             ),
           ];
-    return Scaffold(
-      key: _scaffoldKey,
-      resizeToAvoidBottomInset: false,
-      endDrawer: Drawer(
-        key: const Key('settings_drawer'),
-        width: _handler.showDrawerForCollar(_selectedCollar)
-            ? MediaQuery.sizeOf(context).width * 0.38
-            : null,
-        child: SafeArea(
-          // Chhoti screen par sab options ek saath nahi aate, is liye poora
-          // sidebar upar-neeche scroll hota ha -- sirf sections ki list nahi.
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Windows settings',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.deepTeal,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Divider(),
-                const SizedBox(height: 8),
-                if (_showsDoorSectionToggles) ...[
+    // The overlay wraps the whole Scaffold, not just its body: the settings
+    // drawer is painted above the body, so a spotlight inside the body could
+    // never reach the section buttons the tour has to point at.
+    return TutorialOverlay(
+      screen: TutorialScreen.windowInput,
+      child: Scaffold(
+        key: _scaffoldKey,
+        resizeToAvoidBottomInset: false,
+        endDrawer: Drawer(
+          key: const Key('settings_drawer'),
+          width: _handler.showDrawerForCollar(_selectedCollar)
+              ? MediaQuery.sizeOf(context).width * 0.38
+              : null,
+          child: SafeArea(
+            // Chhoti screen par sab options ek saath nahi aate, is liye poora
+            // sidebar upar-neeche scroll hota ha -- sirf sections ki list nahi.
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'D46 Option',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    'Windows settings',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: AppTheme.deepTeal,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildSidebarToggleOption(
-                    label: 'D46 Off',
-                    selected: !_doorD46Enabled,
-                    onTap: () => _setDoorD46Enabled(false),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildSidebarToggleOption(
-                    label: 'D46 On',
-                    selected: _doorD46Enabled,
-                    onTap: () => _setDoorD46Enabled(true),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'D52 Option',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.deepTeal,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  const Divider(),
                   const SizedBox(height: 8),
-                  _buildSidebarToggleOption(
-                    label: 'D52 Off',
-                    selected: !_doorD52Enabled,
-                    onTap: () => _setDoorD52Enabled(false),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildSidebarToggleOption(
-                    label: 'D52 On',
-                    selected: _doorD52Enabled,
-                    onTap: () => _setDoorD52Enabled(true),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (_showsBackCollarOption) ...[
-                  Text(
-                    'Back Collar',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.deepTeal,
-                      fontWeight: FontWeight.w700,
+                  if (_showsDoorSectionToggles) ...[
+                    Text(
+                      'D46 Option',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildSidebarToggleOption(
-                    label: '1.7 cm',
-                    selected: _backCollarCm != kBackCollarTwoCm,
-                    onTap: () => _setBackCollarCm(kBackCollarDefaultCm),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildSidebarToggleOption(
-                    label: '2 cm',
-                    selected: _backCollarCm == kBackCollarTwoCm,
-                    onTap: () => _setBackCollarCm(kBackCollarTwoCm),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (_showsOpenableNetToggle) ...[
-                  Text(
-                    'Net Option',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.deepTeal,
-                      fontWeight: FontWeight.w700,
+                    const SizedBox(height: 8),
+                    _buildSidebarToggleOption(
+                      label: 'D46 Off',
+                      selected: !_doorD46Enabled,
+                      onTap: () => _setDoorD46Enabled(false),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildSidebarToggleOption(
-                    label: 'Net Off',
-                    selected: !_openableNetEnabled,
-                    onTap: () => _setOpenableNetEnabled(false),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildSidebarToggleOption(
-                    label: 'Net On',
-                    selected: _openableNetEnabled,
-                    onTap: () => _setOpenableNetEnabled(true),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (_handler.showDrawerForCollar(_selectedCollar)) ...[
-                  Text(
-                    'Sections',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.deepTeal,
-                      fontWeight: FontWeight.w700,
+                    const SizedBox(height: 6),
+                    _buildSidebarToggleOption(
+                      label: 'D46 On',
+                      selected: _doorD46Enabled,
+                      onTap: () => _setDoorD46Enabled(true),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Poora drawer scroll hota ha, is liye ye list apna scroll
-                  // nahi chalati -- warna do scroll ek doosre sa larte hain.
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: EdgeInsets.zero,
-                    itemCount: _handler
-                        .sectionsForCollar(_selectedCollar)
-                        .length,
-                    separatorBuilder: (BuildContext context, int index) =>
-                        const SizedBox(height: 6),
-                    itemBuilder: (BuildContext context, int index) {
-                        final String code = _handler.sectionsForCollar(
-                          _selectedCollar,
-                        )[index];
-                        final bool isSelected = code == _selectedSectionCode;
-                        return Material(
-                          color: isSelected
-                              ? AppTheme.violet.withValues(alpha: 0.12)
-                              : Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(10),
-                          child: InkWell(
+                    const SizedBox(height: 12),
+                    Text(
+                      'D52 Option',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildSidebarToggleOption(
+                      label: 'D52 Off',
+                      selected: !_doorD52Enabled,
+                      onTap: () => _setDoorD52Enabled(false),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildSidebarToggleOption(
+                      label: 'D52 On',
+                      selected: _doorD52Enabled,
+                      onTap: () => _setDoorD52Enabled(true),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_showsBackCollarOption) ...[
+                    Text(
+                      'Back Collar',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildSidebarToggleOption(
+                      label: '1.7 cm',
+                      selected: _backCollarCm != kBackCollarTwoCm,
+                      onTap: () => _setBackCollarCm(kBackCollarDefaultCm),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildSidebarToggleOption(
+                      label: '2 cm',
+                      selected: _backCollarCm == kBackCollarTwoCm,
+                      onTap: () => _setBackCollarCm(kBackCollarTwoCm),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_showsOpenableNetToggle) ...[
+                    Text(
+                      'Net Option',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildSidebarToggleOption(
+                      label: 'Net Off',
+                      selected: !_openableNetEnabled,
+                      onTap: () => _setOpenableNetEnabled(false),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildSidebarToggleOption(
+                      label: 'Net On',
+                      selected: _openableNetEnabled,
+                      onTap: () => _setOpenableNetEnabled(true),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_handler.showDrawerForCollar(_selectedCollar)) ...[
+                    Text(
+                      'Sections',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Poora drawer scroll hota ha, is liye ye list apna scroll
+                    // nahi chalati -- warna do scroll ek doosre sa larte hain.
+                    TutorialTarget(
+                      id: 'input.sidebarSections',
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        itemCount: _handler
+                            .sectionsForCollar(_selectedCollar)
+                            .length,
+                        separatorBuilder: (BuildContext context, int index) =>
+                            const SizedBox(height: 6),
+                        itemBuilder: (BuildContext context, int index) {
+                          final String code = _handler.sectionsForCollar(
+                            _selectedCollar,
+                          )[index];
+                          final bool isSelected = code == _selectedSectionCode;
+                          return Material(
+                            color: isSelected
+                                ? AppTheme.violet.withValues(alpha: 0.12)
+                                : Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(10),
-                            onTap: () {
-                              setState(() {
-                                _selectedSectionCode = isSelected ? null : code;
-                              });
-                              _persistSidebarSelections();
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    code,
-                                    style: Theme.of(context).textTheme.bodyLarge
-                                        ?.copyWith(
-                                          color: AppTheme.deepTeal,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                  ),
-                                  const Spacer(),
-                                  if (isSelected)
-                                    Icon(
-                                      Icons.check_circle,
-                                      size: 18,
-                                      color: AppTheme.violet,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () {
+                                setState(() {
+                                  _selectedSectionCode = isSelected
+                                      ? null
+                                      : code;
+                                });
+                                _persistSidebarSelections();
+                                TutorialController.instance.advanceAfterTap();
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      code,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(
+                                            color: AppTheme.deepTeal,
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                     ),
-                                ],
+                                    const Spacer(),
+                                    if (isSelected)
+                                      Icon(
+                                        Icons.check_circle,
+                                        size: 18,
+                                        color: AppTheme.violet,
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (_showsLockTypeSelector) ...[
-                  Text(
-                    'Lock Type',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.deepTeal,
-                      fontWeight: FontWeight.w700,
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Column(
-                    key: const Key('lock_type_segmented_control'),
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSidebarToggleOption(
-                        label: 'Latch',
-                        selected: _lockType == _LockType.latch,
-                        onTap: () {
-                          setState(() {
-                            _lockType = _LockType.latch;
-                          });
-                          _persistSidebarSelections();
-                        },
+                    const SizedBox(height: 12),
+                  ],
+                  if (_showsLockTypeSelector) ...[
+                    Text(
+                      'Lock Type',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 6),
-                      _buildSidebarToggleOption(
-                        label: 'Self',
-                        selected: _lockType == _LockType.self,
-                        onTap: () {
-                          setState(() {
-                            _lockType = _LockType.self;
-                          });
-                          _persistSidebarSelections();
-                        },
-                      ),
-                      if (_allowsHandalLockType) ...[
-                        const SizedBox(height: 6),
+                    ),
+                    const SizedBox(height: 8),
+                    Column(
+                      key: const Key('lock_type_segmented_control'),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         _buildSidebarToggleOption(
-                          label: 'Handal',
-                          selected: _lockType == _LockType.handal,
+                          label: 'Latch',
+                          selected: _lockType == _LockType.latch,
                           onTap: () {
                             setState(() {
-                              _lockType = _LockType.handal;
+                              _lockType = _LockType.latch;
                             });
                             _persistSidebarSelections();
                           },
                         ),
+                        const SizedBox(height: 6),
+                        _buildSidebarToggleOption(
+                          label: 'Self',
+                          selected: _lockType == _LockType.self,
+                          onTap: () {
+                            setState(() {
+                              _lockType = _LockType.self;
+                            });
+                            _persistSidebarSelections();
+                          },
+                        ),
+                        if (_allowsHandalLockType) ...[
+                          const SizedBox(height: 6),
+                          _buildSidebarToggleOption(
+                            label: 'Handal',
+                            selected: _lockType == _LockType.handal,
+                            onTap: () {
+                              setState(() {
+                                _lockType = _LockType.handal;
+                              });
+                              _persistSidebarSelections();
+                            },
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (_isFabricationFlow) ...[
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_isFabricationFlow) ...[
+                    Text(
+                      'Rubber Type',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<_RubberType>(
+                      key: const Key('rubber_type_segmented_control'),
+                      segments: rubberSegments,
+                      selected: <_RubberType>{_rubberType},
+                      showSelectedIcon: false,
+                      onSelectionChanged: (Set<_RubberType> selection) {
+                        if (selection.isEmpty) {
+                          return;
+                        }
+                        setState(() {
+                          _rubberType = _isFixOnlyRubberWindow
+                              ? _RubberType.fix
+                              : selection.first;
+                        });
+                        _persistSidebarSelections();
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   Text(
-                    'Rubber Type',
+                    'Units',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: AppTheme.deepTeal,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  SegmentedButton<_RubberType>(
-                    key: const Key('rubber_type_segmented_control'),
-                    segments: rubberSegments,
-                    selected: <_RubberType>{_rubberType},
-                    showSelectedIcon: false,
-                    onSelectionChanged: (Set<_RubberType> selection) {
-                      if (selection.isEmpty) {
-                        return;
-                      }
-                      setState(() {
-                        _rubberType = _isFixOnlyRubberWindow
-                            ? _RubberType.fix
-                            : selection.first;
-                      });
-                      _persistSidebarSelections();
-                    },
-                  ),
-                  const SizedBox(height: 12),
+                  if (_isFabricationFlow) ...<Widget>[
+                    _buildUnitOption(
+                      optionKey: 'unit_cm_radio',
+                      label: 'CM',
+                      // Fabrication keeps cm in the existing `feet` slot.
+                      selected: _unitMode == UnitMode.feet,
+                      onTap: () => _onUnitModeChanged(UnitMode.feet),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildUnitOption(
+                      optionKey: 'unit_inches_radio',
+                      label: 'Inches',
+                      selected: _unitMode == UnitMode.inches,
+                      onTap: () => _onUnitModeChanged(UnitMode.inches),
+                    ),
+                  ] else ...<Widget>[
+                    _buildUnitOption(
+                      optionKey: 'unit_feet_radio',
+                      label: 'Feet',
+                      selected: _unitMode == UnitMode.feet,
+                      onTap: () => _onUnitModeChanged(UnitMode.feet),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildUnitOption(
+                      optionKey: 'unit_inches_radio',
+                      label: 'Inches',
+                      selected: _unitMode == UnitMode.inches,
+                      onTap: () => _onUnitModeChanged(UnitMode.inches),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildUnitOption(
+                      optionKey: 'unit_cm_radio',
+                      label: 'CM',
+                      selected: _unitMode == UnitMode.cm,
+                      onTap: () => _onUnitModeChanged(UnitMode.cm),
+                    ),
+                  ],
                 ],
-                Text(
-                  'Units',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.deepTeal,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (_isFabricationFlow) ...<Widget>[
-                  _buildUnitOption(
-                    optionKey: 'unit_cm_radio',
-                    label: 'CM',
-                    // Fabrication keeps cm in the existing `feet` slot.
-                    selected: _unitMode == UnitMode.feet,
-                    onTap: () => _onUnitModeChanged(UnitMode.feet),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildUnitOption(
-                    optionKey: 'unit_inches_radio',
-                    label: 'Inches',
-                    selected: _unitMode == UnitMode.inches,
-                    onTap: () => _onUnitModeChanged(UnitMode.inches),
-                  ),
-                ] else ...<Widget>[
-                  _buildUnitOption(
-                    optionKey: 'unit_feet_radio',
-                    label: 'Feet',
-                    selected: _unitMode == UnitMode.feet,
-                    onTap: () => _onUnitModeChanged(UnitMode.feet),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildUnitOption(
-                    optionKey: 'unit_inches_radio',
-                    label: 'Inches',
-                    selected: _unitMode == UnitMode.inches,
-                    onTap: () => _onUnitModeChanged(UnitMode.inches),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildUnitOption(
-                    optionKey: 'unit_cm_radio',
-                    label: 'CM',
-                    selected: _unitMode == UnitMode.cm,
-                    onTap: () => _onUnitModeChanged(UnitMode.cm),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
         ),
-      ),
-      body: TutorialOverlay(
-        screen: TutorialScreen.windowInput,
-        child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppTheme.mist, AppTheme.ice],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppTheme.mist, AppTheme.ice],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      color: AppTheme.deepTeal,
-                    ),
-                    Expanded(
-                      child: Text(
-                        widget.session.isFabrication
-                            ? 'Fabrication'
-                            : 'Estimation',
-                        key: const Key('input_estimation_heading'),
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineLarge
-                            ?.copyWith(fontSize: 30, height: 1),
-                      ),
-                    ),
-                    IconButton(
-                      key: const Key('open_review_button'),
-                      onPressed: _openReview,
-                      icon: const Icon(Icons.arrow_forward_rounded),
-                      color: AppTheme.deepTeal,
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 48),
-                    Expanded(
-                      child: Text(
-                        widget.node.label,
-                        key: const Key('input_window_label'),
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.deepTeal,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    TutorialTarget(
-                      id: 'input.threeDots',
-                      child: IconButton(
-                        key: const Key('open_settings_drawer_button'),
-                        onPressed: _openSettings,
-                        icon: const Icon(Icons.more_horiz_rounded),
+          child: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back_rounded),
                         color: AppTheme.deepTeal,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.fromLTRB(
-                    18,
-                    6,
-                    18,
-                    math.max(24, keyboardInset + 140),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        key: const Key('current_win_no_label'),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.deepTeal,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
+                      Expanded(
                         child: Text(
-                          'winNo: ${_numberingMode == NumberingMode.manual ? (_winNoController.text.trim().isEmpty ? '--' : _winNoController.text.trim()) : _visibleWinNo}',
-                          style: Theme.of(context).textTheme.bodyMedium
+                          widget.session.isFabrication
+                              ? 'Fabrication'
+                              : 'Estimation',
+                          key: const Key('input_estimation_heading'),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineLarge
+                              ?.copyWith(fontSize: 30, height: 1),
+                        ),
+                      ),
+                      TutorialTarget(
+                        id: 'input.next',
+                        child: IconButton(
+                          key: const Key('open_review_button'),
+                          onPressed: () {
+                            TutorialController.instance.advanceAfterTap();
+                            _openReview();
+                          },
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                          color: AppTheme.deepTeal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 48),
+                      Expanded(
+                        child: Text(
+                          widget.node.label,
+                          key: const Key('input_window_label'),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
-                                color: Colors.white,
+                                color: AppTheme.deepTeal,
                                 fontWeight: FontWeight.w700,
                               ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: _collarCardSize + 30,
-                        child: LayoutBuilder(
-                          builder:
-                              (
-                                BuildContext context,
-                                BoxConstraints constraints,
-                              ) {
-                                final double availableWidth =
-                                    constraints.maxWidth;
-                                final double side = math.min(
-                                  _collarCardSize,
-                                  availableWidth *
-                                      _collarViewportFraction *
-                                      0.9,
-                                );
-                                return PageView.builder(
-                                  key: const Key('collar_page_view'),
-                                  controller: _collarPageController,
-                                  physics: const BouncingScrollPhysics(),
-                                  itemCount: _handler.collarCount,
-                                  onPageChanged: (int index) {
-                                    setState(() {
-                                      _selectedCollar = index + 1;
-                                      _selectedSectionCode =
-                                          _normalizedSelectedSectionCode(
-                                            _selectedSectionCode,
-                                            _selectedCollar,
-                                          );
-                                    });
-                                    _persistSidebarSelections();
-                                  },
-                                  itemBuilder:
-                                      (BuildContext context, int index) {
-                                        return _buildCollarCard(
-                                          index,
-                                          isFocused: true,
-                                          side: side,
-                                        );
-                                      },
-                                );
-                              },
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (_numberingMode == NumberingMode.manual) ...[
-                        TextField(
-                          key: _winNoFieldKey,
-                          controller: _winNoController,
-                          focusNode: _winNoFocusNode,
-                          enabled: !widget.isEditMode,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            signed: false,
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          textInputAction: _textInputActionForField(
-                            _winNoFocusNode,
-                          ),
-                          onSubmitted: (_) => _submitFromField(_winNoFocusNode),
-                          onChanged: (_) {
-                            if (_winNoError != null) {
-                              setState(() {
-                                _winNoError = _validateWinNo(
-                                  _winNoController.text,
-                                );
-                              });
-                            } else {
-                              setState(() {}); // refresh winNo badge display
-                            }
-                          },
-                          decoration: InputDecoration(
-                            labelText: 'Window Number',
-                            errorText: _winNoError,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                      ],
-                      Row(
-                        children: [
-                          Text(
-                            'Dimensions',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  color: AppTheme.deepTeal,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            onPressed: _showDimensionInfo,
-                            icon: const Icon(Icons.info_outline_rounded),
-                            color: AppTheme.deepTeal,
-                          ),
-                        ],
-                      ),
-                      // The unit used to live only behind the three dots, so
-                      // people typed a size without being sure whether it was
-                      // feet, inches or cm. It sits with the size fields now.
                       TutorialTarget(
-                        id: 'input.unit',
-                        child: _buildInlineUnitSelector(context),
-                      ),
-                      const SizedBox(height: 12),
-                      if (_usesSplitInput)
-                        _buildSplitDimensionField(
-                          label: 'Height',
-                          wholeFieldKey: _heightFieldKey,
-                          wholeController: _heightInchController,
-                          wheelController: _heightSuterController,
-                          errorText: _heightError,
-                          numberInputStyle: numberInputStyle,
-                          wholeFocusNode: _heightFocusNode,
-                          onChanged: () {
-                            setState(() {
-                              _heightController.text = _combineSplitForStorage(
-                                _heightInchController.text,
-                                _heightSuterController.text,
-                              );
-                              _heightError = _validateSplitDimension(
-                                _heightInchController.text,
-                                _heightSuterController.text,
-                              );
-                            });
-                          },
-                        )
-                      else
-                        _buildSingleDimensionField(
-                          fieldKey: _heightFieldKey,
-                          controller: _heightController,
-                          focusNode: _heightFocusNode,
-                          label: 'Height',
-                          errorText: _heightError,
-                          numberInputStyle: numberInputStyle,
-                          hintStyle: hintStyle,
-                          hintText: _isCmMode
-                              ? 'cm'
-                              : _unitMode.inputHint,
-                          onChanged: (_) {
-                            if (_heightError != null) {
-                              setState(() {
-                                _heightError = _isCmMode
-                                    ? _validateCmDimension(
-                                        _heightController.text,
-                                      )
-                                    : _validateDimension(
-                                        _heightController.text,
-                                      );
-                              });
-                            }
-                          },
-                        ),
-                      const SizedBox(height: 12),
-                      if (_usesSplitInput)
-                        _buildSplitDimensionField(
-                          label: _usesSplitWidthInputs
-                              ? 'Right Width'
-                              : 'Width',
-                          wholeFieldKey: _widthFieldKey,
-                          wholeController: _widthInchController,
-                          wheelController: _widthSuterController,
-                          errorText: _widthError,
-                          numberInputStyle: numberInputStyle,
-                          wholeFocusNode: _widthFocusNode,
-                          onChanged: () {
-                            setState(() {
-                              _widthController.text = _combineSplitForStorage(
-                                _widthInchController.text,
-                                _widthSuterController.text,
-                              );
-                              _widthError = _validateSplitDimension(
-                                _widthInchController.text,
-                                _widthSuterController.text,
-                              );
-                            });
-                          },
-                        )
-                      else
-                        _buildSingleDimensionField(
-                          fieldKey: _widthFieldKey,
-                          controller: _widthController,
-                          focusNode: _widthFocusNode,
-                          label: _usesSplitWidthInputs
-                              ? 'Right Width'
-                              : 'Width',
-                          errorText: _widthError,
-                          numberInputStyle: numberInputStyle,
-                          hintStyle: hintStyle,
-                          hintText: _isCmMode
-                              ? 'cm'
-                              : _unitMode.inputHint,
-                          onChanged: (_) {
-                            if (_widthError != null) {
-                              setState(() {
-                                _widthError = _isCmMode
-                                    ? _validateCmDimension(
-                                        _widthController.text,
-                                      )
-                                    : _validateDimension(_widthController.text);
-                              });
-                            }
-                          },
-                        ),
-                      if (_usesSplitWidthInputs) ...[
-                        const SizedBox(height: 12),
-                        if (_usesSplitInput)
-                          _buildSplitDimensionField(
-                            label: 'Left Width',
-                            wholeFieldKey: _leftWidthFieldKey,
-                            wholeController: _leftWidthInchController,
-                            wheelController: _leftWidthSuterController,
-                            errorText: _leftWidthError,
-                            numberInputStyle: numberInputStyle,
-                            wholeFocusNode: _leftWidthFocusNode,
-                            onChanged: () {
-                              setState(() {
-                                _leftWidthController.text =
-                                    _combineSplitForStorage(
-                                      _leftWidthInchController.text,
-                                      _leftWidthSuterController.text,
-                                    );
-                                _leftWidthError = _validateSplitDimension(
-                                  _leftWidthInchController.text,
-                                  _leftWidthSuterController.text,
-                                );
-                              });
-                            },
-                          )
-                        else
-                          _buildSingleDimensionField(
-                            fieldKey: _leftWidthFieldKey,
-                            controller: _leftWidthController,
-                            focusNode: _leftWidthFocusNode,
-                            label: 'Left Width',
-                            errorText: _leftWidthError,
-                            numberInputStyle: numberInputStyle,
-                            hintStyle: hintStyle,
-                            hintText: _isCmMode
-                                ? 'cm'
-                                : _unitMode.inputHint,
-                            onChanged: (_) {
-                              if (_leftWidthError != null) {
-                                setState(() {
-                                  _leftWidthError = _isCmMode
-                                      ? _validateCmDimension(
-                                          _leftWidthController.text,
-                                        )
-                                      : _validateDimension(
-                                          _leftWidthController.text,
-                                        );
-                                });
-                              }
-                            },
-                          ),
-                      ],
-                      if (_usesArchInput) ...[
-                        const SizedBox(height: 12),
-                        _buildSingleDimensionField(
-                          fieldKey: _archFieldKey,
-                          controller: _archController,
-                          focusNode: _archFocusNode,
-                          label: 'Arch',
-                          errorText: _archError,
-                          numberInputStyle: numberInputStyle,
-                          hintStyle: hintStyle,
-                          hintText: _isCmMode
-                              ? 'cm'
-                              : _unitMode.inputHint,
-                          onChanged: (_) {
-                            if (_archError != null) {
-                              setState(() {
-                                _archError = _isCmMode
-                                    ? _validateCmDimension(
-                                        _archController.text,
-                                      )
-                                    : _validateDimension(_archController.text);
-                              });
-                            }
-                          },
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      TutorialTarget(
-                        id: 'input.description',
-                        child: TextField(
-                        key: _descriptionFieldKey,
-                        controller: _descriptionController,
-                        focusNode: _descriptionFocusNode,
-                        textInputAction: _textInputActionForField(
-                          _descriptionFocusNode,
-                        ),
-                        maxLength: _maxDescriptionLength,
-                        maxLines: 2,
-                        onSubmitted: (_) =>
-                            _submitFromField(_descriptionFocusNode),
-                        decoration: InputDecoration(
-                          labelText: 'Description (Optional)',
-                          hintText: 'e.g. bath room window',
-                          hintStyle: hintStyle,
+                        id: 'input.threeDots',
+                        child: IconButton(
+                          key: const Key('open_settings_drawer_button'),
+                          onPressed: _openSettings,
+                          icon: const Icon(Icons.more_horiz_rounded),
+                          color: AppTheme.deepTeal,
                         ),
                       ),
-                      ),
-                      if (!widget.isEditMode) ...[
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _quantityController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            signed: false,
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _onSavePressed(),
-                          decoration: InputDecoration(
-                            labelText: 'Quantity (Optional)',
-                            hintText: 'e.g. 6  (default: 1)',
-                            hintStyle: hintStyle,
-                            prefixIcon: const Icon(Icons.copy_all_rounded),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
-              ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                padding: EdgeInsets.fromLTRB(
-                  18,
-                  8,
-                  18,
-                  math.max(16, keyboardInset + 16),
-                ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    key: const Key('input_save_button'),
-                    onPressed: _onSavePressed,
-                    icon: const Icon(Icons.save_outlined),
-                    label: Text(widget.isEditMode ? 'Update' : 'Save'),
+                Expanded(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: EdgeInsets.fromLTRB(
+                      18,
+                      6,
+                      18,
+                      math.max(24, keyboardInset + 140),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TutorialTarget(
+                          id: 'input.winNo',
+                          child: Container(
+                            key: const Key('current_win_no_label'),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.deepTeal,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Text(
+                              'winNo: ${_numberingMode == NumberingMode.manual ? (_winNoController.text.trim().isEmpty ? '--' : _winNoController.text.trim()) : _visibleWinNo}',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TutorialTarget(
+                          id: 'input.collarCards',
+                          child: SizedBox(
+                            height: _collarCardSize + 30,
+                            child: LayoutBuilder(
+                              builder:
+                                  (
+                                    BuildContext context,
+                                    BoxConstraints constraints,
+                                  ) {
+                                    final double availableWidth =
+                                        constraints.maxWidth;
+                                    final double side = math.min(
+                                      _collarCardSize,
+                                      availableWidth *
+                                          _collarViewportFraction *
+                                          0.9,
+                                    );
+                                    return PageView.builder(
+                                      key: const Key('collar_page_view'),
+                                      controller: _collarPageController,
+                                      physics: const BouncingScrollPhysics(),
+                                      itemCount: _handler.collarCount,
+                                      onPageChanged: (int index) {
+                                        setState(() {
+                                          _selectedCollar = index + 1;
+                                          _selectedSectionCode =
+                                              _normalizedSelectedSectionCode(
+                                                _selectedSectionCode,
+                                                _selectedCollar,
+                                              );
+                                        });
+                                        _persistSidebarSelections();
+                                      },
+                                      itemBuilder:
+                                          (BuildContext context, int index) {
+                                            return _buildCollarCard(
+                                              index,
+                                              isFocused: true,
+                                              side: side,
+                                            );
+                                          },
+                                    );
+                                  },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_numberingMode == NumberingMode.manual) ...[
+                          TextField(
+                            key: _winNoFieldKey,
+                            controller: _winNoController,
+                            focusNode: _winNoFocusNode,
+                            enabled: !widget.isEditMode,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              signed: false,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            textInputAction: _textInputActionForField(
+                              _winNoFocusNode,
+                            ),
+                            onSubmitted: (_) =>
+                                _submitFromField(_winNoFocusNode),
+                            onChanged: (_) {
+                              if (_winNoError != null) {
+                                setState(() {
+                                  _winNoError = _validateWinNo(
+                                    _winNoController.text,
+                                  );
+                                });
+                              } else {
+                                setState(() {}); // refresh winNo badge display
+                              }
+                            },
+                            decoration: InputDecoration(
+                              labelText: 'Window Number',
+                              errorText: _winNoError,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                        Row(
+                          children: [
+                            Text(
+                              'Dimensions',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    color: AppTheme.deepTeal,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              onPressed: _showDimensionInfo,
+                              icon: const Icon(Icons.info_outline_rounded),
+                              color: AppTheme.deepTeal,
+                            ),
+                          ],
+                        ),
+                        // The unit used to live only behind the three dots, so
+                        // people typed a size without being sure whether it was
+                        // feet, inches or cm. It sits with the size fields now.
+                        TutorialTarget(
+                          id: 'input.unit',
+                          child: _buildInlineUnitSelector(context),
+                        ),
+                        const SizedBox(height: 12),
+                        TutorialTarget(
+                          id: 'input.sizes',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              if (_usesSplitInput)
+                                _buildSplitDimensionField(
+                                  isTourWheelExample: true,
+                                  label: 'Height',
+                                  wholeFieldKey: _heightFieldKey,
+                                  wholeController: _heightInchController,
+                                  wheelController: _heightSuterController,
+                                  errorText: _heightError,
+                                  numberInputStyle: numberInputStyle,
+                                  wholeFocusNode: _heightFocusNode,
+                                  onChanged: () {
+                                    setState(() {
+                                      _heightController.text =
+                                          _combineSplitForStorage(
+                                            _heightInchController.text,
+                                            _heightSuterController.text,
+                                          );
+                                      _heightError = _validateSplitDimension(
+                                        _heightInchController.text,
+                                        _heightSuterController.text,
+                                      );
+                                    });
+                                  },
+                                )
+                              else
+                                _buildSingleDimensionField(
+                                  fieldKey: _heightFieldKey,
+                                  controller: _heightController,
+                                  focusNode: _heightFocusNode,
+                                  label: 'Height',
+                                  errorText: _heightError,
+                                  numberInputStyle: numberInputStyle,
+                                  hintStyle: hintStyle,
+                                  hintText: _isCmMode
+                                      ? 'cm'
+                                      : _unitMode.inputHint,
+                                  onChanged: (_) {
+                                    if (_heightError != null) {
+                                      setState(() {
+                                        _heightError = _isCmMode
+                                            ? _validateCmDimension(
+                                                _heightController.text,
+                                              )
+                                            : _validateDimension(
+                                                _heightController.text,
+                                              );
+                                      });
+                                    }
+                                  },
+                                ),
+                              const SizedBox(height: 12),
+                              if (_usesSplitInput)
+                                _buildSplitDimensionField(
+                                  label: _usesSplitWidthInputs
+                                      ? 'Right Width'
+                                      : 'Width',
+                                  wholeFieldKey: _widthFieldKey,
+                                  wholeController: _widthInchController,
+                                  wheelController: _widthSuterController,
+                                  errorText: _widthError,
+                                  numberInputStyle: numberInputStyle,
+                                  wholeFocusNode: _widthFocusNode,
+                                  onChanged: () {
+                                    setState(() {
+                                      _widthController.text =
+                                          _combineSplitForStorage(
+                                            _widthInchController.text,
+                                            _widthSuterController.text,
+                                          );
+                                      _widthError = _validateSplitDimension(
+                                        _widthInchController.text,
+                                        _widthSuterController.text,
+                                      );
+                                    });
+                                  },
+                                )
+                              else
+                                _buildSingleDimensionField(
+                                  fieldKey: _widthFieldKey,
+                                  controller: _widthController,
+                                  focusNode: _widthFocusNode,
+                                  label: _usesSplitWidthInputs
+                                      ? 'Right Width'
+                                      : 'Width',
+                                  errorText: _widthError,
+                                  numberInputStyle: numberInputStyle,
+                                  hintStyle: hintStyle,
+                                  hintText: _isCmMode
+                                      ? 'cm'
+                                      : _unitMode.inputHint,
+                                  onChanged: (_) {
+                                    if (_widthError != null) {
+                                      setState(() {
+                                        _widthError = _isCmMode
+                                            ? _validateCmDimension(
+                                                _widthController.text,
+                                              )
+                                            : _validateDimension(
+                                                _widthController.text,
+                                              );
+                                      });
+                                    }
+                                  },
+                                ),
+                              if (_usesSplitWidthInputs) ...[
+                                const SizedBox(height: 12),
+                                if (_usesSplitInput)
+                                  _buildSplitDimensionField(
+                                    label: 'Left Width',
+                                    wholeFieldKey: _leftWidthFieldKey,
+                                    wholeController: _leftWidthInchController,
+                                    wheelController: _leftWidthSuterController,
+                                    errorText: _leftWidthError,
+                                    numberInputStyle: numberInputStyle,
+                                    wholeFocusNode: _leftWidthFocusNode,
+                                    onChanged: () {
+                                      setState(() {
+                                        _leftWidthController.text =
+                                            _combineSplitForStorage(
+                                              _leftWidthInchController.text,
+                                              _leftWidthSuterController.text,
+                                            );
+                                        _leftWidthError =
+                                            _validateSplitDimension(
+                                              _leftWidthInchController.text,
+                                              _leftWidthSuterController.text,
+                                            );
+                                      });
+                                    },
+                                  )
+                                else
+                                  _buildSingleDimensionField(
+                                    fieldKey: _leftWidthFieldKey,
+                                    controller: _leftWidthController,
+                                    focusNode: _leftWidthFocusNode,
+                                    label: 'Left Width',
+                                    errorText: _leftWidthError,
+                                    numberInputStyle: numberInputStyle,
+                                    hintStyle: hintStyle,
+                                    hintText: _isCmMode
+                                        ? 'cm'
+                                        : _unitMode.inputHint,
+                                    onChanged: (_) {
+                                      if (_leftWidthError != null) {
+                                        setState(() {
+                                          _leftWidthError = _isCmMode
+                                              ? _validateCmDimension(
+                                                  _leftWidthController.text,
+                                                )
+                                              : _validateDimension(
+                                                  _leftWidthController.text,
+                                                );
+                                        });
+                                      }
+                                    },
+                                  ),
+                              ],
+                              if (_usesArchInput) ...[
+                                const SizedBox(height: 12),
+                                _buildSingleDimensionField(
+                                  fieldKey: _archFieldKey,
+                                  controller: _archController,
+                                  focusNode: _archFocusNode,
+                                  label: 'Arch',
+                                  errorText: _archError,
+                                  numberInputStyle: numberInputStyle,
+                                  hintStyle: hintStyle,
+                                  hintText: _isCmMode
+                                      ? 'cm'
+                                      : _unitMode.inputHint,
+                                  onChanged: (_) {
+                                    if (_archError != null) {
+                                      setState(() {
+                                        _archError = _isCmMode
+                                            ? _validateCmDimension(
+                                                _archController.text,
+                                              )
+                                            : _validateDimension(
+                                                _archController.text,
+                                              );
+                                      });
+                                    }
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TutorialTarget(
+                          id: 'input.description',
+                          child: TextField(
+                            key: _descriptionFieldKey,
+                            controller: _descriptionController,
+                            focusNode: _descriptionFocusNode,
+                            textInputAction: _textInputActionForField(
+                              _descriptionFocusNode,
+                            ),
+                            maxLength: _maxDescriptionLength,
+                            maxLines: 2,
+                            onSubmitted: (_) =>
+                                _submitFromField(_descriptionFocusNode),
+                            decoration: InputDecoration(
+                              labelText: 'Description (Optional)',
+                              hintText: 'e.g. bath room window',
+                              hintStyle: hintStyle,
+                            ),
+                          ),
+                        ),
+                        if (!widget.isEditMode) ...[
+                          const SizedBox(height: 12),
+                          TutorialTarget(
+                            id: 'input.quantity',
+                            child: TextField(
+                              controller: _quantityController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    signed: false,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _onSavePressed(),
+                              decoration: InputDecoration(
+                                labelText: 'Quantity (Optional)',
+                                hintText: 'e.g. 6  (default: 1)',
+                                hintStyle: hintStyle,
+                                prefixIcon: const Icon(Icons.copy_all_rounded),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  padding: EdgeInsets.fromLTRB(
+                    18,
+                    8,
+                    18,
+                    math.max(16, keyboardInset + 16),
+                  ),
+                  child: TutorialTarget(
+                    id: 'input.save',
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        key: const Key('input_save_button'),
+                        onPressed: () {
+                          TutorialController.instance.advanceAfterTap();
+                          _onSavePressed();
+                        },
+                        icon: const Icon(Icons.save_outlined),
+                        label: Text(widget.isEditMode ? 'Update' : 'Save'),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }

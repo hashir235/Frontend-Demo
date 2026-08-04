@@ -178,11 +178,15 @@ class GlassDimension {
   /// Parses an existing row's display string (preferred) or cm value back into
   /// editable inch + sutter. The display's first number is inches, the second
   /// is sutter eighths.
-  factory GlassDimension.fromRow({required String display, required double cm}) {
+  factory GlassDimension.fromRow({
+    required String display,
+    required double cm,
+  }) {
     final String trimmed = display.trim();
     if (trimmed.isNotEmpty) {
-      final Iterable<Match> matches =
-          RegExp(r'-?\d+(?:\.\d+)?').allMatches(trimmed);
+      final Iterable<Match> matches = RegExp(
+        r'-?\d+(?:\.\d+)?',
+      ).allMatches(trimmed);
       final List<double> numbers = matches
           .map((Match m) => double.tryParse(m.group(0) ?? '') ?? 0)
           .toList(growable: false);
@@ -197,8 +201,9 @@ class GlassDimension {
 
   /// Snaps any decimal-inch value to the nearest half-sutter.
   factory GlassDimension.fromDecimalInches(double decimalInches) {
-    final double safe =
-        decimalInches.isFinite && decimalInches > 0 ? decimalInches : 0;
+    final double safe = decimalInches.isFinite && decimalInches > 0
+        ? decimalInches
+        : 0;
     int inches = safe.floor();
     double sutter = _snapSutter((safe - inches) * 8.0);
     if (sutter >= 8) {

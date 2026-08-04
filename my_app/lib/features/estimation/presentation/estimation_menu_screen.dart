@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:my_app/core/config/api_config.dart';
 import 'package:my_app/core/network/auth_http_client.dart';
@@ -24,7 +24,6 @@ import 'window_navigation_screen.dart';
 
 class EstimationMenuScreen extends StatelessWidget {
   const EstimationMenuScreen({super.key});
-
 
   Future<_ProjectDraft?> _showProjectDialog(BuildContext context) async {
     return showDialog<_ProjectDraft>(
@@ -112,70 +111,70 @@ class EstimationMenuScreen extends StatelessWidget {
       body: TutorialOverlay(
         screen: TutorialScreen.projectMenu,
         child: AppScreenShell(
-        child: ListView(
-          children: <Widget>[
-            AppHeroHeader(
-              eyebrow: 'ESTIMATION',
-              title: 'Estimation workspace built for daily production',
-              subtitle:
-                  'Create projects, pick windows visually, and move through review, optimization, rates, and billing with a consistent premium workflow.',
-              trailing: Container(
-                width: 84,
-                height: 84,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.brandGradient,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                ),
-                child: const Icon(
-                  Icons.calculate_rounded,
-                  size: 40,
-                  color: Colors.white,
+          child: ListView(
+            children: <Widget>[
+              AppHeroHeader(
+                eyebrow: 'ESTIMATION',
+                title: 'Estimation workspace built for daily production',
+                subtitle:
+                    'Create projects, pick windows visually, and move through review, optimization, rates, and billing with a consistent premium workflow.',
+                trailing: Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.brandGradient,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  ),
+                  child: const Icon(
+                    Icons.calculate_rounded,
+                    size: 40,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: AppTheme.space6),
-            SectionSurfaceCard(
-              title: 'Start Work',
-              subtitle:
-                  'Create a new estimation project or continue from a saved one.',
-              child: Column(
-                children: <Widget>[
-                  TutorialTarget(
-                    id: 'menu.createProject',
-                    child: PrimaryCardButton(
-                      icon: Icons.add_box_outlined,
-                      title: 'Create Project',
-                      subtitle:
-                          'Capture project details and open the full window catalogue.',
-                      onTap: () {
-                        TutorialController.instance.advanceAfterTap();
-                        _handleCreateProject(context);
-                      },
+              const SizedBox(height: AppTheme.space6),
+              SectionSurfaceCard(
+                title: 'Start Work',
+                subtitle:
+                    'Create a new estimation project or continue from a saved one.',
+                child: Column(
+                  children: <Widget>[
+                    TutorialTarget(
+                      id: 'menu.createProject',
+                      child: PrimaryCardButton(
+                        icon: Icons.add_box_outlined,
+                        title: 'Create Project',
+                        subtitle:
+                            'Capture project details and open the full window catalogue.',
+                        onTap: () {
+                          TutorialController.instance.advanceAfterTap();
+                          _handleCreateProject(context);
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppTheme.space5),
-                  const RecentProjectsListSection(
-                    flow: EstimateFlow.estimation,
-                    moduleTitle: 'Estimation',
+                    const SizedBox(height: AppTheme.space5),
+                    const RecentProjectsListSection(
+                      flow: EstimateFlow.estimation,
+                      moduleTitle: 'Estimation',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppTheme.space6),
+              const Row(
+                children: <Widget>[
+                  Expanded(
+                    child: MetricCard(
+                      label: 'Workflow',
+                      value: 'Create -> Review -> Optimize',
+                      icon: Icons.timeline_rounded,
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: AppTheme.space6),
-            const Row(
-              children: <Widget>[
-                Expanded(
-                  child: MetricCard(
-                    label: 'Workflow',
-                    value: 'Create -> Review -> Optimize',
-                    icon: Icons.timeline_rounded,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

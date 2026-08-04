@@ -3,15 +3,29 @@ import 'package:flutter/widgets.dart';
 /// Where a tutorial step lives. The tutorial walks the user through several
 /// screens, so each step says which screen it belongs to; the overlay only
 /// shows a step once the matching screen is on top.
+/// Which walkthrough is running. They are separate journeys with separate
+/// buttons, and each remembers on its own whether it has been shown.
+enum TutorialTour { estimation, fabrication }
+
 enum TutorialScreen {
   home,
+
+  /// The Fabrication landing screen -- Create Project and Glass Report.
+  fabricationMenu,
+
   /// The Estimation landing screen -- recent projects and "Create Project".
   projectMenu,
   windowLibrary,
   windowInput,
+
+  /// The saved-windows list reached by the Next arrow -- recheck, edit, delete.
+  reviewList,
   lengthOptimization,
   sectionRecalculation,
   materialSelection,
+
+  /// The "Rate Setting" screen -- section, total feet and the rate per foot.
+  rateSetting,
   materialTable,
   billInputs,
   actualBill,

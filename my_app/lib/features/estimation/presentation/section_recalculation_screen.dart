@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
 import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
 import '../models/section_recalculation.dart';
@@ -199,94 +201,115 @@ class _SectionRecalculationScreenState
           _handlePop();
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Re Calculation'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => Navigator.of(context).pop(_result),
+      // Wraps the Scaffold: the Optimize button the tour makes the user press
+      // lives in the bottom bar, outside the body.
+      child: TutorialOverlay(
+        screen: TutorialScreen.sectionRecalculation,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Re Calculation'),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: () => Navigator.of(context).pop(_result),
+            ),
           ),
-        ),
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                top: BorderSide(color: AppTheme.sky.withValues(alpha: 0.7)),
-              ),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: AppTheme.deepTeal.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, -4),
+          bottomNavigationBar: SafeArea(
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(color: AppTheme.sky.withValues(alpha: 0.7)),
                 ),
-              ],
-            ),
-            child: FilledButton.icon(
-              onPressed: _isSubmitting ? null : _handleOptimizePressed,
-              icon: _isSubmitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2.2),
-                    )
-                  : const Icon(Icons.refresh_rounded),
-              label: Text(_isSubmitting ? 'Optimizing...' : 'Optimize Section'),
-            ),
-          ),
-        ),
-        body: TutorialOverlay(
-          screen: TutorialScreen.sectionRecalculation,
-          child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: <Color>[AppTheme.mist, AppTheme.ice],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: SafeArea(
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                children: <Widget>[
-                  _buildHeaderCard(context),
-                  const SizedBox(height: 12),
-                  ..._buildLengthCards(),
-                  const SizedBox(height: 12),
-                  _buildExtraLengthCard(),
-                  if (_errorMessage != null) ...<Widget>[
-                    const SizedBox(height: 12),
-                    _buildErrorBanner(context, _errorMessage!),
-                  ],
-                  if (resultSection != null) ...<Widget>[
-                    const SizedBox(height: 18),
-                    Text(
-                      'Updated Result',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSummaryCard(context, resultSection),
-                    const SizedBox(height: 12),
-                    ...resultSection.groups.map(
-                      (CuttingReportGroup group) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildGroupCard(context, group),
-                      ),
-                    ),
-                  ],
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: AppTheme.deepTeal.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, -4),
+                  ),
                 ],
               ),
+              child: TutorialTarget(
+                id: 'recalc.optimize',
+                child: FilledButton.icon(
+                  onPressed: _isSubmitting
+                      ? null
+                      : () {
+                          TutorialController.instance.advanceAfterTap();
+                          _handleOptimizePressed();
+                        },
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2.2),
+                        )
+                      : const Icon(Icons.refresh_rounded),
+                  label: Text(
+                    _isSubmitting ? 'Optimizing...' : 'Optimize Section',
+                  ),
+                ),
+              ),
+            ),
+          ),
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: <Color>[AppTheme.mist, AppTheme.ice],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: SafeArea(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                  children: <Widget>[
+                    TutorialTarget(
+                      id: 'recalc.header',
+                      child: _buildHeaderCard(context),
+                    ),
+                    const SizedBox(height: 12),
+                    ..._buildLengthCards(),
+                    const SizedBox(height: 12),
+                    TutorialTarget(
+                      id: 'recalc.extra',
+                      child: _buildExtraLengthCard(),
+                    ),
+                    if (_errorMessage != null) ...<Widget>[
+                      const SizedBox(height: 12),
+                      _buildErrorBanner(context, _errorMessage!),
+                    ],
+                    if (resultSection != null) ...<Widget>[
+                      const SizedBox(height: 18),
+                      Text(
+                        'Updated Result',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppTheme.deepTeal,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TutorialTarget(
+                        id: 'recalc.result',
+                        child: _buildSummaryCard(context, resultSection),
+                      ),
+                      const SizedBox(height: 12),
+                      ...resultSection.groups.map(
+                        (CuttingReportGroup group) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildGroupCard(context, group),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -333,36 +356,57 @@ class _SectionRecalculationScreenState
   List<Widget> _buildLengthCards() {
     return List<Widget>.generate(_baseLengths.length, (int index) {
       final double lengthFt = _baseLengths[index];
+      // The tour works through the first row; ids point at one widget, so
+      // only that row registers them.
+      final bool isTourExample = index == 0;
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.sky.withValues(alpha: 0.82)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Expanded(
-                child: _buildStaticLengthBox(
-                  label: 'Allowed Length',
-                  value: _stockDisplayInFeet(lengthFt),
+        child: _maybeTourTarget(
+          id: 'recalc.lengthRow',
+          enabled: isTourExample,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.sky.withValues(alpha: 0.82)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(
+                  child: _buildStaticLengthBox(
+                    label: 'Allowed Length',
+                    value: _stockDisplayInFeet(lengthFt),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 120,
-                child: _buildQuantityField(
-                  controller: _quantityControllers[index],
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 120,
+                  child: _maybeTourTarget(
+                    id: 'recalc.quantity',
+                    enabled: isTourExample,
+                    child: _buildQuantityField(
+                      controller: _quantityControllers[index],
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
     }, growable: false);
+  }
+
+  /// Wraps [child] in a tour target only on the row the tour walks through.
+  Widget _maybeTourTarget({
+    required String id,
+    required bool enabled,
+    required Widget child,
+  }) {
+    if (!enabled) return child;
+    return TutorialTarget(id: id, child: child);
   }
 
   Widget _buildStaticLengthBox({required String label, required String value}) {

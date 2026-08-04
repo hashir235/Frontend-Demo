@@ -416,7 +416,9 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Icon(_dirty ? Icons.save_rounded : Icons.check_circle_rounded),
+                  : Icon(
+                      _dirty ? Icons.save_rounded : Icons.check_circle_rounded,
+                    ),
             ),
         ],
       ),
@@ -479,9 +481,7 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
         ProjectMetaStrip(
           projectName: _projectName,
           projectLocation: _projectLocation,
-          extras: <Widget>[
-            _MetaChip(label: 'Rows', value: '${_rows.length}'),
-          ],
+          extras: <Widget>[_MetaChip(label: 'Rows', value: '${_rows.length}')],
         ),
         const SizedBox(height: AppTheme.space6),
         Row(
@@ -568,9 +568,9 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
         if (_note != null) ...<Widget>[
           Text(
             _note!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.textSecondary,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
           ),
           const SizedBox(height: AppTheme.space4),
         ],
@@ -587,53 +587,66 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
               DataColumn(label: Text('Glass Size')),
               DataColumn(label: Text('Edit')),
             ],
-            rows: _rows.asMap().entries.map((MapEntry<int, GlassReportRow> entry) {
-              final int index = entry.key;
-              final GlassReportRow row = entry.value;
-              return DataRow(
-                cells: <DataCell>[
-                  DataCell(Text(_winSizeForRow(row)), onTap: () => _editRow(index)),
-                  DataCell(
-                    Text(row.windowName.isEmpty ? '--' : row.windowName),
-                    onTap: () => _editRow(index),
-                  ),
-                  DataCell(
-                    Text(row.windowNo > 0 ? '${row.windowNo}' : '--'),
-                    onTap: () => _editRow(index),
-                  ),
-                  DataCell(
-                    Text(row.rubberType.isEmpty ? '--' : row.rubberType),
-                    onTap: () => _editRow(index),
-                  ),
-                  DataCell(Text('${row.quantity}'), onTap: () => _editRow(index)),
-                  DataCell(
-                    Text(_glassSizeForRow(row)),
-                    onTap: () => _editRow(index),
-                  ),
-                  DataCell(
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        IconButton(
-                          tooltip: 'Edit',
-                          visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.edit_rounded, size: 20),
-                          color: AppTheme.royalBlue,
-                          onPressed: () => _editRow(index),
+            rows: _rows
+                .asMap()
+                .entries
+                .map((MapEntry<int, GlassReportRow> entry) {
+                  final int index = entry.key;
+                  final GlassReportRow row = entry.value;
+                  return DataRow(
+                    cells: <DataCell>[
+                      DataCell(
+                        Text(_winSizeForRow(row)),
+                        onTap: () => _editRow(index),
+                      ),
+                      DataCell(
+                        Text(row.windowName.isEmpty ? '--' : row.windowName),
+                        onTap: () => _editRow(index),
+                      ),
+                      DataCell(
+                        Text(row.windowNo > 0 ? '${row.windowNo}' : '--'),
+                        onTap: () => _editRow(index),
+                      ),
+                      DataCell(
+                        Text(row.rubberType.isEmpty ? '--' : row.rubberType),
+                        onTap: () => _editRow(index),
+                      ),
+                      DataCell(
+                        Text('${row.quantity}'),
+                        onTap: () => _editRow(index),
+                      ),
+                      DataCell(
+                        Text(_glassSizeForRow(row)),
+                        onTap: () => _editRow(index),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            IconButton(
+                              tooltip: 'Edit',
+                              visualDensity: VisualDensity.compact,
+                              icon: const Icon(Icons.edit_rounded, size: 20),
+                              color: AppTheme.royalBlue,
+                              onPressed: () => _editRow(index),
+                            ),
+                            IconButton(
+                              tooltip: 'Delete',
+                              visualDensity: VisualDensity.compact,
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 20,
+                              ),
+                              color: AppTheme.danger,
+                              onPressed: () => _deleteRow(index),
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          tooltip: 'Delete',
-                          visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                          color: AppTheme.danger,
-                          onPressed: () => _deleteRow(index),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }).toList(growable: false),
+                      ),
+                    ],
+                  );
+                })
+                .toList(growable: false),
           ),
         ),
       ],

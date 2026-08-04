@@ -19,7 +19,7 @@ class RecentProjectsScreen extends StatefulWidget {
   /// window flow. The glass cutting report uses this: it needs the user to pick
   /// which project's glass to look at, not to reopen the windows themselves.
   final void Function(BuildContext context, SavedProjectSummary project)?
-      onProjectSelected;
+  onProjectSelected;
 
   const RecentProjectsScreen({
     super.key,

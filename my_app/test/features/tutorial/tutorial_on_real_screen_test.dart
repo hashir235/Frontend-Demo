@@ -160,6 +160,9 @@ void main() {
     expect(find.text('یونٹ'), findsNothing);
     expect(TutorialController.instance.isRunning, isFalse);
     // The screen's own controls are back.
-    expect(find.byKey(const Key('open_settings_drawer_button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('open_settings_drawer_button')),
+      findsOneWidget,
+    );
   });
 }

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/bottom_action_bar.dart';
@@ -254,10 +256,16 @@ class _EstimationMaterialTableScreenState
         if (widget.showPdfActions && showGlassReport)
           const SizedBox(width: AppTheme.space4),
         if (showGlassReport)
-          FilledButton.tonalIcon(
-            onPressed: _openGlassReport,
-            icon: const Icon(Icons.table_view_rounded),
-            label: const Text('Glass Report'),
+          TutorialTarget(
+            id: 'table.glassReport',
+            child: FilledButton.tonalIcon(
+              onPressed: () {
+                TutorialController.instance.advanceAfterTap();
+                _openGlassReport();
+              },
+              icon: const Icon(Icons.table_view_rounded),
+              label: const Text('Glass Report'),
+            ),
           ),
         if (widget.showPdfActions) ...<Widget>[
           const SizedBox(width: AppTheme.space4),
@@ -308,24 +316,31 @@ class _EstimationMaterialTableScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.screenTitle),
-        actions: <Widget>[
-          // Fabrication reuses this screen with no bill step after it, so the
-          // action only appears when there is somewhere to go next.
-          if (widget.showNextToBill)
-            NextStepAction(
-              onPressed: _isLoading || _errorMessage != null || _table == null
-                  ? null
-                  : _handleNextPressed,
-            ),
-        ],
-      ),
-      bottomNavigationBar: _buildBottomActions(),
-      body: TutorialOverlay(
-        screen: TutorialScreen.materialTable,
-        child: AppScreenShell(child: _buildBody(context)),
+    return TutorialOverlay(
+      screen: TutorialScreen.materialTable,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.screenTitle),
+          actions: <Widget>[
+            // Fabrication reuses this screen with no bill step after it, so the
+            // action only appears when there is somewhere to go next.
+            if (widget.showNextToBill)
+              TutorialTarget(
+                id: 'table.next',
+                child: NextStepAction(
+                  onPressed:
+                      _isLoading || _errorMessage != null || _table == null
+                      ? null
+                      : () {
+                          TutorialController.instance.advanceAfterTap();
+                          _handleNextPressed();
+                        },
+                ),
+              ),
+          ],
+        ),
+        bottomNavigationBar: _buildBottomActions(),
+        body: AppScreenShell(child: _buildBody(context)),
       ),
     );
   }
@@ -415,31 +430,34 @@ class _EstimationMaterialTableScreenState
           title: 'Material Summary',
           subtitle:
               'Lengths are shown in the user-readable display format returned by the backend.',
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const <DataColumn>[
-                DataColumn(label: Text('Section')),
-                DataColumn(label: Text('Length')),
-                DataColumn(label: Text('Quantity')),
-                DataColumn(label: Text('Total ft')),
-                DataColumn(label: Text('Rates')),
-                DataColumn(label: Text('Total Rates')),
-              ],
-              rows: rows
-                  .map(
-                    (_MaterialDisplayRow row) => DataRow(
-                      cells: <DataCell>[
-                        DataCell(Text(row.section)),
-                        DataCell(Text(row.lengthDisplay)),
-                        DataCell(Text('${row.quantity}')),
-                        DataCell(Text(row.totalFtDisplay)),
-                        DataCell(Text(_formatNumber(row.rate))),
-                        DataCell(Text(_formatNumber(row.totalRate))),
-                      ],
-                    ),
-                  )
-                  .toList(growable: false),
+          child: TutorialTarget(
+            id: 'table.summary',
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: const <DataColumn>[
+                  DataColumn(label: Text('Section')),
+                  DataColumn(label: Text('Length')),
+                  DataColumn(label: Text('Quantity')),
+                  DataColumn(label: Text('Total ft')),
+                  DataColumn(label: Text('Rates')),
+                  DataColumn(label: Text('Total Rates')),
+                ],
+                rows: rows
+                    .map(
+                      (_MaterialDisplayRow row) => DataRow(
+                        cells: <DataCell>[
+                          DataCell(Text(row.section)),
+                          DataCell(Text(row.lengthDisplay)),
+                          DataCell(Text('${row.quantity}')),
+                          DataCell(Text(row.totalFtDisplay)),
+                          DataCell(Text(_formatNumber(row.rate))),
+                          DataCell(Text(_formatNumber(row.totalRate))),
+                        ],
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
             ),
           ),
         ),

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/bottom_action_bar.dart';
@@ -351,24 +353,36 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
       children: <Widget>[
         if (widget.showPdfActions)
           Expanded(
-            child: FilledButton.icon(
-              onPressed: _downloadCuttingPdf,
-              icon: const Icon(Icons.download_rounded),
-              label: const Text('PDF'),
+            child: TutorialTarget(
+              id: 'lo.pdf',
+              child: FilledButton.icon(
+                onPressed: () {
+                  TutorialController.instance.advanceAfterTap();
+                  _downloadCuttingPdf();
+                },
+                icon: const Icon(Icons.download_rounded),
+                label: const Text('PDF'),
+              ),
             ),
           ),
         if (widget.showPdfActions && canRecalculate)
           const SizedBox(width: AppTheme.space4),
         if (canRecalculate)
           Expanded(
-            child: FilledButton.tonalIcon(
-              onPressed: _openRecalculationScreen,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text(
-                'Recalc',
-                maxLines: 1,
-                overflow: TextOverflow.visible,
-                softWrap: false,
+            child: TutorialTarget(
+              id: 'lo.recalculate',
+              child: FilledButton.tonalIcon(
+                onPressed: () {
+                  TutorialController.instance.advanceAfterTap();
+                  _openRecalculationScreen();
+                },
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text(
+                  'Recalc',
+                  maxLines: 1,
+                  overflow: TextOverflow.visible,
+                  softWrap: false,
+                ),
               ),
             ),
           ),
@@ -429,21 +443,29 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Length Optimization'),
-        actions: <Widget>[
-          NextStepAction(
-            onPressed: _canProceedToMaterialSelection
-                ? _handleNextPressed
-                : null,
-          ),
-        ],
-      ),
-      bottomNavigationBar: _buildBottomActions(context),
-      body: TutorialOverlay(
-        screen: TutorialScreen.lengthOptimization,
-        child: AppScreenShell(child: _buildBody(context)),
+    // Wrapping the Scaffold, not the body: the PDF and Recalc buttons the tour
+    // makes the user press sit in the bottom bar, outside the body.
+    return TutorialOverlay(
+      screen: TutorialScreen.lengthOptimization,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Length Optimization'),
+          actions: <Widget>[
+            TutorialTarget(
+              id: 'lo.next',
+              child: NextStepAction(
+                onPressed: _canProceedToMaterialSelection
+                    ? () {
+                        TutorialController.instance.advanceAfterTap();
+                        _handleNextPressed();
+                      }
+                    : null,
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: _buildBottomActions(context),
+        body: AppScreenShell(child: _buildBody(context)),
       ),
     );
   }
@@ -518,23 +540,27 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           title: 'Sections',
           subtitle:
               'Choose the section to inspect. The active section stays visually highlighted.',
-          child: Wrap(
-            spacing: AppTheme.space3,
-            runSpacing: AppTheme.space3,
-            children: report.sections
-                .map((CuttingReportSection item) {
-                  final bool isSelected = item.name == section?.name;
-                  return ChoiceChip(
-                    label: Text(item.name),
-                    selected: isSelected,
-                    onSelected: (_) {
-                      setState(() {
-                        _selectedSectionName = item.name;
-                      });
-                    },
-                  );
-                })
-                .toList(growable: false),
+          child: TutorialTarget(
+            id: 'lo.sectionTabs',
+            child: Wrap(
+              spacing: AppTheme.space3,
+              runSpacing: AppTheme.space3,
+              children: report.sections
+                  .map((CuttingReportSection item) {
+                    final bool isSelected = item.name == section?.name;
+                    return ChoiceChip(
+                      label: Text(item.name),
+                      selected: isSelected,
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedSectionName = item.name;
+                        });
+                        TutorialController.instance.advanceAfterTap();
+                      },
+                    );
+                  })
+                  .toList(growable: false),
+            ),
           ),
         ),
         if (report.errors.isNotEmpty) ...<Widget>[
@@ -542,7 +568,9 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           StateMessageCard(
             icon: Icons.warning_amber_rounded,
             title: 'Check these',
-            message: OptimizationErrorText.friendlyAll(report.errors).join('\n\n'),
+            message: OptimizationErrorText.friendlyAll(
+              report.errors,
+            ).join('\n\n'),
             iconColor: AppTheme.warning,
           ),
         ],
@@ -560,11 +588,14 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
               if (section.summary != null) ...<Widget>[
                 const SizedBox(width: AppTheme.space4),
                 Expanded(
-                  child: MetricCard(
-                    label: 'Groups',
-                    value: '${section.groups.length}',
-                    icon: Icons.segment_rounded,
-                    accent: AppTheme.tealAccent,
+                  child: TutorialTarget(
+                    id: 'lo.groups',
+                    child: MetricCard(
+                      label: 'Groups',
+                      value: '${section.groups.length}',
+                      icon: Icons.segment_rounded,
+                      accent: AppTheme.tealAccent,
+                    ),
                   ),
                 ),
               ],
@@ -600,10 +631,13 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
       child: Row(
         children: <Widget>[
           Expanded(
-            child: MetricCard(
-              label: 'Lengths',
-              value: usedLengths,
-              icon: Icons.format_list_bulleted_rounded,
+            child: TutorialTarget(
+              id: 'lo.lengths',
+              child: MetricCard(
+                label: 'Lengths',
+                value: usedLengths,
+                icon: Icons.format_list_bulleted_rounded,
+              ),
             ),
           ),
           const SizedBox(width: AppTheme.space4),
@@ -628,76 +662,100 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
   ) {
     final String wastageText =
         'Wastage: ${group.wastageDisplay}${group.offcut ? ' | Offcut' : ''}';
+    // Only the first group carries tour targets -- an id can point at one
+    // widget, and the first card is the one the user is looking at.
+    final bool isTourExample = groupIndex == 0;
     return SectionSurfaceCard(
       title: 'Lengths: ${_lengthDisplay(group.stockLenFt)}',
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.space4,
-          vertical: AppTheme.space3,
-        ),
-        decoration: AppTheme.infoChipDecoration(emphasized: true),
-        child: Text(
-          wastageText,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: group.offcut ? AppTheme.warning : AppTheme.textPrimary,
-            fontWeight: FontWeight.w900,
+      trailing: _maybeTourTarget(
+        id: 'lo.wastage',
+        enabled: isTourExample,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTheme.space4,
+            vertical: AppTheme.space3,
+          ),
+          decoration: AppTheme.infoChipDecoration(emphasized: true),
+          child: Text(
+            wastageText,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: group.offcut ? AppTheme.warning : AppTheme.textPrimary,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          showCheckboxColumn: false,
-          columns: const <DataColumn>[
-            DataColumn(label: Text('WinSize')),
-            DataColumn(label: Text('Window')),
-            DataColumn(label: Text('No.')),
-            DataColumn(label: Text('Dimension')),
-            DataColumn(label: Text('Cuts')),
-          ],
-          rows: group.cuts
-              .asMap()
-              .entries
-              .map((MapEntry<int, CuttingReportCut> entry) {
-                final int cutIndex = entry.key;
-                final CuttingReportCut cut = entry.value;
-                final String rowKey = _cutRowKey(
-                  sectionName,
-                  groupIndex,
-                  cutIndex,
-                  cut,
-                );
-                final bool isMarked = _markedCutRowKeys.contains(rowKey);
-                return DataRow(
-                  selected: isMarked,
-                  onSelectChanged: (_) => _toggleMarkedCutRow(rowKey),
-                  cells: <DataCell>[
-                    DataCell(
-                      _buildCutCell(_winSizeForCut(cut), isMarked: isMarked),
-                    ),
-                    DataCell(_buildCutCell(cut.windowName, isMarked: isMarked)),
-                    DataCell(
-                      _buildCutCell(
-                        cut.windowNo.toString(),
-                        isMarked: isMarked,
+      child: _maybeTourTarget(
+        id: 'lo.cutsTable',
+        enabled: isTourExample,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            showCheckboxColumn: false,
+            columns: const <DataColumn>[
+              DataColumn(label: Text('WinSize')),
+              DataColumn(label: Text('Window')),
+              DataColumn(label: Text('No.')),
+              DataColumn(label: Text('Dimension')),
+              DataColumn(label: Text('Cuts')),
+            ],
+            rows: group.cuts
+                .asMap()
+                .entries
+                .map((MapEntry<int, CuttingReportCut> entry) {
+                  final int cutIndex = entry.key;
+                  final CuttingReportCut cut = entry.value;
+                  final String rowKey = _cutRowKey(
+                    sectionName,
+                    groupIndex,
+                    cutIndex,
+                    cut,
+                  );
+                  final bool isMarked = _markedCutRowKeys.contains(rowKey);
+                  return DataRow(
+                    selected: isMarked,
+                    onSelectChanged: (_) => _toggleMarkedCutRow(rowKey),
+                    cells: <DataCell>[
+                      DataCell(
+                        _buildCutCell(_winSizeForCut(cut), isMarked: isMarked),
                       ),
-                    ),
-                    DataCell(
-                      _buildCutCell(
-                        _pieceSymbolForCut(cut),
-                        isMarked: isMarked,
+                      DataCell(
+                        _buildCutCell(cut.windowName, isMarked: isMarked),
                       ),
-                    ),
-                    DataCell(
-                      _buildCutCell(cut.lengthDisplay, isMarked: isMarked),
-                    ),
-                  ],
-                );
-              })
-              .toList(growable: false),
+                      DataCell(
+                        _buildCutCell(
+                          cut.windowNo.toString(),
+                          isMarked: isMarked,
+                        ),
+                      ),
+                      DataCell(
+                        _buildCutCell(
+                          _pieceSymbolForCut(cut),
+                          isMarked: isMarked,
+                        ),
+                      ),
+                      DataCell(
+                        _buildCutCell(cut.lengthDisplay, isMarked: isMarked),
+                      ),
+                    ],
+                  );
+                })
+                .toList(growable: false),
+          ),
         ),
       ),
     );
+  }
+
+  /// Wraps [child] in a tour target only on the card the tour is pointing at,
+  /// so an id shared by every group card is registered exactly once.
+  Widget _maybeTourTarget({
+    required String id,
+    required bool enabled,
+    required Widget child,
+  }) {
+    if (!enabled) return child;
+    return TutorialTarget(id: id, child: child);
   }
 }
 

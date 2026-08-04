@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/next_step_action.dart';
@@ -228,129 +230,148 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (BuildContext context) => ActualBillScreen(
-          session: widget.session,
-          request: request,
-        ),
+        builder: (BuildContext context) =>
+            ActualBillScreen(session: widget.session, request: request),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bill Inputs'),
-        actions: <Widget>[NextStepAction(onPressed: _handleNextPressed)],
-      ),
-      body: TutorialOverlay(
-        screen: TutorialScreen.billInputs,
-        child: AppScreenShell(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: <Widget>[
-              const AppHeroHeader(
-                eyebrow: 'BILLING',
-                title: 'Enter billing inputs with a clean structured form',
-                subtitle:
-                    'Keep the rate inputs tight, optional details controlled, and move directly into the final bill.',
+    return TutorialOverlay(
+      screen: TutorialScreen.billInputs,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Bill Inputs'),
+          actions: <Widget>[
+            TutorialTarget(
+              id: 'bill.next',
+              child: NextStepAction(
+                onPressed: () {
+                  TutorialController.instance.advanceAfterTap();
+                  _handleNextPressed();
+                },
               ),
-              const SizedBox(height: AppTheme.space5),
-              ProjectMetaStrip(
-                projectName: widget.projectName,
-                projectLocation: widget.projectLocation,
-                extras: <Widget>[
-                  _InfoChip(label: 'Gage', value: widget.gaugeLabel),
-                  _InfoChip(label: 'Colour', value: widget.colorLabel),
-                  _InfoChip(
-                    label: 'Aluminium',
-                    value: _formatAmount(widget.aluminiumTotal),
+            ),
+          ],
+        ),
+        body: AppScreenShell(
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: <Widget>[
+                const AppHeroHeader(
+                  eyebrow: 'BILLING',
+                  title: 'Enter billing inputs with a clean structured form',
+                  subtitle:
+                      'Keep the rate inputs tight, optional details controlled, and move directly into the final bill.',
+                ),
+                const SizedBox(height: AppTheme.space5),
+                ProjectMetaStrip(
+                  projectName: widget.projectName,
+                  projectLocation: widget.projectLocation,
+                  extras: <Widget>[
+                    _InfoChip(label: 'Gage', value: widget.gaugeLabel),
+                    _InfoChip(label: 'Colour', value: widget.colorLabel),
+                    _InfoChip(
+                      label: 'Aluminium',
+                      value: _formatAmount(widget.aluminiumTotal),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppTheme.space6),
+                SectionSurfaceCard(
+                  title: 'Mandatory Fields',
+                  subtitle:
+                      'These values drive the actual bill calculation and are required.',
+                  child: Column(
+                    children: <Widget>[
+                      _buildNumberField(
+                        controller: _glassRateController,
+                        label: 'Glass Rate *',
+                        validator: _requiredNumberValidator,
+                        tourId: 'bill.glassRate',
+                      ),
+                      _buildNumberField(
+                        controller: _laborRateController,
+                        label: 'Labor Rate *',
+                        validator: _requiredNumberValidator,
+                        tourId: 'bill.laborRate',
+                      ),
+                      _buildNumberField(
+                        controller: _hardwareRateController,
+                        label: 'Hardware Rate *',
+                        validator: _requiredNumberValidator,
+                        tourId: 'bill.hardwareRate',
+                      ),
+                      _buildNumberField(
+                        controller: _discountController,
+                        label: 'Aluminium Discount % *',
+                        validator: _discountValidator,
+                        tourId: 'bill.discount',
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: AppTheme.space6),
-              SectionSurfaceCard(
-                title: 'Mandatory Fields',
-                subtitle:
-                    'These values drive the actual bill calculation and are required.',
-                child: Column(
-                  children: <Widget>[
-                    _buildNumberField(
-                      controller: _glassRateController,
-                      label: 'Glass Rate *',
-                      validator: _requiredNumberValidator,
-                    ),
-                    _buildNumberField(
-                      controller: _laborRateController,
-                      label: 'Labor Rate *',
-                      validator: _requiredNumberValidator,
-                    ),
-                    _buildNumberField(
-                      controller: _hardwareRateController,
-                      label: 'Hardware Rate *',
-                      validator: _requiredNumberValidator,
-                    ),
-                    _buildNumberField(
-                      controller: _discountController,
-                      label: 'Aluminium Discount % *',
-                      validator: _discountValidator,
-                    ),
-                  ],
                 ),
-              ),
-              const SizedBox(height: AppTheme.space5),
-              SectionSurfaceCard(
-                title: 'Optional Details',
-                subtitle:
-                    'Add customer and adjustment details only where they are needed.',
-                child: Column(
-                  children: <Widget>[
-                    _buildNumberField(
-                      controller: _extraChargesController,
-                      label: 'Extra Charges',
-                      validator: _optionalNumberValidator,
-                    ),
-                    _buildNumberField(
-                      controller: _advancePaidController,
-                      label: 'Advance Paid',
-                      validator: _optionalNumberValidator,
-                    ),
-                    _buildTextField(
-                      controller: _glassColorController,
-                      label: 'Glass Color',
-                      inputFormatters: _glassColorInputFormatters,
-                    ),
-                    _buildTextField(
-                      controller: _aluminiumCompanyController,
-                      label: 'Aluminium Company',
-                      inputFormatters: _nameInputFormatters,
-                    ),
-                    _buildTextField(
-                      controller: _customerNameController,
-                      label: 'Customer Name',
-                      inputFormatters: _nameInputFormatters,
-                    ),
-                    _buildTextField(
-                      controller: _addressController,
-                      label: 'Address',
-                      maxLines: 2,
-                      inputFormatters: _addressInputFormatters,
-                    ),
-                    _buildTextField(
-                      controller: _phoneController,
-                      label: 'Phone Number',
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: _phoneInputFormatters,
-                      validator: _phoneValidator,
-                    ),
-                  ],
+                const SizedBox(height: AppTheme.space5),
+                SectionSurfaceCard(
+                  title: 'Optional Details',
+                  subtitle:
+                      'Add customer and adjustment details only where they are needed.',
+                  child: Column(
+                    children: <Widget>[
+                      _buildNumberField(
+                        controller: _extraChargesController,
+                        label: 'Extra Charges',
+                        validator: _optionalNumberValidator,
+                        tourId: 'bill.extraCharges',
+                      ),
+                      _buildNumberField(
+                        controller: _advancePaidController,
+                        label: 'Advance Paid',
+                        validator: _optionalNumberValidator,
+                        tourId: 'bill.advance',
+                      ),
+                      _buildTextField(
+                        controller: _glassColorController,
+                        label: 'Glass Color',
+                        inputFormatters: _glassColorInputFormatters,
+                        tourId: 'bill.glassColor',
+                      ),
+                      _buildTextField(
+                        controller: _aluminiumCompanyController,
+                        label: 'Aluminium Company',
+                        inputFormatters: _nameInputFormatters,
+                        tourId: 'bill.company',
+                      ),
+                      _buildTextField(
+                        controller: _customerNameController,
+                        label: 'Customer Name',
+                        inputFormatters: _nameInputFormatters,
+                        tourId: 'bill.customer',
+                      ),
+                      _buildTextField(
+                        controller: _addressController,
+                        label: 'Address',
+                        maxLines: 2,
+                        inputFormatters: _addressInputFormatters,
+                        tourId: 'bill.address',
+                      ),
+                      _buildTextField(
+                        controller: _phoneController,
+                        label: 'Phone Number',
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: _phoneInputFormatters,
+                        validator: _phoneValidator,
+                        tourId: 'bill.phone',
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -359,15 +380,20 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     required TextEditingController controller,
     required String label,
     String? Function(String?)? validator,
+    // The tour explains every field here one by one, so each carries its own id.
+    String? tourId,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space4),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: _decimalInputFormatters,
-        validator: validator,
-        decoration: InputDecoration(labelText: label),
+      child: _withTourTarget(
+        tourId,
+        TextFormField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: _decimalInputFormatters,
+          validator: validator,
+          decoration: InputDecoration(labelText: label),
+        ),
       ),
     );
   }
@@ -379,19 +405,26 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
+    String? tourId,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space4),
-      child: TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
-        validator: validator,
-        decoration: InputDecoration(labelText: label),
+      child: _withTourTarget(
+        tourId,
+        TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          validator: validator,
+          decoration: InputDecoration(labelText: label),
+        ),
       ),
     );
   }
+
+  Widget _withTourTarget(String? id, Widget child) =>
+      id == null ? child : TutorialTarget(id: id, child: child);
 }
 
 class _InfoChip extends StatelessWidget {

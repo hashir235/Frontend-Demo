@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_controller.dart';
+import '../../tutorial/tutorial_overlay.dart';
+import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/next_step_action.dart';
@@ -173,14 +177,27 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rate Setting'),
-        actions: <Widget>[
-          NextStepAction(onPressed: _isLoading ? null : _handleNextPressed),
-        ],
+    return TutorialOverlay(
+      screen: TutorialScreen.rateSetting,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Rate Setting'),
+          actions: <Widget>[
+            TutorialTarget(
+              id: 'rate.next',
+              child: NextStepAction(
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        TutorialController.instance.advanceAfterTap();
+                        _handleNextPressed();
+                      },
+              ),
+            ),
+          ],
+        ),
+        body: AppScreenShell(child: _buildBody(context)),
       ),
-      body: AppScreenShell(child: _buildBody(context)),
     );
   }
 
@@ -196,7 +213,7 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
           title: 'Rate review failed',
           message:
               '$_errorMessage\n\nTip: this usually happens when a window size '
-              'was entered in the wrong unit ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â for example inch numbers while '
+              'was entered in the wrong unit - for example inch numbers while '
               'the unit was set to Feet. Please check your window sizes and '
               'unit, then try again.',
           iconColor: AppTheme.danger,
@@ -273,33 +290,46 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            row.section,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          // The tour explains the first card only -- one id, one widget.
+          _maybeTourTarget(
+            id: 'rate.section',
+            enabled: index == 0,
+            child: Text(
+              row.section,
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
           ),
           const SizedBox(height: AppTheme.space4),
           Row(
             children: <Widget>[
               Expanded(
-                child: _ReadOnlyMetric(
-                  label: 'Total Length',
-                  value: row.totalFtDisplay,
+                child: _maybeTourTarget(
+                  id: 'rate.totalFt',
+                  enabled: index == 0,
+                  child: _ReadOnlyMetric(
+                    label: 'Total Length',
+                    value: row.totalFtDisplay,
+                  ),
                 ),
               ),
               const SizedBox(width: AppTheme.space4),
               Expanded(
-                child: TextFormField(
-                  initialValue: row.rateText,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                child: _maybeTourTarget(
+                  id: 'rate.value',
+                  enabled: index == 0,
+                  child: TextFormField(
+                    initialValue: row.rateText,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
+                    onChanged: (String value) => _updateRate(index, value),
+                    decoration: const InputDecoration(labelText: 'Rate'),
                   ),
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  onChanged: (String value) => _updateRate(index, value),
-                  decoration: const InputDecoration(labelText: 'Rate'),
                 ),
               ),
             ],
@@ -307,6 +337,16 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
         ],
       ),
     );
+  }
+
+  /// Wraps [child] in a tour target only on the card the tour points at.
+  Widget _maybeTourTarget({
+    required String id,
+    required bool enabled,
+    required Widget child,
+  }) {
+    if (!enabled) return child;
+    return TutorialTarget(id: id, child: child);
   }
 }
 

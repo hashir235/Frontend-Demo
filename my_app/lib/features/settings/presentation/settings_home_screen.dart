@@ -19,6 +19,7 @@ import '../../../shared/widgets/social_links_card.dart';
 import '../../estimation/presentation/section_recalculation_screen.dart'
     show kMinStockLengthFt, kMaxStockLengthFt;
 import '../../tutorial/tutorial_controller.dart';
+import '../../tutorial/tutorial_step.dart';
 import '../../tutorial/urdu_text.dart';
 import '../state/app_settings.dart';
 import '../state/numbering_mode.dart';
@@ -137,7 +138,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _openBillingAndPlans() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (BuildContext context) => const SubscriptionGateScreen.manage(),
+        builder: (BuildContext context) =>
+            const SubscriptionGateScreen.manage(),
       ),
     );
     if (mounted) {
@@ -338,8 +340,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      final RenewalMode mode =
-          await _paymentPreferencesApiClient.fetchRenewalMode();
+      final RenewalMode mode = await _paymentPreferencesApiClient
+          .fetchRenewalMode();
       if (!mounted) {
         return;
       }
@@ -366,8 +368,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      final RenewalMode saved =
-          await _paymentPreferencesApiClient.saveRenewalMode(mode);
+      final RenewalMode saved = await _paymentPreferencesApiClient
+          .saveRenewalMode(mode);
       if (!mounted) {
         return;
       }
@@ -455,25 +457,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
       icon: Icons.play_circle_outline_rounded,
       title: 'App kaise istemal karein',
       subtitle:
-          'Poora Estimation ka safar — window ke naap se le kar tayyar bill '
-          'tak — asli screens par, Urdu mein.',
+          'Do alag rehnumai: Estimation — window ke naap se le kar tayyar bill '
+          'tak. Fabrication — cutting list aur sheeshe ki report tak. Dono '
+          'asli screens par, Urdu mein.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           FilledButton.icon(
-            onPressed: () {
-              TutorialController.instance.start();
-              Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
-            },
+            onPressed: () => _startTour(context, TutorialTour.estimation),
             icon: const Icon(Icons.play_arrow_rounded),
             label: Text(
-              'رہنمائی شروع کریں',
+              'ایسٹیمیشن کی رہنمائی',
               style: UrduText.body(color: Colors.white, fontSize: 15),
+            ),
+          ),
+          const SizedBox(height: 10),
+          FilledButton.tonalIcon(
+            onPressed: () => _startTour(context, TutorialTour.fabrication),
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: Text(
+              'فیبریکیشن کی رہنمائی',
+              style: UrduText.body(fontSize: 15),
             ),
           ),
         ],
       ),
     );
+  }
+
+  void _startTour(BuildContext context, TutorialTour tour) {
+    TutorialController.instance.start(tour: tour);
+    Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
   }
 
   /// Rates get their own full screen -- the table is far too wide to sit
@@ -556,9 +570,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _settingsDefaultsApiClient.restore(groups);
       await reload();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Default values restored.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Default values restored.')));
     } on SettingsDefaultsException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -1118,75 +1132,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildNumberingOptions(BuildContext context) {
     return Container(
-        decoration: BoxDecoration(
-          color: AppTheme.ice.withValues(alpha: 0.72),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
-        ),
-        child: RadioGroup<NumberingMode>(
-          groupValue: _mode,
-          onChanged: (NumberingMode? value) {
-            if (value != null) {
-              _updateMode(value);
-            }
-          },
-          child: Column(
-            children: const <Widget>[
-              RadioListTile<NumberingMode>(
-                value: NumberingMode.auto,
-                title: Text('Auto (default)'),
-                subtitle: Text(
-                  'Automatically increments window numbers for each new entry.',
-                ),
+      decoration: BoxDecoration(
+        color: AppTheme.ice.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
+      ),
+      child: RadioGroup<NumberingMode>(
+        groupValue: _mode,
+        onChanged: (NumberingMode? value) {
+          if (value != null) {
+            _updateMode(value);
+          }
+        },
+        child: Column(
+          children: const <Widget>[
+            RadioListTile<NumberingMode>(
+              value: NumberingMode.auto,
+              title: Text('Auto (default)'),
+              subtitle: Text(
+                'Automatically increments window numbers for each new entry.',
               ),
-              Divider(height: 1),
-              RadioListTile<NumberingMode>(
-                value: NumberingMode.manual,
-                title: Text('Manual'),
-                subtitle: Text(
-                  'User must enter a window number before height/width.',
-                ),
+            ),
+            Divider(height: 1),
+            RadioListTile<NumberingMode>(
+              value: NumberingMode.manual,
+              title: Text('Manual'),
+              subtitle: Text(
+                'User must enter a window number before height/width.',
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 
   Widget _buildSizeInputOptions(BuildContext context) {
     return Container(
-        decoration: BoxDecoration(
-          color: AppTheme.ice.withValues(alpha: 0.72),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
-        ),
-        child: RadioGroup<SizeInputMode>(
-          groupValue: _sizeInputMode,
-          onChanged: (SizeInputMode? value) {
-            if (value != null) {
-              _updateSizeInputMode(value);
-            }
-          },
-          child: Column(
-            children: const <Widget>[
-              RadioListTile<SizeInputMode>(
-                value: SizeInputMode.wheel,
-                title: Text('Wheel (default)'),
-                subtitle: Text(
-                  'Inch and suter are picked on a tape-style wheel.',
-                ),
+      decoration: BoxDecoration(
+        color: AppTheme.ice.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
+      ),
+      child: RadioGroup<SizeInputMode>(
+        groupValue: _sizeInputMode,
+        onChanged: (SizeInputMode? value) {
+          if (value != null) {
+            _updateSizeInputMode(value);
+          }
+        },
+        child: Column(
+          children: const <Widget>[
+            RadioListTile<SizeInputMode>(
+              value: SizeInputMode.wheel,
+              title: Text('Wheel (default)'),
+              subtitle: Text(
+                'Inch and suter are picked on a tape-style wheel.',
               ),
-              Divider(height: 1),
-              RadioListTile<SizeInputMode>(
-                value: SizeInputMode.keypad,
-                title: Text('Typing box'),
-                subtitle: Text(
-                  'Every part of the size is typed into an input box.',
-                ),
+            ),
+            Divider(height: 1),
+            RadioListTile<SizeInputMode>(
+              value: SizeInputMode.keypad,
+              title: Text('Typing box'),
+              subtitle: Text(
+                'Every part of the size is typed into an input box.',
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 
@@ -1321,29 +1335,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: <Widget>[
                       _buildRestoreButton(
                         label: 'cutting margins',
-                        onRestore: () => _restoreFromServer(
-                          <SettingsGroup>[SettingsGroup.cuttingMargins],
-                          _loadEstimationSettings,
-                        ),
+                        onRestore: () => _restoreFromServer(<SettingsGroup>[
+                          SettingsGroup.cuttingMargins,
+                        ], _loadEstimationSettings),
                       ),
                       const SizedBox(height: 4),
-                      ..._sortedCuttingMarginKeys()
-                        .map((String key) {
-                          final TextEditingController controller =
-                              _cuttingMarginControllers[key]!;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: TextFormField(
-                              controller: controller,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              validator: _requiredDecimalWithZeroValidator,
-                              decoration: _inputDecoration(key),
+                      ..._sortedCuttingMarginKeys().map((String key) {
+                        final TextEditingController controller =
+                            _cuttingMarginControllers[key]!;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: TextFormField(
+                            controller: controller,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
                             ),
-                          );
-                        }),
+                            validator: _requiredDecimalWithZeroValidator,
+                            decoration: _inputDecoration(key),
+                          ),
+                        );
+                      }),
                     ],
                   ),
                   _buildSettingsCluster(
@@ -1354,10 +1365,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: <Widget>[
                       _buildRestoreButton(
                         label: 'red zone and extra pieces',
-                        onRestore: () => _restoreFromServer(
-                          <SettingsGroup>[SettingsGroup.lengthRules],
-                          _loadEstimationSettings,
-                        ),
+                        onRestore: () => _restoreFromServer(<SettingsGroup>[
+                          SettingsGroup.lengthRules,
+                        ], _loadEstimationSettings),
                       ),
                       const SizedBox(height: 4),
                       TextFormField(
@@ -1463,10 +1473,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: <Widget>[
                       _buildRestoreButton(
                         label: 'fabrication margin',
-                        onRestore: () => _restoreFromServer(
-                          <SettingsGroup>[SettingsGroup.fabricator],
-                          _loadFabricationSettings,
-                        ),
+                        onRestore: () => _restoreFromServer(<SettingsGroup>[
+                          SettingsGroup.fabricator,
+                        ], _loadFabricationSettings),
                       ),
                       const SizedBox(height: 4),
                       TextFormField(
@@ -1632,7 +1641,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSettingsCluster(
             context,
             title: 'Policies',
-            subtitle: 'The terms that apply to your subscription and your data.',
+            subtitle:
+                'The terms that apply to your subscription and your data.',
             children: <Widget>[
               _buildLegalLink(
                 context,
@@ -1920,9 +1930,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 2),
                     Text(
                       section.subtitle,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.slate,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: AppTheme.slate),
                     ),
                   ],
                 ),

@@ -88,7 +88,6 @@ class RateReviewApiClient {
     return review;
   }
 
-
   Map<String, dynamic>? _decodeObject(String body) {
     if (body.trim().isEmpty) {
       return null;

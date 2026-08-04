@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
+import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/next_step_action.dart';
@@ -71,10 +73,7 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
     _selectedColor = _choiceByValue(_colorOptions, selection?.colorValue);
   }
 
-  _MaterialChoice _choiceByValue(
-    List<_MaterialChoice> options,
-    String? value,
-  ) {
+  _MaterialChoice _choiceByValue(List<_MaterialChoice> options, String? value) {
     if (value == null || value.trim().isEmpty) {
       return options.first;
     }
@@ -121,80 +120,102 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Material Selection'),
-        actions: <Widget>[NextStepAction(onPressed: _handleNextPressed)],
-      ),
-      body: TutorialOverlay(
-        screen: TutorialScreen.materialSelection,
-        child: AppScreenShell(
-        child: ListView(
-          children: <Widget>[
-            const AppHeroHeader(
-              eyebrow: 'MATERIAL',
-              title: 'Choose gauge and finish',
-              subtitle:
-                  'Set the base material properties before rates and cost calculations are reviewed.',
-            ),
-            const SizedBox(height: AppTheme.space5),
-            ProjectMetaStrip(
-              projectName: widget.projectName,
-              projectLocation: widget.projectLocation,
-            ),
-            const SizedBox(height: AppTheme.space6),
-            SectionSurfaceCard(
-              title: 'Gauge',
-              subtitle:
-                  'Select the aluminium gauge that will drive rate review.',
-              child: Column(
-                children: _gageOptions
-                    .map(
-                      (_MaterialChoice option) => Padding(
-                        padding: const EdgeInsets.only(bottom: AppTheme.space3),
-                        child: _OptionTile(
-                          label: option.label,
-                          selected: _selectedGage == option,
-                          onTap: () {
-                            setState(() {
-                              _selectedGage = option;
-                            });
-                            _persistMaterialSelection();
-                          },
-                        ),
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-            ),
-            const SizedBox(height: AppTheme.space5),
-            SectionSurfaceCard(
-              title: 'Colour',
-              subtitle:
-                  'Choose the finish that will be used across the rate pipeline.',
-              child: Column(
-                children: _colorOptions
-                    .map(
-                      (_MaterialChoice option) => Padding(
-                        padding: const EdgeInsets.only(bottom: AppTheme.space3),
-                        child: _OptionTile(
-                          label: option.label,
-                          selected: _selectedColor == option,
-                          onTap: () {
-                            setState(() {
-                              _selectedColor = option;
-                            });
-                            _persistMaterialSelection();
-                          },
-                        ),
-                      ),
-                    )
-                    .toList(growable: false),
+    return TutorialOverlay(
+      screen: TutorialScreen.materialSelection,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Material Selection'),
+          actions: <Widget>[
+            TutorialTarget(
+              id: 'material.next',
+              child: NextStepAction(
+                onPressed: () {
+                  TutorialController.instance.advanceAfterTap();
+                  _handleNextPressed();
+                },
               ),
             ),
           ],
         ),
-      ),
+        body: AppScreenShell(
+          child: ListView(
+            children: <Widget>[
+              const AppHeroHeader(
+                eyebrow: 'MATERIAL',
+                title: 'Choose gauge and finish',
+                subtitle:
+                    'Set the base material properties before rates and cost calculations are reviewed.',
+              ),
+              const SizedBox(height: AppTheme.space5),
+              ProjectMetaStrip(
+                projectName: widget.projectName,
+                projectLocation: widget.projectLocation,
+              ),
+              const SizedBox(height: AppTheme.space6),
+              SectionSurfaceCard(
+                title: 'Gauge',
+                subtitle:
+                    'Select the aluminium gauge that will drive rate review.',
+                child: TutorialTarget(
+                  id: 'material.gauge',
+                  child: Column(
+                    children: _gageOptions
+                        .map(
+                          (_MaterialChoice option) => Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: AppTheme.space3,
+                            ),
+                            child: _OptionTile(
+                              label: option.label,
+                              selected: _selectedGage == option,
+                              onTap: () {
+                                setState(() {
+                                  _selectedGage = option;
+                                });
+                                _persistMaterialSelection();
+                                TutorialController.instance.advanceAfterTap();
+                              },
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppTheme.space5),
+              SectionSurfaceCard(
+                title: 'Colour',
+                subtitle:
+                    'Choose the finish that will be used across the rate pipeline.',
+                child: TutorialTarget(
+                  id: 'material.colour',
+                  child: Column(
+                    children: _colorOptions
+                        .map(
+                          (_MaterialChoice option) => Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: AppTheme.space3,
+                            ),
+                            child: _OptionTile(
+                              label: option.label,
+                              selected: _selectedColor == option,
+                              onTap: () {
+                                setState(() {
+                                  _selectedColor = option;
+                                });
+                                _persistMaterialSelection();
+                                TutorialController.instance.advanceAfterTap();
+                              },
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

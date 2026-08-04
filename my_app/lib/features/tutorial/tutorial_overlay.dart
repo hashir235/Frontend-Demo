@@ -191,7 +191,10 @@ class _SpotlightLayer extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
-            child: Text('چھوڑ دیں', style: UrduText.body(color: Colors.white, fontSize: 14)),
+            child: Text(
+              'چھوڑ دیں',
+              style: UrduText.body(color: Colors.white, fontSize: 14),
+            ),
           ),
         ),
       ],
@@ -314,15 +317,14 @@ class _SpotlightPainter extends CustomPainter {
 
     final Path hole = Path();
     if (shape == SpotlightShape.circle) {
-      hole.addOval(Rect.fromCircle(center: rect!.center, radius: rect!.longestSide / 2));
+      hole.addOval(
+        Rect.fromCircle(center: rect!.center, radius: rect!.longestSide / 2),
+      );
     } else {
       hole.addRRect(RRect.fromRectAndRadius(rect!, const Radius.circular(12)));
     }
 
-    canvas.drawPath(
-      Path.combine(PathOperation.difference, full, hole),
-      scrim,
-    );
+    canvas.drawPath(Path.combine(PathOperation.difference, full, hole), scrim);
   }
 
   @override

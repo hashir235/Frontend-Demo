@@ -70,10 +70,10 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
   void initState() {
     super.initState();
     final GlassReportRow? row = widget.existingRow;
-    final GlassDimension width = row?.widthDimension ??
-        const GlassDimension(inches: 0, sutter: 0);
-    final GlassDimension height = row?.heightDimension ??
-        const GlassDimension(inches: 0, sutter: 0);
+    final GlassDimension width =
+        row?.widthDimension ?? const GlassDimension(inches: 0, sutter: 0);
+    final GlassDimension height =
+        row?.heightDimension ?? const GlassDimension(inches: 0, sutter: 0);
 
     _winNoController = TextEditingController(
       text: row != null
@@ -126,10 +126,14 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
 
     final int widthInch = int.tryParse(_widthInchController.text.trim()) ?? 0;
     final int heightInch = int.tryParse(_heightInchController.text.trim()) ?? 0;
-    final GlassDimension width =
-        GlassDimension(inches: widthInch, sutter: _widthSutter);
-    final GlassDimension height =
-        GlassDimension(inches: heightInch, sutter: _heightSutter);
+    final GlassDimension width = GlassDimension(
+      inches: widthInch,
+      sutter: _widthSutter,
+    );
+    final GlassDimension height = GlassDimension(
+      inches: heightInch,
+      sutter: _heightSutter,
+    );
 
     if (!width.isPositive || !height.isPositive) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -186,9 +190,7 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
                 Row(
                   children: <Widget>[
                     Icon(
-                      _isEditing
-                          ? Icons.edit_rounded
-                          : Icons.add_box_rounded,
+                      _isEditing ? Icons.edit_rounded : Icons.add_box_rounded,
                       color: AppTheme.royalBlue,
                     ),
                     const SizedBox(width: 8),

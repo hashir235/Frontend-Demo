@@ -12,10 +12,7 @@ class EstimateMaterialSelection {
   bool get isComplete =>
       gaugeValue.trim().isNotEmpty && colorValue.trim().isNotEmpty;
 
-  EstimateMaterialSelection copyWith({
-    String? gaugeValue,
-    String? colorValue,
-  }) {
+  EstimateMaterialSelection copyWith({String? gaugeValue, String? colorValue}) {
     return EstimateMaterialSelection(
       gaugeValue: gaugeValue ?? this.gaugeValue,
       colorValue: colorValue ?? this.colorValue,
@@ -206,13 +203,19 @@ String _formatNumericValue(Object? value) {
   if (value == null) {
     return '';
   }
-  final double? parsed = value is num ? value.toDouble() : double.tryParse('$value');
+  final double? parsed = value is num
+      ? value.toDouble()
+      : double.tryParse('$value');
   if (parsed == null) {
     return _normalizeString(value);
   }
-  final String fixed = parsed.toStringAsFixed(parsed == parsed.truncateToDouble() ? 0 : 2);
+  final String fixed = parsed.toStringAsFixed(
+    parsed == parsed.truncateToDouble() ? 0 : 2,
+  );
   if (!fixed.contains('.')) {
     return fixed;
   }
-  return fixed.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+  return fixed
+      .replaceFirst(RegExp(r'0+$'), '')
+      .replaceFirst(RegExp(r'\.$'), '');
 }

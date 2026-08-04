@@ -70,7 +70,7 @@ class EstimateSessionStore extends ChangeNotifier {
     // load fresh values for the new selection.
     final bool selectionChanged =
         previous?.gaugeValue != selection?.gaugeValue ||
-            previous?.colorValue != selection?.colorValue;
+        previous?.colorValue != selection?.colorValue;
     if (selectionChanged) {
       _rateOverrides = const <RateOverrideInput>[];
       _billDraft = null;
