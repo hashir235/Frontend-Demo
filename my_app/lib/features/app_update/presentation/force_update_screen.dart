@@ -48,10 +48,11 @@ class ForceUpdateScreen extends StatelessWidget {
                     const SizedBox(height: 24),
                     Text(
                       'Update Required',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.textPrimary,
-                      ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.textPrimary,
+                          ),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -77,6 +78,7 @@ class ForceUpdateScreen extends StatelessWidget {
                     const SizedBox(height: 28),
                     UpdateActionArea(
                       apkUrl: status.apkUrl,
+                      storeUrl: status.storeUrl,
                       service: service,
                       idleLabel: 'Update Now',
                     ),
@@ -122,6 +124,7 @@ Future<void> showOptionalUpdateDialog(
             const SizedBox(height: 20),
             UpdateActionArea(
               apkUrl: status.apkUrl,
+              storeUrl: status.storeUrl,
               service: service,
               idleLabel: 'Update',
             ),
@@ -148,12 +151,19 @@ class UpdateActionArea extends StatefulWidget {
   final AppUpdateService service;
   final String idleLabel;
 
+  /// Set on the Play build: updating means opening the store listing, not
+  /// downloading an APK over a Play install.
+  final String storeUrl;
+
   const UpdateActionArea({
     super.key,
     required this.apkUrl,
     required this.service,
     this.idleLabel = 'Update Now',
+    this.storeUrl = '',
   });
+
+  bool get updatesViaStore => storeUrl.isNotEmpty;
 
   @override
   State<UpdateActionArea> createState() => _UpdateActionAreaState();
@@ -166,7 +176,30 @@ class _UpdateActionAreaState extends State<UpdateActionArea> {
   int _percent = 0;
   String? _message;
 
+  Future<void> _openStore() async {
+    setState(() => _message = null);
+    final bool opened = await widget.service.openStore(widget.storeUrl);
+    if (!mounted) return;
+    setState(() {
+      if (opened) {
+        _phase = _UpdatePhase.installing;
+        _message =
+            'Play Store khul raha hai. Wahan "Update" dabayein — uske baad '
+            'app dobara kholein.';
+      } else {
+        _phase = _UpdatePhase.error;
+        _message =
+            'Play Store nahi khul saka. Play Store khud kholein aur "Quick AL" '
+            'search kar ke update karein.';
+      }
+    });
+  }
+
   Future<void> _run() async {
+    if (widget.updatesViaStore) {
+      await _openStore();
+      return;
+    }
     setState(() {
       _phase = _UpdatePhase.downloading;
       _percent = 0;
@@ -212,15 +245,18 @@ class _UpdateActionAreaState extends State<UpdateActionArea> {
   @override
   Widget build(BuildContext context) {
     final bool downloading = _phase == _UpdatePhase.downloading;
-    final bool showRetry = _phase == _UpdatePhase.permission ||
+    final bool showRetry =
+        _phase == _UpdatePhase.permission ||
         _phase == _UpdatePhase.error ||
         _phase == _UpdatePhase.installing;
 
     final String label = downloading
         ? 'Downloading $_percent%'
         : showRetry
-            ? 'Retry'
-            : widget.idleLabel;
+        ? (widget.updatesViaStore ? 'Play Store kholein' : 'Retry')
+        : widget.updatesViaStore
+        ? 'Play Store se update karein'
+        : widget.idleLabel;
 
     final Color messageColor = _phase == _UpdatePhase.error
         ? AppTheme.danger
@@ -254,7 +290,9 @@ class _UpdateActionAreaState extends State<UpdateActionArea> {
                     ),
                   )
                 : Icon(
-                    showRetry
+                    widget.updatesViaStore
+                        ? Icons.shop_rounded
+                        : showRetry
                         ? Icons.refresh_rounded
                         : Icons.download_rounded,
                   ),
@@ -266,9 +304,9 @@ class _UpdateActionAreaState extends State<UpdateActionArea> {
           Text(
             _message!,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: messageColor,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: messageColor),
           ),
         ],
       ],

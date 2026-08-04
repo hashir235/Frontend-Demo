@@ -23,7 +23,9 @@ class SubscriptionGateScreen extends StatefulWidget {
   const SubscriptionGateScreen({super.key, required Widget this.child})
     : manage = false;
 
-  const SubscriptionGateScreen.manage({super.key}) : child = null, manage = true;
+  const SubscriptionGateScreen.manage({super.key})
+    : child = null,
+      manage = true;
 
   @override
   State<SubscriptionGateScreen> createState() => _SubscriptionGateScreenState();
@@ -131,8 +133,7 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
                       _DirectPaymentForm(
                         catalog: _catalog,
                         paymentMethod: _paymentMethod,
-                        paymentReferenceController:
-                            _paymentReferenceController,
+                        paymentReferenceController: _paymentReferenceController,
                         payerNameController: _payerNameController,
                         payerPhoneController: _payerPhoneController,
                         notesController: _paymentNotesController,
@@ -160,7 +161,8 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
                           status?.enforcementMode != 'strict',
                       directMode: ApiConfig.isDirectWebsiteBuild,
                       manualEnabled: _catalog?.manualPaymentEnabled ?? false,
-                      canPayOnline: !_purchaseBusy && _selectedProductId != null,
+                      canPayOnline:
+                          !_purchaseBusy && _selectedProductId != null,
                       onBuy: ApiConfig.isDirectWebsiteBuild
                           ? _submitDirectPaymentRequest
                           : _buySelectedPlan,
@@ -193,7 +195,8 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
   }
 
   List<Widget> _planCards() {
-    final List<SubscriptionPlan> plans = _catalog?.plans ?? <SubscriptionPlan>[];
+    final List<SubscriptionPlan> plans =
+        _catalog?.plans ?? <SubscriptionPlan>[];
     if (plans.isEmpty) {
       return <Widget>[
         _StateBanner(
@@ -204,36 +207,43 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
       ];
     }
 
-    return plans.map((SubscriptionPlan plan) {
-      final ProductDetails? product = _products[plan.productId];
-      final bool selected = _selectedProductId == plan.productId;
-      final bool direct = ApiConfig.isDirectWebsiteBuild;
-      final bool available = direct || (product != null && _iapAvailable);
-      return Padding(
-        padding: const EdgeInsets.only(bottom: AppTheme.space5),
-        child: _PlanCard(
-          plan: plan,
-          priceLabel: direct ? plan.fallbackPriceLabel : product?.price ?? plan.fallbackPriceLabel,
-          selected: selected,
-          available: available,
-          onTap: () {
-            setState(() {
-              _selectedProductId = plan.productId;
-              _error = null;
-              if (direct) {
-                _message = 'Pay locally, then submit your payment reference for approval.';
-              } else if (!_iapAvailable) {
-                _message = 'Google Play billing is not available on this install.';
-              } else if (product == null) {
-                _message = 'This plan is not active in Google Play Console yet.';
-              } else {
-                _message = null;
-              }
-            });
-          },
-        ),
-      );
-    }).toList(growable: false);
+    return plans
+        .map((SubscriptionPlan plan) {
+          final ProductDetails? product = _products[plan.productId];
+          final bool selected = _selectedProductId == plan.productId;
+          final bool direct = ApiConfig.isDirectWebsiteBuild;
+          final bool available = direct || (product != null && _iapAvailable);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppTheme.space5),
+            child: _PlanCard(
+              plan: plan,
+              priceLabel: direct
+                  ? plan.fallbackPriceLabel
+                  : product?.price ?? plan.fallbackPriceLabel,
+              selected: selected,
+              available: available,
+              onTap: () {
+                setState(() {
+                  _selectedProductId = plan.productId;
+                  _error = null;
+                  if (direct) {
+                    _message =
+                        'Pay locally, then submit your payment reference for approval.';
+                  } else if (!_iapAvailable) {
+                    _message =
+                        'Google Play billing is not available on this install.';
+                  } else if (product == null) {
+                    _message =
+                        'This plan is not active in Google Play Console yet.';
+                  } else {
+                    _message = null;
+                  }
+                });
+              },
+            ),
+          );
+        })
+        .toList(growable: false);
   }
 
   bool get _canBuySelectedPlan {
@@ -305,7 +315,9 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
     Map<String, ProductDetails> products,
   ) {
     if (_selectedProductId != null &&
-        catalog.plans.any((SubscriptionPlan plan) => plan.productId == _selectedProductId)) {
+        catalog.plans.any(
+          (SubscriptionPlan plan) => plan.productId == _selectedProductId,
+        )) {
       return _selectedProductId;
     }
     if (catalog.plans.isEmpty) {
@@ -329,7 +341,8 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
   Future<void> _payOnlineWithSafepay() async {
     final String? productId = _selectedProductId;
     SubscriptionPlan? plan;
-    for (final SubscriptionPlan candidate in _catalog?.plans ?? <SubscriptionPlan>[]) {
+    for (final SubscriptionPlan candidate
+        in _catalog?.plans ?? <SubscriptionPlan>[]) {
       if (candidate.productId == productId) {
         plan = candidate;
         break;
@@ -347,8 +360,9 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
     });
 
     try {
-      final SafepayCheckout checkout =
-          await _apiClient.createSafepayCheckout(planId: plan.id);
+      final SafepayCheckout checkout = await _apiClient.createSafepayCheckout(
+        planId: plan.id,
+      );
       if (!mounted) return;
       if (checkout.checkoutUrl.isEmpty) {
         setState(() {
@@ -358,16 +372,20 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
         return;
       }
 
-      final SafepayCheckoutResult? result =
-          await Navigator.of(context).push<SafepayCheckoutResult>(
-        MaterialPageRoute<SafepayCheckoutResult>(
-          builder: (BuildContext context) => SafepayCheckoutScreen(
-            checkoutUrl: checkout.checkoutUrl,
-            returnUrlPrefix: ApiConfig.resolveUrl('/api/subscription/safepay/return'),
-            cancelUrlPrefix: ApiConfig.resolveUrl('/api/subscription/safepay/cancel'),
-          ),
-        ),
-      );
+      final SafepayCheckoutResult? result = await Navigator.of(context)
+          .push<SafepayCheckoutResult>(
+            MaterialPageRoute<SafepayCheckoutResult>(
+              builder: (BuildContext context) => SafepayCheckoutScreen(
+                checkoutUrl: checkout.checkoutUrl,
+                returnUrlPrefix: ApiConfig.resolveUrl(
+                  '/api/subscription/safepay/return',
+                ),
+                cancelUrlPrefix: ApiConfig.resolveUrl(
+                  '/api/subscription/safepay/cancel',
+                ),
+              ),
+            ),
+          );
       if (!mounted) return;
 
       if (result == SafepayCheckoutResult.paid) {
@@ -435,7 +453,8 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
   Future<void> _submitDirectPaymentRequest() async {
     final String? productId = _selectedProductId;
     SubscriptionPlan? plan;
-    for (final SubscriptionPlan candidate in _catalog?.plans ?? <SubscriptionPlan>[]) {
+    for (final SubscriptionPlan candidate
+        in _catalog?.plans ?? <SubscriptionPlan>[]) {
       if (candidate.productId == productId) {
         plan = candidate;
         break;
@@ -595,11 +614,12 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
     }
 
     try {
-      final SubscriptionStatus status = await _apiClient.verifyGooglePlayPurchase(
-        productId: purchase.productID,
-        purchaseToken: token,
-        packageName: _catalog?.packageName,
-      );
+      final SubscriptionStatus status = await _apiClient
+          .verifyGooglePlayPurchase(
+            productId: purchase.productID,
+            purchaseToken: token,
+            packageName: _catalog?.packageName,
+          );
       if (purchase.pendingCompletePurchase) {
         try {
           await _iap.completePurchase(purchase);
@@ -611,7 +631,9 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
       setState(() {
         _status = status;
         _purchaseBusy = false;
-        _message = status.active ? 'Subscription active.' : 'Subscription saved.';
+        _message = status.active
+            ? 'Subscription active.'
+            : 'Subscription saved.';
         _error = null;
       });
     } on SubscriptionApiException catch (error) {
@@ -796,9 +818,8 @@ class _Header extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       'Go Pro with Quick AL',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: AppTheme.space2),
                     Text(
@@ -818,10 +839,22 @@ class _Header extends StatelessWidget {
             spacing: AppTheme.space3,
             runSpacing: AppTheme.space3,
             children: const <Widget>[
-              _BenefitChip(icon: Icons.calculate_rounded, label: 'Unlimited estimates'),
-              _BenefitChip(icon: Icons.picture_as_pdf_rounded, label: 'PDF reports'),
-              _BenefitChip(icon: Icons.auto_awesome_mosaic_rounded, label: 'Glass optimization'),
-              _BenefitChip(icon: Icons.devices_rounded, label: 'Secure on your device'),
+              _BenefitChip(
+                icon: Icons.calculate_rounded,
+                label: 'Unlimited estimates',
+              ),
+              _BenefitChip(
+                icon: Icons.picture_as_pdf_rounded,
+                label: 'PDF reports',
+              ),
+              _BenefitChip(
+                icon: Icons.auto_awesome_mosaic_rounded,
+                label: 'Glass optimization',
+              ),
+              _BenefitChip(
+                icon: Icons.devices_rounded,
+                label: 'Secure on your device',
+              ),
             ],
           ),
         ],
@@ -884,13 +917,13 @@ class _PlanCard extends StatelessWidget {
     final Color accent = selected
         ? AppTheme.royalBlue
         : popular
-            ? AppTheme.amberAccent
-            : AppTheme.tealAccent;
+        ? AppTheme.amberAccent
+        : AppTheme.tealAccent;
     final Color borderColor = selected
         ? AppTheme.royalBlue
         : popular
-            ? AppTheme.amberAccent.withValues(alpha: 0.55)
-            : AppTheme.line;
+        ? AppTheme.amberAccent.withValues(alpha: 0.55)
+        : AppTheme.line;
 
     return Material(
       color: Colors.transparent,
@@ -923,16 +956,17 @@ class _PlanCard extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
-                      const Icon(Icons.star_rounded,
-                          color: Colors.white, size: 16),
+                      const Icon(
+                        Icons.star_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         plan.badgeLabel.isNotEmpty
                             ? plan.badgeLabel
                             : 'MOST POPULAR',
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelMedium
+                        style: Theme.of(context).textTheme.labelMedium
                             ?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w900,
@@ -962,20 +996,22 @@ class _PlanCard extends StatelessWidget {
                               Flexible(
                                 child: Text(
                                   plan.title,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
+                                  style: Theme.of(context).textTheme.titleLarge
                                       ?.copyWith(fontWeight: FontWeight.w900),
                                 ),
                               ),
-                              if (!popular && plan.badgeLabel.isNotEmpty) ...<Widget>[
+                              if (!popular &&
+                                  plan.badgeLabel.isNotEmpty) ...<Widget>[
                                 const SizedBox(width: AppTheme.space3),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 3),
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.tealAccent
-                                        .withValues(alpha: 0.12),
+                                    color: AppTheme.tealAccent.withValues(
+                                      alpha: 0.12,
+                                    ),
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: Text(
@@ -1002,16 +1038,16 @@ class _PlanCard extends StatelessWidget {
                             const SizedBox(height: AppTheme.space3),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 9, vertical: 4),
+                                horizontal: 9,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppTheme.danger,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 plan.savingsLabel,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
+                                style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w900,
@@ -1029,9 +1065,7 @@ class _PlanCard extends StatelessWidget {
                         if (plan.hasDiscount)
                           Text(
                             plan.fallbackOriginalPriceLabel,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: AppTheme.textSecondary,
                                   decoration: TextDecoration.lineThrough,
@@ -1039,9 +1073,7 @@ class _PlanCard extends StatelessWidget {
                           ),
                         Text(
                           priceLabel,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
+                          style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
                                 color: AppTheme.textPrimary,
                                 fontWeight: FontWeight.w900,
@@ -1121,7 +1153,8 @@ class _DirectPaymentForm extends StatelessWidget {
                           : 'Pay by local bank or wallet, then submit your payment reference for approval.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    if (info?.supportWhatsApp.trim().isNotEmpty ?? false) ...<Widget>[
+                    if (info?.supportWhatsApp.trim().isNotEmpty ??
+                        false) ...<Widget>[
                       const SizedBox(height: AppTheme.space2),
                       Text(
                         'WhatsApp support: ${info!.supportWhatsApp}',
@@ -1245,13 +1278,14 @@ class _ActionBar extends StatelessWidget {
             'Instant activation. Secure payment powered by Safepay — your card '
             'details are never stored by Quick AL.',
             textAlign: TextAlign.center,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppTheme.textSecondary),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
           ),
           const SizedBox(height: AppTheme.space5),
-          _DividerLabel(manualEnabled ? 'or pay by bank transfer' : 'other options'),
+          _DividerLabel(
+            manualEnabled ? 'or pay by bank transfer' : 'other options',
+          ),
           const SizedBox(height: AppTheme.space5),
           // Manual bank transfer is only offered when the owner has turned it on
           // from the admin panel. Otherwise it shows here, disabled, so users
@@ -1272,10 +1306,9 @@ class _ActionBar extends StatelessWidget {
             Text(
               'Bank transfer is not available right now — please pay online above.',
               textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: AppTheme.textSecondary),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
             ),
           ],
         ] else ...<Widget>[
@@ -1322,10 +1355,9 @@ class _DividerLabel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
           child: Text(
             text,
-            style: Theme.of(context)
-                .textTheme
-                .labelMedium
-                ?.copyWith(color: AppTheme.textSecondary),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: AppTheme.textSecondary),
           ),
         ),
         const Expanded(child: Divider()),

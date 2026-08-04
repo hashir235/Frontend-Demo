@@ -55,7 +55,9 @@ class ApiConfig {
     if (parsed != null && parsed.hasScheme) {
       return trimmed;
     }
-    final String normalizedPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    final String normalizedPath = trimmed.startsWith('/')
+        ? trimmed
+        : '/$trimmed';
     return '$baseUrl$normalizedPath';
   }
 

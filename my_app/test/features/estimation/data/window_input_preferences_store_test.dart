@@ -58,21 +58,17 @@ void main() {
         preferencesState: doorPreferences,
       );
 
-      final WindowInputSidebarPreferences? restoredOpenable =
-          await store.restoreSidebar(
-            flow: EstimateFlow.fabrication,
-            windowCode: 'O_win',
-          );
-      final WindowInputSidebarPreferences? restoredDoor =
-          await store.restoreSidebar(
+      final WindowInputSidebarPreferences? restoredOpenable = await store
+          .restoreSidebar(flow: EstimateFlow.fabrication, windowCode: 'O_win');
+      final WindowInputSidebarPreferences? restoredDoor = await store
+          .restoreSidebar(
             flow: EstimateFlow.fabrication,
             windowCode: 'Single_Door',
           );
-      final WindowInputSidebarPreferences? missing =
-          await store.restoreSidebar(
-            flow: EstimateFlow.estimation,
-            windowCode: 'O_win',
-          );
+      final WindowInputSidebarPreferences? missing = await store.restoreSidebar(
+        flow: EstimateFlow.estimation,
+        windowCode: 'O_win',
+      );
 
       expect(restoredOpenable, isNotNull);
       expect(restoredOpenable!.selectedCollar, 3);

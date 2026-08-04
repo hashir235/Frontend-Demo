@@ -131,11 +131,7 @@ class _RatesScreenState extends State<RatesScreen> {
     final List<RateRow> rows = List<RateRow>.from(_list.rows)
       ..[rowIndex] = row.copyWith(byColour: next);
     setState(() {
-      _list = RateList(
-        rows: rows,
-        master: _list.master,
-        customised: true,
-      );
+      _list = RateList(rows: rows, master: _list.master, customised: true);
       _dirty = true;
     });
   }
@@ -285,9 +281,15 @@ class _RatesScreenState extends State<RatesScreen> {
     );
   }
 
-  Widget _buildSectionCard(BuildContext context, int index, List<String> colours) {
+  Widget _buildSectionCard(
+    BuildContext context,
+    int index,
+    List<String> colours,
+  ) {
     final RateRow row = _list.rows[index];
-    final bool isOwn = _list.masterValue(row.section, colours.isEmpty ? '' : colours.first) == null;
+    final bool isOwn =
+        _list.masterValue(row.section, colours.isEmpty ? '' : colours.first) ==
+        null;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -349,7 +351,9 @@ class _RatesScreenState extends State<RatesScreen> {
             child: TextFormField(
               key: ValueKey<String>('${row.section}|$colour|$current'),
               initialValue: current,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: <TextInputFormatter>[
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                 LengthLimitingTextInputFormatter(8),
@@ -392,9 +396,10 @@ class _AddSectionDialog extends StatefulWidget {
 class _AddSectionDialogState extends State<_AddSectionDialog> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _section = TextEditingController();
-  late final Map<String, TextEditingController> _rates = <String, TextEditingController>{
-    for (final String c in widget.colours) c: TextEditingController(),
-  };
+  late final Map<String, TextEditingController> _rates =
+      <String, TextEditingController>{
+        for (final String c in widget.colours) c: TextEditingController(),
+      };
 
   @override
   void dispose() {

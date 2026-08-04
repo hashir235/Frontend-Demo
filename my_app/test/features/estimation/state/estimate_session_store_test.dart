@@ -28,10 +28,7 @@ void main() {
             'hardwarePerWindow': 120,
             'aluminiumDiscountPercent': 7,
           },
-          'totals': <String, dynamic>{
-            'extraCharges': 500,
-            'advancePaid': 1000,
-          },
+          'totals': <String, dynamic>{'extraCharges': 500, 'advancePaid': 1000},
           'customer': <String, dynamic>{
             'name': 'Ali',
             'phone': '03001234567',

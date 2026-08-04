@@ -249,9 +249,10 @@ class _TapeWheelState extends State<_TapeWheel>
 
   void _commit(double target) {
     final double snapped = _spec.snap(target);
-    _settleAnim = Tween<double>(begin: _live, end: snapped).animate(
-      CurvedAnimation(parent: _settle, curve: Curves.easeOutCubic),
-    );
+    _settleAnim = Tween<double>(
+      begin: _live,
+      end: snapped,
+    ).animate(CurvedAnimation(parent: _settle, curve: Curves.easeOutCubic));
     _settle.forward(from: 0);
     if (snapped != _spec.snap(widget.value)) {
       widget.onChanged(snapped);
@@ -281,8 +282,10 @@ class _TapeWheelState extends State<_TapeWheel>
     _settle.stop();
     _showTape();
     HapticFeedback.selectionClick();
-    final double target =
-        (_spec.snap(_live) + delta).clamp(_spec.min, _spec.max);
+    final double target = (_spec.snap(_live) + delta).clamp(
+      _spec.min,
+      _spec.max,
+    );
     _lastHapticNotch = (target / _spec.step).round();
     _commit(target);
   }
@@ -477,11 +480,7 @@ class _TapeTab extends StatelessWidget {
   final String label;
   final _TapeSpec spec;
 
-  const _TapeTab({
-    required this.live,
-    required this.label,
-    required this.spec,
-  });
+  const _TapeTab({required this.live, required this.label, required this.spec});
 
   @override
   Widget build(BuildContext context) {

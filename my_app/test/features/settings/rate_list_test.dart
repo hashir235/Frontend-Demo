@@ -20,7 +20,10 @@ void main() {
 
   group('duplicate sections', () {
     test('an exact repeat is caught', () {
-      expect(listWith(<String>['D29 (1.2mm)']).hasSection('D29 (1.2mm)'), isTrue);
+      expect(
+        listWith(<String>['D29 (1.2mm)']).hasSection('D29 (1.2mm)'),
+        isTrue,
+      );
     });
 
     test('case and spacing do not smuggle one past', () {
@@ -31,11 +34,17 @@ void main() {
     });
 
     test('a different gauge is a different section', () {
-      expect(listWith(<String>['D29 (1.2mm)']).hasSection('D29 (1.6mm)'), isFalse);
+      expect(
+        listWith(<String>['D29 (1.2mm)']).hasSection('D29 (1.6mm)'),
+        isFalse,
+      );
     });
 
     test('a genuinely new section is allowed', () {
-      expect(listWith(<String>['D29 (1.2mm)']).hasSection('D33 (2mm)'), isFalse);
+      expect(
+        listWith(<String>['D29 (1.2mm)']).hasSection('D33 (2mm)'),
+        isFalse,
+      );
     });
   });
 

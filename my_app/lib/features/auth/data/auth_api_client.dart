@@ -68,7 +68,8 @@ class AuthApiClient {
         'email': email,
         'password': password,
         if (workshopName.trim().isNotEmpty) 'workshopName': workshopName.trim(),
-        if (workshopPhone.trim().isNotEmpty) 'workshopPhone': workshopPhone.trim(),
+        if (workshopPhone.trim().isNotEmpty)
+          'workshopPhone': workshopPhone.trim(),
         if (workshopAddress.trim().isNotEmpty)
           'workshopAddress': workshopAddress.trim(),
       },

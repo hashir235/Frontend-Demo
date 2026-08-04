@@ -24,7 +24,8 @@ void main() {
   });
 
   test('the sutter error explains the format', () {
-    const String raw = 'winNo 1: inches mode requires a single sutter digit 0..7';
+    const String raw =
+        'winNo 1: inches mode requires a single sutter digit 0..7';
     final String out = OptimizationErrorText.friendly(raw);
     expect(out, contains('45.4'));
     expect(out.toLowerCase(), contains('sutter'));

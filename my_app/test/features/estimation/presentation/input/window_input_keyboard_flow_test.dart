@@ -12,6 +12,13 @@ Finder _textFieldByLabel(String label) {
   );
 }
 
+/// Estimation opens in inches, where a size is a typed inch box plus a suter
+/// wheel -- hence the unit in the label. The keyboard traversal these tests are
+/// about runs across the typed boxes; leaving the wheel alone means the saved
+/// value comes back as whole inches, `45` -> `45.0`.
+const String _heightLabel = 'Height (Inch)';
+const String _widthLabel = 'Width (Inch)';
+
 EstimateSessionStore _testSession() => EstimateSessionStore(
   projectName: 'Test Project',
   projectLocation: 'Test Location',
@@ -40,51 +47,64 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
 
-  testWidgets(
-    'last required size field saves from keyboard action',
-    (WidgetTester tester) async {
-      final EstimateSessionStore session = _testSession();
+  // Description is the last stop in the keyboard chain -- that is what makes it
+  // reachable without leaving the keyboard -- so it is the field that carries
+  // "done", and the save happens there rather than on the last size field.
+  testWidgets('keyboard action walks the fields and the last one saves', (
+    WidgetTester tester,
+  ) async {
+    final EstimateSessionStore session = _testSession();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: WindowInputScreen(node: _slidingNode, session: session),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WindowInputScreen(node: _slidingNode, session: session),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
 
-      final Finder heightField = _textFieldByLabel('Height');
-      final Finder widthField = _textFieldByLabel('Width');
-      final Finder descriptionField = _textFieldByLabel(
-        'Description (Optional)',
-      );
+    final Finder heightField = _textFieldByLabel(_heightLabel);
+    final Finder widthField = _textFieldByLabel(_widthLabel);
+    final Finder descriptionField = _textFieldByLabel('Description (Optional)');
 
-      await tester.tap(heightField);
-      await tester.pump();
-      await tester.enterText(heightField, '45.7');
-      tester.testTextInput.receiveAction(TextInputAction.next);
-      await tester.pump();
+    // The size fields sit under the pinned Save bar on a short screen, so a
+    // raw tap lands on the bar instead of the field.
+    await tester.ensureVisible(heightField);
+    await tester.pumpAndSettle();
+    await tester.tap(heightField);
+    await tester.pump();
+    await tester.enterText(heightField, '45');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
 
-      expect(
-        tester.widget<TextField>(widthField).focusNode?.hasFocus,
-        isTrue,
-      );
+    expect(tester.widget<TextField>(widthField).focusNode?.hasFocus, isTrue);
 
-      await tester.enterText(widthField, '22.4');
-      tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
+    await tester.enterText(widthField, '22');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
 
-      expect(session.items, hasLength(1));
-      expect(session.items.single.heightValue, '45.7');
-      expect(session.items.single.widthValue, '22.4');
-      expect(
-        tester.widget<TextField>(descriptionField).focusNode?.hasFocus,
-        isFalse,
-      );
-      expect(find.text('winNo: 2'), findsOneWidget);
-    },
-  );
+    // Nothing is saved on the way through.
+    expect(
+      tester.widget<TextField>(descriptionField).focusNode?.hasFocus,
+      isTrue,
+    );
+    expect(session.items, isEmpty);
+
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(session.items, hasLength(1));
+    expect(session.items.single.heightValue, '45.0');
+    expect(session.items.single.widthValue, '22.0');
+    // Saving hands the keyboard back to the first field for the next window.
+    expect(
+      tester.widget<TextField>(descriptionField).focusNode?.hasFocus,
+      isFalse,
+    );
+    expect(tester.widget<TextField>(heightField).focusNode?.hasFocus, isTrue);
+    expect(find.text('winNo: 2'), findsOneWidget);
+  });
 
   testWidgets(
     'save button clears fields immediately and refocuses first input',
@@ -99,31 +119,25 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
 
-      final Finder heightField = _textFieldByLabel('Height');
-      final Finder widthField = _textFieldByLabel('Width');
+      final Finder heightField = _textFieldByLabel(_heightLabel);
+      final Finder widthField = _textFieldByLabel(_widthLabel);
       final Finder descriptionField = _textFieldByLabel(
         'Description (Optional)',
       );
 
-      await tester.enterText(heightField, '48.7');
-      await tester.enterText(widthField, '30.4');
+      await tester.enterText(heightField, '48');
+      await tester.enterText(widthField, '30');
       await tester.enterText(descriptionField, 'north room');
       await tester.tap(find.byKey(const Key('input_save_button')));
       await tester.pump();
 
       expect(session.items, hasLength(1));
-      expect(session.items.single.heightValue, '48.7');
-      expect(session.items.single.widthValue, '30.4');
+      expect(session.items.single.heightValue, '48.0');
+      expect(session.items.single.widthValue, '30.0');
       expect(session.items.single.description, 'north room');
 
-      expect(
-        tester.widget<TextField>(heightField).controller?.text,
-        isEmpty,
-      );
-      expect(
-        tester.widget<TextField>(widthField).controller?.text,
-        isEmpty,
-      );
+      expect(tester.widget<TextField>(heightField).controller?.text, isEmpty);
+      expect(tester.widget<TextField>(widthField).controller?.text, isEmpty);
       expect(
         tester.widget<TextField>(descriptionField).controller?.text,
         isEmpty,
@@ -131,74 +145,70 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 120));
 
-      expect(
-        tester.widget<TextField>(heightField).focusNode?.hasFocus,
-        isTrue,
-      );
+      expect(tester.widget<TextField>(heightField).focusNode?.hasFocus, isTrue);
       expect(find.text('winNo: 2'), findsOneWidget);
     },
   );
 
-  testWidgets(
-    'restores saved unit mode when reopening the same flow',
-    (WidgetTester tester) async {
-      Future<void> pumpInput(EstimateSessionStore session) async {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: WindowInputScreen(node: _openableNode, session: session),
-          ),
-        );
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 250));
-      }
-
-      await pumpInput(
-        EstimateSessionStore(
-          projectName: 'Test Project',
-          projectLocation: 'Test Location',
-          flow: EstimateFlow.fabrication,
+  testWidgets('restores saved unit mode when reopening the same flow', (
+    WidgetTester tester,
+  ) async {
+    Future<void> pumpInput(EstimateSessionStore session) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WindowInputScreen(node: _openableNode, session: session),
         ),
       );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+    }
 
+    await pumpInput(
+      EstimateSessionStore(
+        projectName: 'Test Project',
+        projectLocation: 'Test Location',
+        flow: EstimateFlow.fabrication,
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
+    await tester.pumpAndSettle();
+    // The sidebar scrolls now that it carries more options, so the unit
+    // buttons can sit below the fold on a small screen.
+    await tester.ensureVisible(find.byKey(const Key('unit_inches_radio')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('unit_inches_radio')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('unit_inches_radio')),
+        matching: find.byIcon(Icons.radio_button_checked),
+      ),
+      findsOneWidget,
+    );
+
+    await pumpInput(
+      EstimateSessionStore(
+        projectName: 'Test Project',
+        projectLocation: 'Test Location',
+        flow: EstimateFlow.fabrication,
+      ),
+    );
+
+    // The endDrawer may still be open after re-pump (Scaffold state is
+    // reused); only tap to open it if the unit options aren't already shown.
+    if (find.byKey(const Key('unit_inches_radio')).evaluate().isEmpty) {
       await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
       await tester.pumpAndSettle();
-      // The sidebar scrolls now that it carries more options, so the unit
-      // buttons can sit below the fold on a small screen.
-      await tester.ensureVisible(find.byKey(const Key('unit_inches_radio')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('unit_inches_radio')));
-      await tester.pumpAndSettle();
+    }
 
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('unit_inches_radio')),
-          matching: find.byIcon(Icons.radio_button_checked),
-        ),
-        findsOneWidget,
-      );
-
-      await pumpInput(
-        EstimateSessionStore(
-          projectName: 'Test Project',
-          projectLocation: 'Test Location',
-          flow: EstimateFlow.fabrication,
-        ),
-      );
-
-      // The endDrawer may still be open after re-pump (Scaffold state is
-      // reused); only tap to open it if the unit options aren't already shown.
-      if (find.byKey(const Key('unit_inches_radio')).evaluate().isEmpty) {
-        await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
-        await tester.pumpAndSettle();
-      }
-
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('unit_inches_radio')),
-          matching: find.byIcon(Icons.radio_button_checked),
-        ),
-        findsOneWidget,
-      );
-    },
-  );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('unit_inches_radio')),
+        matching: find.byIcon(Icons.radio_button_checked),
+      ),
+      findsOneWidget,
+    );
+  });
 }

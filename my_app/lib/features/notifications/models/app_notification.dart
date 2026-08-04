@@ -30,7 +30,8 @@ class AppNotification {
       type: json['type'] as String? ?? 'general',
       title: json['title'] as String,
       body: json['body'] as String,
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
+      createdAt:
+          DateTime.tryParse(json['created_at'] as String? ?? '') ??
           DateTime.now(),
       updateApkUrl: (payload?['apkUrl'] as String?)?.trim(),
     );

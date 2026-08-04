@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/api_config.dart';
 
@@ -27,12 +28,20 @@ class AppUpdateStatus {
   final String apkUrl;
   final String message;
 
+  /// Play Store listing to send the user to. Empty on the website build, which
+  /// downloads and installs the APK itself.
+  final String storeUrl;
+
   const AppUpdateStatus({
     required this.requirement,
     required this.latestVersionName,
     required this.apkUrl,
     required this.message,
+    this.storeUrl = '',
   });
+
+  /// True when updating means "go to the Play Store", not "download an APK".
+  bool get updatesViaStore => storeUrl.isNotEmpty;
 
   static const AppUpdateStatus none = AppUpdateStatus(
     requirement: AppUpdateRequirement.none,
@@ -42,36 +51,41 @@ class AppUpdateStatus {
   );
 }
 
-/// Checks the backend version policy and (for the direct/website build only)
-/// decides whether an update is optional or forced, and triggers the native
-/// download + install.
+/// Checks the backend version policy and decides whether an update is optional
+/// or forced.
 ///
-/// The Play build never calls this — Google Play manages its own updates.
+/// How the user updates depends on where their copy came from. The website
+/// build downloads and installs the APK itself. The Play build cannot -- and
+/// should not -- do that, so it opens the store listing instead. Play's own
+/// auto-update is off for plenty of people, so without this a Play user simply
+/// never learns a new version exists.
 class AppUpdateService {
-  static const MethodChannel _channel =
-      MethodChannel('quick_al/app_update');
+  static const MethodChannel _channel = MethodChannel('quick_al/app_update');
 
   final http.Client _httpClient;
   final Uri _versionUri;
 
   AppUpdateService({http.Client? httpClient, String? baseUrl})
-      : _httpClient = httpClient ?? http.Client(),
-        _versionUri = Uri.parse(
-          '${baseUrl ?? ApiConfig.baseUrl}/api/app/version',
-        );
+    : _httpClient = httpClient ?? http.Client(),
+      _versionUri = Uri.parse(
+        '${baseUrl ?? ApiConfig.baseUrl}/api/app/version',
+      );
 
   /// Fetches the policy and compares it with the installed build number.
-  /// Returns [AppUpdateStatus.none] for the Play build, on any error, or when
-  /// up to date — so a check failure never blocks the user by mistake.
+  /// Returns [AppUpdateStatus.none] on any error, or when up to date — so a
+  /// check failure never blocks the user by mistake.
   Future<AppUpdateStatus> check() async {
-    // Only the direct/website build self-updates.
-    if (!ApiConfig.isDirectWebsiteBuild) {
-      return AppUpdateStatus.none;
-    }
-
     try {
+      // The two channels are on separate release clocks -- the website APK is
+      // live on deploy, a Play build only after Google's review -- so the
+      // backend answers with the numbers for whichever channel is asking.
       final http.Response response = await _httpClient
-          .get(_versionUri)
+          .get(
+            _versionUri,
+            headers: <String, String>{
+              'x-quickal-channel': ApiConfig.subscriptionChannel,
+            },
+          )
           .timeout(const Duration(seconds: 8));
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return AppUpdateStatus.none;
@@ -85,12 +99,21 @@ class AppUpdateService {
       final String latestName =
           (body['latestVersionName'] as String?)?.trim() ?? '';
       final String message = (body['updateMessage'] as String?)?.trim() ?? '';
+      String storeUrl = (body['storeUrl'] as String?)?.trim() ?? '';
 
       final PackageInfo info = await PackageInfo.fromPlatform();
       final int installed = int.tryParse(info.buildNumber) ?? 0;
 
-      // No usable APK url → don't nag the user.
-      if (apkUrl.isEmpty) {
+      // An older backend answers without storeUrl. The Play build still needs
+      // somewhere to send people, and the listing is derived from the package
+      // name it is already running under.
+      if (storeUrl.isEmpty && !ApiConfig.isDirectWebsiteBuild) {
+        storeUrl =
+            'https://play.google.com/store/apps/details?id=${info.packageName}';
+      }
+
+      // Nowhere to send the user → don't nag them.
+      if (apkUrl.isEmpty && storeUrl.isEmpty) {
         return AppUpdateStatus.none;
       }
 
@@ -108,6 +131,7 @@ class AppUpdateService {
         latestVersionName: latestName,
         apkUrl: apkUrl,
         message: message,
+        storeUrl: storeUrl,
       );
     } catch (_) {
       // Network/parse failure must never lock the user out.
@@ -146,6 +170,31 @@ class AppUpdateService {
     } finally {
       // Stop listening so a later call (or another instance) starts clean.
       _channel.setMethodCallHandler(null);
+    }
+  }
+
+  /// Opens the Play Store listing so the user can update from there.
+  ///
+  /// Tries the `market:` scheme first, which lands directly in the Play Store
+  /// app; falls back to the https listing on devices where Play is missing or
+  /// the scheme is not handled.
+  Future<bool> openStore(String storeUrl) async {
+    final Uri httpsUri = Uri.parse(storeUrl);
+    final String? packageName = httpsUri.queryParameters['id'];
+    if (packageName != null && packageName.isNotEmpty) {
+      final Uri marketUri = Uri.parse('market://details?id=$packageName');
+      try {
+        if (await launchUrl(marketUri, mode: LaunchMode.externalApplication)) {
+          return true;
+        }
+      } catch (_) {
+        // No Play Store app -- fall through to the browser.
+      }
+    }
+    try {
+      return await launchUrl(httpsUri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      return false;
     }
   }
 

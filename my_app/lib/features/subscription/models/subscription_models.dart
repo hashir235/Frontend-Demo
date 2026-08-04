@@ -143,12 +143,12 @@ class SubscriptionStatus {
   });
 
   factory SubscriptionStatus.fromJson(Map<String, dynamic> json) {
-    final Map<String, dynamic>? rawPlan =
-        (json['plan'] as Map?)?.cast<String, dynamic>();
-    final Map<String, dynamic>? rawSubscription =
-        (json['subscription'] as Map?)?.cast<String, dynamic>();
-    final Map<String, dynamic>? rawTrial =
-        (json['trial'] as Map?)?.cast<String, dynamic>();
+    final Map<String, dynamic>? rawPlan = (json['plan'] as Map?)
+        ?.cast<String, dynamic>();
+    final Map<String, dynamic>? rawSubscription = (json['subscription'] as Map?)
+        ?.cast<String, dynamic>();
+    final Map<String, dynamic>? rawTrial = (json['trial'] as Map?)
+        ?.cast<String, dynamic>();
     return SubscriptionStatus(
       active: (json['active'] as bool?) ?? false,
       entitlement: (json['entitlement'] as String?) ?? 'none',
@@ -196,13 +196,14 @@ class SubscriptionCatalog {
     final List<dynamic> rawPlans = json['plans'] is List<dynamic>
         ? json['plans'] as List<dynamic>
         : <dynamic>[];
-    final List<SubscriptionPlan> plans = rawPlans
-        .whereType<Map<String, dynamic>>()
-        .map(SubscriptionPlan.fromJson)
-        .toList(growable: false)
-      ..sort((SubscriptionPlan a, SubscriptionPlan b) {
-        return a.sortOrder.compareTo(b.sortOrder);
-      });
+    final List<SubscriptionPlan> plans =
+        rawPlans
+            .whereType<Map<String, dynamic>>()
+            .map(SubscriptionPlan.fromJson)
+            .toList(growable: false)
+          ..sort((SubscriptionPlan a, SubscriptionPlan b) {
+            return a.sortOrder.compareTo(b.sortOrder);
+          });
     return SubscriptionCatalog(
       plans: plans,
       googlePlayConfigured: (json['googlePlayConfigured'] as bool?) ?? false,

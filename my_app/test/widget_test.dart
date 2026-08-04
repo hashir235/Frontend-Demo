@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/app.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:my_app/features/estimation/models/window_type.dart';
 import 'package:my_app/features/estimation/presentation/input/window_input_base.dart';
+import 'package:my_app/features/estimation/presentation/window_navigation_screen.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 
 const Key _pageViewKey = Key('window_page_view');
@@ -13,33 +14,49 @@ EstimateSessionStore _testSession() => EstimateSessionStore(
   projectLocation: 'Test Location',
 );
 
+/// The window flow starts here. Reaching this screen through the app would mean
+/// getting past auth, the subscription gate and a `POST /projects` round trip --
+/// none of which these tests are about, and none of which a widget test can
+/// answer. A session without a `projectId` also keeps the backend sync a no-op,
+/// so save/edit/delete stay entirely local.
 Future<void> _openAddWindows(WidgetTester tester) async {
-  await tester.tap(find.text('Estimation'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Create Project'));
-  await tester.pumpAndSettle();
-  await tester.enterText(find.widgetWithText(TextFormField, 'Project Name *'), 'Test Project');
-  await tester.enterText(find.widgetWithText(TextFormField, 'Location *'), 'Test Location');
-  await tester.tap(find.text('Continue'));
+  await tester.pumpWidget(
+    MaterialApp(home: WindowNavigationScreen.root(session: _testSession())),
+  );
   await tester.pumpAndSettle();
 }
 
+/// The library lays out as a carousel on a phone and a grid on anything wider,
+/// so the middle of the library box is not reliably a card. The focused card's
+/// code chip is, on both.
 Future<void> _tapFocusedCard(WidgetTester tester) async {
-  await tester.tapAt(tester.getCenter(find.byKey(_pageViewKey)));
+  final Finder focusedCard = find.byKey(_focusedCodeNameKey);
+  await tester.ensureVisible(focusedCard);
+  await tester.pumpAndSettle();
+  await tester.tap(focusedCard);
   await tester.pumpAndSettle();
 }
 
+/// The size fields carry a `GlobalKey` the screen needs for scroll-into-view, so
+/// there is no stable test key to hang on to -- the label is the handle.
+Finder _fieldByLabel(String label) => find.byWidgetPredicate(
+  (Widget widget) =>
+      widget is TextField && widget.decoration?.labelText == label,
+);
+
+/// Estimation opens in inches, where a size is a typed inch box plus a suter
+/// wheel. These pass whole inches and leave the wheel at 0.
 Future<void> _enterInputValues(
   WidgetTester tester, {
   required String height,
   required String width,
   String? description,
 }) async {
-  await tester.enterText(find.byKey(const Key('input_height_field')), height);
-  await tester.enterText(find.byKey(const Key('input_width_field')), width);
+  await tester.enterText(_fieldByLabel('Height (Inch)'), height);
+  await tester.enterText(_fieldByLabel('Width (Inch)'), width);
   if (description != null) {
     await tester.enterText(
-      find.byKey(const Key('input_description_field')),
+      _fieldByLabel('Description (Optional)'),
       description,
     );
   }
@@ -53,10 +70,18 @@ Future<void> _tapSaveButton(WidgetTester tester) async {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  // The input screen restores the unit and sidebar choices from preferences on
+  // open; without a mock store every test would start from whatever the last
+  // one left behind.
+  setUp(() {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+  });
+
   testWidgets('Add Windows opens navigation screen with code name labels', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
     await _openAddWindows(tester);
 
     expect(
@@ -68,7 +93,6 @@ void main() {
   });
 
   testWidgets('Leaf card opens input page', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
     await _openAddWindows(tester);
 
     await _tapFocusedCard(tester);
@@ -91,10 +115,7 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: mSectionNode,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: mSectionNode, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
@@ -125,7 +146,9 @@ void main() {
     expect(find.text('D29'), findsNothing);
   });
 
-  testWidgets('SCF input limits collar cards to 2', (WidgetTester tester) async {
+  testWidgets('SCF input limits collar cards to 2', (
+    WidgetTester tester,
+  ) async {
     const WindowType scfNode = WindowType(
       label: 'Sliding Corner Center Fix',
       graphicKey: 'corner_basic',
@@ -135,10 +158,7 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: scfNode,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: scfNode, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
@@ -151,7 +171,9 @@ void main() {
     expect(delegate.childCount, 2);
   });
 
-  testWidgets('MSCF input limits collar cards to 2', (WidgetTester tester) async {
+  testWidgets('MSCF input limits collar cards to 2', (
+    WidgetTester tester,
+  ) async {
     const WindowType mscfNode = WindowType(
       label: 'Sliding Corner Center Fix (M_Section)',
       graphicKey: 'corner_basic',
@@ -161,10 +183,7 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: mscfNode,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: mscfNode, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
@@ -189,18 +208,17 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: scfNode,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: scfNode, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('input_width_field')), findsOneWidget);
-    expect(find.byKey(const Key('input_left_width_field')), findsOneWidget);
-    expect(find.text('Right Width'), findsOneWidget);
-    expect(find.text('Left Width'), findsOneWidget);
+    // A corner window splits the width in two, and in inches each of those is
+    // an inch box plus a suter wheel -- so the labels carry the unit.
+    expect(_fieldByLabel('Right Width (Inch)'), findsOneWidget);
+    expect(_fieldByLabel('Left Width (Inch)'), findsOneWidget);
+    expect(find.text('Right Width (Inch)'), findsOneWidget);
+    expect(find.text('Left Width (Inch)'), findsOneWidget);
   });
 
   testWidgets('MSCF input also shows right and left width fields', (
@@ -215,18 +233,15 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: mscfNode,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: mscfNode, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('input_width_field')), findsOneWidget);
-    expect(find.byKey(const Key('input_left_width_field')), findsOneWidget);
-    expect(find.text('Right Width'), findsOneWidget);
-    expect(find.text('Left Width'), findsOneWidget);
+    expect(_fieldByLabel('Right Width (Inch)'), findsOneWidget);
+    expect(_fieldByLabel('Left Width (Inch)'), findsOneWidget);
+    expect(find.text('Right Width (Inch)'), findsOneWidget);
+    expect(find.text('Left Width (Inch)'), findsOneWidget);
   });
 
   testWidgets('Non-corner windows keep 14 collar cards', (
@@ -241,10 +256,7 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: slidingNode,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: slidingNode, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
@@ -270,10 +282,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: pf3Node,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: pf3Node, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
@@ -334,13 +343,20 @@ void main() {
     expect(find.text('M28'), findsOneWidget);
 
     // tap-smoke
-    for (final String code in const <String>['DC30F', 'DC30C', 'DC26F', 'D29']) {
+    for (final String code in const <String>[
+      'DC30F',
+      'DC30C',
+      'DC26F',
+      'D29',
+    ]) {
       await tester.tap(find.text(code));
       await tester.pumpAndSettle();
     }
   });
 
-  testWidgets('PS4 drawer collar 2 shows C variants', (WidgetTester tester) async {
+  testWidgets('PS4 drawer collar 2 shows C variants', (
+    WidgetTester tester,
+  ) async {
     const WindowType ps4Node = WindowType(
       label: 'Center Slide',
       graphicKey: 'panel_basic',
@@ -351,10 +367,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: ps4Node,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: ps4Node, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
@@ -382,7 +395,9 @@ void main() {
     expect(find.text('DC26C'), findsOneWidget);
   });
 
-  testWidgets('EF3 drawer collar 2 shows C variants', (WidgetTester tester) async {
+  testWidgets('EF3 drawer collar 2 shows C variants', (
+    WidgetTester tester,
+  ) async {
     const WindowType ef3Node = WindowType(
       label: 'Equal Panel',
       graphicKey: 'panel_basic',
@@ -393,10 +408,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: ef3Node,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: ef3Node, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
@@ -435,10 +447,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: es3Node,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: es3Node, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
@@ -483,10 +492,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: WindowInputScreen(
-          node: mpf3Node,
-          session: _testSession(),
-        ),
+        home: WindowInputScreen(node: mpf3Node, session: _testSession()),
       ),
     );
     await tester.pumpAndSettle();
@@ -518,7 +524,6 @@ void main() {
   testWidgets('Save with optional description shows it in review list', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
     await _openAddWindows(tester);
     await _tapFocusedCard(tester);
 
@@ -534,16 +539,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('review_item_1')), findsOneWidget);
-    expect(
-      find.textContaining('Description: bath room window'),
-      findsOneWidget,
-    );
+    // The row labels the description and prints it underneath.
+    expect(find.text('Description'), findsOneWidget);
+    expect(find.text('bath room window'), findsOneWidget);
   });
 
   testWidgets('Save without description keeps review row clean', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
     await _openAddWindows(tester);
     await _tapFocusedCard(tester);
 
@@ -554,13 +557,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('review_item_1')), findsOneWidget);
-    expect(find.textContaining('Description:'), findsNothing);
+    expect(find.text('Description'), findsNothing);
   });
 
   testWidgets(
     'Edit description updates same winNo and delete keeps numbering monotonic',
     (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
       await _openAddWindows(tester);
       await _tapFocusedCard(tester);
 
@@ -584,7 +586,7 @@ void main() {
       await tester.tap(find.byKey(const Key('review_edit_1')));
       await tester.pumpAndSettle();
       await tester.enterText(
-        find.byKey(const Key('input_description_field')),
+        _fieldByLabel('Description (Optional)'),
         'updated bathroom window',
       );
       await _tapSaveButton(tester);

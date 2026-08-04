@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/config/api_config.dart';
 import '../../../core/theme/app_theme.dart';
@@ -52,18 +53,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return 'Just now';
   }
 
-  // A version_update notification carries the APK url, so a user who dismissed
-  // the startup update prompt can still update straight from here. Direct/website
-  // build only — the Play build updates through Google Play.
+  // A version_update notification lets a user who dismissed the startup prompt
+  // update straight from here. Both builds offer it -- the website build
+  // downloads the APK, the Play build opens the store listing.
   bool _canUpdateFrom(AppNotification n) =>
       n.type == 'version_update' &&
-      ApiConfig.isDirectWebsiteBuild &&
-      (n.updateApkUrl?.isNotEmpty ?? false);
+      (!ApiConfig.isDirectWebsiteBuild ||
+          (n.updateApkUrl?.isNotEmpty ?? false));
+
+  Future<void> _openPlayStore() async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final PackageInfo info = await PackageInfo.fromPlatform();
+    final bool opened = await AppUpdateService().openStore(
+      'https://play.google.com/store/apps/details?id=${info.packageName}',
+    );
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          opened
+              ? 'Play Store khul raha hai — wahan "Update" dabayein.'
+              : 'Play Store nahi khula. Khud khol kar "Quick AL" search karein.',
+        ),
+      ),
+    );
+  }
 
   Future<void> _startUpdate(String apkUrl) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
-      final String outcome = await AppUpdateService().downloadAndInstall(apkUrl);
+      final String outcome = await AppUpdateService().downloadAndInstall(
+        apkUrl,
+      );
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
@@ -78,7 +99,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Could not start the update. Try again from quickalapp.com.'),
+          content: Text(
+            'Could not start the update. Try again from quickalapp.com.',
+          ),
         ),
       );
     }
@@ -87,10 +110,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Notifications'), centerTitle: false),
       body: ListenableBuilder(
         listenable: widget.controller,
         builder: (BuildContext context, _) {
@@ -112,9 +132,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Text(
                     'No notifications yet',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppTheme.textSecondary,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -132,8 +152,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 padding: const EdgeInsets.all(AppTheme.space5),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius:
-                      BorderRadius.circular(AppTheme.radiusMd),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   border: Border.all(color: AppTheme.line),
                   boxShadow: AppTheme.softShadow(),
                 ),
@@ -147,8 +166,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         color: color.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(_iconForType(n.type),
-                          size: 20, color: color),
+                      child: Icon(_iconForType(n.type), size: 20, color: color),
                     ),
                     const SizedBox(width: AppTheme.space4),
                     Expanded(
@@ -160,9 +178,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               Expanded(
                                 child: Text(
                                   n.title,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
+                                  style: Theme.of(context).textTheme.bodyMedium
                                       ?.copyWith(
                                         fontWeight: FontWeight.w800,
                                         color: AppTheme.textPrimary,
@@ -171,34 +187,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               ),
                               Text(
                                 _timeAgo(n.createdAt),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: AppTheme.textSecondary,
-                                    ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: AppTheme.textSecondary),
                               ),
                             ],
                           ),
                           const SizedBox(height: 4),
                           Text(
                             n.body,
-                            style:
-                                Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppTheme.textSecondary,
-                                    ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppTheme.textSecondary),
                           ),
                           if (_canUpdateFrom(n)) ...<Widget>[
                             const SizedBox(height: 12),
                             Align(
                               alignment: Alignment.centerLeft,
                               child: FilledButton.icon(
-                                onPressed: () => _startUpdate(n.updateApkUrl!),
-                                icon: const Icon(
-                                  Icons.system_update_rounded,
+                                onPressed: ApiConfig.isDirectWebsiteBuild
+                                    ? () => _startUpdate(n.updateApkUrl!)
+                                    : _openPlayStore,
+                                icon: Icon(
+                                  ApiConfig.isDirectWebsiteBuild
+                                      ? Icons.system_update_rounded
+                                      : Icons.shop_rounded,
                                   size: 18,
                                 ),
-                                label: const Text('Update Now'),
+                                label: Text(
+                                  ApiConfig.isDirectWebsiteBuild
+                                      ? 'Update Now'
+                                      : 'Play Store se update karein',
+                                ),
                               ),
                             ),
                           ],

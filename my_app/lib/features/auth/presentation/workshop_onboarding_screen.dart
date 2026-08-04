@@ -33,7 +33,8 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
   late final TextEditingController _contractorNameController =
       TextEditingController(text: _authController.currentUser?.fullName ?? '');
   final TextEditingController _workshopNameController = TextEditingController();
-  final TextEditingController _workshopPhoneController = TextEditingController();
+  final TextEditingController _workshopPhoneController =
+      TextEditingController();
   final TextEditingController _workshopAddressController =
       TextEditingController();
 
@@ -76,7 +77,9 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
     FocusScope.of(context).unfocus();
     final String workshopName = _workshopNameController.text.trim();
     if (workshopName.length < 2) {
-      _showMessage('Workshop / company name must be at least 2 characters long.');
+      _showMessage(
+        'Workshop / company name must be at least 2 characters long.',
+      );
       return;
     }
     if (!_acceptedTerms) {
@@ -114,8 +117,9 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
   /// Policy" open the real documents. Tapping anywhere else on the sentence
   /// toggles the tick, so the whole row is a comfortable target.
   Widget _buildTermsCheckbox(BuildContext context) {
-    final TextStyle? bodyStyle = Theme.of(context).textTheme.bodyMedium
-        ?.copyWith(color: AppTheme.slate, height: 1.4);
+    final TextStyle? bodyStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: AppTheme.slate, height: 1.4);
     final TextStyle? linkStyle = bodyStyle?.copyWith(
       color: AppTheme.tealAccent,
       fontWeight: FontWeight.w700,
@@ -263,7 +267,9 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2.2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                              ),
                             )
                           : const Icon(Icons.check_circle_rounded),
                       label: const Text('Save & continue'),

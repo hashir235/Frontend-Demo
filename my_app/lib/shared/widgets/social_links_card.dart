@@ -25,12 +25,16 @@ class SocialLinksCard extends StatelessWidget {
       );
       if (!opened) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Could not open the link. Please try again.')),
+          const SnackBar(
+            content: Text('Could not open the link. Please try again.'),
+          ),
         );
       }
     } catch (_) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Could not open the link. Please try again.')),
+        const SnackBar(
+          content: Text('Could not open the link. Please try again.'),
+        ),
       );
     }
   }
@@ -114,12 +118,16 @@ Future<void> _launchExternal(BuildContext context, String url) async {
     );
     if (!opened) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Could not open the link. Please try again.')),
+        const SnackBar(
+          content: Text('Could not open the link. Please try again.'),
+        ),
       );
     }
   } catch (_) {
     messenger.showSnackBar(
-      const SnackBar(content: Text('Could not open the link. Please try again.')),
+      const SnackBar(
+        content: Text('Could not open the link. Please try again.'),
+      ),
     );
   }
 }

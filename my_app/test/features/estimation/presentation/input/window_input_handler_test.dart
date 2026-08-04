@@ -198,29 +198,44 @@ void main() {
       'M24',
       'M28',
     ]);
-    expect(collar2, containsAll(<String>['DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28']));
+    expect(
+      collar2,
+      containsAll(<String>['DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28']),
+    );
     expect(collar2, isNot(contains('DC30F')));
     expect(collar2, isNot(contains('DC26F')));
-    expect(collar3, containsAll(<String>['DC30F', 'DC30C', 'DC26F', 'D29', 'M23', 'M24', 'M28']));
-    expect(collar5, containsAll(<String>['DC30F', 'DC26C', 'D29', 'M23', 'M24', 'M28']));
+    expect(
+      collar3,
+      containsAll(<String>[
+        'DC30F',
+        'DC30C',
+        'DC26F',
+        'D29',
+        'M23',
+        'M24',
+        'M28',
+      ]),
+    );
+    expect(
+      collar5,
+      containsAll(<String>['DC30F', 'DC26C', 'D29', 'M23', 'M24', 'M28']),
+    );
     expect(collar5, isNot(contains('DC26F')));
   });
 
   test('PF3_win aliases match S_win parity', () {
     final WindowInputHandler handler = handlerForWindow(pf3Node);
 
-    expect(
-      handler.aliasesForCollar(2),
-      const <String, String>{'DC30F': 'DC30C', 'DC26F': 'DC26C'},
-    );
-    expect(
-      handler.aliasesForCollar(5),
-      const <String, String>{'DC26F': 'DC26C'},
-    );
-    expect(
-      handler.aliasesForCollar(8),
-      const <String, String>{'DC26F': 'DC26C'},
-    );
+    expect(handler.aliasesForCollar(2), const <String, String>{
+      'DC30F': 'DC30C',
+      'DC26F': 'DC26C',
+    });
+    expect(handler.aliasesForCollar(5), const <String, String>{
+      'DC26F': 'DC26C',
+    });
+    expect(handler.aliasesForCollar(8), const <String, String>{
+      'DC26F': 'DC26C',
+    });
     expect(handler.aliasesForCollar(3), isEmpty);
   });
 
@@ -238,14 +253,20 @@ void main() {
     expect(handler, isA<PanelCenterSlideInputHandler>());
   });
 
-  test('PS4_win collar 2 includes DC30C/DC26C and excludes D29 aliases as base', () {
-    final WindowInputHandler handler = handlerForWindow(ps4Node);
-    final List<String> collar2 = handler.sectionsForCollar(2);
+  test(
+    'PS4_win collar 2 includes DC30C/DC26C and excludes D29 aliases as base',
+    () {
+      final WindowInputHandler handler = handlerForWindow(ps4Node);
+      final List<String> collar2 = handler.sectionsForCollar(2);
 
-    expect(collar2, containsAll(<String>['DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28']));
-    expect(collar2, isNot(contains('DC30F')));
-    expect(collar2, isNot(contains('DC26F')));
-  });
+      expect(
+        collar2,
+        containsAll(<String>['DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28']),
+      );
+      expect(collar2, isNot(contains('DC30F')));
+      expect(collar2, isNot(contains('DC26F')));
+    },
+  );
 
   test('EF3_win routes to PanelEqualInputHandler', () {
     final WindowInputHandler handler = handlerForWindow(ef3Node);
@@ -254,18 +275,22 @@ void main() {
 
   test('EF3_win reuses PF3 collar section matrix', () {
     final WindowInputHandler handler = handlerForWindow(ef3Node);
-    expect(
-      handler.sectionsForCollar(1),
-      const <String>['DC30F', 'DC26F', 'D29', 'M23', 'M24', 'M28'],
-    );
+    expect(handler.sectionsForCollar(1), const <String>[
+      'DC30F',
+      'DC26F',
+      'D29',
+      'M23',
+      'M24',
+      'M28',
+    ]);
     expect(
       handler.sectionsForCollar(2),
       containsAll(<String>['DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28']),
     );
-    expect(
-      handler.aliasesForCollar(2),
-      const <String, String>{'DC30F': 'DC30C', 'DC26F': 'DC26C'},
-    );
+    expect(handler.aliasesForCollar(2), const <String, String>{
+      'DC30F': 'DC30C',
+      'DC26F': 'DC26C',
+    });
   });
 
   test('ES3_win routes to PanelSlidingEqualInputHandler', () {
@@ -280,8 +305,14 @@ void main() {
 
     expect(collar1, isNot(contains('M28')));
     expect(collar2, isNot(contains('M28')));
-    expect(collar1, containsAll(<String>['DC30F', 'DC26F', 'D29', 'M23', 'M24']));
-    expect(collar2, containsAll(<String>['DC30C', 'DC26C', 'D29', 'M23', 'M24']));
+    expect(
+      collar1,
+      containsAll(<String>['DC30F', 'DC26F', 'D29', 'M23', 'M24']),
+    );
+    expect(
+      collar2,
+      containsAll(<String>['DC30C', 'DC26C', 'D29', 'M23', 'M24']),
+    );
   });
 
   test('MPF3/MPS4/MEF3/MES3 route to dedicated M handlers', () {
@@ -291,28 +322,34 @@ void main() {
     expect(handlerForWindow(mes3Node), isA<PanelMSlidingEqualInputHandler>());
   });
 
-  test('M panel handlers rename DC codes, remove D29, and keep collar matrix parity', () {
-    final WindowInputHandler mpf3 = handlerForWindow(mpf3Node);
-    final WindowInputHandler mes3 = handlerForWindow(mes3Node);
+  test(
+    'M panel handlers rename DC codes, remove D29, and keep collar matrix parity',
+    () {
+      final WindowInputHandler mpf3 = handlerForWindow(mpf3Node);
+      final WindowInputHandler mes3 = handlerForWindow(mes3Node);
 
-    final List<String> mpf3C1 = mpf3.sectionsForCollar(1);
-    final List<String> mpf3C2 = mpf3.sectionsForCollar(2);
-    final List<String> mes3C1 = mes3.sectionsForCollar(1);
+      final List<String> mpf3C1 = mpf3.sectionsForCollar(1);
+      final List<String> mpf3C2 = mpf3.sectionsForCollar(2);
+      final List<String> mes3C1 = mes3.sectionsForCollar(1);
 
-    expect(mpf3C1, containsAll(<String>['M30F', 'M26F', 'M23', 'M24', 'M28']));
-    expect(mpf3C1, isNot(contains('D29')));
-    expect(mpf3C2, containsAll(<String>['M30', 'M26', 'M23', 'M24', 'M28']));
-    expect(mpf3C2, isNot(contains('D29')));
+      expect(
+        mpf3C1,
+        containsAll(<String>['M30F', 'M26F', 'M23', 'M24', 'M28']),
+      );
+      expect(mpf3C1, isNot(contains('D29')));
+      expect(mpf3C2, containsAll(<String>['M30', 'M26', 'M23', 'M24', 'M28']));
+      expect(mpf3C2, isNot(contains('D29')));
 
-    expect(
-      mpf3.aliasesForCollar(2),
-      const <String, String>{'DC30C': 'M30', 'DC26C': 'M26'},
-    );
+      expect(mpf3.aliasesForCollar(2), const <String, String>{
+        'DC30C': 'M30',
+        'DC26C': 'M26',
+      });
 
-    expect(mes3C1, containsAll(<String>['M30F', 'M26F', 'M23', 'M24']));
-    expect(mes3C1, isNot(contains('M28')));
-    expect(mes3C1, isNot(contains('D29')));
-  });
+      expect(mes3C1, containsAll(<String>['M30F', 'M26F', 'M23', 'M24']));
+      expect(mes3C1, isNot(contains('M28')));
+      expect(mes3C1, isNot(contains('D29')));
+    },
+  );
 
   test('SCF_win routes to SlidingCornerCenterFixInputHandler', () {
     final WindowInputHandler handler = handlerForWindow(scfNode);
@@ -328,9 +365,15 @@ void main() {
     expect(handler, isA<SlidingCornerMSectionInputHandler>());
     expect(handler.collarCount, 2);
     expect(handler.usesSplitWidthInputs, isTrue);
-    expect(handler.sectionsForCollar(1), containsAll(<String>['M30F', 'M26F', 'M23', 'M28', 'M24']));
+    expect(
+      handler.sectionsForCollar(1),
+      containsAll(<String>['M30F', 'M26F', 'M23', 'M28', 'M24']),
+    );
     expect(handler.sectionsForCollar(1), isNot(contains('D29')));
-    expect(handler.sectionsForCollar(2), containsAll(<String>['M30', 'M26', 'M23', 'M28', 'M24']));
+    expect(
+      handler.sectionsForCollar(2),
+      containsAll(<String>['M30', 'M26', 'M23', 'M28', 'M24']),
+    );
     expect(handler.sectionsForCollar(2), isNot(contains('D29')));
     expect(handler.overlayForCollar(1, null), isNotNull);
     expect(handler.overlayForCollar(2, null), isNotNull);
@@ -364,18 +407,25 @@ void main() {
     expect(handler.overlayForCollar(3, null), isNull);
   });
 
-  test('F_win routes to FixWindowInputHandler and supports collar overlays', () {
-    final WindowInputHandler handler = handlerForWindow(fixNode);
-    expect(handler, isA<FixWindowInputHandler>());
-    expect(handler.collarCount, 14);
-    expect(handler.sectionsForCollar(1), const <String>['D41', 'D54F']);
-    expect(handler.sectionsForCollar(2), const <String>['D41', 'D54A']);
-    expect(handler.sectionsForCollar(14), const <String>['D41', 'D54F', 'D54A']);
-    expect(handler.overlayForCollar(1, null), isNotNull);
-    expect(handler.overlayForCollar(2, null), isNotNull);
-    expect(handler.overlayForCollar(14, null), isNotNull);
-    expect(handler.overlayForCollar(15, null), isNull);
-  });
+  test(
+    'F_win routes to FixWindowInputHandler and supports collar overlays',
+    () {
+      final WindowInputHandler handler = handlerForWindow(fixNode);
+      expect(handler, isA<FixWindowInputHandler>());
+      expect(handler.collarCount, 14);
+      expect(handler.sectionsForCollar(1), const <String>['D41', 'D54F']);
+      expect(handler.sectionsForCollar(2), const <String>['D41', 'D54A']);
+      expect(handler.sectionsForCollar(14), const <String>[
+        'D41',
+        'D54F',
+        'D54A',
+      ]);
+      expect(handler.overlayForCollar(1, null), isNotNull);
+      expect(handler.overlayForCollar(2, null), isNotNull);
+      expect(handler.overlayForCollar(14, null), isNotNull);
+      expect(handler.overlayForCollar(15, null), isNull);
+    },
+  );
 
   test('FC_win routes to CornerFixInputHandler and limits collars to 2', () {
     final WindowInputHandler handler = handlerForWindow(cornerFixNode);
@@ -391,15 +441,17 @@ void main() {
     final WindowInputHandler handler = handlerForWindow(openableNode);
     expect(handler, isA<OpenableInputHandler>());
     expect(handler.collarCount, 14);
-    expect(
-      handler.sectionsForCollar(1),
-      const <String>['D50A', 'D54F', 'D54A'],
-    );
+    expect(handler.sectionsForCollar(1), const <String>[
+      'D50A',
+      'D54F',
+      'D54A',
+    ]);
     expect(handler.sectionsForCollar(2), const <String>['D50A', 'D54A']);
-    expect(
-      handler.sectionsForCollar(14),
-      const <String>['D50A', 'D54F', 'D54A'],
-    );
+    expect(handler.sectionsForCollar(14), const <String>[
+      'D50A',
+      'D54F',
+      'D54A',
+    ]);
     expect(handler.overlayForCollar(1, null), isNotNull);
     expect(handler.overlayForCollar(14, null), isNotNull);
     expect(handler.overlayForCollar(15, null), isNull);
@@ -411,29 +463,35 @@ void main() {
 
     handler.netEnabled = true;
 
-    expect(
-      handler.sectionsForCollar(1),
-      const <String>['D50A', 'D29', 'D54F', 'D54A'],
-    );
-    expect(
-      handler.sectionsForCollar(2),
-      const <String>['D50A', 'D29', 'D54A'],
-    );
+    expect(handler.sectionsForCollar(1), const <String>[
+      'D50A',
+      'D29',
+      'D54F',
+      'D54A',
+    ]);
+    expect(handler.sectionsForCollar(2), const <String>['D50A', 'D29', 'D54A']);
   });
 
-  test('Single_Door routes to DoorSingleInputHandler and supports collar overlays', () {
-    final WindowInputHandler handler = handlerForWindow(singleDoorNode);
-    expect(handler, isA<DoorSingleInputHandler>());
-    expect(handler.collarCount, 8);
-    expect(handler.sectionsForCollar(1), const <String>['D50', 'D54F']);
-    expect(handler.sectionsForCollar(2), const <String>['D50', 'D54A']);
-    expect(handler.sectionsForCollar(8), const <String>['D50', 'D54F', 'D54A']);
-    expect(handler.overlayForCollar(1, null), isNotNull);
-    expect(handler.overlayForCollar(2, null), isNotNull);
-    expect(handler.overlayForCollar(8, null), isNotNull);
-    expect(handler.overlayForCollar(9, null), isNull);
-    expect(handler.overlayForCollar(15, null), isNull);
-  });
+  test(
+    'Single_Door routes to DoorSingleInputHandler and supports collar overlays',
+    () {
+      final WindowInputHandler handler = handlerForWindow(singleDoorNode);
+      expect(handler, isA<DoorSingleInputHandler>());
+      expect(handler.collarCount, 8);
+      expect(handler.sectionsForCollar(1), const <String>['D50', 'D54F']);
+      expect(handler.sectionsForCollar(2), const <String>['D50', 'D54A']);
+      expect(handler.sectionsForCollar(8), const <String>[
+        'D50',
+        'D54F',
+        'D54A',
+      ]);
+      expect(handler.overlayForCollar(1, null), isNotNull);
+      expect(handler.overlayForCollar(2, null), isNotNull);
+      expect(handler.overlayForCollar(8, null), isNotNull);
+      expect(handler.overlayForCollar(9, null), isNull);
+      expect(handler.overlayForCollar(15, null), isNull);
+    },
+  );
 
   test('Single_Door adds D46 when the toggle is enabled', () {
     final DoorSingleInputHandler handler =
@@ -443,10 +501,12 @@ void main() {
 
     expect(handler.sectionsForCollar(1), const <String>['D50', 'D46', 'D54F']);
     expect(handler.sectionsForCollar(2), const <String>['D50', 'D46', 'D54A']);
-    expect(
-      handler.sectionsForCollar(8),
-      const <String>['D50', 'D46', 'D54F', 'D54A'],
-    );
+    expect(handler.sectionsForCollar(8), const <String>[
+      'D50',
+      'D46',
+      'D54F',
+      'D54A',
+    ]);
   });
 
   test('Single_Door adds D52 when the toggle is enabled', () {
@@ -457,10 +517,12 @@ void main() {
 
     expect(handler.sectionsForCollar(1), const <String>['D50', 'D52', 'D54F']);
     expect(handler.sectionsForCollar(2), const <String>['D50', 'D52', 'D54A']);
-    expect(
-      handler.sectionsForCollar(8),
-      const <String>['D50', 'D52', 'D54F', 'D54A'],
-    );
+    expect(handler.sectionsForCollar(8), const <String>[
+      'D50',
+      'D52',
+      'D54F',
+      'D54A',
+    ]);
   });
 
   test('Single_Door inserts D52 after D46 when both toggles are enabled', () {
@@ -470,14 +532,18 @@ void main() {
     handler.d46Enabled = true;
     handler.d52Enabled = true;
 
-    expect(
-      handler.sectionsForCollar(1),
-      const <String>['D50', 'D46', 'D52', 'D54F'],
-    );
-    expect(
-      handler.sectionsForCollar(2),
-      const <String>['D50', 'D46', 'D52', 'D54A'],
-    );
+    expect(handler.sectionsForCollar(1), const <String>[
+      'D50',
+      'D46',
+      'D52',
+      'D54F',
+    ]);
+    expect(handler.sectionsForCollar(2), const <String>[
+      'D50',
+      'D46',
+      'D52',
+      'D54A',
+    ]);
   });
 
   test('Double_Door copies Single_Door section system and collar limit', () {
@@ -500,27 +566,38 @@ void main() {
     handler.d46Enabled = true;
     handler.d52Enabled = true;
 
-    expect(
-      handler.sectionsForCollar(1),
-      const <String>['D50', 'D46', 'D52', 'D54F'],
-    );
-    expect(
-      handler.sectionsForCollar(2),
-      const <String>['D50', 'D46', 'D52', 'D54A'],
-    );
+    expect(handler.sectionsForCollar(1), const <String>[
+      'D50',
+      'D46',
+      'D52',
+      'D54F',
+    ]);
+    expect(handler.sectionsForCollar(2), const <String>[
+      'D50',
+      'D46',
+      'D52',
+      'D54A',
+    ]);
   });
 
-  test('A_win routes to ArchRoundInputHandler and draws on collars 1 and 2', () {
-    final WindowInputHandler handler = handlerForWindow(roundArchNode);
+  test(
+    'A_win routes to ArchRoundInputHandler and draws on collars 1 and 2',
+    () {
+      final WindowInputHandler handler = handlerForWindow(roundArchNode);
 
-    expect(handler, isA<ArchRoundInputHandler>());
-    expect(handler.collarCount, 2);
-    expect(handler.sectionsForCollar(1), const <String>['D41', 'D51A', 'D51F']);
-    expect(handler.sectionsForCollar(2), const <String>['D41', 'D51A']);
-    expect(handler.overlayForCollar(1, null), isNotNull);
-    expect(handler.overlayForCollar(2, null), isNotNull);
-    expect(handler.overlayForCollar(3, null), isNull);
-  });
+      expect(handler, isA<ArchRoundInputHandler>());
+      expect(handler.collarCount, 2);
+      expect(handler.sectionsForCollar(1), const <String>[
+        'D41',
+        'D51A',
+        'D51F',
+      ]);
+      expect(handler.sectionsForCollar(2), const <String>['D41', 'D51A']);
+      expect(handler.overlayForCollar(1, null), isNotNull);
+      expect(handler.overlayForCollar(2, null), isNotNull);
+      expect(handler.overlayForCollar(3, null), isNull);
+    },
+  );
 
   test('AR_win routes to ArchRectInputHandler and limits collars to 8', () {
     final WindowInputHandler handler = handlerForWindow(rectArchNode);

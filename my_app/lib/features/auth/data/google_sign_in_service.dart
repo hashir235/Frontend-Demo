@@ -19,8 +19,7 @@ class GoogleSignInResult {
 
   const GoogleSignInResult.success(String token)
     : this._(GoogleSignInOutcome.success, idToken: token);
-  const GoogleSignInResult.cancelled()
-    : this._(GoogleSignInOutcome.cancelled);
+  const GoogleSignInResult.cancelled() : this._(GoogleSignInOutcome.cancelled);
   const GoogleSignInResult.failed(String message)
     : this._(GoogleSignInOutcome.failed, errorMessage: message);
 }

@@ -182,8 +182,7 @@ class _AuthScreenState extends State<AuthScreen> {
           _StoryCard(
             icon: Icons.precision_manufacturing_rounded,
             title: 'فیبریکیشن',
-            subtitle:
-                'کٹنگ اور شیشے کی رپورٹ، کاریگر کے پڑھنے کے قابل۔',
+            subtitle: 'کٹنگ اور شیشے کی رپورٹ، کاریگر کے پڑھنے کے قابل۔',
             tone: Color(0xFFE3F3F2),
             accent: AppTheme.tealAccent,
             bulletA: 'شیشہ اور کٹنگ رپورٹ',
@@ -194,8 +193,7 @@ class _AuthScreenState extends State<AuthScreen> {
           _StoryCard(
             icon: Icons.receipt_long_rounded,
             title: 'بل اور حساب',
-            subtitle:
-                'مال کا میزان، ریٹ اور تیار بل — سب ایک جگہ۔',
+            subtitle: 'مال کا میزان، ریٹ اور تیار بل — سب ایک جگہ۔',
             tone: Color(0xFFFBF1E3),
             accent: AppTheme.amberAccent,
             bulletA: 'مال کی سمری',
@@ -290,67 +288,67 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Theme(
             data: UrduText.theme(context),
             child: Scaffold(
-          extendBodyBehindAppBar: true,
-          appBar: AppBar(title: const Text('کوئیک اے ایل')),
-          body: AppScreenShell(
-            child: ListView(
-              children: <Widget>[
-                AppHeroHeader(
-                  eyebrow: 'محفوظ رسائی',
-                  title: 'کوئیک اے ایل میں داخل ہوں',
-                  subtitle:
-                      'ایلومینیم ونڈوز کا اندازہ، کٹنگ رپورٹ، شیشے کا حساب اور بل — سب ایک ہی اکاؤنٹ میں محفوظ رہتا ہے۔',
-                  trailing: _buildHeroVisual(),
-                ),
-                const SizedBox(height: AppTheme.space6),
-                SectionSurfaceCard(
-                  title: 'اپنے اکاؤنٹ میں داخل ہوں',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'اپنے گوگل اکاؤنٹ سے داخل ہوں۔ اس کے بعد آپ کے سارے '
-                        'پروجیکٹ، رپورٹیں اور بل محفوظ رہیں گے — فون بدلنے پر '
-                        'بھی۔',
-                        style: Theme.of(context).textTheme.bodyLarge,
+              extendBodyBehindAppBar: true,
+              appBar: AppBar(title: const Text('کوئیک اے ایل')),
+              body: AppScreenShell(
+                child: ListView(
+                  children: <Widget>[
+                    AppHeroHeader(
+                      eyebrow: 'محفوظ رسائی',
+                      title: 'کوئیک اے ایل میں داخل ہوں',
+                      subtitle:
+                          'ایلومینیم ونڈوز کا اندازہ، کٹنگ رپورٹ، شیشے کا حساب اور بل — سب ایک ہی اکاؤنٹ میں محفوظ رہتا ہے۔',
+                      trailing: _buildHeroVisual(),
+                    ),
+                    const SizedBox(height: AppTheme.space6),
+                    SectionSurfaceCard(
+                      title: 'اپنے اکاؤنٹ میں داخل ہوں',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'اپنے گوگل اکاؤنٹ سے داخل ہوں۔ اس کے بعد آپ کے سارے '
+                            'پروجیکٹ، رپورٹیں اور بل محفوظ رہیں گے — فون بدلنے پر '
+                            'بھی۔',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: AppTheme.space6),
+                          if (ApiConfig.isGoogleSignInEnabled)
+                            _GoogleSignInButton(
+                              busy: _authController.isBusy,
+                              onPressed: _authController.isBusy
+                                  ? null
+                                  : _signInWithGoogle,
+                            )
+                          else
+                            Text(
+                              'اس وقت سائن اِن دستیاب نہیں۔ براہِ کرم ویب سائٹ سے '
+                              'ایپ اپ ڈیٹ کر کے دوبارہ کوشش کریں۔',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: AppTheme.danger),
+                            ),
+                          const SizedBox(height: AppTheme.space3),
+                          Text(
+                            'پہلی بار آ رہے ہیں؟ گوگل سے داخل ہوتے ہی آپ کا اکاؤنٹ '
+                            'خود بن جائے گا — پھر آپ اپنی ورکشاپ کی تفصیل درج '
+                            'کریں گے۔',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppTheme.textSecondary),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: AppTheme.space6),
-                      if (ApiConfig.isGoogleSignInEnabled)
-                        _GoogleSignInButton(
-                          busy: _authController.isBusy,
-                          onPressed:
-                              _authController.isBusy ? null : _signInWithGoogle,
-                        )
-                      else
-                        Text(
-                          'اس وقت سائن اِن دستیاب نہیں۔ براہِ کرم ویب سائٹ سے '
-                          'ایپ اپ ڈیٹ کر کے دوبارہ کوشش کریں۔',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppTheme.danger),
-                        ),
-                      const SizedBox(height: AppTheme.space3),
-                      Text(
-                        'پہلی بار آ رہے ہیں؟ گوگل سے داخل ہوتے ہی آپ کا اکاؤنٹ '
-                        'خود بن جائے گا — پھر آپ اپنی ورکشاپ کی تفصیل درج '
-                        'کریں گے۔',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: AppTheme.space6),
+                    const SocialLinksCard(),
+                    const SizedBox(height: AppTheme.space6),
+                    _buildAccessPanel(context),
+                    const SizedBox(height: AppTheme.space6),
+                    _buildShowcaseRow(),
+                    const SizedBox(height: AppTheme.space6),
+                    _buildWhyUsePanel(context),
+                  ],
                 ),
-                const SizedBox(height: AppTheme.space6),
-                const SocialLinksCard(),
-                const SizedBox(height: AppTheme.space6),
-                _buildAccessPanel(context),
-                const SizedBox(height: AppTheme.space6),
-                _buildShowcaseRow(),
-                const SizedBox(height: AppTheme.space6),
-                _buildWhyUsePanel(context),
-              ],
-            ),
-          ),
+              ),
             ),
           ),
         );
@@ -400,12 +398,16 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton>
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: const Color(0xFF4DA3FF).withValues(alpha: 0.45 + 0.30 * t),
+                color: const Color(
+                  0xFF4DA3FF,
+                ).withValues(alpha: 0.45 + 0.30 * t),
                 blurRadius: 14 + 12 * t,
                 spreadRadius: 0.5 + 1.5 * t,
               ),
               BoxShadow(
-                color: const Color(0xFF2E8BFF).withValues(alpha: 0.28 + 0.22 * t),
+                color: const Color(
+                  0xFF2E8BFF,
+                ).withValues(alpha: 0.28 + 0.22 * t),
                 blurRadius: 34 + 22 * t,
                 spreadRadius: 1 + 3 * t,
               ),

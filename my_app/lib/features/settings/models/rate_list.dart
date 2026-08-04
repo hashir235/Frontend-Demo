@@ -31,11 +31,10 @@ class RateRow {
     ...byColour,
   };
 
-  RateRow copyWith({String? section, Map<String, String>? byColour}) =>
-      RateRow(
-        section: section ?? this.section,
-        byColour: byColour ?? this.byColour,
-      );
+  RateRow copyWith({String? section, Map<String, String>? byColour}) => RateRow(
+    section: section ?? this.section,
+    byColour: byColour ?? this.byColour,
+  );
 
   /// Two sections are the same row if their names match ignoring case and
   /// spacing -- "D29 (1.2mm)" and "d29(1.2mm)" are one section, not two.

@@ -97,7 +97,6 @@ class EstimationSettingsApiClient {
     return EstimationSettingsModel.fromJson(payload);
   }
 
-
   Map<String, dynamic>? _decodeObject(String body) {
     if (body.trim().isEmpty) {
       return null;

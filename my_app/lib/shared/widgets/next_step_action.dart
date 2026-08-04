@@ -17,7 +17,11 @@ class NextStepAction extends StatelessWidget {
   final VoidCallback? onPressed;
   final String tooltip;
 
-  const NextStepAction({super.key, required this.onPressed, this.tooltip = 'Next'});
+  const NextStepAction({
+    super.key,
+    required this.onPressed,
+    this.tooltip = 'Next',
+  });
 
   @override
   Widget build(BuildContext context) {

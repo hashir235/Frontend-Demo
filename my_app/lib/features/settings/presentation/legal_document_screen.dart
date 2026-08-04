@@ -13,7 +13,11 @@ class LegalDocumentScreen extends StatefulWidget {
   final String title;
   final String url;
 
-  const LegalDocumentScreen({super.key, required this.title, required this.url});
+  const LegalDocumentScreen({
+    super.key,
+    required this.title,
+    required this.url,
+  });
 
   @override
   State<LegalDocumentScreen> createState() => _LegalDocumentScreenState();

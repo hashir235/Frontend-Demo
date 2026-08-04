@@ -17,8 +17,7 @@ class NotificationsController extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
 
-  int get unreadCount =>
-      _notifications.where((n) => !n.isRead).length;
+  int get unreadCount => _notifications.where((n) => !n.isRead).length;
 
   Future<void> load() async {
     _loading = true;
@@ -57,9 +56,6 @@ class NotificationsController extends ChangeNotifier {
 
   Future<void> _saveReadIds(Set<String> ids) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      'quickal_read_notification_ids',
-      ids.toList(),
-    );
+    await prefs.setStringList('quickal_read_notification_ids', ids.toList());
   }
 }
