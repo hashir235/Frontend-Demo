@@ -1,7 +1,7 @@
 ﻿name: my_app
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.8.4+34
+version: 1.8.5+35
 
 environment:
   sdk: ^3.10.7
@@ -23,6 +23,11 @@ dependencies:
   # in_app_purchase_android 0.5.0+ ships Billing Library 8.
   in_app_purchase_android: ^0.5.2
   package_info_plus: ^8.3.0
+  # Google Play's own in-app update flow. A Play Store user who taps Update
+  # gets the native download-and-install sheet without leaving Quick AL --
+  # sideloading an APK over a Play install is not an option, and bouncing
+  # people out to the store listing is a poor second best.
+  in_app_update: ^4.2.3
   # Renders Safepay's hosted checkout in-app. Card details are entered on
   # Safepay's page and never reach this app or our server.
   webview_flutter: ^4.10.0

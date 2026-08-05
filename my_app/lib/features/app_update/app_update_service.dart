@@ -1,11 +1,27 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
+import 'package:in_app_update/in_app_update.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/api_config.dart';
+
+/// How a Play user's update attempt ended.
+enum PlayUpdateOutcome {
+  /// Play installed it in place; the app restarts itself.
+  updated,
+
+  /// The in-app flow was not available, so the store listing was opened.
+  storeOpened,
+
+  /// The user backed out of Play's own update sheet.
+  cancelled,
+
+  /// Neither the in-app flow nor the listing could be opened.
+  failed,
+}
 
 /// What the app should do about its version on startup.
 enum AppUpdateRequirement {
@@ -171,6 +187,38 @@ class AppUpdateService {
       // Stop listening so a later call (or another instance) starts clean.
       _channel.setMethodCallHandler(null);
     }
+  }
+
+  /// What happened when a Play user asked to update.
+  ///
+  /// [updated] means Play installed it and the app is about to restart;
+  /// [storeOpened] means we could not do it in place and sent them to the
+  /// listing instead; [cancelled] means they backed out of Play's own sheet.
+  Future<PlayUpdateOutcome> updateViaPlay(String storeUrl) async {
+    // Play's in-app flow only exists for a copy actually installed from the
+    // Play Store, and only once Google has a newer build staged for this
+    // user. Everything else -- a sideloaded copy, no Play services, a release
+    // still in review -- lands in the catch below and gets the listing.
+    try {
+      final AppUpdateInfo info = await InAppUpdate.checkForUpdate();
+      if (info.updateAvailability == UpdateAvailability.updateAvailable) {
+        final AppUpdateResult result =
+            await InAppUpdate.performImmediateUpdate();
+        switch (result) {
+          case AppUpdateResult.success:
+            return PlayUpdateOutcome.updated;
+          case AppUpdateResult.userDeniedUpdate:
+            return PlayUpdateOutcome.cancelled;
+          case AppUpdateResult.inAppUpdateFailed:
+            break; // fall through to the listing
+        }
+      }
+    } catch (_) {
+      // Not installed from Play, Play services missing, or nothing staged.
+    }
+
+    final bool opened = await openStore(storeUrl);
+    return opened ? PlayUpdateOutcome.storeOpened : PlayUpdateOutcome.failed;
   }
 
   /// Opens the Play Store listing so the user can update from there.

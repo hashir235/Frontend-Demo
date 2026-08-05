@@ -176,28 +176,41 @@ class _UpdateActionAreaState extends State<UpdateActionArea> {
   int _percent = 0;
   String? _message;
 
-  Future<void> _openStore() async {
-    setState(() => _message = null);
-    final bool opened = await widget.service.openStore(widget.storeUrl);
+  Future<void> _updateViaPlay() async {
+    setState(() {
+      _phase = _UpdatePhase.installing;
+      _message = 'Play se update liya ja raha hai…';
+    });
+    final PlayUpdateOutcome outcome = await widget.service.updateViaPlay(
+      widget.storeUrl,
+    );
     if (!mounted) return;
     setState(() {
-      if (opened) {
-        _phase = _UpdatePhase.installing;
-        _message =
-            'Play Store khul raha hai. Wahan "Update" dabayein — uske baad '
-            'app dobara kholein.';
-      } else {
-        _phase = _UpdatePhase.error;
-        _message =
-            'Play Store nahi khul saka. Play Store khud kholein aur "Quick AL" '
-            'search kar ke update karein.';
+      switch (outcome) {
+        case PlayUpdateOutcome.updated:
+          // Play restarts the app itself; this is only briefly on screen.
+          _phase = _UpdatePhase.installing;
+          _message = 'Update ho gaya. App dobara khul rahi hai…';
+        case PlayUpdateOutcome.cancelled:
+          _phase = _UpdatePhase.idle;
+          _message = 'Update roka gaya. Jab chahein dobara koshish karein.';
+        case PlayUpdateOutcome.storeOpened:
+          _phase = _UpdatePhase.installing;
+          _message =
+              'Play Store khul raha hai. Wahan "Update" dabayein — uske baad '
+              'app dobara kholein.';
+        case PlayUpdateOutcome.failed:
+          _phase = _UpdatePhase.error;
+          _message =
+              'Update shuru nahi ho saka. Play Store khud kholein aur '
+              '"Quick AL" search kar ke update karein.';
       }
     });
   }
 
   Future<void> _run() async {
     if (widget.updatesViaStore) {
-      await _openStore();
+      await _updateViaPlay();
       return;
     }
     setState(() {
@@ -253,9 +266,9 @@ class _UpdateActionAreaState extends State<UpdateActionArea> {
     final String label = downloading
         ? 'Downloading $_percent%'
         : showRetry
-        ? (widget.updatesViaStore ? 'Play Store kholein' : 'Retry')
+        ? (widget.updatesViaStore ? 'Dobara koshish karein' : 'Retry')
         : widget.updatesViaStore
-        ? 'Play Store se update karein'
+        ? 'Update karein'
         : widget.idleLabel;
 
     final Color messageColor = _phase == _UpdatePhase.error

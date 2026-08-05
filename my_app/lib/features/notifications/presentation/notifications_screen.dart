@@ -61,22 +61,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       (!ApiConfig.isDirectWebsiteBuild ||
           (n.updateApkUrl?.isNotEmpty ?? false));
 
-  Future<void> _openPlayStore() async {
+  /// Play users update in place through Google's own sheet; only if that is
+  /// unavailable do they get sent out to the store listing.
+  Future<void> _updateViaPlay() async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Play se update liya ja raha hai…')),
+    );
+
     final PackageInfo info = await PackageInfo.fromPlatform();
-    final bool opened = await AppUpdateService().openStore(
+    final PlayUpdateOutcome outcome = await AppUpdateService().updateViaPlay(
       'https://play.google.com/store/apps/details?id=${info.packageName}',
     );
     if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          opened
-              ? 'Play Store khul raha hai — wahan "Update" dabayein.'
-              : 'Play Store nahi khula. Khud khol kar "Quick AL" search karein.',
-        ),
-      ),
-    );
+
+    final String message = switch (outcome) {
+      // Play restarts the app itself, so this rarely stays on screen.
+      PlayUpdateOutcome.updated => 'Update ho gaya. App dobara khul rahi hai…',
+      PlayUpdateOutcome.cancelled =>
+        'Update roka gaya. Jab chahein dobara koshish karein.',
+      PlayUpdateOutcome.storeOpened =>
+        'Play Store khul raha hai — wahan "Update" dabayein.',
+      PlayUpdateOutcome.failed =>
+        'Update shuru nahi ho saka. Play Store khud khol kar "Quick AL" '
+            'search karein.',
+    };
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _startUpdate(String apkUrl) async {
@@ -205,18 +217,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               child: FilledButton.icon(
                                 onPressed: ApiConfig.isDirectWebsiteBuild
                                     ? () => _startUpdate(n.updateApkUrl!)
-                                    : _openPlayStore,
-                                icon: Icon(
-                                  ApiConfig.isDirectWebsiteBuild
-                                      ? Icons.system_update_rounded
-                                      : Icons.shop_rounded,
+                                    : _updateViaPlay,
+                                icon: const Icon(
+                                  Icons.system_update_rounded,
                                   size: 18,
                                 ),
-                                label: Text(
-                                  ApiConfig.isDirectWebsiteBuild
-                                      ? 'Update Now'
-                                      : 'Play Store se update karein',
-                                ),
+                                label: const Text('Update Now'),
                               ),
                             ),
                           ],
