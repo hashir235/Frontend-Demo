@@ -5,6 +5,7 @@ import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/cutting_report.dart';
+import '../models/optimization_error_text.dart';
 import '../models/optimization_request.dart';
 import '../models/section_recalculation.dart';
 
@@ -70,29 +71,49 @@ class OptimizationApiClient {
         body: jsonEncode(body),
       );
     } on Exception catch (error) {
-      throw OptimizationApiException(unreachableMessage, detail: error);
+      // "Unable to reach local optimization service" means nothing to a user
+      // whose phone simply lost signal, so the transport failure is named for
+      // what it is.
+      throw OptimizationApiException(
+        OptimizationErrorText.forTransport(error).combined,
+        detail: error,
+      );
     }
 
     final Map<String, dynamic>? payload = _decodeObject(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      final String? serverMessage = payload?['error'] as String?;
       throw OptimizationApiException(
-        (payload?['error'] as String?) ??
-            '$failedStatusMessage ${response.statusCode}.',
+        serverMessage != null
+            ? OptimizationErrorText.explain(serverMessage).combined
+            : OptimizationErrorText.forTransport(
+                Exception(failedStatusMessage),
+                statusCode: response.statusCode,
+              ).combined,
         statusCode: response.statusCode,
         detail: payload?['detail'],
       );
     }
 
     if (payload == null) {
-      throw OptimizationApiException(invalidJsonMessage);
+      // A 200 with a body we cannot parse is the service misbehaving, not the
+      // user's data.
+      throw OptimizationApiException(
+        OptimizationErrorText.forTransport(
+          Exception(invalidJsonMessage),
+          statusCode: 502,
+        ).combined,
+      );
     }
 
     final CuttingReport report = CuttingReport.fromJson(payload);
     if (!report.ok) {
       throw OptimizationApiException(
         report.errors.isEmpty
-            ? 'Optimization service returned an unsuccessful result.'
-            : report.errors.join('\n'),
+            ? 'The calculation did not finish\nPull down to refresh and try '
+                  'again. If it keeps happening, check the window sizes and the '
+                  'unit first.'
+            : OptimizationErrorText.friendlyAll(report.errors).join('\n\n'),
         statusCode: response.statusCode,
         detail: report.errors,
       );

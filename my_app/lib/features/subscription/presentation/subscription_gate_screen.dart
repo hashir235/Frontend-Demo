@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/api_config.dart';
 import '../../../core/theme/app_theme.dart';
@@ -10,6 +11,7 @@ import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/social_links_card.dart';
 import '../data/subscription_api_client.dart';
 import '../models/subscription_models.dart';
+import 'local_payment_section.dart';
 import 'safepay_checkout_screen.dart';
 
 class SubscriptionGateScreen extends StatefulWidget {
@@ -51,12 +53,29 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
   bool _previewBypass = false;
   String? _selectedProductId;
   String _paymentMethod = 'bank_transfer';
+  PaymentLanguage _paymentLanguage = PaymentLanguage.romanUrdu;
   String? _message;
   String? _error;
+
+  /// Submit stays off until all three are filled. A request with a missing
+  /// transfer id or no name cannot be matched to a payment, so letting it
+  /// through only wastes the user's time and ours.
+  bool get _directDetailsComplete =>
+      _paymentReferenceController.text.trim().isNotEmpty &&
+      _payerNameController.text.trim().isNotEmpty &&
+      _payerPhoneController.text.trim().isNotEmpty;
 
   @override
   void initState() {
     super.initState();
+    // The Submit button watches these three, so a keystroke has to rebuild it.
+    for (final TextEditingController c in <TextEditingController>[
+      _paymentReferenceController,
+      _payerNameController,
+      _payerPhoneController,
+    ]) {
+      c.addListener(_onDirectFieldChanged);
+    }
     if (!ApiConfig.isDirectWebsiteBuild) {
       _purchaseSubscription = _iap.purchaseStream.listen(
         _handlePurchaseUpdates,
@@ -72,9 +91,20 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
     _loadSubscriptionState();
   }
 
+  void _onDirectFieldChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     _purchaseSubscription?.cancel();
+    for (final TextEditingController c in <TextEditingController>[
+      _paymentReferenceController,
+      _payerNameController,
+      _payerPhoneController,
+    ]) {
+      c.removeListener(_onDirectFieldChanged);
+    }
     _paymentReferenceController.dispose();
     _payerNameController.dispose();
     _payerPhoneController.dispose();
@@ -125,31 +155,14 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
                       const SizedBox(height: AppTheme.space5),
                     ],
                     ..._planCards(),
-                    // Manual bank-transfer fields only appear when the owner has
-                    // turned the option on; otherwise users only pay online.
-                    if (ApiConfig.isDirectWebsiteBuild &&
-                        (_catalog?.manualPaymentEnabled ?? false)) ...<Widget>[
-                      const SizedBox(height: AppTheme.space2),
-                      _DirectPaymentForm(
-                        catalog: _catalog,
-                        paymentMethod: _paymentMethod,
-                        paymentReferenceController: _paymentReferenceController,
-                        payerNameController: _payerNameController,
-                        payerPhoneController: _payerPhoneController,
-                        notesController: _paymentNotesController,
-                        onPaymentMethodChanged: (String value) {
-                          setState(() {
-                            _paymentMethod = value;
-                          });
-                        },
-                      ),
-                    ],
-                    const SizedBox(height: AppTheme.space6),
+                    const SizedBox(height: AppTheme.space5),
+                    // Online sits right under the offers, where the user is
+                    // still looking, and the local route follows it.
                     _ActionBar(
                       busy: _purchaseBusy,
                       selected: _selectedProductId != null,
                       canBuy: ApiConfig.isDirectWebsiteBuild
-                          ? _selectedProductId != null
+                          ? _selectedProductId != null && _directDetailsComplete
                           : _canBuySelectedPlan,
                       // The "Continue" bypass exists only so Google Play's
                       // closed-testing reviewers can reach the app without
@@ -173,20 +186,58 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
                           _previewBypass = true;
                         });
                       },
+                      // Sits between the local button and Submit, so the user
+                      // reads how to pay before being asked what they paid.
+                      localPaymentSection:
+                          ApiConfig.isDirectWebsiteBuild &&
+                              (_catalog?.manualPaymentEnabled ?? false)
+                          ? LocalPaymentSection(
+                              language: _paymentLanguage,
+                              onLanguageChanged: (PaymentLanguage value) {
+                                setState(() => _paymentLanguage = value);
+                              },
+                              paymentMethod: _paymentMethod,
+                              onPaymentMethodChanged: (String value) {
+                                setState(() => _paymentMethod = value);
+                              },
+                              referenceController: _paymentReferenceController,
+                              payerNameController: _payerNameController,
+                              payerPhoneController: _payerPhoneController,
+                              notesController: _paymentNotesController,
+                            )
+                          : null,
                     ),
-                    const SizedBox(height: AppTheme.space5),
-                    const PaymentHelpCard(),
-                    const SizedBox(height: AppTheme.space5),
-                    Text(
-                      'All payments are final and non-refundable. If the app '
-                      'does not work after payment due to a problem on our '
-                      'side, email quickal.dev@gmail.com within 7 days for a '
-                      'refund review.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondary,
+                    // A Play Store user pays through Google and nothing else.
+                    // The walkthrough video is about bank transfers, and the
+                    // refund line below points at us -- both are wrong for
+                    // them, so each build only shows what applies to it.
+                    if (ApiConfig.isDirectWebsiteBuild) ...<Widget>[
+                      const SizedBox(height: AppTheme.space5),
+                      const PaymentHelpCard(),
+                      const SizedBox(height: AppTheme.space5),
+                      Text(
+                        'All payments are final and non-refundable. If the app '
+                        'does not work after payment due to a problem on our '
+                        'side, email quickal.dev@gmail.com within 7 days for a '
+                        'refund review.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
                       ),
-                    ),
+                    ] else ...<Widget>[
+                      const SizedBox(height: AppTheme.space5),
+                      Text(
+                        'Payment and renewals are handled by Google Play. To '
+                        'change or cancel your plan, or to ask for a refund, '
+                        'open the Play Store app and go to Payments & '
+                        'subscriptions.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -227,8 +278,11 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
                   _selectedProductId = plan.productId;
                   _error = null;
                   if (direct) {
+                    // Both routes are open on the website build, so name them
+                    // both rather than pointing only at the local one.
                     _message =
-                        'Pay locally, then submit your payment reference for approval.';
+                        'Pay online by card for instant access, or send the '
+                        'money locally and submit the transfer details below.';
                   } else if (!_iapAvailable) {
                     _message =
                         'Google Play billing is not available on this install.';
@@ -679,10 +733,16 @@ class _CurrentPlanCard extends StatelessWidget {
           : subscription.planId.isEmpty
           ? 'Paid plan'
           : subscription.planId;
+      // A website plan never renews itself, so the user is told to pay again.
+      // A Play plan is a Google subscription and does renew -- telling those
+      // users to pay again would be plainly untrue, and could have them paying
+      // twice for the same month.
       final String expires = formatQuickAlDate(subscription.expiresAt);
-      detail = subscription.autoRenewing
-          ? 'Active — renews on $expires'
-          : 'Active — valid until $expires';
+      detail = ApiConfig.isDirectWebsiteBuild
+          ? 'Active — valid until $expires. Pay again to continue after this.'
+          : subscription.autoRenewing
+          ? 'Active — renews on $expires through Google Play.'
+          : 'Active — valid until $expires. Renewal is off in Google Play.';
       icon = Icons.verified_rounded;
       accent = AppTheme.success;
       sourceLabel = subscription.provider == 'direct_website'
@@ -1102,132 +1162,6 @@ class _PlanCard extends StatelessWidget {
   }
 }
 
-class _DirectPaymentForm extends StatelessWidget {
-  final SubscriptionCatalog? catalog;
-  final String paymentMethod;
-  final TextEditingController paymentReferenceController;
-  final TextEditingController payerNameController;
-  final TextEditingController payerPhoneController;
-  final TextEditingController notesController;
-  final ValueChanged<String> onPaymentMethodChanged;
-
-  const _DirectPaymentForm({
-    required this.catalog,
-    required this.paymentMethod,
-    required this.paymentReferenceController,
-    required this.payerNameController,
-    required this.payerPhoneController,
-    required this.notesController,
-    required this.onPaymentMethodChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final DirectPaymentInfo? info = catalog?.directPayment;
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.space6),
-      decoration: AppTheme.softPanelDecoration(radius: AppTheme.radiusLg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const Icon(
-                Icons.account_balance_wallet_rounded,
-                color: AppTheme.tealAccent,
-              ),
-              const SizedBox(width: AppTheme.space4),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'Local payment',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppTheme.space2),
-                    Text(
-                      (info?.instructions.trim().isNotEmpty ?? false)
-                          ? info!.instructions
-                          : 'Pay by local bank or wallet, then submit your payment reference for approval.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    if (info?.supportWhatsApp.trim().isNotEmpty ??
-                        false) ...<Widget>[
-                      const SizedBox(height: AppTheme.space2),
-                      Text(
-                        'WhatsApp support: ${info!.supportWhatsApp}',
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.space5),
-          DropdownButtonFormField<String>(
-            initialValue: paymentMethod,
-            decoration: const InputDecoration(labelText: 'Payment method'),
-            items: const <DropdownMenuItem<String>>[
-              DropdownMenuItem<String>(
-                value: 'bank_transfer',
-                child: Text('Bank transfer'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'easypaisa',
-                child: Text('EasyPaisa'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'jazzcash',
-                child: Text('JazzCash'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'other_wallet',
-                child: Text('Other wallet'),
-              ),
-            ],
-            onChanged: (String? value) {
-              if (value != null) {
-                onPaymentMethodChanged(value);
-              }
-            },
-          ),
-          const SizedBox(height: AppTheme.space4),
-          TextField(
-            controller: paymentReferenceController,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(
-              labelText: 'Transaction ID / reference',
-            ),
-          ),
-          const SizedBox(height: AppTheme.space4),
-          TextField(
-            controller: payerNameController,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(labelText: 'Payer name'),
-          ),
-          const SizedBox(height: AppTheme.space4),
-          TextField(
-            controller: payerPhoneController,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(labelText: 'Payer phone'),
-          ),
-          const SizedBox(height: AppTheme.space4),
-          TextField(
-            controller: notesController,
-            minLines: 2,
-            maxLines: 3,
-            decoration: const InputDecoration(labelText: 'Notes'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ActionBar extends StatelessWidget {
   final bool busy;
   final bool selected;
@@ -1240,6 +1174,7 @@ class _ActionBar extends StatelessWidget {
   final VoidCallback onPayOnline;
   final VoidCallback onRestore;
   final VoidCallback onPreviewContinue;
+  final Widget? localPaymentSection;
 
   const _ActionBar({
     required this.busy,
@@ -1253,6 +1188,7 @@ class _ActionBar extends StatelessWidget {
     required this.onPayOnline,
     required this.onRestore,
     required this.onPreviewContinue,
+    this.localPaymentSection,
   });
 
   @override
@@ -1271,7 +1207,7 @@ class _ActionBar extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.credit_card_rounded),
-            label: Text(busy ? 'Processing' : 'Pay Online (Card / Wallet)'),
+            label: Text(busy ? 'Processing' : 'Pay Online (Card)'),
           ),
           const SizedBox(height: AppTheme.space3),
           Text(
@@ -1282,34 +1218,41 @@ class _ActionBar extends StatelessWidget {
               context,
             ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: AppTheme.space5),
-          _DividerLabel(
-            manualEnabled ? 'or pay by bank transfer' : 'other options',
-          ),
-          const SizedBox(height: AppTheme.space5),
-          // Manual bank transfer is only offered when the owner has turned it on
-          // from the admin panel. Otherwise it shows here, disabled, so users
-          // can see it exists but can only pay online.
-          if (manualEnabled)
-            OutlinedButton.icon(
+          // Everything below this point is the local route, and the owner can
+          // switch it off from the admin panel. Switched off, none of it is
+          // shown at all -- no dead button, no account details, no form. Just
+          // a line saying who to ask, so a user who needs local payment still
+          // has somewhere to go.
+          if (manualEnabled) ...<Widget>[
+            const SizedBox(height: AppTheme.space5),
+            const _DividerLabel(
+              'or pay by Bank / JazzCash / EasyPaisa / Other Wallet',
+            ),
+            const SizedBox(height: AppTheme.space5),
+            if (localPaymentSection != null) ...<Widget>[
+              localPaymentSection!,
+              const SizedBox(height: AppTheme.space5),
+            ],
+            FilledButton.tonalIcon(
               onPressed: busy || !canBuy ? null : onBuy,
               icon: const Icon(Icons.receipt_long_rounded),
-              label: const Text('Submit Payment Reference'),
-            )
-          else ...<Widget>[
-            OutlinedButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.account_balance_rounded),
-              label: const Text('Bank transfer (currently unavailable)'),
+              label: const Text('Submit Payment Details'),
             ),
-            const SizedBox(height: AppTheme.space2),
-            Text(
-              'Bank transfer is not available right now — please pay online above.',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
-            ),
+            if (!canBuy && selected) ...<Widget>[
+              const SizedBox(height: AppTheme.space3),
+              Text(
+                'Fill in the transfer ID, your name and your phone number to '
+                'turn this on.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ] else ...<Widget>[
+            const SizedBox(height: AppTheme.space5),
+            const _AskAdminCard(),
           ],
         ] else ...<Widget>[
           FilledButton.icon(
@@ -1338,6 +1281,78 @@ class _ActionBar extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Shown in place of the whole local-payment route when the owner has switched
+/// it off. Someone who cannot pay by card still needs a way through, so this
+/// points them at a person rather than leaving a dead end.
+class _AskAdminCard extends StatelessWidget {
+  const _AskAdminCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space5),
+      decoration: BoxDecoration(
+        color: AppTheme.royalBlue.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.royalBlue.withValues(alpha: 0.24)),
+      ),
+      child: Column(
+        children: <Widget>[
+          const Icon(
+            Icons.support_agent_rounded,
+            color: AppTheme.royalBlue,
+            size: 28,
+          ),
+          const SizedBox(height: AppTheme.space3),
+          Text(
+            'Need to pay by bank or wallet?',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: AppTheme.space2),
+          Text(
+            'Local transfer is not open at the moment. Message us on WhatsApp '
+            'and we will arrange it for you.',
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: AppTheme.space4),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final ScaffoldMessengerState messenger = ScaffoldMessenger.of(
+                context,
+              );
+              bool opened = false;
+              try {
+                opened = await launchUrl(
+                  Uri.parse(BankAccountDetails.whatsAppUrl),
+                  mode: LaunchMode.externalApplication,
+                );
+              } catch (_) {
+                opened = false;
+              }
+              if (!opened) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('WhatsApp: ${BankAccountDetails.whatsApp}'),
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.chat_rounded),
+            label: const Text(BankAccountDetails.whatsApp),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:my_app/core/config/api_config.dart';
 import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/optimization_error_text.dart';
 import '../models/cost_table.dart';
 
 class CostTableApiException implements Exception {
@@ -51,24 +52,32 @@ class CostTableApiClient {
       );
     } on Exception catch (error) {
       throw CostTableApiException(
-        'Unable to reach local cost table service.',
+        OptimizationErrorText.forTransport(error).combined,
         detail: error,
       );
     }
 
     final Map<String, dynamic>? payload = _decodeObject(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      final String? raw = payload?['error'] as String?;
       throw CostTableApiException(
-        (payload?['error'] as String?) ??
-            'Cost table request failed with status ${response.statusCode}.',
+        raw != null
+            ? OptimizationErrorText.explain(raw).combined
+            : OptimizationErrorText.forTransport(
+                Exception('cost table failed'),
+                statusCode: response.statusCode,
+              ).combined,
         statusCode: response.statusCode,
         detail: payload?['detail'],
       );
     }
 
     if (payload == null) {
-      throw const CostTableApiException(
-        'Cost table service returned invalid JSON.',
+      throw CostTableApiException(
+        OptimizationErrorText.forTransport(
+          Exception('cost table failed'),
+          statusCode: 502,
+        ).combined,
       );
     }
 
@@ -76,8 +85,8 @@ class CostTableApiClient {
     if (!table.ok) {
       throw CostTableApiException(
         table.errors.isEmpty
-            ? 'Cost table service returned an unsuccessful result.'
-            : table.errors.join('\n'),
+            ? OptimizationErrorText.explain('cost table failed').combined
+            : OptimizationErrorText.friendlyAll(table.errors).join('\n\n'),
         statusCode: response.statusCode,
         detail: table.errors,
       );
