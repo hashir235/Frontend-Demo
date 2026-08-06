@@ -129,12 +129,12 @@ const List<TutorialStep> fabricationTutorialSteps = <TutorialStep>[
   ),
   TutorialStep(
     screen: TutorialScreen.windowInput,
-    targetId: 'input.threeDots',
-    title: 'تین نقطے',
+    targetId: 'input.sectionsButton',
+    title: 'سیکشنز',
     body:
-        'یہ تین نقطے ونڈو کی اپنی سیٹنگز کھولتے ہیں — جیسے کالر کی موٹائی، لاک '
-        'کی قسم، اور جالی۔ اسے دبائیں۔',
-    tapHint: 'تین نقطوں پر دبائیں',
+        'یہ بٹن ونڈو کے سیکشن کھولتا ہے، اور وہ چیزیں جو ایک بار طے کرنی ہوتی '
+        'ہیں — جیسے کالر کی موٹائی اور جالی۔ اسے دبائیں۔',
+    tapHint: 'سیکشنز پر دبائیں',
     requiresTap: true,
   ),
   TutorialStep(

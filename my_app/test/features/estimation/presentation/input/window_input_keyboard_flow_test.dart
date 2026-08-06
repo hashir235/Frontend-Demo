@@ -171,19 +171,18 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
-    await tester.pumpAndSettle();
-    // The sidebar scrolls now that it carries more options, so the unit
-    // buttons can sit below the fold on a small screen.
+    // Unit sits on the input page now, not behind the Sections panel, so
+    // there is no drawer to open first.
     await tester.ensureVisible(find.byKey(const Key('unit_inches_radio')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('unit_inches_radio')));
     await tester.pumpAndSettle();
 
+    // The selected chip carries a tick.
     expect(
       find.descendant(
         of: find.byKey(const Key('unit_inches_radio')),
-        matching: find.byIcon(Icons.radio_button_checked),
+        matching: find.byIcon(Icons.check_rounded),
       ),
       findsOneWidget,
     );
@@ -196,17 +195,15 @@ void main() {
       ),
     );
 
-    // The endDrawer may still be open after re-pump (Scaffold state is
-    // reused); only tap to open it if the unit options aren't already shown.
-    if (find.byKey(const Key('unit_inches_radio')).evaluate().isEmpty) {
-      await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
-      await tester.pumpAndSettle();
-    }
+    // The unit chips are on the page, so the saved mode has to be showing as
+    // selected without opening anything.
+    await tester.ensureVisible(find.byKey(const Key('unit_inches_radio')));
+    await tester.pumpAndSettle();
 
     expect(
       find.descendant(
         of: find.byKey(const Key('unit_inches_radio')),
-        matching: find.byIcon(Icons.radio_button_checked),
+        matching: find.byIcon(Icons.check_rounded),
       ),
       findsOneWidget,
     );

@@ -170,7 +170,9 @@ void main() {
 
     test('no sections back points at windows saved without sizes', () {
       expectMentions(
-        OptimizationErrorText.explain('sections array missing in optimization result'),
+        OptimizationErrorText.explain(
+          'sections array missing in optimization result',
+        ),
         <String>['without sizes', 'review list'],
       );
     });

@@ -473,47 +473,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
   }
 
-  Widget _buildUnitOption({
-    required String optionKey,
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      key: Key(optionKey),
-      color: selected
-          ? AppTheme.violet.withValues(alpha: 0.12)
-          : Colors.grey.shade200,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            children: <Widget>[
-              Icon(
-                selected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                size: 20,
-                color: selected ? AppTheme.violet : AppTheme.deepTeal,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppTheme.deepTeal,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   _RubberType _rubberTypeFromStored(String? stored) {
     return (stored ?? '').trim().toUpperCase() == 'U'
         ? _RubberType.u
@@ -987,53 +946,154 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// The unit picker that sits on the input page itself, right above the size
   /// fields, so the chosen unit is never in doubt while typing a measurement.
   /// The same options still exist in the sidebar; this is the one people see.
-  Widget _buildInlineUnitSelector(BuildContext context) {
-    final List<(UnitMode, String)> options = _isFabricationFlow
-        ? const <(UnitMode, String)>[
-            (UnitMode.inches, 'Inches'),
-            (UnitMode.cm, 'CM'),
-          ]
-        : const <(UnitMode, String)>[
-            (UnitMode.feet, 'Feet'),
-            (UnitMode.inches, 'Inches'),
-            (UnitMode.cm, 'CM'),
-          ];
-
-    return Row(
+  /// The controls a user touches while typing sizes -- unit, and on
+  /// fabrication also lock and rubber.
+  ///
+  /// These used to live behind the sidebar, which meant opening a panel to
+  /// check something that changes the numbers being typed. They sit on the page
+  /// now, small enough to stay out of the way. Anything that is set once per
+  /// window -- sections, D46/D52, back collar, net -- stays in the Sections
+  /// panel.
+  Widget _buildQuickControls(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(
-          'Unit',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppTheme.slate,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              for (final (UnitMode mode, String label) in options)
-                _buildInlineUnitChip(
-                  label: label,
-                  selected: _unitMode == mode,
-                  onTap: () => _onUnitModeChanged(mode),
+        _buildInlineUnitSelector(context),
+        if (_showsLockTypeSelector) ...<Widget>[
+          const SizedBox(height: 8),
+          _buildInlineChipRow(
+            context,
+            label: 'Lock',
+            chips: <Widget>[
+              _buildInlineChip(
+                chipKey: const Key('lock_latch_option'),
+                label: 'Latch',
+                selected: _lockType == _LockType.latch,
+                onTap: () => _onLockTypeChanged(_LockType.latch),
+              ),
+              _buildInlineChip(
+                chipKey: const Key('lock_self_option'),
+                label: 'Self',
+                selected: _lockType == _LockType.self,
+                onTap: () => _onLockTypeChanged(_LockType.self),
+              ),
+              if (_allowsHandalLockType)
+                _buildInlineChip(
+                  chipKey: const Key('lock_handal_option'),
+                  label: 'Handal',
+                  selected: _lockType == _LockType.handal,
+                  onTap: () => _onLockTypeChanged(_LockType.handal),
                 ),
             ],
           ),
-        ),
+        ],
+        if (_isFabricationFlow) ...<Widget>[
+          const SizedBox(height: 8),
+          _buildInlineChipRow(
+            context,
+            label: 'Rubber',
+            chips: <Widget>[
+              _buildInlineChip(
+                chipKey: const Key('rubber_fix_option'),
+                label: 'Fix',
+                selected: _rubberType == _RubberType.fix,
+                onTap: () => _onRubberTypeChanged(_RubberType.fix),
+              ),
+              // Some windows only ever take Fix, so U is not offered there
+              // rather than offered and silently ignored.
+              if (!_isFixOnlyRubberWindow)
+                _buildInlineChip(
+                  chipKey: const Key('rubber_u_option'),
+                  label: 'U',
+                  selected: _rubberType == _RubberType.u,
+                  onTap: () => _onRubberTypeChanged(_RubberType.u),
+                ),
+            ],
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildInlineUnitChip({
+  void _onLockTypeChanged(_LockType value) {
+    setState(() => _lockType = value);
+    _persistSidebarSelections();
+  }
+
+  void _onRubberTypeChanged(_RubberType value) {
+    setState(() {
+      _rubberType = _isFixOnlyRubberWindow ? _RubberType.fix : value;
+    });
+    _persistSidebarSelections();
+  }
+
+  Widget _buildInlineChipRow(
+    BuildContext context, {
+    required String label,
+    required List<Widget> chips,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        SizedBox(
+          width: 52,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.slate,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(child: Wrap(spacing: 8, runSpacing: 8, children: chips)),
+      ],
+    );
+  }
+
+  /// Unit chips, and the keys the tests drive them by.
+  ///
+  /// Fabrication's centimetre mode is stored in the `feet` slot -- see
+  /// [_isFabricationCmMode] -- so the CM chip there must set [UnitMode.feet],
+  /// not [UnitMode.cm]. Setting the latter leaves the screen in neither cm nor
+  /// inch handling and the size is read wrongly.
+  List<(UnitMode, String, String)> get _unitOptions => _isFabricationFlow
+      ? const <(UnitMode, String, String)>[
+          (UnitMode.inches, 'Inches', 'unit_inches_radio'),
+          (UnitMode.feet, 'CM', 'unit_cm_radio'),
+        ]
+      : const <(UnitMode, String, String)>[
+          (UnitMode.feet, 'Feet', 'unit_feet_radio'),
+          (UnitMode.inches, 'Inches', 'unit_inches_radio'),
+          (UnitMode.cm, 'CM', 'unit_cm_radio'),
+        ];
+
+  Widget _buildInlineUnitSelector(BuildContext context) {
+    return _buildInlineChipRow(
+      context,
+      label: 'Unit',
+      chips: <Widget>[
+        for (final (UnitMode mode, String label, String key) in _unitOptions)
+          _buildInlineChip(
+            chipKey: Key(key),
+            label: label,
+            selected: _unitMode == mode,
+            onTap: () => _onUnitModeChanged(mode),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildInlineChip({
     required String label,
     required bool selected,
     required VoidCallback onTap,
+    Key? chipKey,
   }) {
     return Material(
-      color: selected ? AppTheme.tealAccent : Colors.grey.shade200,
+      key: chipKey,
+      // The app's own blue. Teal read as green next to the rest of the screen.
+      color: selected ? AppTheme.royalBlue : Colors.grey.shade200,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -1770,24 +1830,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           fontSize: 22,
         );
     final double keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
-    final List<ButtonSegment<_RubberType>> rubberSegments =
-        _isFixOnlyRubberWindow
-        ? const <ButtonSegment<_RubberType>>[
-            ButtonSegment<_RubberType>(
-              value: _RubberType.fix,
-              label: Text('Fix', key: Key('rubber_fix_option')),
-            ),
-          ]
-        : const <ButtonSegment<_RubberType>>[
-            ButtonSegment<_RubberType>(
-              value: _RubberType.fix,
-              label: Text('Fix', key: Key('rubber_fix_option')),
-            ),
-            ButtonSegment<_RubberType>(
-              value: _RubberType.u,
-              label: Text('U', key: Key('rubber_u_option')),
-            ),
-          ];
     // The overlay wraps the whole Scaffold, not just its body: the settings
     // drawer is painted above the body, so a spotlight inside the body could
     // never reach the section buttons the tour has to point at.
@@ -1810,7 +1852,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Windows settings',
+                    'Sections',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: AppTheme.deepTeal,
                       fontWeight: FontWeight.w800,
@@ -1982,130 +2024,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  if (_showsLockTypeSelector) ...[
-                    Text(
-                      'Lock Type',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Column(
-                      key: const Key('lock_type_segmented_control'),
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSidebarToggleOption(
-                          label: 'Latch',
-                          selected: _lockType == _LockType.latch,
-                          onTap: () {
-                            setState(() {
-                              _lockType = _LockType.latch;
-                            });
-                            _persistSidebarSelections();
-                          },
-                        ),
-                        const SizedBox(height: 6),
-                        _buildSidebarToggleOption(
-                          label: 'Self',
-                          selected: _lockType == _LockType.self,
-                          onTap: () {
-                            setState(() {
-                              _lockType = _LockType.self;
-                            });
-                            _persistSidebarSelections();
-                          },
-                        ),
-                        if (_allowsHandalLockType) ...[
-                          const SizedBox(height: 6),
-                          _buildSidebarToggleOption(
-                            label: 'Handal',
-                            selected: _lockType == _LockType.handal,
-                            onTap: () {
-                              setState(() {
-                                _lockType = _LockType.handal;
-                              });
-                              _persistSidebarSelections();
-                            },
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (_isFabricationFlow) ...[
-                    Text(
-                      'Rubber Type',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<_RubberType>(
-                      key: const Key('rubber_type_segmented_control'),
-                      segments: rubberSegments,
-                      selected: <_RubberType>{_rubberType},
-                      showSelectedIcon: false,
-                      onSelectionChanged: (Set<_RubberType> selection) {
-                        if (selection.isEmpty) {
-                          return;
-                        }
-                        setState(() {
-                          _rubberType = _isFixOnlyRubberWindow
-                              ? _RubberType.fix
-                              : selection.first;
-                        });
-                        _persistSidebarSelections();
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Text(
-                    'Units',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.deepTeal,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (_isFabricationFlow) ...<Widget>[
-                    _buildUnitOption(
-                      optionKey: 'unit_cm_radio',
-                      label: 'CM',
-                      // Fabrication keeps cm in the existing `feet` slot.
-                      selected: _unitMode == UnitMode.feet,
-                      onTap: () => _onUnitModeChanged(UnitMode.feet),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildUnitOption(
-                      optionKey: 'unit_inches_radio',
-                      label: 'Inches',
-                      selected: _unitMode == UnitMode.inches,
-                      onTap: () => _onUnitModeChanged(UnitMode.inches),
-                    ),
-                  ] else ...<Widget>[
-                    _buildUnitOption(
-                      optionKey: 'unit_feet_radio',
-                      label: 'Feet',
-                      selected: _unitMode == UnitMode.feet,
-                      onTap: () => _onUnitModeChanged(UnitMode.feet),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildUnitOption(
-                      optionKey: 'unit_inches_radio',
-                      label: 'Inches',
-                      selected: _unitMode == UnitMode.inches,
-                      onTap: () => _onUnitModeChanged(UnitMode.inches),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildUnitOption(
-                      optionKey: 'unit_cm_radio',
-                      label: 'CM',
-                      selected: _unitMode == UnitMode.cm,
-                      onTap: () => _onUnitModeChanged(UnitMode.cm),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -2174,13 +2092,28 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                               ),
                         ),
                       ),
+                      // Was three dots, which said nothing about what was
+                      // behind it. The panel is about sections, so the button
+                      // says so.
                       TutorialTarget(
-                        id: 'input.threeDots',
-                        child: IconButton(
+                        id: 'input.sectionsButton',
+                        child: TextButton.icon(
                           key: const Key('open_settings_drawer_button'),
                           onPressed: _openSettings,
-                          icon: const Icon(Icons.more_horiz_rounded),
-                          color: AppTheme.deepTeal,
+                          icon: const Icon(Icons.view_list_rounded, size: 19),
+                          label: const Text('Sections'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.royalBlue,
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
                         ),
                       ),
                     ],
@@ -2323,12 +2256,12 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             ),
                           ],
                         ),
-                        // The unit used to live only behind the three dots, so
-                        // people typed a size without being sure whether it was
-                        // feet, inches or cm. It sits with the size fields now.
+                        // Unit, lock and rubber used to live behind the sidebar,
+                        // so people typed a size without being sure which unit
+                        // was set. They sit with the size fields now.
                         TutorialTarget(
                           id: 'input.unit',
-                          child: _buildInlineUnitSelector(context),
+                          child: _buildQuickControls(context),
                         ),
                         const SizedBox(height: 12),
                         TutorialTarget(

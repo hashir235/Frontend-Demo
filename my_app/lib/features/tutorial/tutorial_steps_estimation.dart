@@ -149,12 +149,11 @@ const List<TutorialStep> estimationTutorialSteps = <TutorialStep>[
   ),
   TutorialStep(
     screen: TutorialScreen.windowInput,
-    targetId: 'input.threeDots',
-    title: 'تین نقطے',
+    targetId: 'input.sectionsButton',
+    title: 'سیکشنز',
     body:
-        'یہ تین نقطے ونڈو کی اپنی سیٹنگز کھولتے ہیں۔ اسے دبائیں — سائیڈ سے ایک '
-        'پینل کھلے گا۔',
-    tapHint: 'تین نقطوں پر دبائیں',
+        'یہ بٹن ونڈو کے سیکشن کھولتا ہے۔ اسے دبائیں — سائیڈ سے ایک پینل کھلے گا۔',
+    tapHint: 'سیکشنز پر دبائیں',
     requiresTap: true,
   ),
   TutorialStep(

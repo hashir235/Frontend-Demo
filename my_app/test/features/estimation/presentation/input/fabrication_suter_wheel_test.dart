@@ -45,10 +45,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 250));
 
       // Switch this fabrication flow to inch.suter mode.
-      await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
-      await tester.pumpAndSettle();
-      // The sidebar scrolls now that it carries more options, so the unit
-      // buttons can sit below the fold on a small screen.
+      // Unit sits on the input page now, not behind the Sections panel, so
+      // there is no drawer to open first.
       await tester.ensureVisible(find.byKey(const Key('unit_inches_radio')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('unit_inches_radio')));
@@ -75,10 +73,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
 
-    await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
-    await tester.pumpAndSettle();
-    // The sidebar scrolls now that it carries more options, so the unit
-    // buttons can sit below the fold on a small screen.
+    // Unit sits on the input page now, not behind the Sections panel, so
+    // there is no drawer to open first.
     await tester.ensureVisible(find.byKey(const Key('unit_inches_radio')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('unit_inches_radio')));
