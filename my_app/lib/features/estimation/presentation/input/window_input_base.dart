@@ -1661,6 +1661,29 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
   }
 
+  /// The "Height" / "Width" label on a size field.
+  ///
+  /// Heavier and darker than a normal field label: these two fields sit right
+  /// on top of each other and hold numbers that look alike, so a glance has to
+  /// be enough to tell which one is being typed into. The error state still
+  /// turns red -- that is resolved rather than hardcoded, or a wrong size would
+  /// lose its warning colour.
+  WidgetStateTextStyle get _dimensionLabelStyle =>
+      WidgetStateTextStyle.resolveWith((Set<WidgetState> states) {
+        if (states.contains(WidgetState.error)) {
+          return const TextStyle(
+            color: AppTheme.danger,
+            fontWeight: FontWeight.w900,
+            fontSize: 16,
+          );
+        }
+        return const TextStyle(
+          color: AppTheme.deepTeal,
+          fontWeight: FontWeight.w900,
+          fontSize: 16,
+        );
+      });
+
   Widget _buildSingleDimensionField({
     required GlobalKey fieldKey,
     required TextEditingController controller,
@@ -1685,6 +1708,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: _dimensionLabelStyle,
+        floatingLabelStyle: _dimensionLabelStyle,
         hintText: hintText,
         hintStyle: hintStyle,
         errorText: errorText,
@@ -1729,6 +1754,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             onChanged: (_) => onChanged(),
             decoration: InputDecoration(
               labelText: feetMode ? '$label (Feet)' : '$label (Inch)',
+              labelStyle: _dimensionLabelStyle,
+              floatingLabelStyle: _dimensionLabelStyle,
               hintText: feetMode ? 'e.g. 4' : 'e.g. 45',
               errorText: errorText,
             ),
