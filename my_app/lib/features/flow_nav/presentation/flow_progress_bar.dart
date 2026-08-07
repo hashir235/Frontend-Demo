@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -74,12 +72,19 @@ class _FlowProgressBarState extends State<FlowProgressBar> {
 
   /// Only the screen actually on top may claim the current step; a screen left
   /// mounted underneath a pushed route must not drag the bar back to itself.
+  ///
+  /// Called on every build, not just on first mount. Popping back reveals a
+  /// screen that is already mounted, so initState never runs again -- without
+  /// this the chain stayed pointing at the step the user had just left, and a
+  /// jump back looked like it had done nothing.
+  ///
+  /// Cheap to repeat: arriveAt returns immediately when the step has not
+  /// changed.
   void _report() {
     if (!mounted) return;
     final ModalRoute<Object?>? route = ModalRoute.of(context);
     if (route != null && !route.isCurrent) return;
     _progress.arriveAt(widget.stepId);
-    _centreOnCurrent();
   }
 
   void _onChange() {
@@ -135,6 +140,9 @@ class _FlowProgressBarState extends State<FlowProgressBar> {
 
   @override
   Widget build(BuildContext context) {
+    // Re-claim after a pop brings this screen back to the top.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _report());
+
     final AppFlow? flow = _progress.flow;
     if (flow == null || !_progress.isActive) {
       return const SizedBox.shrink();
@@ -142,49 +150,24 @@ class _FlowProgressBarState extends State<FlowProgressBar> {
 
     final EdgeInsets safe = MediaQuery.paddingOf(context);
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(6, 10, 6, 8 + safe.bottom),
-          decoration: BoxDecoration(
-            // Frosted, not opaque: the page keeps showing through, which is
-            // what makes it read as glass rather than as a solid footer.
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: <Color>[
-                Colors.white.withValues(alpha: 0.72),
-                Colors.white.withValues(alpha: 0.55),
-              ],
-            ),
-            border: Border(
-              top: BorderSide(color: Colors.white.withValues(alpha: 0.85)),
-            ),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: AppTheme.royalBlue.withValues(alpha: 0.10),
-                blurRadius: 24,
-                offset: const Offset(0, -6),
-              ),
+    // No panel, no bar, no border: the bubbles sit straight on the page and
+    // the screen shows through between them. A frosted strip behind them read
+    // as a footer bolted to the bottom, which is exactly what this is not.
+    return Padding(
+      padding: EdgeInsets.fromLTRB(6, 6, 6, 8 + safe.bottom),
+      child: SizedBox(
+        height: 74,
+        child: SingleChildScrollView(
+          controller: _scroll,
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              for (int i = 0; i < flow.steps.length; i++)
+                _buildNode(context, flow, i),
             ],
-          ),
-          child: SizedBox(
-            height: 74,
-            child: SingleChildScrollView(
-              controller: _scroll,
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  for (int i = 0; i < flow.steps.length; i++)
-                    _buildNode(context, flow, i),
-                ],
-              ),
-            ),
           ),
         ),
       ),
@@ -202,47 +185,54 @@ class _FlowProgressBarState extends State<FlowProgressBar> {
     final bool tappable =
         action == FlowTapAction.goBack || action == FlowTapAction.goNext;
 
+    // The whole node takes the tap -- label included. Someone aiming at a step
+    // aims at the word as often as at the circle, and a name that looks like a
+    // button but ignores you is worse than no name at all.
     return SizedBox(
       width: _slot,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          _buildLabel(step, isCurrent: isCurrent, isDone: isDone),
-          const SizedBox(height: 5),
-          Stack(
-            alignment: Alignment.center,
-            children: <Widget>[
-              // The connectors sit behind the circle and run the full slot, so
-              // the chain reads as one line rather than as separate dashes.
-              Positioned.fill(
-                child: _Connectors(
-                  showLeft: index > 0,
-                  showRight: index < flow.steps.length - 1,
-                  leftDone: index <= _progress.currentIndex,
-                  rightDone: index < _progress.currentIndex,
+      child: Semantics(
+        button: tappable,
+        selected: isCurrent,
+        label: step.spoken,
+        child: Tooltip(
+          message: step.meaning ?? step.label,
+          waitDuration: const Duration(milliseconds: 600),
+          child: InkWell(
+            onTap: tappable ? () => _handleTap(index, step) : null,
+            borderRadius: BorderRadius.circular(18),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                _buildLabel(step, isCurrent: isCurrent, isDone: isDone),
+                const SizedBox(height: 5),
+                Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    // The connectors sit behind the circle and run the full
+                    // slot, so the chain reads as one line rather than as
+                    // separate dashes.
+                    Positioned.fill(
+                      child: _Connectors(
+                        showLeft: index > 0,
+                        showRight: index < flow.steps.length - 1,
+                        leftDone: index <= _progress.currentIndex,
+                        rightDone: index < _progress.currentIndex,
+                      ),
+                    ),
+                    _Bubble(
+                      key: isCurrent ? _currentKey : null,
+                      step: step,
+                      size: isCurrent ? _currentSize : _doneSize,
+                      isCurrent: isCurrent,
+                      isDone: isDone,
+                    ),
+                  ],
                 ),
-              ),
-              Semantics(
-                button: tappable,
-                selected: isCurrent,
-                label: step.spoken,
-                child: Tooltip(
-                  message: step.meaning ?? step.label,
-                  waitDuration: const Duration(milliseconds: 600),
-                  child: _Bubble(
-                    key: isCurrent ? _currentKey : null,
-                    step: step,
-                    size: isCurrent ? _currentSize : _doneSize,
-                    isCurrent: isCurrent,
-                    isDone: isDone,
-                    onTap: tappable ? () => _handleTap(index, step) : null,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -348,12 +338,18 @@ class _Connectors extends StatelessWidget {
 }
 
 /// A single frosted circle.
+///
+/// The blur lives here rather than behind the whole row: with no panel, each
+/// bubble has to be its own piece of glass, taking its colour from whatever it
+/// happens to be floating over.
+///
+/// Taps are handled by the node around it, so the whole thing -- label and
+/// circle -- is one target.
 class _Bubble extends StatelessWidget {
   final FlowStep step;
   final double size;
   final bool isCurrent;
   final bool isDone;
-  final VoidCallback? onTap;
 
   const _Bubble({
     super.key,
@@ -361,7 +357,6 @@ class _Bubble extends StatelessWidget {
     required this.size,
     required this.isCurrent,
     required this.isDone,
-    this.onTap,
   });
 
   @override
@@ -401,32 +396,24 @@ class _Bubble extends StatelessWidget {
               : AppTheme.slate.withValues(alpha: 0.18),
           width: isCurrent ? 1.8 : 1.1,
         ),
+        // Always exactly one shadow, transparent when there should be none.
+        // A list that changes length between states cannot be tweened, and
+        // AnimatedContainer asserts rather than animating.
         boxShadow: <BoxShadow>[
-          if (isCurrent)
-            BoxShadow(
-              color: AppTheme.royalBlue.withValues(alpha: 0.42),
-              blurRadius: 16,
-              spreadRadius: 1,
-              offset: const Offset(0, 4),
-            )
-          else if (isDone)
-            BoxShadow(
-              color: AppTheme.royalBlue.withValues(alpha: 0.12),
-              blurRadius: 7,
-              offset: const Offset(0, 2),
-            ),
+          BoxShadow(
+            color: isCurrent
+                ? AppTheme.royalBlue.withValues(alpha: 0.42)
+                : isDone
+                ? AppTheme.royalBlue.withValues(alpha: 0.12)
+                : Colors.transparent,
+            blurRadius: isCurrent ? 16 : 7,
+            spreadRadius: isCurrent ? 1 : 0,
+            offset: Offset(0, isCurrent ? 4 : 2),
+          ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Center(
-            child: Icon(step.icon, size: isCurrent ? 22 : 15, color: ink),
-          ),
-        ),
+      child: Center(
+        child: Icon(step.icon, size: isCurrent ? 22 : 15, color: ink),
       ),
     );
   }
