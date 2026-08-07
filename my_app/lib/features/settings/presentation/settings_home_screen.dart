@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/config/api_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/data/auth_api_client.dart';
 import '../../auth/state/auth_controller.dart';
 import '../../subscription/data/subscription_api_client.dart';
 import '../../subscription/models/subscription_models.dart';
@@ -70,6 +71,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final PaymentPreferencesApiClient _paymentPreferencesApiClient;
   final AppUpdateService _updateService = AppUpdateService();
 
+  bool _deletingAccount = false;
   bool _updateChecking = false;
   bool _updateFound = false;
   AppUpdateStatus? _updateStatus;
@@ -1764,14 +1766,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 path: '/refund-policy',
                 title: 'Refund Policy',
               ),
-              _buildLegalLink(
-                context,
-                icon: Icons.person_remove_rounded,
-                label: 'Delete Account & Data',
-                path: '/delete-account',
-                title: 'Delete Account',
-              ),
             ],
+          ),
+          const SizedBox(height: 16),
+          _buildSettingsCluster(
+            context,
+            title: 'Delete account',
+            subtitle:
+                'Remove your account and everything saved in it. This cannot '
+                'be undone.',
+            children: <Widget>[_buildDeleteAccountButton(context)],
           ),
           const SizedBox(height: 16),
           _buildSettingsCluster(
@@ -1811,6 +1815,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Policies live on quickalapp.com so wording can be fixed without an app
   // release; they open in-app so the user never loses their place.
+  /// The account-deletion path that actually works for this app's users.
+  ///
+  /// Sign-in is by Google, so those accounts have no password -- and the web
+  /// form asks for one, which meant nobody could delete anything. Here the
+  /// session already says who is asking.
+  Widget _buildDeleteAccountButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _deletingAccount ? null : _confirmDeleteAccount,
+        icon: _deletingAccount
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.person_remove_rounded),
+        label: Text(_deletingAccount ? 'Deleting…' : 'Delete Account & Data'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppTheme.danger,
+          side: BorderSide(color: AppTheme.danger.withValues(alpha: 0.5)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+    );
+  }
+
+  /// Two steps on purpose. The first says what goes; the second makes them
+  /// type the word, so a mis-tap cannot destroy someone's projects.
+  Future<void> _confirmDeleteAccount() async {
+    final bool? first = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        icon: const Icon(
+          Icons.warning_amber_rounded,
+          color: AppTheme.danger,
+          size: 34,
+        ),
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This removes your profile, every saved project, your settings and '
+          'your subscription access. It cannot be undone.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Keep my account'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.danger),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    if (first != true || !mounted) return;
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => _DeleteAccountConfirmDialog(),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deletingAccount = true);
+    try {
+      await AuthController.instance.deleteAccount();
+      // Signed out by the deletion, so the app falls back to the sign-in
+      // screen on its own; just clear this screen off the stack.
+      if (mounted) {
+        Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _deletingAccount = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is AuthApiException
+                ? error.message
+                : 'Could not delete the account. Nothing has been removed.',
+          ),
+        ),
+      );
+    }
+  }
+
   Widget _buildLegalLink(
     BuildContext context, {
     required IconData icon,
@@ -2172,6 +2263,74 @@ class _SupportRow extends StatelessWidget {
               color: AppTheme.textPrimary,
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The second confirmation: typing the word is the deliberate act.
+///
+/// A plain "are you sure" is one mis-tap away from destroying every project a
+/// workshop has saved, and there is no undo behind it.
+class _DeleteAccountConfirmDialog extends StatefulWidget {
+  @override
+  State<_DeleteAccountConfirmDialog> createState() =>
+      _DeleteAccountConfirmDialogState();
+}
+
+class _DeleteAccountConfirmDialogState
+    extends State<_DeleteAccountConfirmDialog> {
+  static const String _word = 'DELETE';
+  final TextEditingController _controller = TextEditingController();
+
+  bool get _matches => _controller.text.trim().toUpperCase() == _word;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Type DELETE to confirm'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'This is the last step. Once it is done your projects cannot be '
+            'brought back.',
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(
+              labelText: 'Type $_word',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _matches ? () => Navigator.of(context).pop(true) : null,
+          style: FilledButton.styleFrom(backgroundColor: AppTheme.danger),
+          child: const Text('Delete permanently'),
         ),
       ],
     );

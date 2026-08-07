@@ -192,6 +192,36 @@ class AuthApiClient {
     _decodeResponse(response, 'Logout failed.');
   }
 
+  /// Permanently deletes the signed-in account and everything belonging to it.
+  ///
+  /// The session is the proof of identity -- no password is asked for, and for
+  /// this app none exists: people sign in with Google.
+  Future<void> deleteAccount() async {
+    final String? token = AuthSession.token;
+    if (token == null || token.isEmpty) {
+      throw const AuthApiException('You are not signed in.');
+    }
+
+    late final http.Response response;
+    try {
+      response = await _httpClient.delete(
+        Uri.parse('$_baseUrl/api/account'),
+        headers: <String, String>{
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+    } on Exception catch (error) {
+      throw AuthApiException(
+        'Could not reach Quick AL. Check your connection and try again — '
+        'nothing has been deleted.',
+        detail: error,
+      );
+    }
+
+    _decodeResponse(response, 'Account deletion failed.');
+  }
+
   Future<Map<String, dynamic>> _postJson(
     Uri uri,
     Map<String, Object?> body, {

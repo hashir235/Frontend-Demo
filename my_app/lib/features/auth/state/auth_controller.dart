@@ -217,6 +217,40 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Deletes the account on the server, then clears this device exactly as a
+  /// sign-out would.
+  ///
+  /// Unlike [signOut], a failure here is not swallowed: telling someone their
+  /// account is gone when it is not would be the worst possible outcome, so the
+  /// error is thrown and local state is left alone.
+  Future<void> deleteAccount() async {
+    _busy = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _apiClient.deleteAccount();
+    } catch (error) {
+      _busy = false;
+      _errorMessage = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+
+    // The account is gone; the session it belonged to cannot be revoked, so
+    // this only tidies up the device.
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {
+      // Signing out of Google locally is a courtesy, not a requirement.
+    }
+    AuthSession.clear();
+    await _sessionStore.clear();
+    _needsWorkshopSetup = false;
+    _busy = false;
+    notifyListeners();
+  }
+
   void clearError() {
     if (_errorMessage == null) {
       return;
