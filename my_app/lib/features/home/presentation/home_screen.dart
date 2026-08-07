@@ -18,6 +18,7 @@ import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../flow_nav/state/flow_progress.dart';
 import '../../settings/presentation/settings_home_screen.dart';
+import '../../subscription/presentation/plan_status_strip.dart';
 import '../../subscription/presentation/subscription_gate_screen.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
@@ -231,6 +232,11 @@ class _HomeScreenState extends State<HomeScreen> {
         child: AppScreenShell(
           child: ListView(
             children: <Widget>[
+              // First thing on the screen: what you are on and how long is
+              // left. People were opening Settings to find this out, and in
+              // the last few days it is the thing that changes what they do
+              // next.
+              const PlanStatusStrip(),
               AppHeroHeader(
                 eyebrow: 'QUICK AL',
                 title: 'Estimation & Fabrication Workspace',

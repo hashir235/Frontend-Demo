@@ -190,9 +190,7 @@ void main() {
         fabricationFlow,
         glassFlow,
       ]) {
-        final Set<String> ids = flow.steps
-            .map((FlowStep s) => s.id)
-            .toSet();
+        final Set<String> ids = flow.steps.map((FlowStep s) => s.id).toSet();
         expect(ids, hasLength(flow.steps.length), reason: '${flow.kind}');
       }
     });
