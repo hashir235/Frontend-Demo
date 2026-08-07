@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -66,8 +68,11 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
 
   void _onNodeTap(WindowType node) {
     if (node.hasChildren) {
+      // Still inside the library, just a level deeper, so the chain stays on
+      // the same bubble.
       Navigator.of(context).push(
         MaterialPageRoute<void>(
+          settings: RouteSettings(name: FlowSteps.library.id),
           builder: (_) => WindowNavigationScreen(
             nodes: node.children,
             path: <String>[...widget.path, node.label],
@@ -80,6 +85,7 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
     }
     Navigator.of(context).push(
       MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.sizeInput.id),
         builder: (_) => buildInputScreen(node: node, session: widget.session),
       ),
     );
@@ -178,6 +184,7 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
         ),
       ),
+      bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.library.id),
       body: TutorialOverlay(
         screen: TutorialScreen.windowLibrary,
         child: AppScreenShell(

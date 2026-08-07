@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -230,6 +232,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.invoice.id),
         builder: (BuildContext context) =>
             ActualBillScreen(session: widget.session, request: request),
       ),
@@ -255,6 +258,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
             ),
           ],
         ),
+        bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.billInputs.id),
         body: AppScreenShell(
           child: Form(
             key: _formKey,

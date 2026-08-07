@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
@@ -195,7 +197,10 @@ class _GlassSheetOptimizationScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Glass Sheets')),
-      bottomNavigationBar: _buildBottomActions(),
+      bottomNavigationBar: FlowBottomBar(
+        stepId: FlowSteps.glassLayout.id,
+        actions: _buildBottomActions(),
+      ),
       body: AppScreenShell(
         child: ListView(
           children: <Widget>[

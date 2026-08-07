@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -98,6 +100,7 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
     _persistMaterialSelection();
     Navigator.of(context).push(
       MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.rates.id),
         builder: (BuildContext context) => RateReviewScreen(
           session: widget.session,
           gaugeLabel: _selectedGage.label,
@@ -137,6 +140,7 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
             ),
           ],
         ),
+        bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.gaugeColour.id),
         body: AppScreenShell(
           child: ListView(
             children: <Widget>[

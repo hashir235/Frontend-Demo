@@ -18,6 +18,8 @@ import '../../estimation/presentation/recent_projects_screen.dart';
 import '../../estimation/presentation/window_navigation_screen.dart';
 import '../../estimation/state/estimate_session_store.dart';
 import '../../settings/state/app_settings.dart';
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -44,6 +46,7 @@ class FabricationMenuScreen extends StatelessWidget {
               (BuildContext listContext, SavedProjectSummary project) {
                 Navigator.of(listContext).push(
                   MaterialPageRoute<void>(
+                    settings: RouteSettings(name: FlowSteps.glassSize.id),
                     builder: (_) => GlassReportScreen(projectId: project.id),
                   ),
                 );
@@ -122,6 +125,7 @@ class FabricationMenuScreen extends StatelessWidget {
 
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.library.id),
         builder: (_) => WindowNavigationScreen.root(
           session: session,
           moduleTitle: 'Fabrication',
@@ -142,6 +146,7 @@ class FabricationMenuScreen extends StatelessWidget {
       screen: TutorialScreen.fabricationMenu,
       child: Scaffold(
         appBar: AppBar(title: const Text('Fabrication')),
+        bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.projects.id),
         body: AppScreenShell(
           child: ListView(
             children: <Widget>[

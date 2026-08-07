@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -207,6 +209,7 @@ class _EstimationMaterialTableScreenState
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.billInputs.id),
         builder: (BuildContext context) => BillInputsScreen(
           session: widget.session,
           aluminiumTotal: table.grandTotal,
@@ -225,6 +228,7 @@ class _EstimationMaterialTableScreenState
   void _openGlassReport() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.glassSize.id),
         builder: (BuildContext context) =>
             GlassReportScreen(projectId: widget.projectId),
       ),
@@ -339,7 +343,10 @@ class _EstimationMaterialTableScreenState
               ),
           ],
         ),
-        bottomNavigationBar: _buildBottomActions(),
+        bottomNavigationBar: FlowBottomBar(
+          stepId: FlowSteps.material.id,
+          actions: _buildBottomActions(),
+        ),
         body: AppScreenShell(child: _buildBody(context)),
       ),
     );

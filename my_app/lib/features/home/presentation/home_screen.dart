@@ -14,6 +14,9 @@ import '../../../shared/widgets/section_surface_card.dart';
 import '../../../shared/widgets/social_links_card.dart';
 import '../../estimation/presentation/estimation_menu_screen.dart';
 import '../../fabrication/presentation/fabrication_menu_screen.dart';
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
+import '../../flow_nav/state/flow_progress.dart';
 import '../../settings/presentation/settings_home_screen.dart';
 import '../../subscription/presentation/subscription_gate_screen.dart';
 import '../../tutorial/tutorial_controller.dart';
@@ -44,6 +47,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _notificationsController.load();
     _loadVersion();
     _offerTutorialOnFirstRun();
+    // Nothing started yet: show the lone Home bubble. A journey already in
+    // progress is left alone -- Home stays mounted underneath it.
+    if (FlowProgress.instance.flow == null) {
+      FlowProgress.instance.enter(homeFlow);
+    }
   }
 
   /// A first-time user lands here straight after workshop setup, so the tour
@@ -171,6 +179,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
+      // A single bubble here, which grows into the chain once a job starts.
+      bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.home.id),
       appBar: AppBar(
         title: const Text('Quick AL'),
         actions: <Widget>[
@@ -265,8 +275,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         onTap: () {
                           // While the tour is on this step, tapping is the step.
                           TutorialController.instance.advanceAfterTap();
+                          FlowProgress.instance.enter(estimationFlow);
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
+                              settings: RouteSettings(
+                                name: FlowSteps.projects.id,
+                              ),
                               builder: (_) => const SubscriptionGateScreen(
                                 child: EstimationMenuScreen(),
                               ),
@@ -286,8 +300,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         accent: AppTheme.tealAccent,
                         onTap: () {
                           TutorialController.instance.advanceAfterTap();
+                          FlowProgress.instance.enter(fabricationFlow);
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
+                              settings: RouteSettings(
+                                name: FlowSteps.projects.id,
+                              ),
                               builder: (_) => const SubscriptionGateScreen(
                                 child: FabricationMenuScreen(),
                               ),
@@ -304,8 +322,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           'General, estimation, and fabrication configuration with structured controls.',
                       accent: AppTheme.amberAccent,
                       onTap: () {
+                        FlowProgress.instance.enter(settingsRootFlow);
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
+                            settings: RouteSettings(
+                              name: FlowSteps.settings.id,
+                            ),
                             builder: (_) => const SettingsScreen(),
                           ),
                         );

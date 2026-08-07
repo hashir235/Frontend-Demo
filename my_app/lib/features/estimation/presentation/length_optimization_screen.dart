@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -335,7 +337,10 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           requestContext: widget.requestContext,
         );
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (BuildContext context) => nextScreen),
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.gaugeColour.id),
+        builder: (BuildContext context) => nextScreen,
+      ),
     );
   }
 
@@ -464,7 +469,10 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             ),
           ],
         ),
-        bottomNavigationBar: _buildBottomActions(context),
+        bottomNavigationBar: FlowBottomBar(
+          stepId: FlowSteps.lengthOptimization.id,
+          actions: _buildBottomActions(context),
+        ),
         body: AppScreenShell(child: _buildBody(context)),
       ),
     );

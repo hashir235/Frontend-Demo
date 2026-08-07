@@ -18,6 +18,8 @@ import '../models/fabrication_settings.dart';
 import '../../../shared/widgets/social_links_card.dart';
 import '../../estimation/presentation/section_recalculation_screen.dart'
     show kMinStockLengthFt, kMaxStockLengthFt;
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_step.dart';
 import '../../tutorial/urdu_text.dart';
@@ -138,6 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _openBillingAndPlans() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.paymentSettings.id),
         builder: (BuildContext context) =>
             const SubscriptionGateScreen.manage(),
       ),
@@ -485,6 +488,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// Which bubble a settings section belongs to.
+  ///
+  /// Only the sections the owner named get their own bubble; the rest sit on
+  /// Settings itself, so the chain never grows a leaf nobody asked for.
+  FlowStep _flowStepForSection(String? sectionId) => switch (sectionId) {
+    'window_input' => FlowSteps.windowSettings,
+    'rates' => FlowSteps.rateSettings,
+    'estimation' => FlowSteps.estimationSettings,
+    'fabrication' => FlowSteps.fabricationSettings,
+    'company' => FlowSteps.companySettings,
+    'payment' => FlowSteps.paymentSettings,
+    _ => FlowSteps.settings,
+  };
+
   void _startTour(BuildContext context, TutorialTour tour) {
     TutorialController.instance.start(tour: tour);
     Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
@@ -507,6 +524,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
+                  settings: RouteSettings(name: FlowSteps.rateSettings.id),
                   builder: (BuildContext _) => const RatesScreen(),
                 ),
               );
@@ -1970,6 +1988,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: const Icon(Icons.arrow_back_rounded),
                   onPressed: () => setState(() => _openSectionId = null),
                 ),
+        ),
+        // Settings opens its sections in place rather than pushing routes, so
+        // the bubble follows which section is open instead of the route stack.
+        bottomNavigationBar: FlowProgressBar(
+          stepId: _flowStepForSection(_openSectionId).id,
         ),
         body: Container(
           decoration: const BoxDecoration(

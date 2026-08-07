@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/state_message_card.dart';
@@ -192,24 +194,27 @@ class _RatesScreenState extends State<RatesScreen> {
               icon: const Icon(Icons.add_rounded),
               label: const Text('Add section'),
             ),
-      bottomNavigationBar: _dirty
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: FilledButton.icon(
-                  onPressed: _saving ? null : _save,
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2.2),
-                        )
-                      : const Icon(Icons.check_rounded),
-                  label: Text(_saving ? 'Saving...' : 'Save rates'),
+      bottomNavigationBar: FlowBottomBar(
+        stepId: FlowSteps.rateSettings.id,
+        actions: _dirty
+            ? SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: FilledButton.icon(
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2.2),
+                          )
+                        : const Icon(Icons.check_rounded),
+                    label: Text(_saving ? 'Saving...' : 'Save rates'),
+                  ),
                 ),
-              ),
-            )
-          : null,
+              )
+            : null,
+      ),
       body: AppScreenShell(child: _buildBody(context)),
     );
   }

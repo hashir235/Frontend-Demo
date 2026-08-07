@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/next_step_action.dart';
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -50,7 +52,8 @@ class ReviewListScreen extends StatelessWidget {
     }
 
     await Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.sizeInput.id),
         builder: (_) =>
             buildInputScreen(node: node, session: session, editingItem: item),
       ),
@@ -100,7 +103,8 @@ class ReviewListScreen extends StatelessWidget {
 
     if (session.isFabrication) {
       await Navigator.of(context).push(
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
+          settings: RouteSettings(name: FlowSteps.lengthOptimization.id),
           builder: (_) => LengthOptimizationScreen(
             session: session,
             items: items,
@@ -134,7 +138,8 @@ class ReviewListScreen extends StatelessWidget {
     }
 
     await Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.lengthOptimization.id),
         builder: (_) => LengthOptimizationScreen(
           session: session,
           items: items,
@@ -465,6 +470,7 @@ class ReviewListScreen extends StatelessWidget {
             ),
           ],
         ),
+        bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.review.id),
         body: AnimatedBuilder(
           animation: session,
           builder: (BuildContext context, Widget? child) {

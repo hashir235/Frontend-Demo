@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -255,7 +257,10 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
       screen: TutorialScreen.actualBill,
       child: Scaffold(
         appBar: AppBar(title: const Text('Final Bill')),
-        bottomNavigationBar: _buildBottomActions(),
+        bottomNavigationBar: FlowBottomBar(
+          stepId: FlowSteps.invoice.id,
+          actions: _buildBottomActions(),
+        ),
         body: AppScreenShell(child: _buildBody(context)),
       ),
     );

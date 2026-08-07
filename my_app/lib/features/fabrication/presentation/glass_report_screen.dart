@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
@@ -333,6 +335,7 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.glassLayout.id),
         builder: (_) => GlassSheetOptimizationScreen(
           projectId: widget.projectId,
           glassReport: _buildReport(),
@@ -422,7 +425,10 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
             ),
         ],
       ),
-      bottomNavigationBar: _buildBottomActions(),
+      bottomNavigationBar: FlowBottomBar(
+        stepId: FlowSteps.glassSize.id,
+        actions: _buildBottomActions(),
+      ),
       body: AppScreenShell(child: _buildBody(context)),
     );
   }

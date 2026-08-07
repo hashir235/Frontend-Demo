@@ -11,6 +11,8 @@ import '../../models/window_review_item.dart';
 import '../../models/window_type.dart';
 import '../../state/estimate_session_store.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../flow_nav/models/flow_step.dart';
+import '../../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../../tutorial/tutorial_controller.dart';
 import '../../../tutorial/tutorial_overlay.dart';
 import '../../../tutorial/tutorial_step.dart';
@@ -684,7 +686,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
 
   void _openReview() {
     Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.review.id),
         builder: (_) => ReviewListScreen(session: widget.session),
       ),
     );
@@ -1865,6 +1868,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       child: Scaffold(
         key: _scaffoldKey,
         resizeToAvoidBottomInset: false,
+        // Hidden while the keyboard is up: on a phone the chain would sit on
+        // top of the field being typed into.
+        bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
+            ? null
+            : FlowProgressBar(stepId: FlowSteps.sizeInput.id),
         endDrawer: Drawer(
           key: const Key('settings_drawer'),
           width: _handler.showDrawerForCollar(_selectedCollar)

@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
+import '../../flow_nav/models/flow_step.dart';
+import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -93,6 +95,7 @@ class EstimationMenuScreen extends StatelessWidget {
 
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.library.id),
         builder: (_) => WindowNavigationScreen.root(session: session),
       ),
     );
@@ -108,6 +111,7 @@ class EstimationMenuScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Estimation')),
+      bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.projects.id),
       body: TutorialOverlay(
         screen: TutorialScreen.projectMenu,
         child: AppScreenShell(
