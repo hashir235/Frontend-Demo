@@ -18,6 +18,8 @@ import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../flow_nav/state/flow_progress.dart';
 import '../../settings/presentation/settings_home_screen.dart';
+import '../../review_prompt/review_prompt_dialog.dart';
+import '../../review_prompt/review_prompter.dart';
 import '../../subscription/presentation/plan_status_strip.dart';
 import '../../subscription/presentation/subscription_gate_screen.dart';
 import '../../tutorial/tutorial_controller.dart';
@@ -48,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _notificationsController.load();
     _loadVersion();
     _offerTutorialOnFirstRun();
+    _maybeAskForRating();
     // Nothing started yet: show the lone Home bubble. A journey already in
     // progress is left alone -- Home stays mounted underneath it.
     if (FlowProgress.instance.flow == null) {
@@ -70,6 +73,22 @@ class _HomeScreenState extends State<HomeScreen> {
     // point at yet.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) TutorialController.instance.start();
+    });
+  }
+
+  /// Asks for a rating once the user has had the app a week.
+  ///
+  /// Never on the same launch as the tour: a first-time user meeting a rating
+  /// dialog before they have used anything would rightly ignore it, and we
+  /// would have spent our one polite ask on nothing.
+  Future<void> _maybeAskForRating() async {
+    final ReviewPrompter prompter = ReviewPrompter();
+    await prompter.noteAppOpened();
+    if (!await TutorialController.instance.hasSeen()) return;
+    if (!mounted) return;
+    // After the first frame, so the dialog does not fight the screen coming up.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) maybeAskForReview(context, prompter: prompter);
     });
   }
 

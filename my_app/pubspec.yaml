@@ -28,6 +28,9 @@ dependencies:
   # sideloading an APK over a Play install is not an option, and bouncing
   # people out to the store listing is a poor second best.
   in_app_update: ^4.2.3
+  # Google's in-app review card. Asking inside the app means a rating costs
+  # the user one tap instead of a trip to the store, where most never arrive.
+  in_app_review: ^2.0.9
   # Renders Safepay's hosted checkout in-app. Card details are entered on
   # Safepay's page and never reach this app or our server.
   webview_flutter: ^4.10.0

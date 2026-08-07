@@ -18,6 +18,8 @@ import '../models/fabrication_settings.dart';
 import '../../../shared/widgets/social_links_card.dart';
 import '../../estimation/presentation/section_recalculation_screen.dart'
     show kMinStockLengthFt, kMaxStockLengthFt;
+import '../../app_update/app_update_service.dart';
+import '../../app_update/presentation/force_update_screen.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
@@ -66,6 +68,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final EstimationSettingsRepository _estimationSettingsRepository;
   late final FabricationSettingsRepository _fabricationSettingsRepository;
   late final PaymentPreferencesApiClient _paymentPreferencesApiClient;
+  final AppUpdateService _updateService = AppUpdateService();
+
+  bool _updateChecking = false;
+  bool _updateFound = false;
+  AppUpdateStatus? _updateStatus;
+  String? _updateMessage;
   final SettingsDefaultsApiClient _settingsDefaultsApiClient =
       SettingsDefaultsApiClient();
 
@@ -454,6 +462,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Starting the tour pops the user back to Home, because that is where it
   /// begins and where its first step points.
+  /// A way to reach an update that is always there.
+  ///
+  /// The startup prompt is easy to miss and gone once dismissed, and Play's
+  /// auto-update is off for plenty of people -- so a user could sit on an old
+  /// build for weeks with no idea. This checks on demand and, when there is
+  /// something newer, takes them straight to it.
+  Widget _buildAppUpdateCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.system_update_rounded,
+      title: 'App Update',
+      subtitle: ApiConfig.isDirectWebsiteBuild
+          ? 'Naya version mile to yahin se download aur install ho jayega.'
+          : 'Naya version mile to Play Store se update kar sakte hain.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (_updateMessage != null) ...<Widget>[
+            Text(
+              _updateMessage!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: _updateFound ? AppTheme.success : AppTheme.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          FilledButton.icon(
+            onPressed: _updateChecking ? null : _checkForUpdate,
+            icon: _updateChecking
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded),
+            label: Text(
+              _updateChecking ? 'Dekh rahe hain…' : 'Check for update',
+            ),
+          ),
+          if (_updateFound) ...<Widget>[
+            const SizedBox(height: 10),
+            UpdateActionArea(
+              apkUrl: _updateStatus!.apkUrl,
+              storeUrl: _updateStatus!.storeUrl,
+              service: _updateService,
+              idleLabel: 'Update Now',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _checkForUpdate() async {
+    setState(() {
+      _updateChecking = true;
+      _updateMessage = null;
+    });
+    final AppUpdateStatus status = await _updateService.check();
+    if (!mounted) return;
+    setState(() {
+      _updateChecking = false;
+      _updateStatus = status;
+      _updateFound = status.requirement != AppUpdateRequirement.none;
+      _updateMessage = _updateFound
+          ? (status.latestVersionName.isNotEmpty
+                ? 'Naya version ${status.latestVersionName} maujood hai.'
+                : 'Naya version maujood hai.')
+          : 'Aap ke paas pehle se latest version hai.';
+    });
+  }
+
   Widget _buildTutorialCard(BuildContext context) {
     return _buildSettingsCard(
       context,
@@ -1861,6 +1942,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'App kaise istemal karein',
       subtitle: 'Qadam ba qadam rehnumai — Urdu mein.',
       builder: _buildTutorialCard,
+    ),
+    _SettingsSection(
+      id: 'app_update',
+      icon: Icons.system_update_rounded,
+      title: 'App Update',
+      subtitle: 'Naya version aaya ya nahi, yahan se dekhein.',
+      builder: _buildAppUpdateCard,
     ),
     _SettingsSection(
       id: 'rates',
