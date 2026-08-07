@@ -1099,14 +1099,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              // Carries the colour of whichever section is open, so opening a
+              // row keeps the colour you just tapped instead of dropping back
+              // to the same blue on every screen.
               Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.violet.withValues(alpha: 0.12),
+                  color: _openAccent.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(icon, color: AppTheme.violet),
+                child: Icon(icon, color: _openAccent),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -2020,26 +2023,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// State mein hain — section badalna sirf ek setState ha, is liye koi bhi
   /// adhoora load ya likha hua text zaya nahi hota.
   List<_SettingsSection> get _sections => <_SettingsSection>[
+    // Ordered by how often a working day needs them: the settings that change
+    // a job come first, then money, then the things you set up once. Help and
+    // App Update sit near the bottom, just above Account -- useful, but not
+    // what someone opens Settings for.
     _SettingsSection(
       id: 'window_input',
       icon: Icons.tune_rounded,
       title: 'Window Input',
       subtitle: 'Numbering aur size entry ka tareeqa.',
       builder: _buildWindowInputCard,
-    ),
-    _SettingsSection(
-      id: 'tutorial',
-      icon: Icons.play_circle_outline_rounded,
-      title: 'App kaise istemal karein',
-      subtitle: 'Qadam ba qadam rehnumai — Urdu mein.',
-      builder: _buildTutorialCard,
-    ),
-    _SettingsSection(
-      id: 'app_update',
-      icon: Icons.system_update_rounded,
-      title: 'App Update',
-      subtitle: 'Naya version aaya ya nahi, yahan se dekhein.',
-      builder: _buildAppUpdateCard,
+      accent: const Color(0xFF3882E4),
     ),
     _SettingsSection(
       id: 'rates',
@@ -2047,13 +2041,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'Rates',
       subtitle: 'Section ke rates dekhein aur apne mutabiq badlein.',
       builder: _buildRatesCard,
-    ),
-    _SettingsSection(
-      id: 'company',
-      icon: Icons.apartment_rounded,
-      title: 'Company Information',
-      subtitle: 'Workshop ka naam, phone aur address.',
-      builder: _buildCompanyInformationCard,
+      accent: const Color(0xFF12A594),
     ),
     _SettingsSection(
       id: 'estimation',
@@ -2061,6 +2049,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'Estimation Settings',
       subtitle: 'Lengths, cutting margins, red zone, extra pieces.',
       builder: _buildEstimationSettingsCard,
+      accent: const Color(0xFF7C5CD6),
     ),
     _SettingsSection(
       id: 'fabrication',
@@ -2068,6 +2057,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'Fabrication Settings',
       subtitle: 'Fabrication cutting margin.',
       builder: _buildFabricationSettingsCard,
+      accent: const Color(0xFFE07B39),
+    ),
+    _SettingsSection(
+      id: 'company',
+      icon: Icons.apartment_rounded,
+      title: 'Company Information',
+      subtitle: 'Workshop ka naam, phone aur address.',
+      builder: _buildCompanyInformationCard,
+      accent: const Color(0xFF2E7D9A),
     ),
     _SettingsSection(
       id: 'payment',
@@ -2075,6 +2073,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'Payment & Renewal',
       subtitle: 'Aap ka plan aur renewal.',
       builder: _buildPaymentRenewalCard,
+      accent: const Color(0xFF1F9254),
     ),
     _SettingsSection(
       id: 'legal',
@@ -2082,6 +2081,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'Legal & Support',
       subtitle: 'Policies aur customer support.',
       builder: _buildLegalSupportCard,
+      accent: const Color(0xFF5C6BC0),
+    ),
+    _SettingsSection(
+      id: 'tutorial',
+      icon: Icons.play_circle_outline_rounded,
+      title: 'App kaise istemal karein',
+      subtitle: 'Qadam ba qadam rehnumai — Urdu mein.',
+      builder: _buildTutorialCard,
+      accent: const Color(0xFFD4477E),
+    ),
+    _SettingsSection(
+      id: 'app_update',
+      icon: Icons.system_update_rounded,
+      title: 'App Update',
+      subtitle: 'Naya version aaya ya nahi, yahan se dekhein.',
+      builder: _buildAppUpdateCard,
+      accent: const Color(0xFF0E8FA8),
     ),
     _SettingsSection(
       id: 'account',
@@ -2089,8 +2105,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'Account',
       subtitle: 'Sign out.',
       builder: _buildAccountCard,
+      accent: const Color(0xFF64748B),
     ),
   ];
+
+  /// The open section's colour, or the app blue when the menu is showing.
+  ///
+  /// Read rather than passed: [_buildSettingsCard] is called from every
+  /// section builder, and threading a colour through all of them would be ten
+  /// edits to say something only one of them can be at a time.
+  Color get _openAccent {
+    final String? id = _openSectionId;
+    if (id == null) return AppTheme.violet;
+    for (final _SettingsSection section in _sections) {
+      if (section.id == id) return section.accent;
+    }
+    return AppTheme.violet;
+  }
 
   Widget _buildSectionTile(BuildContext context, _SettingsSection section) {
     return Material(
@@ -2103,14 +2134,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: <Widget>[
+              // A tinted plate in the section's own colour, with the icon in
+              // white on top. Enough to tell the rows apart at a glance
+              // without turning the list into a paint chart.
               Container(
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: AppTheme.ice.withValues(alpha: 0.8),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      section.accent,
+                      Color.lerp(section.accent, Colors.black, 0.18)!,
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(14),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: section.accent.withValues(alpha: 0.32),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: Icon(section.icon, color: AppTheme.violet, size: 22),
+                child: Icon(section.icon, color: Colors.white, size: 22),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -2216,12 +2264,20 @@ class _SettingsSection {
   final String subtitle;
   final Widget Function(BuildContext) builder;
 
+  /// The tile's own colour.
+  ///
+  /// Ten identical blue rows made the list hard to scan -- you read every
+  /// title to find the one you wanted. A colour per section gives each one a
+  /// shape you remember, so the second visit is quicker than the first.
+  final Color accent;
+
   const _SettingsSection({
     required this.id,
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.builder,
+    required this.accent,
   });
 }
 
