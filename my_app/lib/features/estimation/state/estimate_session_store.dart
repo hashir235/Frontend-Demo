@@ -5,7 +5,13 @@ import '../models/estimate_flow_state.dart';
 import '../models/window_review_item.dart';
 import '../../settings/state/numbering_mode.dart';
 
-enum EstimateFlow { estimation, fabrication }
+/// Which kind of job a session belongs to.
+///
+/// Glass is its own flow, not fabrication with glass in it. It starts from
+/// typed glass rows instead of from windows, so it never touches the window
+/// library, and its projects are kept apart in history -- a glass job reopened
+/// from history must land back on the row sheet, not in the window flow.
+enum EstimateFlow { estimation, fabrication, glass }
 
 class EstimateSessionStore extends ChangeNotifier {
   final String? projectId;
@@ -27,7 +33,11 @@ class EstimateSessionStore extends ChangeNotifier {
     NumberingMode numberingMode = NumberingMode.auto,
   }) : _numberingMode = numberingMode;
 
+  /// Aluminium fabrication. Deliberately false for [EstimateFlow.glass]: glass
+  /// never runs the window pipeline, so anything gated on this stays off there.
   bool get isFabrication => flow == EstimateFlow.fabrication;
+
+  bool get isGlass => flow == EstimateFlow.glass;
 
   List<WindowReviewItem> get items {
     final List<WindowReviewItem> sorted = List<WindowReviewItem>.from(_items);

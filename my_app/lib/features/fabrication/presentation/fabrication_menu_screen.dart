@@ -13,7 +13,6 @@ import '../../../shared/widgets/metric_card.dart';
 import '../../../shared/widgets/primary_card_button.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../../estimation/data/project_repository.dart';
-import '../../estimation/models/saved_project.dart';
 import '../../estimation/presentation/recent_projects_screen.dart';
 import '../../estimation/presentation/window_navigation_screen.dart';
 import '../../estimation/state/estimate_session_store.dart';
@@ -29,33 +28,6 @@ import 'glass_report_screen.dart';
 class FabricationMenuScreen extends StatelessWidget {
   const FabricationMenuScreen({super.key});
 
-  /// Glass cutting report starts at the project list, not at whatever project
-  /// happened to be saved last.
-  ///
-  /// It used to grab the single most recent fabrication project and open that,
-  /// which meant a user who had just been working on aluminium windows opened
-  /// the glass report and found the windows from that other job staring back at
-  /// them. Showing the history lets them say which job's glass they mean.
-  void _openGlassReport(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => RecentProjectsScreen(
-          flow: EstimateFlow.fabrication,
-          moduleTitle: 'Glass Cutting Report',
-          onProjectSelected:
-              (BuildContext listContext, SavedProjectSummary project) {
-                Navigator.of(listContext).push(
-                  MaterialPageRoute<void>(
-                    settings: RouteSettings(name: FlowSteps.glassSize.id),
-                    builder: (_) => GlassReportScreen(projectId: project.id),
-                  ),
-                );
-              },
-        ),
-      ),
-    );
-  }
-
   Future<_ProjectDraft?> _showProjectDialog(BuildContext context) async {
     return showDialog<_ProjectDraft>(
       context: context,
@@ -64,10 +36,18 @@ class FabricationMenuScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _handleCreateProject(BuildContext context) async {
+  /// Asks for the project details and creates it, returning what was made.
+  ///
+  /// Shared by both create buttons: the dialog, the backend session reset and
+  /// the error handling are identical, and only where the user lands afterwards
+  /// differs.
+  Future<_NewProject?> _createProject(
+    BuildContext context, {
+    required EstimateFlow flow,
+  }) async {
     final _ProjectDraft? draft = await _showProjectDialog(context);
     if (draft == null || !context.mounted) {
-      return;
+      return null;
     }
 
     String? resetWarning;
@@ -87,7 +67,7 @@ class FabricationMenuScreen extends StatelessWidget {
     }
 
     if (!context.mounted) {
-      return;
+      return null;
     }
 
     final ProjectRepository projectRepository = ProjectRepository();
@@ -95,7 +75,7 @@ class FabricationMenuScreen extends StatelessWidget {
     String? projectError;
     try {
       final project = await projectRepository.createProject(
-        flow: EstimateFlow.fabrication,
+        flow: flow,
         projectName: draft.projectName,
         projectLocation: draft.projectLocation,
       );
@@ -105,20 +85,31 @@ class FabricationMenuScreen extends StatelessWidget {
     }
 
     if (!context.mounted) {
-      return;
+      return null;
     }
 
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(projectError ?? 'Project create failed.')),
       );
-      return;
+      return null;
     }
 
+    return _NewProject(id: projectId, draft: draft, resetWarning: resetWarning);
+  }
+
+  /// Aluminium: straight into the window catalogue, as before.
+  Future<void> _handleCreateAluminiumProject(BuildContext context) async {
+    final _NewProject? created = await _createProject(
+      context,
+      flow: EstimateFlow.fabrication,
+    );
+    if (created == null || !context.mounted) return;
+
     final EstimateSessionStore session = EstimateSessionStore(
-      projectId: projectId,
-      projectName: draft.projectName,
-      projectLocation: draft.projectLocation,
+      projectId: created.id,
+      projectName: created.draft.projectName,
+      projectLocation: created.draft.projectLocation,
       flow: EstimateFlow.fabrication,
       numberingMode: AppSettings.instance.numberingMode,
     );
@@ -133,11 +124,44 @@ class FabricationMenuScreen extends StatelessWidget {
       ),
     );
 
-    if (resetWarning != null && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(resetWarning)));
+    if (context.mounted) {
+      _showResetWarning(context, created.resetWarning);
     }
+  }
+
+  /// Glass: straight to the row sheet.
+  ///
+  /// No window catalogue and no history in between -- a glass job is typed in
+  /// as glass sizes from the start, so anything else on the way there is a
+  /// detour.
+  Future<void> _handleCreateGlassProject(BuildContext context) async {
+    final _NewProject? created = await _createProject(
+      context,
+      flow: EstimateFlow.glass,
+    );
+    if (created == null || !context.mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.glassSize.id),
+        builder: (_) => GlassReportScreen(
+          projectId: created.id,
+          projectName: created.draft.projectName,
+          projectLocation: created.draft.projectLocation,
+        ),
+      ),
+    );
+
+    if (context.mounted) {
+      _showResetWarning(context, created.resetWarning);
+    }
+  }
+
+  void _showResetWarning(BuildContext context, String? warning) {
+    if (warning == null || !context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(warning)));
   }
 
   @override
@@ -184,29 +208,31 @@ class FabricationMenuScreen extends StatelessWidget {
                       id: 'fab.createProject',
                       child: PrimaryCardButton(
                         icon: Icons.add_box_outlined,
-                        title: 'Create Project',
+                        title: 'Create Aluminum Project  +',
                         subtitle:
-                            'Set project details and open the fabrication window catalogue.',
+                            'Windows and doors: pick from the catalogue, then cut, rate and report.',
                         accent: AppTheme.tealAccent,
                         onTap: () {
                           TutorialController.instance.advanceAfterTap();
-                          _handleCreateProject(context);
+                          _handleCreateAluminiumProject(context);
                         },
                       ),
                     ),
                     const SizedBox(height: AppTheme.space5),
                     PrimaryCardButton(
-                      icon: Icons.table_view_rounded,
-                      title: 'Glass Report',
+                      icon: Icons.grid_view_rounded,
+                      title: 'Create Glass Project  +',
                       subtitle:
-                          'Pick a project to open its glass table and PDF tools.',
+                          'Glass only: type the glass sizes and lay them out on sheets.',
                       accent: AppTheme.amberAccent,
-                      onTap: () => _openGlassReport(context),
+                      onTap: () => _handleCreateGlassProject(context),
                     ),
                     const SizedBox(height: AppTheme.space5),
+                    // One history for both kinds, each row saying which it is.
                     const RecentProjectsListSection(
                       flow: EstimateFlow.fabrication,
                       moduleTitle: 'Fabrication',
+                      alsoInclude: <EstimateFlow>[EstimateFlow.glass],
                     ),
                   ],
                 ),
@@ -230,6 +256,19 @@ class FabricationMenuScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A project that was just created, and anything worth telling the user about
+/// how it went.
+class _NewProject {
+  final String id;
+  final _ProjectDraft draft;
+
+  /// Shown after the user has landed, not before -- a backend session reset
+  /// that failed is worth knowing about but must not block the work.
+  final String? resetWarning;
+
+  const _NewProject({required this.id, required this.draft, this.resetWarning});
 }
 
 class _ProjectDraft {

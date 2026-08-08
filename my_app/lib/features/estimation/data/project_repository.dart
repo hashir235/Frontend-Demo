@@ -46,6 +46,10 @@ class ProjectRepository {
   }
 
   String _contextForFlow(EstimateFlow flow) {
-    return flow == EstimateFlow.fabrication ? 'fabrication' : 'estimation';
+    return switch (flow) {
+      EstimateFlow.fabrication => 'fabrication',
+      EstimateFlow.glass => 'glass',
+      EstimateFlow.estimation => 'estimation',
+    };
   }
 }

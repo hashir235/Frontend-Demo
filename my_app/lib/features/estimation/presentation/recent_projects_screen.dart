@@ -5,6 +5,8 @@ import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../../../shared/widgets/state_message_card.dart';
+import '../../fabrication/presentation/glass_report_screen.dart';
+import '../../flow_nav/models/flow_step.dart';
 import '../../settings/state/app_settings.dart';
 import '../data/project_repository.dart';
 import '../models/saved_project.dart';
@@ -299,10 +301,18 @@ class RecentProjectsListSection extends StatefulWidget {
   final EstimateFlow flow;
   final String moduleTitle;
 
+  /// Extra kinds to list alongside [flow].
+  ///
+  /// Fabrication holds two kinds of job -- aluminium and glass -- and a user
+  /// looking for "that job from Tuesday" should not have to remember which
+  /// button made it. They are listed together, each row saying which it is.
+  final List<EstimateFlow> alsoInclude;
+
   const RecentProjectsListSection({
     super.key,
     required this.flow,
     required this.moduleTitle,
+    this.alsoInclude = const <EstimateFlow>[],
   });
 
   @override
@@ -318,7 +328,36 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
   @override
   void initState() {
     super.initState();
-    _projectsFuture = _projectRepository.fetchRecentProjects(flow: widget.flow);
+    _projectsFuture = _fetchProjects();
+  }
+
+  /// Fetches every kind this section shows and merges them newest-first.
+  Future<List<SavedProjectSummary>> _fetchProjects() async {
+    final List<EstimateFlow> flows = <EstimateFlow>[
+      widget.flow,
+      ...widget.alsoInclude,
+    ];
+    final List<List<SavedProjectSummary>> results = await Future.wait(
+      flows.map(
+        (EstimateFlow flow) =>
+            _projectRepository.fetchRecentProjects(flow: flow),
+      ),
+    );
+
+    final List<SavedProjectSummary> merged = results
+        .expand((List<SavedProjectSummary> list) => list)
+        .toList();
+    merged.sort((SavedProjectSummary a, SavedProjectSummary b) {
+      final DateTime? left = a.updatedAt;
+      final DateTime? right = b.updatedAt;
+      // Anything without a date sinks to the bottom rather than jumping to the
+      // top of the list.
+      if (left == null && right == null) return 0;
+      if (left == null) return 1;
+      if (right == null) return -1;
+      return right.compareTo(left);
+    });
+    return merged;
   }
 
   Future<void> _openProject(SavedProjectSummary project) async {
@@ -327,6 +366,27 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
     });
 
     try {
+      // A glass job has no windows and no catalogue -- it reopens on the row
+      // sheet it was typed into. Sending it through the window flow would show
+      // an empty library and lose the rows.
+      if (project.isGlass) {
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            settings: RouteSettings(name: FlowSteps.glassSize.id),
+            builder: (_) => GlassReportScreen(
+              projectId: project.id,
+              projectName: project.projectName,
+              projectLocation: project.projectLocation,
+            ),
+          ),
+        );
+        if (mounted) {
+          setState(() => _projectsFuture = _fetchProjects());
+        }
+        return;
+      }
+
       final SavedProjectDetail detail = await _projectRepository.fetchProject(
         project.id,
       );
@@ -346,6 +406,7 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
 
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
+          settings: RouteSettings(name: FlowSteps.library.id),
           builder: (_) => WindowNavigationScreen.root(
             session: session,
             rootLabel: 'Recent Project',
@@ -354,11 +415,7 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
         ),
       );
       if (mounted) {
-        setState(() {
-          _projectsFuture = _projectRepository.fetchRecentProjects(
-            flow: widget.flow,
-          );
-        });
+        setState(() => _projectsFuture = _fetchProjects());
       }
     } catch (error) {
       if (!mounted) {
@@ -465,14 +522,24 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: <Widget>[
-                                        Text(
-                                          project.projectName,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w900,
+                                        Row(
+                                          children: <Widget>[
+                                            Flexible(
+                                              child: Text(
+                                                project.projectName,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                    ),
                                               ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            _ProjectKindBadge(project: project),
+                                          ],
                                         ),
                                         const SizedBox(height: AppTheme.space2),
                                         Text(
@@ -508,6 +575,53 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
               ),
             );
           },
+    );
+  }
+}
+
+/// Says whether a saved project is a glass job or an aluminium one.
+///
+/// Both kinds share one history, so without this a user has to open a project
+/// to find out which it is -- and a glass job opened expecting windows looks
+/// broken.
+class _ProjectKindBadge extends StatelessWidget {
+  final SavedProjectSummary project;
+
+  const _ProjectKindBadge({required this.project});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent = project.isGlass
+        ? AppTheme.amberAccent
+        : AppTheme.tealAccent;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: accent.withValues(alpha: 0.42)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(
+            project.isGlass ? Icons.grid_view_rounded : Icons.window_rounded,
+            size: 12,
+            color: accent,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            project.kindLabel,
+            style: TextStyle(
+              color: accent,
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

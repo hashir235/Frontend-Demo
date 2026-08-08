@@ -32,7 +32,18 @@ class GlassReportScreen extends StatefulWidget {
   final String? projectId;
   final GlassReportApiClient? apiClient;
 
-  const GlassReportScreen({super.key, this.projectId, this.apiClient});
+  /// Known for a project we just created; the server has no rows for it yet, so
+  /// the header would otherwise sit blank until the first row is saved.
+  final String? projectName;
+  final String? projectLocation;
+
+  const GlassReportScreen({
+    super.key,
+    this.projectId,
+    this.apiClient,
+    this.projectName,
+    this.projectLocation,
+  });
 
   @override
   State<GlassReportScreen> createState() => _GlassReportScreenState();
@@ -58,6 +69,10 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
   void initState() {
     super.initState();
     _apiClient = widget.apiClient ?? GlassReportApiClient();
+    // Seed from what the caller already knows, so a brand new project shows its
+    // name straight away rather than after the first save.
+    _projectName = widget.projectName ?? '';
+    _projectLocation = widget.projectLocation ?? '';
     _loadReport();
   }
 
@@ -86,8 +101,14 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
         _rows
           ..clear()
           ..addAll(report.rows);
-        _projectName = report.projectName;
-        _projectLocation = report.projectLocation;
+        // A project with no rows yet comes back with empty details; keeping
+        // what the caller passed in is better than blanking the header.
+        if (report.projectName.trim().isNotEmpty) {
+          _projectName = report.projectName;
+        }
+        if (report.projectLocation.trim().isNotEmpty) {
+          _projectLocation = report.projectLocation;
+        }
         _isLoading = false;
         _dirty = false;
         _note = report.rows.isEmpty

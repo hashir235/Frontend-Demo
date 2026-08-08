@@ -19,6 +19,13 @@ class SavedProjectSummary {
     required this.updatedAt,
   });
 
+  /// Glass jobs are typed in as glass sizes and have no windows, so they open
+  /// and read differently from an aluminium job.
+  bool get isGlass => context == 'glass';
+
+  /// Short label for the badge in history.
+  String get kindLabel => isGlass ? 'Glass' : 'Aluminium';
+
   factory SavedProjectSummary.fromJson(Map<String, dynamic> json) {
     return SavedProjectSummary(
       id: (json['id'] as String? ?? '').trim(),
