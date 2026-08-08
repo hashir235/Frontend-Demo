@@ -53,7 +53,10 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildHeroVisual() {
     return Container(
       width: 154,
-      height: 210,
+      // Deliberately no fixed height. It used to be 210, which fitted until the
+      // labels became Urdu -- Nastaliq sits taller than Latin at the same font
+      // size, and the last chip was being clipped. Sizing to the content also
+      // means a phone set to larger text does not bring the clipping back.
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -65,6 +68,7 @@ class _AuthScreenState extends State<AuthScreen> {
         boxShadow: AppTheme.softShadow(),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Container(
@@ -81,7 +85,8 @@ class _AuthScreenState extends State<AuthScreen> {
               filterQuality: FilterQuality.high,
             ),
           ),
-          const Spacer(),
+          // A Spacer needs a bounded height, which the card no longer has.
+          const SizedBox(height: AppTheme.space5),
           _buildVisualChip(Icons.grid_view_rounded, 'پروجیکٹ'),
           const SizedBox(height: AppTheme.space3),
           _buildVisualChip(Icons.picture_as_pdf_rounded, 'رپورٹیں'),
