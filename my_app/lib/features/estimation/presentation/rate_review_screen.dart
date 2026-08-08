@@ -18,6 +18,7 @@ import '../data/cost_table_api_client.dart';
 import '../data/rate_review_api_client.dart';
 import '../models/cost_table.dart';
 import '../models/estimate_flow_state.dart';
+import '../models/optimization_error_text.dart';
 import '../models/rate_review.dart';
 import '../state/estimate_session_store.dart';
 import 'estimation_material_table_screen.dart';
@@ -211,15 +212,17 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
     }
 
     if (_errorMessage != null) {
+      // Same reasoning as the optimization screen: the message already says
+      // what went wrong. A fixed unit tip underneath it was wrong for every
+      // cause except one.
+      final (String title, String body) = OptimizationErrorText.split(
+        _errorMessage!,
+      );
       return Center(
         child: StateMessageCard(
           icon: Icons.price_change_outlined,
-          title: 'Rate review failed',
-          message:
-              '$_errorMessage\n\nTip: this usually happens when a window size '
-              'was entered in the wrong unit - for example inch numbers while '
-              'the unit was set to Feet. Please check your window sizes and '
-              'unit, then try again.',
+          title: title,
+          message: body,
           iconColor: AppTheme.danger,
           action: FilledButton.icon(
             onPressed: _loadRates,

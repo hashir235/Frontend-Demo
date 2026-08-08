@@ -484,15 +484,18 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     }
 
     if (_errorMessage != null) {
+      // The message already names the cause and the screen to fix it on. A
+      // fixed "check your units" tip used to be pasted under every failure,
+      // which told someone with no signal, an expired session or a missing
+      // rate to go and look at their window sizes.
+      final (String title, String body) = OptimizationErrorText.split(
+        _errorMessage!,
+      );
       return Center(
         child: StateMessageCard(
           icon: Icons.auto_graph_rounded,
-          title: 'Optimization failed',
-          message:
-              '$_errorMessage\n\nTip: this usually means a window size was '
-              'entered in the wrong unit Ã¢â‚¬â€ for example inch numbers while the '
-              'unit was set to Feet, which makes the pieces too large to cut. '
-              'Please check your window sizes and unit, then try again.',
+          title: title,
+          message: body,
           iconColor: AppTheme.danger,
           action: FilledButton.icon(
             onPressed: _loadReport,

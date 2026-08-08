@@ -237,6 +237,20 @@ class OptimizationErrorText {
   static List<EstimationIssue> explainAll(List<String> raw) =>
       raw.map(explain).toList(growable: false);
 
+  /// Splits a already-explained "title\nmessage" back into its two halves.
+  ///
+  /// The API clients hand the screens one combined string (it travels through
+  /// an exception message, which is a single field). A card that shows a title
+  /// and a body needs them apart again.
+  static (String, String) split(String combined) {
+    final int newline = combined.indexOf('\n');
+    if (newline <= 0) return ('Something went wrong', combined.trim());
+    return (
+      combined.substring(0, newline).trim(),
+      combined.substring(newline + 1).trim(),
+    );
+  }
+
   /// A short, plain-language line for [raw]. Kept for callers that show a
   /// single string.
   static String friendly(String raw) => explain(raw).combined;
