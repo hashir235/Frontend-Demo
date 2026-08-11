@@ -1225,9 +1225,7 @@ class _ActionBar extends StatelessWidget {
           // has somewhere to go.
           if (manualEnabled) ...<Widget>[
             const SizedBox(height: AppTheme.space5),
-            const _DividerLabel(
-              'or pay by Bank / JazzCash / EasyPaisa / Other Wallet',
-            ),
+            const _LocalPaymentHeader(),
             const SizedBox(height: AppTheme.space5),
             if (localPaymentSection != null) ...<Widget>[
               localPaymentSection!,
@@ -1357,26 +1355,146 @@ class _AskAdminCard extends StatelessWidget {
   }
 }
 
-class _DividerLabel extends StatelessWidget {
-  final String text;
-  const _DividerLabel(this.text);
+/// Announces the local transfer route above the payment details.
+///
+/// This used to be one line of small grey text between two rules, which is
+/// how you hide something -- and it was hiding the way most users actually
+/// pay. The logos do the work here: a JazzCash or EasyPaisa user recognises
+/// their own app long before they read anything.
+class _LocalPaymentHeader extends StatelessWidget {
+  const _LocalPaymentHeader();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        const Expanded(child: Divider()),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
-          child: Text(
-            text,
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(color: AppTheme.textSecondary),
+    final TextTheme text = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space5),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceAlt,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppTheme.tealAccent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.swap_horiz_rounded,
+                  color: AppTheme.tealAccent,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space4),
+              Expanded(
+                child: Text(
+                  'Or pay by transfer',
+                  style: text.titleMedium?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-        const Expanded(child: Divider()),
-      ],
+          const SizedBox(height: AppTheme.space3),
+          Text(
+            'Send the amount from JazzCash, EasyPaisa, your bank app or any '
+            'other wallet, then fill in the details below.',
+            style: text.bodyMedium?.copyWith(color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: AppTheme.space4),
+          Wrap(
+            spacing: AppTheme.space3,
+            runSpacing: AppTheme.space3,
+            children: const <Widget>[
+              // The JazzCash mark stacks its icon above its wordmark, so it
+              // needs the height to stay legible; EasyPaisa is a plain
+              // wordmark and needs the width instead.
+              _PaymentMarkTile(
+                asset: 'assets/images/jazzcash_logo.png',
+                label: 'JazzCash',
+                width: 44,
+              ),
+              _PaymentMarkTile(
+                asset: 'assets/images/easypaisa_logo.png',
+                label: 'EasyPaisa',
+                width: 112,
+              ),
+              _PaymentMarkTile(icon: Icons.account_balance_rounded, label: 'Bank'),
+              _PaymentMarkTile(
+                icon: Icons.account_balance_wallet_rounded,
+                label: 'Other wallet',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One accepted method: a brand logo where there is one, otherwise an icon and
+/// its name. Every tile is the same height so the row reads as a set.
+class _PaymentMarkTile extends StatelessWidget {
+  final String? asset;
+  final IconData? icon;
+  final String label;
+  final double width;
+
+  const _PaymentMarkTile({
+    this.asset,
+    this.icon,
+    required this.label,
+    this.width = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.line),
+      ),
+      child: Center(
+        child: asset != null
+            ? SizedBox(
+                width: width,
+                height: 42,
+                // The logo keeps its own proportions inside a fixed box, so a
+                // square mark and a wide wordmark still sit level.
+                child: Image.asset(
+                  asset!,
+                  fit: BoxFit.contain,
+                  semanticLabel: label,
+                ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(icon, size: 19, color: AppTheme.royalBlue),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }

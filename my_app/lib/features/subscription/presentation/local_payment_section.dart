@@ -289,19 +289,31 @@ class LocalPaymentSection extends StatelessWidget {
                 items: const <DropdownMenuItem<String>>[
                   DropdownMenuItem<String>(
                     value: 'bank_transfer',
-                    child: Text('Bank transfer'),
+                    child: _MethodOption(
+                      icon: Icons.account_balance_rounded,
+                      label: 'Bank transfer',
+                    ),
                   ),
                   DropdownMenuItem<String>(
                     value: 'jazzcash',
-                    child: Text('JazzCash'),
+                    child: _MethodOption(
+                      asset: 'assets/images/jazzcash_logo.png',
+                      label: 'JazzCash',
+                    ),
                   ),
                   DropdownMenuItem<String>(
                     value: 'easypaisa',
-                    child: Text('EasyPaisa'),
+                    child: _MethodOption(
+                      asset: 'assets/images/easypaisa_logo.png',
+                      label: 'EasyPaisa',
+                    ),
                   ),
                   DropdownMenuItem<String>(
                     value: 'other_wallet',
-                    child: Text('Other wallet'),
+                    child: _MethodOption(
+                      icon: Icons.account_balance_wallet_rounded,
+                      label: 'Other wallet',
+                    ),
                   ),
                 ],
                 onChanged: (String? value) {
@@ -433,6 +445,34 @@ class _LanguagePicker extends StatelessWidget {
 /// The account details, deliberately the loudest thing on the screen: these are
 /// the numbers someone is about to type into a banking app, and a misread digit
 /// costs them real money.
+/// One entry in the method picker. JazzCash and EasyPaisa carry their own
+/// logos so the list is scannable at a glance rather than four lines of text.
+class _MethodOption extends StatelessWidget {
+  final String? asset;
+  final IconData? icon;
+  final String label;
+
+  const _MethodOption({this.asset, this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        SizedBox(
+          width: 34,
+          height: 22,
+          child: asset != null
+              ? Image.asset(asset!, fit: BoxFit.contain, semanticLabel: label)
+              : Icon(icon, size: 19, color: AppTheme.royalBlue),
+        ),
+        const SizedBox(width: 10),
+        Text(label),
+      ],
+    );
+  }
+}
+
 class _BankCard extends StatelessWidget {
   final _PaymentCopy copy;
   final bool rtl;

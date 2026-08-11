@@ -221,6 +221,109 @@ class ReviewListScreen extends StatelessWidget {
     );
   }
 
+  static const Map<int, String> _lockTypeLabels = <int, String>{
+    1: 'Latch',
+    2: 'Self',
+    3: 'Handal',
+  };
+
+  /// Everything the user picked for this window besides its size.
+  ///
+  /// The card used to show only the collar and the unit, so a fabricator
+  /// checking their list before cutting could not see which lock or rubber
+  /// they had chosen for a given window -- the two things most likely to
+  /// differ between otherwise identical rows.
+  List<Widget> _buildSelectionChips(
+    BuildContext context,
+    WindowReviewItem item,
+    Color accentColor,
+    Color codeColor,
+  ) {
+    final List<Widget> chips = <Widget>[
+      _buildMetaChip(
+        context,
+        icon: Icons.grid_view_rounded,
+        label: 'Collar ${item.collarIndex}',
+        accentColor: accentColor,
+      ),
+      _buildMetaChip(
+        context,
+        icon: Icons.straighten_rounded,
+        label: _unitLabel(item),
+        accentColor: codeColor,
+      ),
+    ];
+
+    if (item.lockType != null) {
+      chips.add(
+        _buildMetaChip(
+          context,
+          icon: Icons.lock_outline_rounded,
+          label: 'Lock: ${_lockTypeLabels[item.lockType] ?? item.lockType}',
+          accentColor: AppTheme.royalBlue,
+        ),
+      );
+    }
+
+    final String? rubber = item.rubberType?.trim();
+    if (rubber != null && rubber.isNotEmpty) {
+      chips.add(
+        _buildMetaChip(
+          context,
+          icon: Icons.filter_frames_rounded,
+          label: 'Rubber: ${rubber.toUpperCase() == 'U' ? 'U' : 'Fix'}',
+          accentColor: AppTheme.tealAccent,
+        ),
+      );
+    }
+
+    if (item.addBottom) {
+      chips.add(
+        _buildMetaChip(
+          context,
+          icon: Icons.vertical_align_bottom_rounded,
+          label: 'D46 On',
+          accentColor: AppTheme.royalBlue,
+        ),
+      );
+    }
+    if (item.addTee) {
+      chips.add(
+        _buildMetaChip(
+          context,
+          icon: Icons.horizontal_split_rounded,
+          label: 'D52 On',
+          accentColor: AppTheme.royalBlue,
+        ),
+      );
+    }
+    if (item.addNet) {
+      chips.add(
+        _buildMetaChip(
+          context,
+          icon: Icons.grid_on_rounded,
+          label: 'Net On',
+          accentColor: AppTheme.tealAccent,
+        ),
+      );
+    }
+
+    // Only worth a chip when it is not the usual 1.7cm, so the row stays short
+    // on the windows where nothing unusual was chosen.
+    if (item.backCollarCm == kBackCollarTwoCm) {
+      chips.add(
+        _buildMetaChip(
+          context,
+          icon: Icons.square_foot_rounded,
+          label: 'Back collar 2 cm',
+          accentColor: AppTheme.warning,
+        ),
+      );
+    }
+
+    return chips;
+  }
+
   Widget _buildDimensionText(
     BuildContext context,
     WindowReviewItem item,
@@ -397,20 +500,7 @@ class ReviewListScreen extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: <Widget>[
-              _buildMetaChip(
-                context,
-                icon: Icons.grid_view_rounded,
-                label: 'Collar ${item.collarIndex}',
-                accentColor: accentColor,
-              ),
-              _buildMetaChip(
-                context,
-                icon: Icons.straighten_rounded,
-                label: _unitLabel(item),
-                accentColor: codeColor,
-              ),
-            ],
+            children: _buildSelectionChips(context, item, accentColor, codeColor),
           ),
           const SizedBox(height: 12),
           _buildDimensionText(context, item, accentColor),
