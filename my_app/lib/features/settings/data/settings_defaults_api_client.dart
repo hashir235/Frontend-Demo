@@ -12,7 +12,10 @@ import 'package:my_app/core/network/auth_http_client.dart';
 enum SettingsGroup {
   cuttingMargins('cutting_margins'),
   lengthRules('length_rules'),
-  fabricator('fabricator');
+  fabricator('fabricator'),
+  // Fabrication's own copy of the optimizer rules -- restoring it leaves
+  // estimation's alone.
+  fabricationLengthRules('fabrication_length_rules');
 
   const SettingsGroup(this.wireName);
 

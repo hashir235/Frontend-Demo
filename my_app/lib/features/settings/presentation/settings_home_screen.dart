@@ -15,6 +15,7 @@ import '../data/payment_preferences_api_client.dart';
 import '../data/settings_defaults_api_client.dart';
 import '../models/billing_settings.dart';
 import '../models/estimation_settings.dart';
+import '../models/extra_pieces_allowance.dart';
 import '../models/fabrication_settings.dart';
 import '../../../shared/widgets/social_links_card.dart';
 import '../../estimation/presentation/section_recalculation_screen.dart'
@@ -60,6 +61,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _fabricationCuttingMarginController =
       TextEditingController();
 
+  // Fabrication keeps its own copy of everything the optimizer reads. The two
+  // modules cut different stock, so one shared set of lengths and rules was
+  // never right for both.
+  final TextEditingController _fabricationMaxExtraPiecesController =
+      TextEditingController();
+  final TextEditingController _fabricationRedZone1Controller =
+      TextEditingController();
+  final TextEditingController _fabricationRedZone2Controller =
+      TextEditingController();
+  final Map<String, TextEditingController> _fabricationSectionLengthControllers =
+      <String, TextEditingController>{};
+
   late NumberingMode _mode;
   late SizeInputMode _sizeInputMode;
 
@@ -96,7 +109,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoadingEstimationSettings = true;
   bool _isSavingEstimationSettings = false;
   String? _estimationSettingsError;
-  bool _enforceMaxExtraPieces = false;
 
   bool _isLoadingFabricationSettings = true;
   bool _isSavingFabricationSettings = false;
@@ -201,8 +213,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _redZone1Controller.dispose();
     _redZone2Controller.dispose();
     _fabricationCuttingMarginController.dispose();
+    _fabricationMaxExtraPiecesController.dispose();
+    _fabricationRedZone1Controller.dispose();
+    _fabricationRedZone2Controller.dispose();
     for (final TextEditingController controller
         in _sectionLengthControllers.values) {
+      controller.dispose();
+    }
+    for (final TextEditingController controller
+        in _fabricationSectionLengthControllers.values) {
       controller.dispose();
     }
     for (final TextEditingController controller
@@ -272,6 +291,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _fabricationCuttingMarginController.text = _formatNumber(
         settings.cuttingMarginCm,
       );
+      _fabricationMaxExtraPiecesController.text = ExtraPiecesAllowance.fromSettings(
+        maxExtraPieces: settings.maxExtraPieces,
+        enforce: settings.enforceMaxExtraPieces,
+      ).text;
+      _fabricationRedZone1Controller.text = _formatNumber(settings.redZoneEven);
+      _fabricationRedZone2Controller.text = _formatNumber(settings.redZoneOdd);
+      _syncSectionLengthControllers(
+        _fabricationSectionLengthControllers,
+        settings.sectionLengths,
+      );
+
       setState(() {
         _isLoadingFabricationSettings = false;
       });
@@ -299,18 +329,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      _maxExtraPiecesController.text = settings.maxExtraPieces.toString();
+      _maxExtraPiecesController.text = ExtraPiecesAllowance.fromSettings(
+        maxExtraPieces: settings.maxExtraPieces,
+        enforce: settings.enforceMaxExtraPieces,
+      ).text;
       _redZone1Controller.text = _formatNumber(settings.redZoneEven);
       _redZone2Controller.text = _formatNumber(settings.redZoneOdd);
-      _enforceMaxExtraPieces = settings.enforceMaxExtraPieces;
 
-      final Set<String> activeKeys = settings.sectionLengths.keys.toSet();
-      final List<String> staleKeys = _sectionLengthControllers.keys
-          .where((String key) => !activeKeys.contains(key))
-          .toList(growable: false);
-      for (final String key in staleKeys) {
-        _sectionLengthControllers.remove(key)?.dispose();
-      }
+      _syncSectionLengthControllers(
+        _sectionLengthControllers,
+        settings.sectionLengths,
+      );
       final Set<String> activeMarginKeys = settings.cuttingMargins.keys.toSet();
       final List<String> staleMarginKeys = _cuttingMarginControllers.keys
           .where((String key) => !activeMarginKeys.contains(key))
@@ -319,12 +348,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _cuttingMarginControllers.remove(key)?.dispose();
       }
 
-      for (final MapEntry<String, List<int>> entry
-          in settings.sectionLengths.entries) {
-        final TextEditingController controller = _sectionLengthControllers
-            .putIfAbsent(entry.key, TextEditingController.new);
-        controller.text = _joinLengths(entry.value);
-      }
       for (final MapEntry<String, double> entry
           in settings.cuttingMargins.entries) {
         final TextEditingController controller = _cuttingMarginControllers
@@ -450,16 +473,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return null;
   }
 
-  String? _requiredIntValidator(String? value) {
+  String? _extraPiecesValidator(String? value) {
     final String text = (value ?? '').trim();
     if (text.isEmpty) {
       return 'Required';
     }
-    final int? number = int.tryParse(text);
-    if (number == null || number < 0) {
-      return 'Enter a valid whole number';
+    if (ExtraPiecesAllowance.tryParse(text) == null) {
+      return 'Enter * or a whole number';
     }
     return null;
+  }
+
+  /// Points one controller at each section the server sent, and drops the
+  /// controllers for sections it no longer has.
+  void _syncSectionLengthControllers(
+    Map<String, TextEditingController> controllers,
+    Map<String, List<int>> sectionLengths,
+  ) {
+    final Set<String> activeKeys = sectionLengths.keys.toSet();
+    final List<String> staleKeys = controllers.keys
+        .where((String key) => !activeKeys.contains(key))
+        .toList(growable: false);
+    for (final String key in staleKeys) {
+      controllers.remove(key)?.dispose();
+    }
+    for (final MapEntry<String, List<int>> entry in sectionLengths.entries) {
+      final TextEditingController controller = controllers.putIfAbsent(
+        entry.key,
+        TextEditingController.new,
+      );
+      controller.text = _joinLengths(entry.value);
+    }
   }
 
   /// Starting the tour pops the user back to Home, because that is where it
@@ -687,13 +731,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Sections whose name ends in F come in 15/17/19 ft; everything else comes
   /// in 14/16/18. Without this, a user who mistyped a length had no way back
   /// except remembering what had been there before.
-  void _restoreStandardSectionLengths() {
+  void _restoreStandardSectionLengths(
+    Map<String, TextEditingController> controllers,
+  ) {
     setState(() {
-      for (final String key in _sectionLengthControllers.keys) {
+      for (final String key in controllers.keys) {
         final bool isF = key.toUpperCase().endsWith('F');
-        _sectionLengthControllers[key]!.text = isF
-            ? '15, 17, 19'
-            : '14, 16, 18';
+        controllers[key]!.text = isF ? '15, 17, 19' : '14, 16, 18';
       }
     });
     ScaffoldMessenger.of(context).showSnackBar(
@@ -806,21 +850,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final Map<String, List<int>> sectionLengths = <String, List<int>>{};
-    final Map<String, double> cuttingMargins = <String, double>{};
-    for (final String key in _sortedSectionKeys()) {
-      final List<int>? parsed = _parseLengthList(
-        _sectionLengthControllers[key]?.text,
-      );
-      if (parsed == null) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Invalid lengths for $key.')));
-        return;
-      }
-      sectionLengths[key] = parsed;
+    final Map<String, List<int>>? sectionLengths = _collectSectionLengths(
+      _sectionLengthControllers,
+    );
+    if (sectionLengths == null) {
+      return;
     }
+    final Map<String, double> cuttingMargins = <String, double>{};
     for (final String key in _sortedCuttingMarginKeys()) {
       final String text = (_cuttingMarginControllers[key]?.text ?? '').trim();
       final double? parsed = double.tryParse(text);
@@ -839,14 +875,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _estimationSettingsError = null;
     });
 
+    final ExtraPiecesAllowance allowance =
+        ExtraPiecesAllowance.tryParse(_maxExtraPiecesController.text) ??
+        const ExtraPiecesAllowance.unlimited();
+
     try {
       final EstimationSettingsModel saved = await _estimationSettingsRepository
           .saveEstimationSettings(
             EstimationSettingsModel(
               sectionLengths: sectionLengths,
               cuttingMargins: cuttingMargins,
-              maxExtraPieces: int.parse(_maxExtraPiecesController.text.trim()),
-              enforceMaxExtraPieces: _enforceMaxExtraPieces,
+              maxExtraPieces: allowance.storedLimit,
+              enforceMaxExtraPieces: allowance.enforce,
               redZoneEven: double.parse(_redZone1Controller.text.trim()),
               redZoneOdd: double.parse(_redZone2Controller.text.trim()),
             ),
@@ -856,17 +896,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      _maxExtraPiecesController.text = saved.maxExtraPieces.toString();
+      _maxExtraPiecesController.text = ExtraPiecesAllowance.fromSettings(
+        maxExtraPieces: saved.maxExtraPieces,
+        enforce: saved.enforceMaxExtraPieces,
+      ).text;
       _redZone1Controller.text = _formatNumber(saved.redZoneEven);
       _redZone2Controller.text = _formatNumber(saved.redZoneOdd);
-      _enforceMaxExtraPieces = saved.enforceMaxExtraPieces;
+      _syncSectionLengthControllers(
+        _sectionLengthControllers,
+        saved.sectionLengths,
+      );
 
-      for (final MapEntry<String, List<int>> entry
-          in saved.sectionLengths.entries) {
-        final TextEditingController controller = _sectionLengthControllers
-            .putIfAbsent(entry.key, TextEditingController.new);
-        controller.text = _joinLengths(entry.value);
-      }
       for (final MapEntry<String, double> entry
           in saved.cuttingMargins.entries) {
         final TextEditingController controller = _cuttingMarginControllers
@@ -903,6 +943,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
+    final Map<String, List<int>>? sectionLengths = _collectSectionLengths(
+      _fabricationSectionLengthControllers,
+    );
+    if (sectionLengths == null) {
+      return;
+    }
+
+    final ExtraPiecesAllowance allowance =
+        ExtraPiecesAllowance.tryParse(
+          _fabricationMaxExtraPiecesController.text,
+        ) ??
+        const ExtraPiecesAllowance.unlimited();
+
     setState(() {
       _isSavingFabricationSettings = true;
       _fabricationSettingsError = null;
@@ -915,6 +968,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               cuttingMarginCm: double.parse(
                 _fabricationCuttingMarginController.text.trim(),
               ),
+              sectionLengths: sectionLengths,
+              maxExtraPieces: allowance.storedLimit,
+              enforceMaxExtraPieces: allowance.enforce,
+              redZoneEven: double.parse(
+                _fabricationRedZone1Controller.text.trim(),
+              ),
+              redZoneOdd: double.parse(
+                _fabricationRedZone2Controller.text.trim(),
+              ),
             ),
           );
 
@@ -924,6 +986,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       _fabricationCuttingMarginController.text = _formatNumber(
         saved.cuttingMarginCm,
+      );
+      _fabricationMaxExtraPiecesController.text =
+          ExtraPiecesAllowance.fromSettings(
+            maxExtraPieces: saved.maxExtraPieces,
+            enforce: saved.enforceMaxExtraPieces,
+          ).text;
+      _fabricationRedZone1Controller.text = _formatNumber(saved.redZoneEven);
+      _fabricationRedZone2Controller.text = _formatNumber(saved.redZoneOdd);
+      _syncSectionLengthControllers(
+        _fabricationSectionLengthControllers,
+        saved.sectionLengths,
       );
 
       setState(() {
@@ -949,10 +1022,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  List<String> _sortedSectionKeys() {
-    final List<String> keys = _sectionLengthControllers.keys.toList();
+  List<String> _sortedSectionKeys([
+    Map<String, TextEditingController>? controllers,
+  ]) {
+    final List<String> keys = (controllers ?? _sectionLengthControllers).keys
+        .toList();
     keys.sort();
     return keys;
+  }
+
+  /// The typed-in lengths for every section, or null after telling the user
+  /// which section it could not read.
+  Map<String, List<int>>? _collectSectionLengths(
+    Map<String, TextEditingController> controllers,
+  ) {
+    final Map<String, List<int>> sectionLengths = <String, List<int>>{};
+    for (final String key in _sortedSectionKeys(controllers)) {
+      final List<int>? parsed = _parseLengthList(controllers[key]?.text);
+      if (parsed == null) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Invalid lengths for $key.')));
+        return null;
+      }
+      sectionLengths[key] = parsed;
+    }
+    return sectionLengths;
   }
 
   List<String> _sortedCuttingMarginKeys() {
@@ -964,10 +1060,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _joinLengths(List<int> lengths) => lengths.join(', ');
 
   String _formatNumber(double value) {
-    String text = value.toStringAsFixed(2);
-    text = text.replaceFirst(RegExp(r'\.00$'), '');
-    text = text.replaceFirst(RegExp(r'(\.\d)0$'), r'$1');
-    return text;
+    // replaceFirst does not expand $1 -- a 1.2cm margin came back as the
+    // literal "1$1". Trimming the trailing zeros off a fixed-2 string needs
+    // no capture group at all, and is what the rest of the app already does.
+    return value
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
   }
 
   InputDecoration _inputDecoration(String label, {String? hint}) {
@@ -1401,35 +1500,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _estimationSettingsError!,
                       _loadEstimationSettings,
                     ),
-                  _buildSettingsCluster(
+                  _buildSectionLengthsCluster(
                     context,
-                    title: 'Assigned Lengths for Section',
-                    subtitle:
-                        'Lengths of the bars your dealer stocks, in feet. '
-                        'Use commas, for example 14, 16, 18.',
-                    children: <Widget>[
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: _restoreStandardSectionLengths,
-                          icon: const Icon(Icons.restart_alt_rounded, size: 18),
-                          label: const Text('Restore standard lengths'),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      ..._sortedSectionKeys().map((String key) {
-                        final TextEditingController controller =
-                            _sectionLengthControllers[key]!;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: TextFormField(
-                            controller: controller,
-                            validator: _sectionLengthsValidator,
-                            decoration: _inputDecoration(key),
-                          ),
-                        );
-                      }),
-                    ],
+                    controllers: _sectionLengthControllers,
                   ),
                   _buildSettingsCluster(
                     context,
@@ -1461,74 +1534,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }),
                     ],
                   ),
-                  _buildSettingsCluster(
+                  _buildRedZoneCluster(
                     context,
-                    title: 'Red Zone Thresholds',
-                    subtitle:
-                        'These thresholds control when the optimizer may keep a custom extra piece before rounding up to the smallest stock length.',
-                    children: <Widget>[
-                      _buildRestoreButton(
-                        label: 'red zone and extra pieces',
-                        onRestore: () => _restoreFromServer(<SettingsGroup>[
-                          SettingsGroup.lengthRules,
-                        ], _loadEstimationSettings),
-                      ),
-                      const SizedBox(height: 4),
-                      TextFormField(
-                        controller: _redZone1Controller,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        validator: _requiredDecimalValidator,
-                        decoration: _inputDecoration(
-                          'RedZoneEven',
-                          hint: 'Even groups: 14, 16, 18',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _redZone2Controller,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        validator: _requiredDecimalValidator,
-                        decoration: _inputDecoration(
-                          'RedZoneOdd',
-                          hint: 'Odd groups: 15, 17, 19',
-                        ),
-                      ),
-                    ],
+                    evenController: _redZone1Controller,
+                    oddController: _redZone2Controller,
+                    onRestore: () => _restoreFromServer(<SettingsGroup>[
+                      SettingsGroup.lengthRules,
+                    ], _loadEstimationSettings),
                   ),
-                  _buildSettingsCluster(
+                  _buildExtraPiecesCluster(
                     context,
-                    title: 'Extra Pieces Allowance',
-                    subtitle:
-                        'Control how many extra leftover pieces may remain when strict enforcement is enabled.',
-                    children: <Widget>[
-                      TextFormField(
-                        controller: _maxExtraPiecesController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: <TextInputFormatter>[
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        validator: _requiredIntValidator,
-                        decoration: _inputDecoration('Max Extra Pieces'),
-                      ),
-                      const SizedBox(height: 8),
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Enforce Extra Pieces Limit'),
-                        subtitle: const Text(
-                          'Turn on to strictly block extra leftover pieces beyond the limit.',
-                        ),
-                        value: _enforceMaxExtraPieces,
-                        onChanged: (bool value) {
-                          setState(() {
-                            _enforceMaxExtraPieces = value;
-                          });
-                        },
-                      ),
-                    ],
+                    controller: _maxExtraPiecesController,
                   ),
                   const SizedBox(height: 4),
                   SizedBox(
@@ -1550,13 +1566,143 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// The leftover-pieces allowance, shared by both modules.
+  ///
+  /// `*` is the default and the setting most people should never have to
+  /// touch: the optimizer already prefers full lengths and only reaches for a
+  /// leftover when nothing else fits, so capping the count mostly just turns
+  /// workable jobs into failures. A number is there for anyone who wants the
+  /// old strict behaviour back.
+  Widget _buildExtraPiecesCluster(
+    BuildContext context, {
+    required TextEditingController controller,
+  }) {
+    return _buildSettingsCluster(
+      context,
+      title: 'Extra Pieces Allowance',
+      subtitle:
+          'How many leftover (offcut) bars a cutting plan may end up with. '
+          'Keep it at * and Quick AL decides for itself, making as few '
+          'leftovers as the job allows — full lengths always come first, and '
+          'a leftover is only ever used when nothing else fits. Put a number '
+          'here instead to cap them, for example 1 or 2.',
+      children: <Widget>[
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () {
+              controller.text = ExtraPiecesAllowance.unlimitedText;
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Back to *. Save to apply it.'),
+                ),
+              );
+            },
+            icon: const Icon(Icons.restart_alt_rounded, size: 18),
+            label: const Text('Reset to *'),
+          ),
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.text,
+          inputFormatters: <TextInputFormatter>[
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9*]')),
+            LengthLimitingTextInputFormatter(3),
+          ],
+          validator: _extraPiecesValidator,
+          decoration: _inputDecoration(
+            'Max Extra Pieces',
+            hint: '* (let Quick AL decide)',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRedZoneCluster(
+    BuildContext context, {
+    required TextEditingController evenController,
+    required TextEditingController oddController,
+    required VoidCallback onRestore,
+  }) {
+    return _buildSettingsCluster(
+      context,
+      title: 'Red Zone Thresholds',
+      subtitle:
+          'These thresholds control when the optimizer may keep a custom extra piece before rounding up to the smallest stock length.',
+      children: <Widget>[
+        _buildRestoreButton(
+          label: 'red zone and extra pieces',
+          onRestore: () async => onRestore(),
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          controller: evenController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          validator: _requiredDecimalValidator,
+          decoration: _inputDecoration(
+            'RedZoneEven',
+            hint: 'Even groups: 14, 16, 18',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: oddController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          validator: _requiredDecimalValidator,
+          decoration: _inputDecoration(
+            'RedZoneOdd',
+            hint: 'Odd groups: 15, 17, 19',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionLengthsCluster(
+    BuildContext context, {
+    required Map<String, TextEditingController> controllers,
+  }) {
+    return _buildSettingsCluster(
+      context,
+      title: 'Assigned Lengths for Section',
+      subtitle:
+          'Lengths of the bars your dealer stocks, in feet. '
+          'Use commas, for example 14, 16, 18.',
+      children: <Widget>[
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => _restoreStandardSectionLengths(controllers),
+            icon: const Icon(Icons.restart_alt_rounded, size: 18),
+            label: const Text('Restore standard lengths'),
+          ),
+        ),
+        const SizedBox(height: 4),
+        ..._sortedSectionKeys(controllers).map((String key) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: TextFormField(
+              controller: controllers[key]!,
+              validator: _sectionLengthsValidator,
+              decoration: _inputDecoration(key),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
   Widget _buildFabricationSettingsCard(BuildContext context) {
     return _buildSettingsCard(
       context,
       icon: Icons.construction_rounded,
       title: 'Fabrication Settings',
       subtitle:
-          'Manage the fabrication cutting margin used in fabrication optimization and reports.',
+          'Fabrication has its own lengths, red zones and allowance. Nothing '
+          'here touches Estimation, and nothing there touches fabrication.',
       child: _isLoadingFabricationSettings
           ? _buildLoadingCard()
           : Form(
@@ -1597,6 +1743,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  _buildSectionLengthsCluster(
+                    context,
+                    controllers: _fabricationSectionLengthControllers,
+                  ),
+                  _buildRedZoneCluster(
+                    context,
+                    evenController: _fabricationRedZone1Controller,
+                    oddController: _fabricationRedZone2Controller,
+                    onRestore: () => _restoreFromServer(<SettingsGroup>[
+                      SettingsGroup.fabricationLengthRules,
+                    ], _loadFabricationSettings),
+                  ),
+                  _buildExtraPiecesCluster(
+                    context,
+                    controller: _fabricationMaxExtraPiecesController,
                   ),
                   const SizedBox(height: 4),
                   SizedBox(
