@@ -616,6 +616,10 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             const SizedBox(height: AppTheme.space5),
             _buildSummaryCard(context, section.summary!),
           ],
+          if (_offcutTally(section).isNotEmpty) ...<Widget>[
+            const SizedBox(height: AppTheme.space5),
+            _buildOffcutOrderCard(context, section),
+          ],
           const SizedBox(height: AppTheme.space5),
           ...section.groups.asMap().entries.map(
             (MapEntry<int, CuttingReportGroup> entry) => Padding(
@@ -630,6 +634,84 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           ),
         ],
       ],
+    );
+  }
+
+  /// The non-standard bars this plan needs, counted by size, longest first.
+  ///
+  /// The optimizer only reaches for these when no plan built purely from the
+  /// dealer's standard lengths exists, so when they do appear the user has to
+  /// go and source them -- and whether that is even possible depends on how
+  /// many of one size there are. A single odd piece is what a dealer refuses;
+  /// a dozen identical ones is something a mill will run.
+  Map<double, int> _offcutTally(CuttingReportSection section) {
+    final Map<double, int> tally = <double, int>{};
+    for (final CuttingReportGroup group in section.groups) {
+      if (!group.offcut) continue;
+      tally.update(group.stockLenFt, (int n) => n + 1, ifAbsent: () => 1);
+    }
+    return tally;
+  }
+
+  Widget _buildOffcutOrderCard(
+    BuildContext context,
+    CuttingReportSection section,
+  ) {
+    final Map<double, int> tally = _offcutTally(section);
+    final List<double> sizes = tally.keys.toList()
+      ..sort((double a, double b) => b.compareTo(a));
+    final int total = tally.values.fold(0, (int sum, int n) => sum + n);
+
+    return SectionSurfaceCard(
+      title: 'Extra pieces to arrange',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            total == 1
+                ? 'This plan needs 1 piece that is not a standard length. No '
+                      'stock length could take these cuts within the wastage '
+                      'limit.'
+                : 'This plan needs $total pieces that are not standard '
+                      'lengths. No stock length could take these cuts within '
+                      'the wastage limit.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: AppTheme.space4),
+          Wrap(
+            spacing: AppTheme.space3,
+            runSpacing: AppTheme.space3,
+            children: sizes.map((double size) {
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.space4,
+                  vertical: AppTheme.space3,
+                ),
+                decoration: AppTheme.infoChipDecoration(emphasized: true),
+                child: Text(
+                  '${tally[size]} x ${_lengthDisplay(size)}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.warning,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              );
+            }).toList(growable: false),
+          ),
+          const SizedBox(height: AppTheme.space4),
+          Text(
+            'Many of one size can be ordered specially from the mill. For just '
+            'one or two, a dealer will usually want you to use standard bars '
+            'instead — add or change the allowed lengths for this section and '
+            'run it again.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 
