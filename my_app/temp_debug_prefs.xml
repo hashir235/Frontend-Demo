@@ -1,4 +1,0 @@
-<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
-<map>
-    <string name="flutter.quick_al.auth_session">{"user":{"id":"emulator-check","fullName":"Codex QA","email":"qa@example.com"},"token":"debug-token","expiresAt":"2027-03-10T00:00:00.000Z"}</string>
-</map>
