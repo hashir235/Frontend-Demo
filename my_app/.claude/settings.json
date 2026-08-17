@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Grep",
+      "Glob",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git fetch *)",
+      "Bash(git rev-list *)",
+      "Bash(/c/flutter/bin/flutter analyze *)",
+      "Bash(/c/flutter/bin/flutter analyze)",
+      "PowerShell(Get-ChildItem*)",
+      "PowerShell(Get-Content*)",
+      "PowerShell(Get-Command*)",
+      "PowerShell(Get-Item*)",
+      "PowerShell(Get-ItemProperty*)",
+      "PowerShell(Test-Path*)",
+      "PowerShell(Select-String*)",
+      "PowerShell(Measure-Object*)",
+      "mcp__ccd_session_mgmt__list_sessions",
+      "mcp__ccd_session_mgmt__get_session",
+      "mcp__ccd_session_mgmt__list_events",
+      "mcp__ccd_session_mgmt__search_session_transcripts"
+    ]
+  }
+}

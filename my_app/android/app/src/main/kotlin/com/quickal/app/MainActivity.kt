@@ -30,6 +30,10 @@ import javax.crypto.spec.GCMParameterSpec
 class MainActivity : FlutterActivity() {
     private val shareExecutor = Executors.newSingleThreadExecutor()
 
+    // Kept so the APK download can push progress percentages back to Flutter
+    // while the outer downloadAndInstallApk call is still pending.
+    private var appUpdateChannel: MethodChannel? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -158,10 +162,11 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        MethodChannel(
+        appUpdateChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             APP_UPDATE_CHANNEL_NAME,
-        ).setMethodCallHandler { call, result ->
+        )
+        appUpdateChannel!!.setMethodCallHandler { call, result ->
             when (call.method) {
                 "downloadAndInstallApk" -> {
                     val url = call.argument<String>("url")?.trim().orEmpty()
@@ -232,18 +237,40 @@ class MainActivity : FlutterActivity() {
 
         val connection = URL(url).openConnection() as HttpURLConnection
         try {
-            connection.connectTimeout = 15000
+            connection.connectTimeout = 20000
             connection.readTimeout = 120000
             connection.instanceFollowRedirects = true
             val status = connection.responseCode
             if (status !in 200..299) {
                 throw IOException("Update download failed with status $status.")
             }
+            // contentLength (Int) is enough for a ~57 MB APK and works on every
+            // supported API level; -1 when the server sends no length header.
+            val total = connection.contentLength
+            emitDownloadProgress(0)
             connection.inputStream.use { input ->
                 apkFile.outputStream().use { output ->
-                    input.copyTo(output)
+                    val buffer = ByteArray(64 * 1024)
+                    var downloaded = 0L
+                    var lastPercent = -1
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        downloaded += read
+                        if (total > 0) {
+                            val percent = ((downloaded * 100L) / total).toInt()
+                                .coerceIn(0, 99)
+                            if (percent != lastPercent) {
+                                lastPercent = percent
+                                emitDownloadProgress(percent)
+                            }
+                        }
+                    }
+                    output.flush()
                 }
             }
+            emitDownloadProgress(100)
         } finally {
             connection.disconnect()
         }
@@ -253,6 +280,19 @@ class MainActivity : FlutterActivity() {
             "$packageName.fileprovider",
             apkFile,
         )
+    }
+
+    // Pushes a 0..100 download percentage to Flutter on the UI thread. Best
+    // effort — a missing channel or a dropped call must never break the update.
+    private fun emitDownloadProgress(percent: Int) {
+        val channel = appUpdateChannel ?: return
+        runOnUiThread {
+            try {
+                channel.invokeMethod("downloadProgress", percent)
+            } catch (_: Exception) {
+                // Ignore — progress is cosmetic; the install still proceeds.
+            }
+        }
     }
 
     private fun launchApkInstaller(apkUri: Uri) {

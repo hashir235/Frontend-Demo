@@ -411,7 +411,7 @@ class _LanguagePicker extends StatelessWidget {
       textDirection: TextDirection.ltr,
       child: Row(
         children: <Widget>[
-          const Icon(
+          Icon(
             Icons.translate_rounded,
             size: 19,
             color: AppTheme.textSecondary,

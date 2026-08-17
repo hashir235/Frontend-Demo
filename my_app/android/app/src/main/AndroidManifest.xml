@@ -38,5 +38,11 @@
             <action android:name="android.intent.action.SEND"/>
             <data android:mimeType="application/pdf"/>
         </intent>
+        <!-- Lets url_launcher open the YouTube playlist / Facebook page in the
+             browser or their apps on Android 11+ (package visibility). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
     </queries>
 </manifest>

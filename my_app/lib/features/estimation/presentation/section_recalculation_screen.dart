@@ -254,7 +254,7 @@ class _SectionRecalculationScreenState
             ),
           ),
           body: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: <Color>[AppTheme.mist, AppTheme.ice],
                 begin: Alignment.topLeft,
@@ -630,7 +630,7 @@ class _SectionRecalculationScreenState
               columns: const <DataColumn>[
                 DataColumn(label: Text('WinSize')),
                 DataColumn(label: Text('Window')),
-                DataColumn(label: Text('No.')),
+                DataColumn(label: Text('Window No')),
                 DataColumn(label: Text('Dimention')),
                 DataColumn(label: Text('Cuts')),
               ],

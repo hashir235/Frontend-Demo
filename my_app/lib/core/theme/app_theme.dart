@@ -1,8 +1,101 @@
 import 'package:flutter/material.dart';
 
+/// The colours that change between light and dark.
+///
+/// Everything in the app already asks AppTheme for its colours by name, so the
+/// whole interface follows whichever palette is active -- cards, panels, chips
+/// and page backgrounds included, because their decorations are built from
+/// these same names.
+class _Palette {
+  final Color ice;
+  final Color mist;
+  final Color slate;
+  final Color line;
+  final Color surface;
+  final Color surfaceAlt;
+  final Color surfaceMuted;
+  final Color textPrimary;
+  final Color shadow;
+  final LinearGradient pageGradient;
+  final LinearGradient panelGradient;
+
+  const _Palette({
+    required this.ice,
+    required this.mist,
+    required this.slate,
+    required this.line,
+    required this.surface,
+    required this.surfaceAlt,
+    required this.surfaceMuted,
+    required this.textPrimary,
+    required this.shadow,
+    required this.pageGradient,
+    required this.panelGradient,
+  });
+}
+
+const _Palette _lightPalette = _Palette(
+  ice: Color(0xFFDCE9F1),
+  mist: Color(0xFFF2F6F9),
+  slate: Color(0xFF627787),
+  line: Color(0xFFD7E2EA),
+  surface: Colors.white,
+  surfaceAlt: Color(0xFFF7FAFC),
+  surfaceMuted: Color(0xFFF0F5F8),
+  textPrimary: Color(0xFF0A2540),
+  shadow: Color(0xFF0A2540),
+  pageGradient: LinearGradient(
+    colors: <Color>[Color(0xFFF5F9FC), Color(0xFFE6EEF5)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  ),
+  panelGradient: LinearGradient(
+    colors: <Color>[Color(0xFFFEFFFF), Color(0xFFF4F8FB)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  ),
+);
+
+/// Dark is not the light palette inverted. A workshop reads this app in bright
+/// daylight and at night, so the dark surfaces stay slightly blue rather than
+/// pure black -- pure black next to the brand blue looks like a dead screen --
+/// and text stops short of pure white, which glares.
+const _Palette _darkPalette = _Palette(
+  ice: Color(0xFF22303F),
+  mist: Color(0xFF10151B),
+  slate: Color(0xFF9BAAB8),
+  line: Color(0xFF2C3742),
+  surface: Color(0xFF161D25),
+  surfaceAlt: Color(0xFF1B232C),
+  surfaceMuted: Color(0xFF202832),
+  textPrimary: Color(0xFFE8EEF4),
+  shadow: Colors.black,
+  pageGradient: LinearGradient(
+    colors: <Color>[Color(0xFF0E141A), Color(0xFF161E27)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  ),
+  panelGradient: LinearGradient(
+    colors: <Color>[Color(0xFF1A222B), Color(0xFF151C24)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  ),
+);
+
 class AppTheme {
   const AppTheme._();
 
+  static _Palette _palette = _lightPalette;
+
+  /// Flipped by the theme controller before the app rebuilds.
+  static set isDark(bool value) {
+    _palette = value ? _darkPalette : _lightPalette;
+  }
+
+  static bool get isDark => identical(_palette, _darkPalette);
+
+  // Brand colours. These carry the identity and stay put in both modes -- they
+  // are used on top of their own accent fills, where they read either way.
   static const Color royalBlue = Color(0xFF123B63);
   static const Color inkBlue = Color(0xFF0A2540);
   static const Color navy = royalBlue;
@@ -11,10 +104,6 @@ class AppTheme {
   static const Color tealAccent = Color(0xFF1D8C8C);
   static const Color amberAccent = Color(0xFFEE9A3A);
   static const Color sky = Color(0xFF78AFC3);
-  static const Color ice = Color(0xFFDCE9F1);
-  static const Color mist = Color(0xFFF2F6F9);
-  static const Color slate = Color(0xFF627787);
-  static const Color line = Color(0xFFD7E2EA);
 
   /// Collar wali (double) external line — light blue.
   static const Color collarLine = Color(0xFF6FB1D6);
@@ -22,14 +111,21 @@ class AppTheme {
   /// Bagair collar wali (single) external line — light red.
   static const Color noCollarLine = Color(0xFFE08A8A);
 
-  static const Color surface = Colors.white;
-  static const Color surfaceAlt = Color(0xFFF7FAFC);
-  static const Color surfaceMuted = Color(0xFFF0F5F8);
-  static const Color textPrimary = inkBlue;
-  static const Color textSecondary = slate;
   static const Color success = Color(0xFF127A5A);
   static const Color warning = Color(0xFFE08C2D);
   static const Color danger = Color(0xFFB43B45);
+
+  // Surfaces and text follow the active palette.
+  static Color get ice => _palette.ice;
+  static Color get mist => _palette.mist;
+  static Color get slate => _palette.slate;
+  static Color get line => _palette.line;
+  static Color get surface => _palette.surface;
+  static Color get surfaceAlt => _palette.surfaceAlt;
+  static Color get surfaceMuted => _palette.surfaceMuted;
+  static Color get textPrimary => _palette.textPrimary;
+  static Color get textSecondary => _palette.slate;
+  static Color get shadowColor => _palette.shadow;
 
   static const double space2 = 4;
   static const double space3 = 8;
@@ -44,11 +140,7 @@ class AppTheme {
   static const double radiusLg = 28;
   static const double radiusXl = 36;
 
-  static const LinearGradient pageGradient = LinearGradient(
-    colors: <Color>[Color(0xFFF5F9FC), Color(0xFFE6EEF5)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+  static LinearGradient get pageGradient => _palette.pageGradient;
 
   static const LinearGradient brandGradient = LinearGradient(
     colors: <Color>[royalBlue, Color(0xFF1E558A)],
@@ -56,13 +148,27 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
-  static const LinearGradient panelGradient = LinearGradient(
-    colors: <Color>[Color(0xFFFEFFFF), Color(0xFFF4F8FB)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+  static LinearGradient get panelGradient => _palette.panelGradient;
+
+  /// Built for whichever palette is active.
+  ///
+  /// Deliberately not a theme/darkTheme pair: the palette above is one global
+  /// that ~150 call sites read directly, so two ThemeData objects built at the
+  /// same moment would both come out in the same colours. One theme, rebuilt
+  /// when the mode changes, is the only version of this that stays honest.
+  static ThemeData current() => _build();
 
   static ThemeData light() {
+    isDark = false;
+    return _build();
+  }
+
+  static ThemeData dark() {
+    isDark = true;
+    return _build();
+  }
+
+  static ThemeData _build() {
     final ColorScheme colorScheme =
         ColorScheme.fromSeed(
           seedColor: royalBlue,
@@ -70,7 +176,7 @@ class AppTheme {
           secondary: tealAccent,
           tertiary: amberAccent,
           surface: surface,
-          brightness: Brightness.light,
+          brightness: isDark ? Brightness.dark : Brightness.light,
         ).copyWith(
           primary: royalBlue,
           secondary: tealAccent,
@@ -81,7 +187,9 @@ class AppTheme {
           onError: Colors.white,
         );
 
-    final TextTheme baseText = Typography.material2021().black.apply(
+    final Typography typography = Typography.material2021();
+    final TextTheme baseText = (isDark ? typography.white : typography.black)
+        .apply(
       fontFamily: 'Lato',
       bodyColor: textPrimary,
       displayColor: textPrimary,
@@ -187,7 +295,7 @@ class AppTheme {
       ),
       cardColor: surface,
       dividerColor: line,
-      iconTheme: const IconThemeData(color: textPrimary),
+      iconTheme: IconThemeData(color: textPrimary),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: royalBlue,
       ),
@@ -206,7 +314,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusLg),
         ),
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
+      bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
@@ -218,7 +326,7 @@ class AppTheme {
         selectedColor: royalBlue,
         secondarySelectedColor: royalBlue,
         disabledColor: line,
-        side: const BorderSide(color: line),
+        side: BorderSide(color: line),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         labelStyle: textTheme.bodyMedium?.copyWith(
@@ -284,7 +392,7 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
           foregroundColor: textPrimary,
-          side: const BorderSide(color: line),
+          side: BorderSide(color: line),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -360,7 +468,7 @@ class AppTheme {
   }
 
   static BoxDecoration pageDecoration() {
-    return const BoxDecoration(gradient: pageGradient);
+    return BoxDecoration(gradient: pageGradient);
   }
 
   static List<BoxShadow> softShadow() {

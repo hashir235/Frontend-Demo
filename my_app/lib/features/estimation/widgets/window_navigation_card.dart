@@ -72,7 +72,10 @@ class WindowNavigationCard extends StatelessWidget {
                               emphasized: highlight,
                             ),
                             child: Text(
-                              node.codeName ?? 'Gateway',
+                              // A family card has no code of its own -- it
+                              // opens onto the variants inside it. "Gateway"
+                              // named that idea in a way nobody recognised.
+                              node.codeName ?? 'More Types',
                               key: highlight
                                   ? const Key('focused_code_name')
                                   : null,

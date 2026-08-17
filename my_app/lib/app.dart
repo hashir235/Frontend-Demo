@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'core/network/auth_http_client.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_controller.dart';
 import 'features/app_update/app_update_service.dart';
 import 'features/app_update/presentation/force_update_screen.dart';
 import 'features/auth/presentation/auth_screen.dart';
@@ -14,11 +15,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Quick AL',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      home: const _UpdateGate(),
+    // Rebuilt whenever the theme choice changes, so switching to dark in
+    // Settings repaints the app underneath the sheet straight away.
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (BuildContext context, Widget? child) {
+        return MaterialApp(
+          title: 'Quick AL',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.current(),
+          home: const _UpdateGate(),
+        );
+      },
     );
   }
 }

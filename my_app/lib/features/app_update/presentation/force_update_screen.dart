@@ -24,7 +24,7 @@ class ForceUpdateScreen extends StatelessWidget {
       canPop: false,
       child: Scaffold(
         body: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.pageGradient),
+          decoration: BoxDecoration(gradient: AppTheme.pageGradient),
           child: SafeArea(
             child: Center(
               child: SingleChildScrollView(

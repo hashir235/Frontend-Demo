@@ -195,7 +195,7 @@ class _SocialTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppTheme.space3),
-              const Icon(
+              Icon(
                 Icons.open_in_new_rounded,
                 size: 18,
                 color: AppTheme.slate,

@@ -2065,7 +2065,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           ),
         ),
         body: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [AppTheme.mist, AppTheme.ice],
               begin: Alignment.topLeft,

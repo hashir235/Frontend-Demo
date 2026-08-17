@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/config/api_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/theme_controller.dart';
 import '../../auth/data/auth_api_client.dart';
 import '../../auth/state/auth_controller.dart';
 import '../../subscription/data/subscription_api_client.dart';
@@ -579,6 +580,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 : 'Naya version maujood hai.')
           : 'Aap ke paas pehle se latest version hai.';
     });
+  }
+
+  Widget _buildThemeCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.palette_outlined,
+      title: 'Theme',
+      subtitle:
+          'Din mein light aur raat mein dark — ya phone ke sath chalne dein. '
+          'Aap ki pasand yaad rehti hai.',
+      child: ListenableBuilder(
+        listenable: ThemeController.instance,
+        builder: (BuildContext context, Widget? child) {
+          final AppThemeMode current = ThemeController.instance.mode;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: AppThemeMode.values.map((AppThemeMode mode) {
+              final bool selected = mode == current;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Material(
+                  color: selected
+                      ? AppTheme.royalBlue.withValues(alpha: 0.10)
+                      : AppTheme.surfaceAlt,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    key: Key('theme_mode_${mode.name}'),
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => ThemeController.instance.setMode(mode),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Icon(
+                            mode.icon,
+                            size: 22,
+                            color: selected
+                                ? AppTheme.royalBlue
+                                : AppTheme.slate,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  mode.label,
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(
+                                        color: AppTheme.textPrimary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  mode.description,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: AppTheme.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (selected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              size: 20,
+                              color: AppTheme.royalBlue,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(growable: false),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildTutorialCard(BuildContext context) {
@@ -2103,7 +2186,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.open_in_new_rounded,
                 size: 16,
                 color: AppTheme.slate,
@@ -2230,6 +2313,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       accent: const Color(0xFF2E7D9A),
     ),
     _SettingsSection(
+      id: 'theme',
+      icon: Icons.palette_outlined,
+      title: 'Theme',
+      subtitle: 'Light ya dark — app ka rang apni pasand ka rakhein.',
+      builder: _buildThemeCard,
+      accent: const Color(0xFF6D4AC4),
+    ),
+    _SettingsSection(
       id: 'payment',
       icon: Icons.credit_card_rounded,
       title: 'Payment & Renewal',
@@ -2344,7 +2435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: AppTheme.slate),
+              Icon(Icons.chevron_right_rounded, color: AppTheme.slate),
             ],
           ),
         ),
@@ -2384,7 +2475,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           stepId: _flowStepForSection(_openSectionId).id,
         ),
         body: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: <Color>[AppTheme.ice, AppTheme.mist],
               begin: Alignment.topLeft,

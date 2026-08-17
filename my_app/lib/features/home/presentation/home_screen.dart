@@ -187,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: AppTheme.slate),
+              Icon(Icons.chevron_right_rounded, color: AppTheme.slate),
             ],
           ),
         ),
@@ -258,9 +258,9 @@ class _HomeScreenState extends State<HomeScreen> {
               const PlanStatusStrip(),
               AppHeroHeader(
                 eyebrow: 'QUICK AL',
-                title: 'Estimation & Fabrication Workspace',
+                title: 'Aluminium Window & Glass Workspace',
                 subtitle:
-                    'A refined business tool for aluminium windows, fabrication operations, and project settings.',
+                    'A refined business tool for aluminium windows, glass work, fabrication operations, and project settings.',
                 trailing: Container(
                   width: 132,
                   height: 132,
@@ -282,8 +282,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: AppTheme.space6),
-              _buildTutorialButtons(context),
-              const SizedBox(height: AppTheme.space6),
               SectionSurfaceCard(
                 title: 'Workspace',
                 subtitle:
@@ -293,8 +291,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     TutorialTarget(
                       id: 'home.estimation',
                       child: PrimaryCardButton(
-                        icon: Icons.calculate_rounded,
-                        title: 'Estimation',
+                        // A window with its panes: this module is where a
+                        // window gets measured and priced.
+                        icon: Icons.window_rounded,
+                        title: 'Aluminium Estimation',
                         subtitle:
                             'Window selection, review flow, optimization, rates, material table, and billing.',
                         onTap: () {
@@ -318,8 +318,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     TutorialTarget(
                       id: 'home.fabrication',
                       child: PrimaryCardButton(
-                        icon: Icons.construction_rounded,
-                        title: 'Fabrication',
+                        // A saw blade: this module is where bars get cut.
+                        icon: Icons.carpenter_rounded,
+                        title: 'Aluminium Fabrication',
                         subtitle:
                             'Production-ready windows, cutting workflow, glass reporting, and fabrication outputs.',
                         accent: AppTheme.tealAccent,
@@ -363,6 +364,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: AppTheme.space6),
               const SocialLinksCard(),
+              const SizedBox(height: AppTheme.space6),
+              // The tours sit down here rather than above the modules: someone
+              // opening the app to do a job wants the job, not the lesson.
+              _buildTutorialButtons(context),
               const SizedBox(height: AppTheme.space6),
               Row(
                 children: <Widget>[
