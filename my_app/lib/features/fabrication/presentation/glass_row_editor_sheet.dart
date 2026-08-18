@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/suter_wheel.dart';
+import '../../settings/state/app_settings.dart';
+import '../../settings/state/size_input_mode.dart';
 import '../models/glass_report.dart';
 
 /// Modal editor used for both adding a new glass row and editing an existing
@@ -14,33 +16,44 @@ import '../models/glass_report.dart';
 ///
 /// Returns the built [GlassReportRow], or `null` if the user cancels.
 class GlassRowEditorSheet extends StatefulWidget {
-  /// The row being edited, or `null` when adding a brand-new row.
+  /// The row being edited, or `null` when adding brand-new rows.
   final GlassReportRow? existingRow;
 
   /// Window number suggested for a new row (continues the existing sequence).
   final int suggestedWindowNo;
 
+  /// Called for each row saved while the sheet stays open.
+  ///
+  /// Present only when adding. A glass job is a run of pieces typed one after
+  /// another, so the sheet keeps itself open and clears down for the next one
+  /// rather than closing and making the user press Add Row again -- the same
+  /// rhythm the window input already has.
+  final ValueChanged<GlassReportRow>? onRowSaved;
+
   const GlassRowEditorSheet({
     super.key,
     this.existingRow,
     required this.suggestedWindowNo,
+    this.onRowSaved,
   });
 
   static Future<GlassReportRow?> show(
     BuildContext context, {
     GlassReportRow? existingRow,
     required int suggestedWindowNo,
+    ValueChanged<GlassReportRow>? onRowSaved,
   }) {
     return showModalBottomSheet<GlassReportRow>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (BuildContext ctx) => GlassRowEditorSheet(
         existingRow: existingRow,
         suggestedWindowNo: suggestedWindowNo,
+        onRowSaved: onRowSaved,
       ),
     );
   }
@@ -63,6 +76,12 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
   // steps — this keeps the value compatible with the shop convention.
   late double _widthSutter;
   late double _heightSutter;
+
+  /// How many rows this sitting has added, so the sheet can show progress
+  /// while it stays open.
+  int _savedCount = 0;
+
+  final FocusNode _widthFocus = FocusNode();
 
   bool get _isEditing => widget.existingRow != null;
 
@@ -103,6 +122,7 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
     _qtyController.dispose();
     _widthInchController.dispose();
     _heightInchController.dispose();
+    _widthFocus.dispose();
     super.dispose();
   }
 
@@ -159,7 +179,36 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
       quantity: qty < 1 ? 1 : qty,
     );
 
-    Navigator.of(context).pop(result);
+    final ValueChanged<GlassReportRow>? keepOpen = widget.onRowSaved;
+    if (keepOpen == null || _isEditing) {
+      Navigator.of(context).pop(result);
+      return;
+    }
+
+    keepOpen(result);
+    _resetForNextRow(winNo);
+  }
+
+  /// Clears the size fields and steps the window number on, leaving the sheet
+  /// ready for the next piece.
+  ///
+  /// Rubber type and the window name stay: on a real job a run of glass is
+  /// usually the same kind, and retyping it every row is the thing that made
+  /// people avoid this screen.
+  void _resetForNextRow(int savedWinNo) {
+    setState(() {
+      _savedCount += 1;
+      _widthInchController.clear();
+      _heightInchController.clear();
+      _widthSutter = 0;
+      _heightSutter = 0;
+      _qtyController.text = '1';
+      _winNoController.text = (savedWinNo + 1).toString();
+    });
+    _formKey.currentState?.reset();
+    // Straight back to the first size box, so the next piece can be typed
+    // without reaching for the screen.
+    FocusScope.of(context).requestFocus(_widthFocus);
   }
 
   @override
@@ -224,6 +273,7 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
                 const SizedBox(height: 10),
                 _DimensionRow(
                   label: 'Width',
+                  inchFocusNode: _widthFocus,
                   inchController: _widthInchController,
                   sutterValue: _widthSutter,
                   onSutterChanged: (double value) {
@@ -314,12 +364,39 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
                 ),
 
                 const SizedBox(height: 22),
+                // While rows are being typed in a run, say how many have gone
+                // in -- otherwise the sheet clearing itself looks the same as
+                // the sheet losing what you typed.
+                if (_savedCount > 0) ...<Widget>[
+                  Row(
+                    children: <Widget>[
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        size: 18,
+                        color: AppTheme.success,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _savedCount == 1
+                            ? '1 glass added'
+                            : '$_savedCount glass pieces added',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.success,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Row(
                   children: <Widget>[
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
+                        child: Text(
+                          _isEditing || _savedCount == 0 ? 'Cancel' : 'Done',
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -328,7 +405,13 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
                       child: FilledButton.icon(
                         onPressed: _submit,
                         icon: const Icon(Icons.check_rounded),
-                        label: Text(_isEditing ? 'Save Row' : 'Add Row'),
+                        label: Text(
+                          _isEditing
+                              ? 'Save Row'
+                              : (widget.onRowSaved != null
+                                    ? 'Save & Next'
+                                    : 'Add Row'),
+                        ),
                       ),
                     ),
                   ],
@@ -342,14 +425,22 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
   }
 }
 
-/// One labelled width/height input: an inch text field plus the tape-style
-/// sutter wheel (scroll left/right to pick 0..7.5 in half steps).
-class _DimensionRow extends StatelessWidget {
+/// One labelled width/height input: an inch text field plus the sutter, which
+/// is either the tape-style wheel or a plain typing box.
+///
+/// Which one appears is the same Settings choice the window pages read. It was
+/// previously only honoured there, so someone who had switched to typing still
+/// met a wheel the moment they entered glass.
+class _DimensionRow extends StatefulWidget {
   final String label;
   final TextEditingController inchController;
   final double sutterValue;
   final ValueChanged<double> onSutterChanged;
   final FormFieldValidator<String> inchValidator;
+
+  /// Set on the first size box so a saved row can hand the cursor straight
+  /// back to it for the next piece.
+  final FocusNode? inchFocusNode;
 
   const _DimensionRow({
     required this.label,
@@ -357,10 +448,62 @@ class _DimensionRow extends StatelessWidget {
     required this.sutterValue,
     required this.onSutterChanged,
     required this.inchValidator,
+    this.inchFocusNode,
   });
 
   @override
+  State<_DimensionRow> createState() => _DimensionRowState();
+}
+
+class _DimensionRowState extends State<_DimensionRow> {
+  late final TextEditingController _sutterController;
+
+  @override
+  void initState() {
+    super.initState();
+    _sutterController = TextEditingController(
+      text: _formatSutter(widget.sutterValue),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _DimensionRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only when the value really moved elsewhere, so typing is never
+    // interrupted by the field rewriting itself under the cursor.
+    if (widget.sutterValue != oldWidget.sutterValue &&
+        _parseSutter(_sutterController.text) != widget.sutterValue) {
+      _sutterController.text = _formatSutter(widget.sutterValue);
+    }
+  }
+
+  @override
+  void dispose() {
+    _sutterController.dispose();
+    super.dispose();
+  }
+
+  /// Whole numbers read better without a trailing ".0" on a cutting slip.
+  static String _formatSutter(double value) {
+    if (value == value.roundToDouble()) return value.toInt().toString();
+    return value.toString();
+  }
+
+  static double _parseSutter(String text) => double.tryParse(text.trim()) ?? 0;
+
+  void _onSutterTyped(String text) {
+    final double parsed = _parseSutter(text);
+    // The wheel can only produce 0..7.5 in half steps; typing is held to the
+    // same range so both paths save identical values.
+    final double clamped = parsed.clamp(0, 7.5).toDouble();
+    widget.onSutterChanged(SuterWheel.snap(clamped));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final bool usesKeypad =
+        AppSettings.instance.sizeInputMode == SizeInputMode.keypad;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -369,7 +512,7 @@ class _DimensionRow extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Text(
-              label,
+              widget.label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary,
@@ -379,13 +522,14 @@ class _DimensionRow extends StatelessWidget {
         ),
         Expanded(
           child: TextFormField(
-            controller: inchController,
+            controller: widget.inchController,
+            focusNode: widget.inchFocusNode,
             keyboardType: TextInputType.number,
             inputFormatters: <TextInputFormatter>[
               FilteringTextInputFormatter.digitsOnly,
               LengthLimitingTextInputFormatter(3),
             ],
-            validator: inchValidator,
+            validator: widget.inchValidator,
             decoration: const InputDecoration(
               labelText: 'Inches',
               border: OutlineInputBorder(),
@@ -395,11 +539,28 @@ class _DimensionRow extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: SuterWheel(
-            value: sutterValue,
-            onChanged: onSutterChanged,
-            label: 'Sutter',
-          ),
+          child: usesKeypad
+              ? TextFormField(
+                  controller: _sutterController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d?')),
+                  ],
+                  onChanged: _onSutterTyped,
+                  decoration: const InputDecoration(
+                    labelText: 'Sutter',
+                    hintText: '0-7.5',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                )
+              : SuterWheel(
+                  value: widget.sutterValue,
+                  onChanged: widget.onSutterChanged,
+                  label: 'Sutter',
+                ),
         ),
       ],
     );

@@ -152,17 +152,23 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     return highest + 1;
   }
 
+  /// Opens the entry sheet once and leaves it open.
+  ///
+  /// Each Save drops a row into the table behind the sheet and clears the
+  /// fields for the next piece, so a run of glass is typed in one sitting
+  /// instead of reopening this for every row.
   Future<void> _addRow() async {
-    final GlassReportRow? row = await GlassRowEditorSheet.show(
+    await GlassRowEditorSheet.show(
       context,
       suggestedWindowNo: _nextWindowNo,
+      onRowSaved: (GlassReportRow row) {
+        setState(() {
+          _rows.add(row);
+          _dirty = true;
+          _note = null;
+        });
+      },
     );
-    if (row == null) return;
-    setState(() {
-      _rows.add(row);
-      _dirty = true;
-      _note = null;
-    });
   }
 
   Future<void> _editRow(int index) async {

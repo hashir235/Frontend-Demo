@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:my_app/features/estimation/models/window_type.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 import 'package:my_app/features/estimation/presentation/input/window_input_base.dart';
+import 'package:my_app/features/settings/state/app_settings.dart';
+import 'package:my_app/features/settings/state/size_input_mode.dart';
 import 'package:my_app/shared/widgets/suter_wheel.dart';
 
 const WindowType _slidingNode = WindowType(
@@ -30,6 +32,13 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
+    // These two are about the wheel specifically. Typing is the default now,
+    // so the wheel has to be asked for rather than assumed.
+    AppSettings.instance.setSizeInputMode(SizeInputMode.wheel);
+  });
+
+  tearDown(() {
+    AppSettings.instance.setSizeInputMode(SizeInputMode.keypad);
   });
 
   testWidgets(
