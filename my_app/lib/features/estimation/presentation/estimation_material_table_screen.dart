@@ -69,6 +69,16 @@ class _EstimationMaterialTableScreenState
   String? _errorMessage;
   bool _isLoading = true;
 
+  /// While on, the table shows one line per section instead of one per cut
+  /// length, and each line can be changed or removed.
+  ///
+  /// The two views exist because they answer different questions. Reading the
+  /// table, you want to see which lengths make up a section; correcting it,
+  /// the lengths are noise -- what you are changing is the section's feet and
+  /// its rate.
+  bool _editing = false;
+  bool _saving = false;
+
   @override
   void initState() {
     super.initState();
@@ -283,6 +293,89 @@ class _EstimationMaterialTableScreenState
     );
   }
 
+  /// Writes the edited table back and reloads from what the server saved.
+  ///
+  /// Taking the response rather than trusting the local list keeps the screen
+  /// showing the same figures the PDF and the bill will use -- the totals are
+  /// recomputed on the server, so anything it corrected shows up here too.
+  Future<void> _persist(List<CostTableRow> rows) async {
+    setState(() => _saving = true);
+    try {
+      final CostTable saved = await _apiClient.saveCostTable(
+        rows: rows,
+        projectId: widget.projectId,
+        context: widget.requestContext,
+      );
+      if (!mounted) return;
+      setState(() {
+        _table = saved;
+        _saving = false;
+      });
+    } on CostTableApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _deleteRow(CostTableRow row) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Remove section'),
+        content: Text(
+          'Remove ${row.section} from the material table? '
+          'The bill and the PDF will be worked out without it.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    final List<CostTableRow> rows = List<CostTableRow>.from(_table!.rows)
+      ..removeWhere((CostTableRow r) => r.section == row.section);
+    await _persist(rows);
+  }
+
+  Future<void> _editRow({CostTableRow? existing}) async {
+    final _RowEdit? result = await showDialog<_RowEdit>(
+      context: context,
+      builder: (BuildContext ctx) => _MaterialRowDialog(existing: existing),
+    );
+    if (result == null) return;
+
+    final List<CostTableRow> rows = List<CostTableRow>.from(_table!.rows);
+    final CostTableRow updated = CostTableRow(
+      section: result.section,
+      totalFt: result.totalFt,
+      totalFtDisplay: result.totalFt.toString(),
+      rate: result.rate,
+      totalPrice: result.totalFt * result.rate,
+      lengths: existing?.lengths ?? const <CostTableLength>[],
+    );
+
+    if (existing == null) {
+      rows.add(updated);
+    } else {
+      final int at = rows.indexWhere(
+        (CostTableRow r) => r.section == existing.section,
+      );
+      if (at >= 0) rows[at] = updated;
+    }
+    await _persist(rows);
+  }
+
   List<_MaterialDisplayRow> _displayRows(CostTable table) {
     final List<_MaterialDisplayRow> rows = <_MaterialDisplayRow>[];
     for (final CostTableRow row in table.rows) {
@@ -439,34 +532,284 @@ class _EstimationMaterialTableScreenState
               'Lengths are shown in the user-readable display format returned by the backend.',
           child: TutorialTarget(
             id: 'table.summary',
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const <DataColumn>[
-                  DataColumn(label: Text('Section')),
-                  DataColumn(label: Text('Length')),
-                  DataColumn(label: Text('Quantity')),
-                  DataColumn(label: Text('Total ft')),
-                  DataColumn(label: Text('Rates')),
-                  DataColumn(label: Text('Total Rates')),
-                ],
-                rows: rows
-                    .map(
-                      (_MaterialDisplayRow row) => DataRow(
-                        cells: <DataCell>[
-                          DataCell(Text(row.section)),
-                          DataCell(Text(row.lengthDisplay)),
-                          DataCell(Text('${row.quantity}')),
-                          DataCell(Text(row.totalFtDisplay)),
-                          DataCell(Text(_formatNumber(row.rate))),
-                          DataCell(Text(_formatNumber(row.totalRate))),
-                        ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        _editing
+                            ? 'Correct anything the cut list could not know'
+                            : 'Material table',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
                       ),
+                    ),
+                    if (_editing)
+                      TextButton.icon(
+                        onPressed: _saving ? null : () => _editRow(),
+                        icon: const Icon(Icons.add_rounded, size: 20),
+                        label: const Text('Add section'),
+                      ),
+                    TextButton.icon(
+                      onPressed: _saving
+                          ? null
+                          : () => setState(() => _editing = !_editing),
+                      icon: Icon(
+                        _editing
+                            ? Icons.check_rounded
+                            : Icons.edit_outlined,
+                        size: 20,
+                      ),
+                      label: Text(_editing ? 'Done' : 'Edit'),
+                    ),
+                  ],
+                ),
+                if (_editing)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppTheme.space3),
+                    child: Text(
+                      'Changes here carry through to the bill and the PDF.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ),
+                if (_saving) const LinearProgressIndicator(minHeight: 2),
+                SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: _editing
+                  ? DataTable(
+                      columns: const <DataColumn>[
+                        DataColumn(label: Text('Section')),
+                        DataColumn(label: Text('Total ft')),
+                        DataColumn(label: Text('Rates')),
+                        DataColumn(label: Text('Total Rates')),
+                        DataColumn(label: Text('')),
+                      ],
+                      rows: table.rows
+                          .map(
+                            (CostTableRow row) => DataRow(
+                              cells: <DataCell>[
+                                DataCell(Text(row.section)),
+                                DataCell(Text(row.totalFtDisplay)),
+                                DataCell(Text(_formatNumber(row.rate))),
+                                DataCell(Text(_formatNumber(row.totalPrice))),
+                                DataCell(
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      IconButton(
+                                        tooltip: 'Edit',
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          size: 20,
+                                        ),
+                                        color: AppTheme.royalBlue,
+                                        onPressed: _saving
+                                            ? null
+                                            : () => _editRow(existing: row),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Remove',
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 20,
+                                        ),
+                                        color: AppTheme.danger,
+                                        onPressed: _saving
+                                            ? null
+                                            : () => _deleteRow(row),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                          .toList(growable: false),
                     )
-                    .toList(growable: false),
-              ),
+                  : DataTable(
+                      columns: const <DataColumn>[
+                        DataColumn(label: Text('Section')),
+                        DataColumn(label: Text('Length')),
+                        DataColumn(label: Text('Quantity')),
+                        DataColumn(label: Text('Total ft')),
+                        DataColumn(label: Text('Rates')),
+                        DataColumn(label: Text('Total Rates')),
+                      ],
+                      rows: rows
+                          .map(
+                            (_MaterialDisplayRow row) => DataRow(
+                              cells: <DataCell>[
+                                DataCell(Text(row.section)),
+                                DataCell(Text(row.lengthDisplay)),
+                                DataCell(Text('${row.quantity}')),
+                                DataCell(Text(row.totalFtDisplay)),
+                                DataCell(Text(_formatNumber(row.rate))),
+                                DataCell(Text(_formatNumber(row.totalRate))),
+                              ],
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                ),
+              ],
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// What the row dialog hands back once it is happy with the numbers.
+class _RowEdit {
+  final String section;
+  final double totalFt;
+  final double rate;
+
+  const _RowEdit({
+    required this.section,
+    required this.totalFt,
+    required this.rate,
+  });
+}
+
+/// Adds or corrects one section.
+///
+/// Refuses empty names, feet at or below zero and negative rates -- each of
+/// which would otherwise reach a customer's invoice as a nonsense line. The
+/// total is shown as it is typed rather than asked for, because a total that
+/// disagrees with feet times rate is exactly the error nobody notices.
+class _MaterialRowDialog extends StatefulWidget {
+  final CostTableRow? existing;
+
+  const _MaterialRowDialog({this.existing});
+
+  @override
+  State<_MaterialRowDialog> createState() => _MaterialRowDialogState();
+}
+
+class _MaterialRowDialogState extends State<_MaterialRowDialog> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  late final TextEditingController _section = TextEditingController(
+    text: widget.existing?.section ?? '',
+  );
+  late final TextEditingController _feet = TextEditingController(
+    text: widget.existing == null ? '' : '${widget.existing!.totalFt}',
+  );
+  late final TextEditingController _rate = TextEditingController(
+    text: widget.existing == null ? '' : '${widget.existing!.rate}',
+  );
+
+  @override
+  void dispose() {
+    _section.dispose();
+    _feet.dispose();
+    _rate.dispose();
+    super.dispose();
+  }
+
+  double get _total {
+    final double f = double.tryParse(_feet.text.trim()) ?? 0;
+    final double r = double.tryParse(_rate.text.trim()) ?? 0;
+    return f * r;
+  }
+
+  String? _positive(String? value, String what) {
+    final double? parsed = double.tryParse((value ?? '').trim());
+    if (parsed == null) return 'Enter $what';
+    if (parsed <= 0) return '$what must be more than zero';
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.existing == null ? 'Add section' : 'Edit section'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            TextFormField(
+              controller: _section,
+              textCapitalization: TextCapitalization.characters,
+              // The section a row belongs to is what ties it to a rate and to
+              // the cut list; renaming an existing one would orphan both.
+              enabled: widget.existing == null,
+              decoration: const InputDecoration(
+                labelText: 'Section',
+                hintText: 'e.g. D29',
+              ),
+              validator: (String? v) =>
+                  (v ?? '').trim().isEmpty ? 'Enter a section' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _feet,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(labelText: 'Total feet'),
+              onChanged: (_) => setState(() {}),
+              validator: (String? v) => _positive(v, 'total feet'),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _rate,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(labelText: 'Rate per foot'),
+              onChanged: (_) => setState(() {}),
+              validator: (String? v) {
+                final double? parsed = double.tryParse((v ?? '').trim());
+                if (parsed == null) return 'Enter a rate';
+                if (parsed < 0) return 'A rate cannot be negative';
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
+                  'Total',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                Text(
+                  _total.toStringAsFixed(2),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() != true) return;
+            Navigator.of(context).pop(
+              _RowEdit(
+                section: _section.text.trim().toUpperCase(),
+                totalFt: double.parse(_feet.text.trim()),
+                rate: double.parse(_rate.text.trim()),
+              ),
+            );
+          },
+          child: const Text('Save'),
         ),
       ],
     );

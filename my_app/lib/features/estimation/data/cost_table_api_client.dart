@@ -94,6 +94,60 @@ class CostTableApiClient {
     return table;
   }
 
+  /// Saves a table the user has corrected by hand.
+  ///
+  /// The saved file is the same one the material PDF and the bill read, so an
+  /// edit here reaches the customer's invoice without anything else having to
+  /// be told about it.
+  Future<CostTable> saveCostTable({
+    required List<CostTableRow> rows,
+    String? projectId,
+    String context = 'estimation',
+  }) async {
+    late final http.Response response;
+    try {
+      response = await _httpClient.post(
+        Uri.parse('${_endpointUri.toString()}/save'),
+        headers: const <String, String>{'Content-Type': 'application/json'},
+        body: jsonEncode(<String, Object?>{
+          'projectId': projectId,
+          'context': context,
+          'rows': rows
+              .map(
+                (CostTableRow row) => <String, Object?>{
+                  'section': row.section,
+                  'totalFt': row.totalFt,
+                  'totalFtDisplay': row.totalFtDisplay,
+                  'rate': row.rate,
+                },
+              )
+              .toList(),
+        }),
+      );
+    } on Exception catch (error) {
+      throw CostTableApiException(
+        OptimizationErrorText.forTransport(error).combined,
+        detail: error,
+      );
+    }
+
+    final Map<String, dynamic>? payload = _decodeObject(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      // The server's own words here, not a generic line: it rejects for
+      // reasons the user can act on -- a duplicate section, feet at zero --
+      // and rewording those would only hide what to fix.
+      final String? raw = payload?['error'] as String?;
+      throw CostTableApiException(
+        raw ?? 'Could not save the material table.',
+        statusCode: response.statusCode,
+      );
+    }
+    if (payload == null) {
+      throw CostTableApiException('Could not save the material table.');
+    }
+    return CostTable.fromJson(payload);
+  }
+
   Map<String, dynamic>? _decodeObject(String body) {
     if (body.trim().isEmpty) {
       return null;
