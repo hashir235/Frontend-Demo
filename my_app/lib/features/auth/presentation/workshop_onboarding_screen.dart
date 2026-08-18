@@ -5,6 +5,7 @@ import 'package:my_app/core/theme/app_theme.dart';
 import 'package:my_app/features/auth/state/auth_controller.dart';
 import 'package:my_app/features/settings/data/billing_settings_api_client.dart';
 import 'package:my_app/features/settings/models/billing_settings.dart';
+import 'package:my_app/features/settings/presentation/city_picker_field.dart';
 import 'package:my_app/features/settings/presentation/legal_document_screen.dart';
 import 'package:my_app/shared/widgets/app_hero_header.dart';
 import 'package:my_app/shared/widgets/app_screen_shell.dart';
@@ -37,6 +38,10 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
       TextEditingController();
   final TextEditingController _workshopAddressController =
       TextEditingController();
+
+  /// Empty until picked. Required to finish setup, because it is what decides
+  /// which rate list this workshop starts on.
+  String _city = '';
 
   bool _saving = false;
   bool _acceptedTerms = false;
@@ -82,6 +87,10 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
       );
       return;
     }
+    if (_city.trim().isEmpty) {
+      _showMessage('Please choose your city so we can set your rate list.');
+      return;
+    }
     if (!_acceptedTerms) {
       _showMessage(
         'Please accept the Terms & Conditions and Privacy Policy to continue.',
@@ -97,6 +106,7 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
           workshopName: workshopName,
           workshopPhone: _workshopPhoneController.text.trim(),
           workshopAddress: _workshopAddressController.text.trim(),
+          city: _city,
         ),
       );
       // Flag cleared -> the auth gate rebuilds and shows Home. This widget is
@@ -255,6 +265,15 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
                       labelText: 'Workshop address (optional)',
                       hintText: 'Jalalpur Jattan Road, Gujrat',
                     ),
+                  ),
+                  const SizedBox(height: AppTheme.space5),
+                  CityPickerField(
+                    value: _city,
+                    onChanged: (String city) => setState(() => _city = city),
+                    helperText:
+                        'Rates differ from city to city. This sets the rate '
+                        'list you start with — you can change it later in '
+                        'Settings, and edit any rate yourself.',
                   ),
                   const SizedBox(height: AppTheme.space5),
                   _buildTermsCheckbox(context),
