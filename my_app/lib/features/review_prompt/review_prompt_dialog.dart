@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../tutorial/urdu_text.dart';
 import 'review_prompter.dart';
 
 /// What the user chose when asked for a rating.
@@ -32,17 +31,17 @@ Future<ReviewChoice?> showReviewPromptDialog(BuildContext context) {
           size: 36,
         ),
         title: Text(
-          'کیا Quick AL آپ کے کام آ رہی ہے؟',
+          'Is Quick AL working well for you?',
           textAlign: TextAlign.center,
-          style: UrduText.heading(fontSize: 20),
+          style: Theme.of(
+            ctx,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
-        content: UrduDirection(
-          child: Text(
-            'اگر ہاں، تو ایک ریٹنگ دے دیجیے۔ اس سے دوسرے کاریگروں تک یہ ایپ '
-            'پہنچتی ہے، اور آپ کا صرف ایک لمحہ لگتا ہے۔',
-            textAlign: TextAlign.center,
-            style: UrduText.body(fontSize: 15),
-          ),
+        content: Text(
+          'If it is, a rating helps other fabricators find it — and it only '
+          'takes a moment.',
+          textAlign: TextAlign.center,
+          style: Theme.of(ctx).textTheme.bodyMedium,
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: <Widget>[
@@ -54,10 +53,7 @@ Future<ReviewChoice?> showReviewPromptDialog(BuildContext context) {
                 child: FilledButton.icon(
                   onPressed: () => Navigator.of(ctx).pop(ReviewChoice.rate),
                   icon: const Icon(Icons.star_rounded, size: 20),
-                  label: Text(
-                    'ریٹنگ دیں',
-                    style: UrduText.body(color: Colors.white, fontSize: 15),
-                  ),
+                  label: const Text('Rate Quick AL'),
                 ),
               ),
               const SizedBox(height: 6),
@@ -65,14 +61,14 @@ Future<ReviewChoice?> showReviewPromptDialog(BuildContext context) {
                 width: double.infinity,
                 child: TextButton(
                   onPressed: () => Navigator.of(ctx).pop(ReviewChoice.later),
-                  child: Text('بعد میں', style: UrduText.body(fontSize: 14)),
+                  child: const Text('Maybe later'),
                 ),
               ),
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
                   onPressed: () => Navigator.of(ctx).pop(ReviewChoice.never),
-                  child: Text('دوبارہ نہ پوچھیں', style: UrduText.caption()),
+                  child: const Text("Don't ask again"),
                 ),
               ),
             ],
