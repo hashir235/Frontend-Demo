@@ -14,6 +14,8 @@ import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../models/bill_request.dart';
+import '../../settings/data/bill_defaults_api_client.dart';
+import '../../settings/models/bill_defaults.dart';
 import '../models/estimate_flow_state.dart';
 import '../state/estimate_session_store.dart';
 import 'actual_bill_screen.dart';
@@ -60,6 +62,10 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
   final TextEditingController _advancePaidController = TextEditingController();
   final TextEditingController _customerNameController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+
+  /// The rates saved in Settings, once they have arrived. Null until then,
+  /// and null forever if the lookup failed -- billing still works either way.
+  BillDefaults? _savedRates;
   final TextEditingController _phoneController = TextEditingController();
 
   static final List<TextInputFormatter> _decimalInputFormatters =
@@ -81,6 +87,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
   @override
   void initState() {
     super.initState();
+    _loadSavedRates();
     final EstimateBillDraft? draft = widget.session.billDraft;
     if (draft == null) {
       return;
@@ -96,6 +103,48 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     _customerNameController.text = draft.customerName;
     _phoneController.text = draft.customerPhone;
     _addressController.text = draft.customerAddress;
+  }
+
+  /// Fills in the rates the user saved in Settings, so they are not retyped on
+  /// every bill.
+  ///
+  /// Only ever fills an *empty* box. Anything already on this bill — whether
+  /// typed a moment ago or restored from the draft — is left exactly as it is:
+  /// a saved default must never overwrite a number someone chose for this job.
+  Future<void> _loadSavedRates() async {
+    late final BillDefaults defaults;
+    try {
+      defaults = await BillDefaultsApiClient().fetch();
+    } catch (_) {
+      return; // Billing must still work when the lookup does not.
+    }
+    if (!mounted || defaults.isEmpty) return;
+
+    void fill(TextEditingController c, String value) {
+      if (c.text.trim().isEmpty && value.trim().isNotEmpty) c.text = value;
+    }
+
+    setState(() {
+      _savedRates = defaults;
+      fill(_laborRateController, defaults.labourRate);
+      fill(_hardwareRateController, defaults.hardwareRate);
+      fill(_discountController, defaults.aluminiumDiscount);
+      final String? glassRate = defaults.rateForGlass(
+        _glassColorController.text,
+      );
+      if (glassRate != null) fill(_glassRateController, glassRate);
+    });
+  }
+
+  /// Typing a glass colour that has a saved rate fills the rate in.
+  ///
+  /// Again only into an empty box: someone quoting an odd job at a special
+  /// price must not have it overwritten because the colour happens to match.
+  void _onGlassColorChanged(String value) {
+    final String? rate = _savedRates?.rateForGlass(value);
+    if (rate == null) return;
+    if (_glassRateController.text.trim().isNotEmpty) return;
+    setState(() => _glassRateController.text = rate);
   }
 
   @override
@@ -337,6 +386,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
                         tourId: 'bill.advance',
                       ),
                       _buildTextField(
+                        onChanged: _onGlassColorChanged,
                         controller: _glassColorController,
                         label: 'Glass Color',
                         inputFormatters: _glassColorInputFormatters,
@@ -410,6 +460,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
     String? tourId,
+    ValueChanged<String>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space4),
@@ -421,6 +472,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
           validator: validator,
+          onChanged: onChanged,
           decoration: InputDecoration(labelText: label),
         ),
       ),

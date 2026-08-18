@@ -14,6 +14,10 @@ import '../data/estimation_settings_repository.dart';
 import '../data/fabrication_settings_repository.dart';
 import '../data/payment_preferences_api_client.dart';
 import '../data/settings_defaults_api_client.dart';
+import '../data/bill_defaults_api_client.dart';
+import '../data/rate_cities_api_client.dart';
+import 'city_picker_field.dart';
+import '../models/bill_defaults.dart';
 import '../models/billing_settings.dart';
 import '../models/estimation_settings.dart';
 import '../models/extra_pieces_allowance.dart';
@@ -85,6 +89,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final PaymentPreferencesApiClient _paymentPreferencesApiClient;
   final AppUpdateService _updateService = AppUpdateService();
 
+  // --- Bill rates -------------------------------------------------------
+  // Saved once here and filled in on every bill.
+  final BillDefaultsApiClient _billDefaultsApiClient = BillDefaultsApiClient();
+  final TextEditingController _labourRateController = TextEditingController();
+  final TextEditingController _hardwareRateController = TextEditingController();
+  final TextEditingController _aluminiumDiscountController =
+      TextEditingController();
+  final Map<String, TextEditingController> _glassRateControllers =
+      <String, TextEditingController>{
+        for (final String type in GlassTypes.all)
+          type: TextEditingController(),
+      };
+  bool _savingBillDefaults = false;
+
+  // --- City -------------------------------------------------------------
+  // Which city's rate list this workshop works to. Saved with the rest of the
+  // workshop details, because that is what it is: part of who they are.
+  String _city = '';
+  RateCitiesAvailability? _rateCities;
+
+  Future<void> _loadRateCities() async {
+    final RateCitiesAvailability availability = await RateCitiesApiClient()
+        .fetch();
+    if (mounted) setState(() => _rateCities = availability);
+  }
+
+  /// Saves the new city and reloads the rates, which now come from that city's
+  /// master.
+  ///
+  /// The user's own edits are untouched -- they are stored as differences, not
+  /// as a copy of the list, so they simply re-apply over the new master. Said
+  /// plainly on screen, because "your rates changed" is alarming when you
+  /// cannot see why.
+  Future<void> _onCityChanged(String city) async {
+    final String previous = _city;
+    setState(() => _city = city);
+    try {
+      final BillingSettingsModel current = await _billingSettingsRepository
+          .fetchBillingSettings();
+      await _billingSettingsRepository.saveBillingSettings(
+        current.copyWith(city: city),
+      );
+      if (mounted) {
+        _showBillRatesMessage('City set to $city. Your rate list has changed.');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _city = previous);
+      _showBillRatesMessage('Could not save your city. Please try again.');
+    }
+  }
+
+  void _showBillRatesMessage(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _loadBillDefaults() async {
+    try {
+      final BillDefaults defaults = await _billDefaultsApiClient.fetch();
+      if (!mounted) return;
+      setState(() {
+        _labourRateController.text = defaults.labourRate;
+        _hardwareRateController.text = defaults.hardwareRate;
+        _aluminiumDiscountController.text = defaults.aluminiumDiscount;
+        for (final MapEntry<String, TextEditingController> e
+            in _glassRateControllers.entries) {
+          e.value.text = defaults.glass[e.key] ?? '';
+        }
+      });
+    } catch (_) {
+      // Leave the boxes as they are; the rest of Settings still works.
+    }
+  }
+
+  Future<void> _saveBillDefaults() async {
+    setState(() => _savingBillDefaults = true);
+    try {
+      await _billDefaultsApiClient.save(
+        BillDefaults(
+          labourRate: _labourRateController.text.trim(),
+          hardwareRate: _hardwareRateController.text.trim(),
+          aluminiumDiscount: _aluminiumDiscountController.text.trim(),
+          glass: <String, String>{
+            for (final MapEntry<String, TextEditingController> e
+                in _glassRateControllers.entries)
+              e.key: e.value.text.trim(),
+          },
+        ),
+      );
+      if (mounted) _showBillRatesMessage('Bill rates saved.');
+    } on BillDefaultsApiException catch (error) {
+      if (mounted) _showBillRatesMessage(error.message);
+    } catch (_) {
+      if (mounted) {
+        _showBillRatesMessage('Could not save your rates. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _savingBillDefaults = false);
+    }
+  }
+
   bool _deletingAccount = false;
   bool _updateChecking = false;
   bool _updateFound = false;
@@ -130,6 +238,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadFabricationSettings();
     _loadPaymentPreferences();
     _loadSubscriptionStatus();
+    _loadBillDefaults();
+    _loadRateCities();
   }
 
   Future<void> _loadSubscriptionStatus() async {
@@ -206,6 +316,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     AppSettings.instance.removeListener(_onSettingsChanged);
+    _labourRateController.dispose();
+    _hardwareRateController.dispose();
+    _aluminiumDiscountController.dispose();
+    for (final TextEditingController c in _glassRateControllers.values) {
+      c.dispose();
+    }
     _contractorController.dispose();
     _workshopController.dispose();
     _addressController.dispose();
@@ -264,6 +380,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _addressController.text = settings.workshopAddress;
       _phoneController.text = settings.workshopPhone;
       setState(() {
+        _city = settings.city;
         _isLoadingBillingSettings = false;
       });
     } on Exception catch (error) {
@@ -582,6 +699,112 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
+  /// Rates that are the same on every bill, kept once instead of retyped.
+  ///
+  /// Everything here is optional. A rate left blank arrives at the bill as an
+  /// empty box to fill in — never as a zero, which would price that part of
+  /// the job at nothing on a bill that otherwise looks correct.
+  Widget _buildBillRatesCard(BuildContext context) {
+    return _buildSettingsCard(
+      context,
+      icon: Icons.receipt_long_rounded,
+      title: 'Bill Rates',
+      subtitle:
+          'Ye rates har bill par khud bhar jayenge, taake baar baar likhne na '
+          'parein. Bill par jab chahein badal bhi sakte hain — yahan sirf '
+          'shuruaati qeemat rakhi jati hai. Jo khali chhorenge wo bill par '
+          'khali hi aayega.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          _buildRateField(
+            context,
+            key: const Key('bill_default_labour'),
+            controller: _labourRateController,
+            label: 'Labour rate (per foot)',
+          ),
+          _buildRateField(
+            context,
+            key: const Key('bill_default_hardware'),
+            controller: _hardwareRateController,
+            label: 'Hardware rate (per window)',
+          ),
+          _buildRateField(
+            context,
+            key: const Key('bill_default_discount'),
+            controller: _aluminiumDiscountController,
+            label: 'Aluminium discount %',
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Glass ke rates (per sq ft)',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Bill par jo glass likhenge, usi ka rate khud aa jayega.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          ...GlassTypes.all.map((String type) {
+            return _buildRateField(
+              context,
+              key: Key('bill_default_glass_${type.replaceAll(' ', '_')}'),
+              controller: _glassRateControllers[type]!,
+              label: type,
+            );
+          }),
+          const SizedBox(height: 4),
+          FilledButton.icon(
+            key: const Key('bill_defaults_save'),
+            onPressed: _savingBillDefaults ? null : _saveBillDefaults,
+            icon: _savingBillDefaults
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.save_rounded),
+            label: Text(_savingBillDefaults ? 'Saving...' : 'Save Rates'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRateField(
+    BuildContext context, {
+    required Key key,
+    required TextEditingController controller,
+    required String label,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        key: key,
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: <TextInputFormatter>[
+          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+        ],
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: 'Optional',
+          border: const OutlineInputBorder(),
+          isDense: true,
+        ),
+      ),
+    );
+  }
+
   Widget _buildThemeCard(BuildContext context) {
     return _buildSettingsCard(
       context,
@@ -730,6 +953,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
+          CityPickerField(
+            value: _city,
+            availability: _rateCities,
+            onChanged: _onCityChanged,
+            helperText:
+                'Rates differ from city to city. Changing this switches you to '
+                'that city\'s list — any rate you have edited yourself stays '
+                'as you set it.',
+          ),
+          const SizedBox(height: 14),
           FilledButton.icon(
             onPressed: () {
               Navigator.of(context).push(
@@ -2311,6 +2544,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       subtitle: 'Workshop ka naam, phone aur address.',
       builder: _buildCompanyInformationCard,
       accent: const Color(0xFF2E7D9A),
+    ),
+    _SettingsSection(
+      id: 'bill_rates',
+      icon: Icons.receipt_long_rounded,
+      title: 'Bill Rates',
+      subtitle: 'Labour, hardware aur glass ke rates — bill par khud bhar jayenge.',
+      builder: _buildBillRatesCard,
+      accent: const Color(0xFF11845E),
     ),
     _SettingsSection(
       id: 'theme',
