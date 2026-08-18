@@ -17,6 +17,7 @@ import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../../../shared/widgets/state_message_card.dart';
 import '../../fabrication/presentation/glass_report_screen.dart';
+import '../../glass_fabrication/data/glass_project_api_client.dart';
 import '../data/cost_table_api_client.dart';
 import '../models/cost_table.dart';
 import '../models/estimate_flow_state.dart';
@@ -78,6 +79,10 @@ class _EstimationMaterialTableScreenState
   /// its rate.
   bool _editing = false;
   bool _saving = false;
+
+  /// True while the glass job is being opened on the server, so the button
+  /// cannot be pressed twice while the first press is still travelling.
+  bool _openingGlass = false;
 
   @override
   void initState() {
@@ -235,14 +240,50 @@ class _EstimationMaterialTableScreenState
     );
   }
 
-  void _openGlassReport() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        settings: RouteSettings(name: FlowSteps.glassSize.id),
-        builder: (BuildContext context) =>
-            GlassReportScreen(projectId: widget.projectId),
-      ),
-    );
+  /// Hands this aluminium job over to the glass side, with nothing to type.
+  ///
+  /// The engine already worked out the glass list while cutting the aluminium.
+  /// The server opens a glass project under the same name and location and
+  /// carries those sizes across, so the fabricator lands on a filled-in glass
+  /// job rather than an empty one they have to name and retype.
+  ///
+  /// Pressing it again reopens the same job instead of making a second copy.
+  Future<void> _openGlassReport() async {
+    final String? projectId = widget.projectId;
+    if (projectId == null || projectId.isEmpty) {
+      // Nothing to hand over from; fall back to the plain screen.
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          settings: RouteSettings(name: FlowSteps.glassSize.id),
+          builder: (_) => const GlassReportScreen(),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _openingGlass = true);
+    try {
+      final GlassProjectHandover handover = await GlassProjectApiClient()
+          .openGlassSideOf(projectId);
+      if (!mounted) return;
+      setState(() => _openingGlass = false);
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          settings: RouteSettings(name: FlowSteps.glassSize.id),
+          builder: (_) => GlassReportScreen(
+            projectId: handover.projectId,
+            projectName: handover.projectName,
+            projectLocation: handover.projectLocation,
+          ),
+        ),
+      );
+    } on GlassProjectApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _openingGlass = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   Widget? _buildBottomActions() {
@@ -273,12 +314,22 @@ class _EstimationMaterialTableScreenState
           TutorialTarget(
             id: 'table.glassReport',
             child: FilledButton.tonalIcon(
-              onPressed: () {
-                TutorialController.instance.advanceAfterTap();
-                _openGlassReport();
-              },
-              icon: const Icon(Icons.table_view_rounded),
-              label: const Text('Glass Report'),
+              onPressed: _openingGlass
+                  ? null
+                  : () {
+                      TutorialController.instance.advanceAfterTap();
+                      _openGlassReport();
+                    },
+              icon: _openingGlass
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.window_rounded),
+              // Named for what it hands you rather than what it prints: this
+              // opens the glass job with the sizes already in it.
+              label: Text(_openingGlass ? 'Opening' : 'Glass Size'),
             ),
           ),
         if (widget.showPdfActions) ...<Widget>[

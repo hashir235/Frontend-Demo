@@ -21,6 +21,7 @@ import '../../settings/presentation/settings_home_screen.dart';
 import '../../review_prompt/review_prompt_dialog.dart';
 import '../../review_prompt/review_prompter.dart';
 import '../../subscription/presentation/plan_status_strip.dart';
+import '../../glass_fabrication/presentation/glass_fabrication_menu_screen.dart';
 import '../../subscription/presentation/subscription_gate_screen.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
@@ -339,6 +340,31 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
                         },
                       ),
+                    ),
+                    const SizedBox(height: AppTheme.space5),
+                    // Glass stands beside aluminium rather than inside it: it
+                    // is often a different day's work, and it gets reopened on
+                    // its own.
+                    PrimaryCardButton(
+                      icon: Icons.window_rounded,
+                      title: 'Glass Fabrication',
+                      subtitle:
+                          'Glass sizes, sheet optimization, and glass jobs '
+                          'with their own history.',
+                      accent: AppTheme.sky,
+                      onTap: () {
+                        FlowProgress.instance.enter(fabricationFlow);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            settings: RouteSettings(
+                              name: FlowSteps.projects.id,
+                            ),
+                            builder: (_) => const SubscriptionGateScreen(
+                              child: GlassFabricationMenuScreen(),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: AppTheme.space5),
                     PrimaryCardButton(

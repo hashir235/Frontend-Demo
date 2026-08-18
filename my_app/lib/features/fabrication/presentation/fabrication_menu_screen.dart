@@ -228,11 +228,12 @@ class FabricationMenuScreen extends StatelessWidget {
                       onTap: () => _handleCreateGlassProject(context),
                     ),
                     const SizedBox(height: AppTheme.space5),
-                    // One history for both kinds, each row saying which it is.
+                    // Aluminium jobs only. Glass has its own module on Home
+                    // with its own history, and listing glass jobs here as
+                    // well would undo the point of separating them.
                     const RecentProjectsListSection(
                       flow: EstimateFlow.fabrication,
-                      moduleTitle: 'Fabrication',
-                      alsoInclude: <EstimateFlow>[EstimateFlow.glass],
+                      moduleTitle: 'Aluminium Fabrication',
                     ),
                   ],
                 ),
