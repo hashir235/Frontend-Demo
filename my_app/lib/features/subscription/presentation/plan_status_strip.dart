@@ -119,6 +119,16 @@ class _PlanStatusStripState extends State<PlanStatusStrip> {
   PlanRemaining? _remaining;
   bool _loading = true;
 
+  /// Hidden while the app is open to everyone.
+  ///
+  /// A countdown is only worth showing when running out actually stops you.
+  /// While access is free it says nothing useful and quite a lot of harm: new
+  /// users read "paid app, N days left" and leave before they have tried the
+  /// thing they came for. It comes back on its own when enforcement returns to
+  /// strict -- this is a switch on the server, not a line to delete and rewrite
+  /// later.
+  bool _enforced = true;
+
   @override
   void initState() {
     super.initState();
@@ -131,6 +141,7 @@ class _PlanStatusStripState extends State<PlanStatusStrip> {
       if (!mounted) return;
       setState(() {
         _remaining = PlanRemaining.from(status);
+        _enforced = status.isStrict;
         _loading = false;
       });
     } catch (_) {
@@ -154,7 +165,7 @@ class _PlanStatusStripState extends State<PlanStatusStrip> {
   @override
   Widget build(BuildContext context) {
     final PlanRemaining? remaining = _remaining;
-    if (_loading || remaining == null) {
+    if (_loading || remaining == null || !_enforced) {
       return const SizedBox.shrink();
     }
 
