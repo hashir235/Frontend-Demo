@@ -5,6 +5,7 @@ import 'package:my_app/core/theme/app_theme.dart';
 import 'package:my_app/features/auth/state/auth_controller.dart';
 import 'package:my_app/features/settings/data/billing_settings_api_client.dart';
 import 'package:my_app/features/settings/models/billing_settings.dart';
+import 'package:my_app/features/settings/data/rate_cities_api_client.dart';
 import 'package:my_app/features/settings/presentation/city_picker_field.dart';
 import 'package:my_app/features/settings/presentation/legal_document_screen.dart';
 import 'package:my_app/shared/widgets/app_hero_header.dart';
@@ -43,6 +44,10 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
   /// which rate list this workshop starts on.
   String _city = '';
 
+  /// Which cities have a published rate list. Null until the server answers;
+  /// a failed lookup never blocks setup, it just means no notice is shown.
+  RateCitiesAvailability? _rateCities;
+
   bool _saving = false;
   bool _acceptedTerms = false;
 
@@ -50,6 +55,20 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
     ..onTap = () => _openLegalDocument('Terms and Conditions', '/terms');
   late final TapGestureRecognizer _privacyRecognizer = TapGestureRecognizer()
     ..onTap = () => _openLegalDocument('Privacy Policy', '/privacy-policy');
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRateCities();
+  }
+
+  /// Best effort. Setting up a workshop must never fail because this lookup
+  /// did, so a failure simply leaves the notice unshown.
+  Future<void> _loadRateCities() async {
+    final RateCitiesAvailability availability = await RateCitiesApiClient()
+        .fetch();
+    if (mounted) setState(() => _rateCities = availability);
+  }
 
   @override
   void dispose() {
@@ -270,6 +289,7 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
                   CityPickerField(
                     value: _city,
                     onChanged: (String city) => setState(() => _city = city),
+                    availability: _rateCities,
                     helperText:
                         'Rates differ from city to city. This sets the rate '
                         'list you start with — you can change it later in '

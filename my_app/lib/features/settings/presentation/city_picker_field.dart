@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../data/rate_cities_api_client.dart';
 import '../models/pakistan_cities.dart';
 
 /// A tap-to-choose city field.
@@ -20,6 +21,13 @@ class CityPickerField extends StatelessWidget {
   /// about the same choice.
   final String? helperText;
 
+  /// Which cities actually have a rate list, once the server has said.
+  ///
+  /// Null while it is still being fetched, and [RateCitiesAvailability.known]
+  /// is false if the fetch failed — in both cases the field says nothing about
+  /// availability rather than guessing.
+  final RateCitiesAvailability? availability;
+
   final bool enabled;
 
   const CityPickerField({
@@ -27,6 +35,7 @@ class CityPickerField extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.helperText,
+    this.availability,
     this.enabled = true,
   });
 
@@ -46,27 +55,125 @@ class CityPickerField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool chosen = value.trim().isNotEmpty;
-    return InkWell(
-      key: const Key('city_picker_field'),
-      borderRadius: BorderRadius.circular(12),
-      onTap: enabled ? () => _pick(context) : null,
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: 'City',
-          helperText: helperText,
-          helperMaxLines: 3,
-          border: const OutlineInputBorder(),
-          prefixIcon: const Icon(Icons.location_city_rounded),
-          suffixIcon: const Icon(Icons.arrow_drop_down_rounded),
-          enabled: enabled,
-        ),
-        child: Text(
-          chosen ? value : 'Choose your city',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: chosen ? AppTheme.textPrimary : AppTheme.textSecondary,
-            fontWeight: chosen ? FontWeight.w700 : FontWeight.w500,
+    // Only once we actually know, and only about a city that has been picked.
+    // If the lookup failed we say nothing rather than guess.
+    final bool missingList =
+        chosen &&
+        availability != null &&
+        availability!.known &&
+        !availability!.hasListFor(value);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        InkWell(
+          key: const Key('city_picker_field'),
+          borderRadius: BorderRadius.circular(12),
+          onTap: enabled ? () => _pick(context) : null,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'City',
+              helperText: helperText,
+              helperMaxLines: 3,
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.location_city_rounded),
+              suffixIcon: const Icon(Icons.arrow_drop_down_rounded),
+              enabled: enabled,
+            ),
+            child: Text(
+              chosen ? value : 'Choose your city',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: chosen ? AppTheme.textPrimary : AppTheme.textSecondary,
+                fontWeight: chosen ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
           ),
         ),
+        if (missingList) ...<Widget>[
+          const SizedBox(height: 10),
+          _MissingRateListNotice(
+            city: value,
+            supportPhone: availability!.supportPhone,
+            hasFallback: availability!.hasFallback,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Says plainly that this city has no rate list yet, and who to ring.
+///
+/// It does not block the choice. Someone setting up their workshop for the
+/// first time must be able to finish; what they must not do is walk away
+/// believing their rates are their city's when they are not.
+class _MissingRateListNotice extends StatelessWidget {
+  final String city;
+  final String supportPhone;
+  final bool hasFallback;
+
+  const _MissingRateListNotice({
+    required this.city,
+    required this.supportPhone,
+    required this.hasFallback,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('city_missing_rate_list_notice'),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.warning.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.warning.withValues(alpha: 0.30)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 20,
+            color: AppTheme.warning,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  '$city ki rate list abhi upload nahi hui',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hasFallback
+                      ? 'Filhaal aap ko aam rate list mil rahi hai. Apne '
+                            'sheher ki list ke liye is number par rabta '
+                            'karein — aur tab tak rates khud bhi badal sakte '
+                            'hain.'
+                      : 'Abhi koi rate list mojood nahi. Is number par rabta '
+                            'karein.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  supportPhone,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.warning,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
