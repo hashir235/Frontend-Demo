@@ -127,6 +127,24 @@ class GlassSheetLayout {
   final List<GlassSheetPlacement> placements;
   final List<GlassSheetWasteRect> wasteRects;
 
+  /// The real sheet, as opposed to [width]/[height] which include whatever
+  /// extra margin the layout was allowed to reach into.
+  final double nominalWidth;
+  final double nominalHeight;
+
+  /// Whether this sheet actually reaches past the real glass.
+  ///
+  /// True only when a piece genuinely sits beyond the edge — allowing a margin
+  /// does not by itself flag anything, because most sheets in a job will not
+  /// need it and a warning on those would train people to ignore the warning.
+  final bool usesExtraMargin;
+
+  /// Exactly how far past, so the cutter knows what to shave.
+  final double marginOverWidth;
+  final double marginOverHeight;
+  final String marginOverWidthDisplay;
+  final String marginOverHeightDisplay;
+
   const GlassSheetLayout({
     required this.sheetNo,
     required this.width,
@@ -138,6 +156,13 @@ class GlassSheetLayout {
     required this.wastagePercentage,
     required this.placements,
     required this.wasteRects,
+    this.nominalWidth = 0,
+    this.nominalHeight = 0,
+    this.usesExtraMargin = false,
+    this.marginOverWidth = 0,
+    this.marginOverHeight = 0,
+    this.marginOverWidthDisplay = '',
+    this.marginOverHeightDisplay = '',
   });
 
   factory GlassSheetLayout.fromJson(Map<String, dynamic> json) {
@@ -158,6 +183,21 @@ class GlassSheetLayout {
           .whereType<Map<String, dynamic>>()
           .map(GlassSheetWasteRect.fromJson)
           .toList(growable: false),
+      // Falls back to the laid-out size for a reply from a server that predates
+      // the margin, so an older backend simply reports no overshoot.
+      nominalWidth: json['nominalWidth'] == null
+          ? _toDouble(json['width'])
+          : _toDouble(json['nominalWidth']),
+      nominalHeight: json['nominalHeight'] == null
+          ? _toDouble(json['height'])
+          : _toDouble(json['nominalHeight']),
+      usesExtraMargin: json['usesExtraMargin'] == true,
+      marginOverWidth: _toDouble(json['marginOverWidth']),
+      marginOverHeight: _toDouble(json['marginOverHeight']),
+      marginOverWidthDisplay:
+          (json['marginOverWidthDisplay'] as String?) ?? '',
+      marginOverHeightDisplay:
+          (json['marginOverHeightDisplay'] as String?) ?? '',
     );
   }
 }

@@ -16,6 +16,7 @@ import '../../../shared/widgets/section_surface_card.dart';
 import '../../../shared/widgets/state_message_card.dart';
 import '../data/glass_sheet_optimization_api_client.dart';
 import '../models/glass_report.dart';
+import 'extra_margin_field.dart';
 import '../models/glass_sheet_optimization.dart';
 
 class GlassSheetOptimizationScreen extends StatefulWidget {
@@ -47,6 +48,12 @@ class _GlassSheetOptimizationScreenState
 
   bool _useCustomSize = false;
   bool _allowRotation = true;
+
+  /// How far past the real sheet a layout may reach before a new sheet is
+  /// unavoidable. Zero by default: this changes what gets cut, so it has to be
+  /// something the shop asks for rather than something it inherits.
+  ShopLength _extraMarginHeight = const ShopLength();
+  ShopLength _extraMarginWidth = const ShopLength();
   bool _isRunning = false;
   GlassSheetOptimizationResult? _result;
   String? _errorMessage;
@@ -91,6 +98,8 @@ class _GlassSheetOptimizationScreenState
         sheetWidthFt: sheetWidthFt,
         sheetHeightFt: sheetHeightFt,
         allowRotation: _allowRotation,
+        extraMarginHeightIn: _extraMarginHeight.asInches,
+        extraMarginWidthIn: _extraMarginWidth.asInches,
         projectId: widget.projectId,
       );
       if (!mounted) {
@@ -348,6 +357,18 @@ class _GlassSheetOptimizationScreenState
               });
             },
           ),
+          const Divider(height: AppTheme.space6),
+          ExtraMarginField(
+            height: _extraMarginHeight,
+            width: _extraMarginWidth,
+            enabled: !_isRunning,
+            onHeightChanged: (ShopLength value) {
+              setState(() => _extraMarginHeight = value);
+            },
+            onWidthChanged: (ShopLength value) {
+              setState(() => _extraMarginWidth = value);
+            },
+          ),
         ],
       ),
     );
@@ -428,6 +449,10 @@ class _GlassSheetOptimizationScreenState
                 _MetaChip(label: 'Waste', value: '${sheet.wasteRects.length}'),
               ],
             ),
+            if (sheet.usesExtraMargin) ...<Widget>[
+              const SizedBox(height: AppTheme.space4),
+              _ExtraMarginWarning(sheet: sheet),
+            ],
             const SizedBox(height: AppTheme.space4),
             AspectRatio(
               aspectRatio: sheet.width <= 0 || sheet.height <= 0
@@ -541,6 +566,68 @@ class _GlassSheetOptimizationScreenState
   }
 }
 
+/// The warning on a sheet that reaches past the real glass.
+///
+/// Deliberately loud. A sheet that overshoots cannot simply be cut as drawn --
+/// every piece on it has to come down slightly — and someone who misses that
+/// finds out at the glass, with the glass already cut.
+class _ExtraMarginWarning extends StatelessWidget {
+  final GlassSheetLayout sheet;
+
+  const _ExtraMarginWarning({required this.sheet});
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> over = <String>[
+      if (sheet.marginOverHeight > 0)
+        'height by ${sheet.marginOverHeightDisplay}',
+      if (sheet.marginOverWidth > 0) 'width by ${sheet.marginOverWidthDisplay}',
+    ];
+
+    return Container(
+      key: Key('sheet_margin_warning_${sheet.sheetNo}'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTheme.space4),
+      decoration: BoxDecoration(
+        color: AppTheme.danger.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.danger, width: 1.4),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Icon(Icons.warning_amber_rounded, color: AppTheme.danger),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'This sheet uses the extra margin',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.danger,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'It runs past the real sheet in ${over.join(' and ')}. '
+                  'Cut every piece on this sheet slightly smaller to take it '
+                  'up — the red band shows the part that is not there.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _GlassSheetPainter extends CustomPainter {
   final GlassSheetLayout sheet;
 
@@ -556,6 +643,52 @@ class _GlassSheetPainter extends CustomPainter {
   ];
 
   static Color colorForIndex(int index) => _palette[index % _palette.length];
+
+  /// Marks the strip of the layout that runs past the real glass.
+  ///
+  /// Two marks, because they answer different questions. The hatched band is
+  /// "this much is not really there"; the solid line is "the glass ends here".
+  /// Between them a cutter can see at a glance both that the sheet overshoots
+  /// and by how much, without reading a number.
+  void _paintMarginZone(Canvas canvas, Size size, double scaleX, double scaleY) {
+    final Paint band = Paint()..color = AppTheme.danger.withValues(alpha: 0.14);
+    final Paint edge = Paint()
+      ..color = AppTheme.danger
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    if (sheet.marginOverWidth > 0 && sheet.nominalWidth > 0) {
+      final double edgeX = sheet.nominalWidth * scaleX;
+      canvas.drawRect(
+        Rect.fromLTRB(edgeX, 0, size.width, size.height),
+        band,
+      );
+      _dashedLine(canvas, Offset(edgeX, 0), Offset(edgeX, size.height), edge);
+    }
+    if (sheet.marginOverHeight > 0 && sheet.nominalHeight > 0) {
+      final double edgeY = sheet.nominalHeight * scaleY;
+      canvas.drawRect(
+        Rect.fromLTRB(0, edgeY, size.width, size.height),
+        band,
+      );
+      _dashedLine(canvas, Offset(0, edgeY), Offset(size.width, edgeY), edge);
+    }
+  }
+
+  /// A dashed rule, so the real edge never reads as a cut line.
+  void _dashedLine(Canvas canvas, Offset from, Offset to, Paint paint) {
+    const double dash = 7;
+    const double gap = 5;
+    final double total = (to - from).distance;
+    if (total <= 0) return;
+    final Offset step = (to - from) / total;
+    double covered = 0;
+    while (covered < total) {
+      final double end = math.min(covered + dash, total);
+      canvas.drawLine(from + step * covered, from + step * end, paint);
+      covered = end + gap;
+    }
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -577,6 +710,13 @@ class _GlassSheetPainter extends CustomPainter {
 
     final double scaleX = size.width / sheet.width;
     final double scaleY = size.height / sheet.height;
+
+    // Where the real glass ends. Everything drawn past this line has to be
+    // shaved off the pieces while cutting, so it is marked before the pieces
+    // are drawn -- the band sits under them, and the line over them.
+    if (sheet.usesExtraMargin) {
+      _paintMarginZone(canvas, size, scaleX, scaleY);
+    }
     for (final GlassSheetWasteRect waste in sheet.wasteRects) {
       final Rect rect = Rect.fromLTWH(
         waste.x * scaleX,

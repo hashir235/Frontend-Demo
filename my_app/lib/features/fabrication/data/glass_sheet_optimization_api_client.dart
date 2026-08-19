@@ -37,6 +37,12 @@ class GlassSheetOptimizationApiClient {
     required double sheetWidthFt,
     required double sheetHeightFt,
     required bool allowRotation,
+
+    /// How far past the real sheet the shop will lay out and shave back when
+    /// cutting, rather than opening another sheet over a suter or two. Height
+    /// and width are separate: a shop will often allow one and not the other.
+    double extraMarginWidthIn = 0,
+    double extraMarginHeightIn = 0,
     String? projectId,
   }) async {
     late final http.Response response;
@@ -49,6 +55,8 @@ class GlassSheetOptimizationApiClient {
           'sheetWidthFt': sheetWidthFt,
           'sheetHeightFt': sheetHeightFt,
           'allowRotation': allowRotation,
+          'extraMarginWidthIn': extraMarginWidthIn,
+          'extraMarginHeightIn': extraMarginHeightIn,
           'glassReport': glassReport.toJson(),
         }),
       );
