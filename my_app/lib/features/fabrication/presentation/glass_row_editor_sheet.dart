@@ -81,7 +81,14 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
   /// while it stays open.
   int _savedCount = 0;
 
+  // The tab order a piece of glass is actually typed in: width, height, then
+  // how many. Pressing the keyboard's next/tick walks it, and the last field
+  // saves the row -- so a run of glass never needs the screen touched.
   final FocusNode _widthFocus = FocusNode();
+  final FocusNode _widthSutterFocus = FocusNode();
+  final FocusNode _heightFocus = FocusNode();
+  final FocusNode _heightSutterFocus = FocusNode();
+  final FocusNode _qtyFocus = FocusNode();
 
   bool get _isEditing => widget.existingRow != null;
 
@@ -120,6 +127,10 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
     _labelController.dispose();
     _rubberController.dispose();
     _qtyController.dispose();
+    _widthSutterFocus.dispose();
+    _heightFocus.dispose();
+    _heightSutterFocus.dispose();
+    _qtyFocus.dispose();
     _widthInchController.dispose();
     _heightInchController.dispose();
     _widthFocus.dispose();
@@ -274,6 +285,9 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
                 _DimensionRow(
                   label: 'Width',
                   inchFocusNode: _widthFocus,
+                  sutterFocusNode: _widthSutterFocus,
+                  onRowComplete: () =>
+                      FocusScope.of(context).requestFocus(_heightFocus),
                   inchController: _widthInchController,
                   sutterValue: _widthSutter,
                   onSutterChanged: (double value) {
@@ -284,6 +298,10 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
                 const SizedBox(height: 12),
                 _DimensionRow(
                   label: 'Height',
+                  inchFocusNode: _heightFocus,
+                  sutterFocusNode: _heightSutterFocus,
+                  onRowComplete: () =>
+                      FocusScope.of(context).requestFocus(_qtyFocus),
                   inchController: _heightInchController,
                   sutterValue: _heightSutter,
                   onSutterChanged: (double value) {
@@ -323,7 +341,14 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
                     Expanded(
                       child: TextFormField(
                         controller: _qtyController,
+                        focusNode: _qtyFocus,
                         keyboardType: TextInputType.number,
+                        // The end of the chain: the tick saves the row, which
+                        // clears the boxes and puts the cursor back on Width.
+                        // A run of glass can be typed without touching the
+                        // screen once.
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _submit(),
                         inputFormatters: <TextInputFormatter>[
                           FilteringTextInputFormatter.digitsOnly,
                           LengthLimitingTextInputFormatter(4),
@@ -442,6 +467,16 @@ class _DimensionRow extends StatefulWidget {
   /// back to it for the next piece.
   final FocusNode? inchFocusNode;
 
+  /// Only used when the sutter is a typing box; the wheel takes no focus.
+  final FocusNode? sutterFocusNode;
+
+  /// Where the cursor goes once this row has been filled in.
+  ///
+  /// Called from the sutter box when the box is showing, and from the inch box
+  /// when the wheel is on instead — so pressing next walks the same path
+  /// whichever way sizes are being entered.
+  final VoidCallback? onRowComplete;
+
   const _DimensionRow({
     required this.label,
     required this.inchController,
@@ -449,6 +484,8 @@ class _DimensionRow extends StatefulWidget {
     required this.onSutterChanged,
     required this.inchValidator,
     this.inchFocusNode,
+    this.sutterFocusNode,
+    this.onRowComplete,
   });
 
   @override
@@ -525,6 +562,16 @@ class _DimensionRowState extends State<_DimensionRow> {
             controller: widget.inchController,
             focusNode: widget.inchFocusNode,
             keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) {
+              // With the wheel showing there is no sutter box to move into,
+              // so this box hands straight on to the next row.
+              if (usesKeypad && widget.sutterFocusNode != null) {
+                FocusScope.of(context).requestFocus(widget.sutterFocusNode);
+              } else {
+                widget.onRowComplete?.call();
+              }
+            },
             inputFormatters: <TextInputFormatter>[
               FilteringTextInputFormatter.digitsOnly,
               LengthLimitingTextInputFormatter(3),
@@ -542,9 +589,12 @@ class _DimensionRowState extends State<_DimensionRow> {
           child: usesKeypad
               ? TextFormField(
                   controller: _sutterController,
+                  focusNode: widget.sutterFocusNode,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) => widget.onRowComplete?.call(),
                   inputFormatters: <TextInputFormatter>[
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d?')),
                   ],

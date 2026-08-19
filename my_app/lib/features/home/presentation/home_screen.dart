@@ -292,9 +292,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     TutorialTarget(
                       id: 'home.estimation',
                       child: PrimaryCardButton(
-                        // A window with its panes: this module is where a
-                        // window gets measured and priced.
-                        icon: Icons.window_rounded,
+                        // An invoice: what this module is for is arriving at a
+                        // priced bill the customer is handed.
+                        icon: Icons.receipt_long_rounded,
                         title: 'Aluminium Estimation',
                         subtitle:
                             'Window selection, review flow, optimization, rates, material table, and billing.',
@@ -319,8 +319,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     TutorialTarget(
                       id: 'home.fabrication',
                       child: PrimaryCardButton(
-                        // A saw blade: this module is where bars get cut.
-                        icon: Icons.carpenter_rounded,
+                        // A cutter: this module is where the bars actually get cut
+                        // to length on the table saw.
+                        icon: Icons.content_cut_rounded,
                         title: 'Aluminium Fabrication',
                         subtitle:
                             'Production-ready windows, cutting workflow, glass reporting, and fabrication outputs.',

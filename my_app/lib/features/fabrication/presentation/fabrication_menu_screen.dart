@@ -23,7 +23,6 @@ import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
 import '../../tutorial/tutorial_target.dart';
-import 'glass_report_screen.dart';
 
 class FabricationMenuScreen extends StatelessWidget {
   const FabricationMenuScreen({super.key});
@@ -129,34 +128,6 @@ class FabricationMenuScreen extends StatelessWidget {
     }
   }
 
-  /// Glass: straight to the row sheet.
-  ///
-  /// No window catalogue and no history in between -- a glass job is typed in
-  /// as glass sizes from the start, so anything else on the way there is a
-  /// detour.
-  Future<void> _handleCreateGlassProject(BuildContext context) async {
-    final _NewProject? created = await _createProject(
-      context,
-      flow: EstimateFlow.glass,
-    );
-    if (created == null || !context.mounted) return;
-
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        settings: RouteSettings(name: FlowSteps.glassSize.id),
-        builder: (_) => GlassReportScreen(
-          projectId: created.id,
-          projectName: created.draft.projectName,
-          projectLocation: created.draft.projectLocation,
-        ),
-      ),
-    );
-
-    if (context.mounted) {
-      _showResetWarning(context, created.resetWarning);
-    }
-  }
-
   void _showResetWarning(BuildContext context, String? warning) {
     if (warning == null || !context.mounted) return;
     ScaffoldMessenger.of(
@@ -217,15 +188,6 @@ class FabricationMenuScreen extends StatelessWidget {
                           _handleCreateAluminiumProject(context);
                         },
                       ),
-                    ),
-                    const SizedBox(height: AppTheme.space5),
-                    PrimaryCardButton(
-                      icon: Icons.grid_view_rounded,
-                      title: 'Create Glass Project  +',
-                      subtitle:
-                          'Glass only: type the glass sizes and lay them out on sheets.',
-                      accent: AppTheme.amberAccent,
-                      onTap: () => _handleCreateGlassProject(context),
                     ),
                     const SizedBox(height: AppTheme.space5),
                     // Aluminium jobs only. Glass has its own module on Home

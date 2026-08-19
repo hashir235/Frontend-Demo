@@ -43,7 +43,13 @@ class ThemeController extends ChangeNotifier {
 
   static const String _prefsKey = 'app_theme_mode';
 
-  AppThemeMode _mode = AppThemeMode.system;
+  /// Light until someone chooses otherwise.
+  ///
+  /// Not "match phone": the screens were designed and checked in light, and a
+  /// phone set to dark was putting people straight into the half of the app
+  /// that has had the least wear. Dark is still there for anyone who wants it,
+  /// but it is now something you pick rather than something that picks you.
+  AppThemeMode _mode = AppThemeMode.light;
   AppThemeMode get mode => _mode;
 
   bool _loaded = false;

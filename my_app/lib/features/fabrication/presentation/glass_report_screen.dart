@@ -514,7 +514,12 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
         ProjectMetaStrip(
           projectName: _projectName,
           projectLocation: _projectLocation,
-          extras: <Widget>[_MetaChip(label: 'Rows', value: '${_rows.length}')],
+          // Pieces, not rows: one row with a quantity of four is four pieces
+          // of glass to cut, and that is the number anyone checking the job
+          // is counting.
+          extras: <Widget>[
+            _MetaChip(label: 'Pieces', value: '${_totalPieces()}'),
+          ],
         ),
         const SizedBox(height: AppTheme.space6),
         Row(
@@ -538,6 +543,13 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
           ],
         ),
         const SizedBox(height: AppTheme.space6),
+        // The number that gets counted against the glass on the van: pieces,
+        // not rows. Two rows of four are eight pieces, and the row count says
+        // two -- which is the number people were reading by mistake.
+        if (_rows.isNotEmpty) ...<Widget>[
+          _buildPieceTotalBanner(context),
+          const SizedBox(height: AppTheme.space4),
+        ],
         SectionSurfaceCard(
           title: 'Glass Cutting Table',
           subtitle:
@@ -553,6 +565,53 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
         ),
         const SizedBox(height: AppTheme.space7),
       ],
+    );
+  }
+
+  Widget _buildPieceTotalBanner(BuildContext context) {
+    final int pieces = _totalPieces();
+    return Container(
+      key: const Key('glass_piece_total_banner'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.space5,
+        vertical: AppTheme.space4,
+      ),
+      decoration: BoxDecoration(
+        color: AppTheme.success.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.success.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: <Widget>[
+          const Icon(
+            Icons.check_circle_rounded,
+            color: AppTheme.success,
+            size: 20,
+          ),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: <InlineSpan>[
+                  const TextSpan(text: 'Total glass pieces: '),
+                  TextSpan(
+                    text: '$pieces',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  TextSpan(
+                    text: pieces == 1 ? ' piece' : ' pieces',
+                  ),
+                ],
+              ),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.success,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
