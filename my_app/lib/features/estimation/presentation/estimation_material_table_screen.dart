@@ -23,6 +23,7 @@ import '../models/cost_table.dart';
 import '../models/estimate_flow_state.dart';
 import '../state/estimate_session_store.dart';
 import 'bill_inputs_screen.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 class EstimationMaterialTableScreen extends StatefulWidget {
   final EstimateSessionStore session;
@@ -542,7 +543,12 @@ class _EstimationMaterialTableScreenState
       children: <Widget>[
         AppHeroHeader(
           eyebrow: widget.requestContext.toUpperCase(),
-          title: widget.screenTitle,
+          title: widget.requestContext == 'fabrication'
+              ? 'Final Material Table'
+              : widget.screenTitle,
+          videoKey: widget.requestContext == 'fabrication'
+              ? TutorialVideos.fabricationMaterialTable
+              : TutorialVideos.estimationMaterialTable,
           subtitle:
               'A polished summary of section lengths, quantities, rates, and totals for ordering and costing.',
         ),

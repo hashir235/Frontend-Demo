@@ -19,6 +19,7 @@ import '../../settings/models/bill_defaults.dart';
 import '../models/estimate_flow_state.dart';
 import '../state/estimate_session_store.dart';
 import 'actual_bill_screen.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 class BillInputsScreen extends StatefulWidget {
   final EstimateSessionStore session;
@@ -315,7 +316,8 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
               children: <Widget>[
                 const AppHeroHeader(
                   eyebrow: 'BILLING',
-                  title: 'Enter billing inputs with a clean structured form',
+                  title: 'Enter billing inputs',
+                  videoKey: TutorialVideos.estimationBillInputs,
                   subtitle:
                       'Keep the rate inputs tight, optional details controlled, and move directly into the final bill.',
                 ),

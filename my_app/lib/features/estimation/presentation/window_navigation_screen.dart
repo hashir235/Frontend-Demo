@@ -16,6 +16,7 @@ import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
 import '../widgets/window_navigation_card.dart';
 import 'input/input_registry.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 class WindowNavigationScreen extends StatefulWidget {
   final List<WindowType> nodes;
@@ -198,7 +199,10 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
                 children: <Widget>[
                   AppHeroHeader(
                     eyebrow: widget.moduleTitle.toUpperCase(),
-                    title: 'Choose a window system',
+                    title: 'Windows Library',
+                    videoKey: widget.session.isFabrication
+                        ? TutorialVideos.fabricationLibrary
+                        : TutorialVideos.estimationLibrary,
                     subtitle:
                         'Browse the catalogue visually, then move directly into the detailed input workflow.',
                     trailing: Container(

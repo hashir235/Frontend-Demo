@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../features/help_videos/help_video_button.dart';
 
 class AppHeroHeader extends StatelessWidget {
   final String eyebrow;
@@ -8,12 +9,20 @@ class AppHeroHeader extends StatelessWidget {
   final String subtitle;
   final Widget? trailing;
 
+  /// A key from `TutorialVideos`, when this step has a video.
+  ///
+  /// Sits next to the eyebrow rather than the title: the eyebrow line has room
+  /// to spare on every screen, and putting it there means no title has to be
+  /// shortened to make space for it.
+  final String? videoKey;
+
   const AppHeroHeader({
     super.key,
     required this.eyebrow,
     required this.title,
     required this.subtitle,
     this.trailing,
+    this.videoKey,
   });
 
   @override
@@ -38,20 +47,34 @@ class AppHeroHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.space4,
-                    vertical: AppTheme.space2,
-                  ),
-                  decoration: AppTheme.infoChipDecoration(emphasized: true),
-                  child: Text(
-                    eyebrow,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: AppTheme.royalBlue,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.4,
+                Row(
+                  children: <Widget>[
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.space4,
+                          vertical: AppTheme.space2,
+                        ),
+                        decoration: AppTheme.infoChipDecoration(
+                          emphasized: true,
+                        ),
+                        child: Text(
+                          eyebrow,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: AppTheme.royalBlue,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.4,
+                              ),
+                        ),
+                      ),
                     ),
-                  ),
+                    if (videoKey != null) ...<Widget>[
+                      const SizedBox(width: AppTheme.space3),
+                      HelpVideoButton(videoKey: videoKey!),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: AppTheme.space5),
                 Text(title, style: Theme.of(context).textTheme.headlineLarge),

@@ -22,6 +22,7 @@ import '../models/optimization_error_text.dart';
 import '../models/rate_review.dart';
 import '../state/estimate_session_store.dart';
 import 'estimation_material_table_screen.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 class RateReviewScreen extends StatefulWidget {
   final EstimateSessionStore session;
@@ -245,9 +246,14 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
 
     return ListView(
       children: <Widget>[
-        const AppHeroHeader(
+        AppHeroHeader(
           eyebrow: 'RATE SETTING',
-          title: 'Adjust section rates before material costing',
+          title: widget.requestContext == 'fabrication'
+              ? 'Edit Rates'
+              : 'Edit Section Rates',
+          videoKey: widget.requestContext == 'fabrication'
+              ? TutorialVideos.fabricationRates
+              : TutorialVideos.estimationRates,
           subtitle:
               'Review the live backend rates and make controlled edits before generating the material table.',
         ),

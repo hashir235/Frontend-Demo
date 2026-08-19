@@ -23,6 +23,7 @@ import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
 import '../../tutorial/tutorial_target.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 class FabricationMenuScreen extends StatelessWidget {
   const FabricationMenuScreen({super.key});
@@ -147,7 +148,8 @@ class FabricationMenuScreen extends StatelessWidget {
             children: <Widget>[
               AppHeroHeader(
                 eyebrow: 'FABRICATION',
-                title: 'Production-ready fabrication workflow',
+                title: 'Fabrication Workflow',
+                videoKey: TutorialVideos.fabricationMenu,
                 subtitle:
                     'Start fabrication projects, run cutting and glass output flows, and reopen recent work from the same polished surface.',
                 trailing: Container(

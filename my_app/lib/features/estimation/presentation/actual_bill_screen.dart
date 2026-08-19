@@ -20,6 +20,7 @@ import '../models/bill_request.dart';
 import '../models/bill_snapshot.dart';
 import '../models/estimate_flow_state.dart';
 import '../state/estimate_session_store.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 class ActualBillScreen extends StatefulWidget {
   final EstimateSessionStore session;
@@ -301,7 +302,8 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
       children: <Widget>[
         const AppHeroHeader(
           eyebrow: 'FINAL BILL',
-          title: 'Billing summary prepared for issue',
+          title: 'Final Bill',
+          videoKey: TutorialVideos.estimationFinalBill,
           subtitle:
               'Review the full cost breakdown, workshop details, and totals before downloading the invoice PDF.',
         ),

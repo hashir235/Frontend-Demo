@@ -28,6 +28,7 @@ import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
 import '../../tutorial/tutorial_target.dart';
 import '../../tutorial/urdu_text.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 class HomeScreen extends StatefulWidget {
   final AuthHttpClient authClient;
@@ -260,6 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
               AppHeroHeader(
                 eyebrow: 'QUICK AL',
                 title: 'Aluminium Window & Glass Workspace',
+                videoKey: TutorialVideos.home,
                 subtitle:
                     'A refined business tool for aluminium windows, glass work, fabrication operations, and project settings.',
                 trailing: Container(

@@ -18,6 +18,7 @@ import '../data/glass_sheet_optimization_api_client.dart';
 import '../models/glass_report.dart';
 import 'extra_margin_field.dart';
 import '../models/glass_sheet_optimization.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 class GlassSheetOptimizationScreen extends StatefulWidget {
   final String? projectId;
@@ -215,7 +216,8 @@ class _GlassSheetOptimizationScreenState
           children: <Widget>[
             const AppHeroHeader(
               eyebrow: 'GLASS SHEETS',
-              title: 'Sheet cutting optimization',
+              title: 'Sheet cutting layout',
+              videoKey: TutorialVideos.glassSheetLayout,
               subtitle: '',
             ),
             const SizedBox(height: AppTheme.space5),
@@ -651,43 +653,55 @@ class _GlassSheetPainter extends CustomPainter {
   /// Between them a cutter can see at a glance both that the sheet overshoots
   /// and by how much, without reading a number.
   void _paintMarginZone(Canvas canvas, Size size, double scaleX, double scaleY) {
-    final Paint band = Paint()..color = AppTheme.danger.withValues(alpha: 0.14);
+    // Strong enough to survive being drawn under the pieces and next to the
+    // sheet's own black border. The first version was a 2px line in a 14%
+    // wash, and against that border it simply could not be seen -- which on a
+    // warning is the same as not drawing it.
+    final Paint band = Paint()..color = AppTheme.danger.withValues(alpha: 0.30);
+    final Paint hatch = Paint()
+      ..color = AppTheme.danger.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
     final Paint edge = Paint()
       ..color = AppTheme.danger
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
 
     if (sheet.marginOverWidth > 0 && sheet.nominalWidth > 0) {
       final double edgeX = sheet.nominalWidth * scaleX;
-      canvas.drawRect(
-        Rect.fromLTRB(edgeX, 0, size.width, size.height),
-        band,
-      );
-      _dashedLine(canvas, Offset(edgeX, 0), Offset(edgeX, size.height), edge);
+      final Rect strip = Rect.fromLTRB(edgeX, 0, size.width, size.height);
+      canvas.drawRect(strip, band);
+      _hatch(canvas, strip, hatch);
+      canvas.drawLine(Offset(edgeX, 0), Offset(edgeX, size.height), edge);
     }
     if (sheet.marginOverHeight > 0 && sheet.nominalHeight > 0) {
       final double edgeY = sheet.nominalHeight * scaleY;
-      canvas.drawRect(
-        Rect.fromLTRB(0, edgeY, size.width, size.height),
-        band,
-      );
-      _dashedLine(canvas, Offset(0, edgeY), Offset(size.width, edgeY), edge);
+      final Rect strip = Rect.fromLTRB(0, edgeY, size.width, size.height);
+      canvas.drawRect(strip, band);
+      _hatch(canvas, strip, hatch);
+      canvas.drawLine(Offset(0, edgeY), Offset(size.width, edgeY), edge);
     }
   }
 
-  /// A dashed rule, so the real edge never reads as a cut line.
-  void _dashedLine(Canvas canvas, Offset from, Offset to, Paint paint) {
-    const double dash = 7;
-    const double gap = 5;
-    final double total = (to - from).distance;
-    if (total <= 0) return;
-    final Offset step = (to - from) / total;
-    double covered = 0;
-    while (covered < total) {
-      final double end = math.min(covered + dash, total);
-      canvas.drawLine(from + step * covered, from + step * end, paint);
-      covered = end + gap;
+  /// Diagonal stripes across the overshoot.
+  ///
+  /// A flat wash can be mistaken for a piece; stripes read as "not material"
+  /// the way hazard tape does, and they survive being printed in black and
+  /// white on a workshop printer, where the red is lost.
+  void _hatch(Canvas canvas, Rect area, Paint paint) {
+    if (area.width <= 0 || area.height <= 0) return;
+    canvas.save();
+    canvas.clipRect(area);
+    const double gap = 10;
+    for (double x = area.left - area.height; x < area.right; x += gap) {
+      canvas.drawLine(
+        Offset(x, area.bottom),
+        Offset(x + area.height, area.top),
+        paint,
+      );
     }
+    canvas.restore();
   }
 
   @override

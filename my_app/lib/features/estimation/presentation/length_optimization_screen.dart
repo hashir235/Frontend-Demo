@@ -23,6 +23,7 @@ import '../models/window_review_item.dart';
 import '../state/estimate_session_store.dart';
 import 'material_selection_screen.dart';
 import 'section_recalculation_screen.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 typedef MaterialSelectionBuilder =
     Widget Function(
@@ -532,9 +533,14 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
 
     return ListView(
       children: <Widget>[
-        const AppHeroHeader(
+        AppHeroHeader(
           eyebrow: 'OPTIMIZATION',
-          title: 'Cutting layout ready for production review',
+          title: widget.requestContext == 'fabrication'
+              ? 'Length Cutting Plan'
+              : 'Length cutting layout',
+          videoKey: widget.requestContext == 'fabrication'
+              ? TutorialVideos.fabricationLengthOptimization
+              : TutorialVideos.estimationLengthOptimization,
           subtitle:
               'Compare sections, inspect grouped lengths, and mark finished cuts while keeping recalculation one tap away.',
         ),
@@ -704,11 +710,14 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           child: DataTable(
             showCheckboxColumn: false,
             columns: const <DataColumn>[
-              DataColumn(label: Text('WinSize')),
-              DataColumn(label: Text('Window')),
-              DataColumn(label: Text('Window No')),
-              DataColumn(label: Text('Dimension')),
+              // Cuts first: it is the number being worked to at the saw, and
+              // it was the last column on a table that scrolls sideways. The
+              // window size, which is background, moved to the far end.
               DataColumn(label: Text('Cuts')),
+              DataColumn(label: Text('Dimension')),
+              DataColumn(label: Text('Window No')),
+              DataColumn(label: Text('Window')),
+              DataColumn(label: Text('WinSize')),
             ],
             rows: group.cuts
                 .asMap()
@@ -727,17 +736,12 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                     selected: isMarked,
                     onSelectChanged: (_) => _toggleMarkedCutRow(rowKey),
                     cells: <DataCell>[
+                      // Same order as the headers above, and kept next to them
+                      // in the file for that reason: a cell list that drifts
+                      // from its headers puts every number under the wrong
+                      // name, and on a cutting sheet that gets metal cut wrong.
                       DataCell(
-                        _buildCutCell(_winSizeForCut(cut), isMarked: isMarked),
-                      ),
-                      DataCell(
-                        _buildCutCell(cut.windowName, isMarked: isMarked),
-                      ),
-                      DataCell(
-                        _buildCutCell(
-                          cut.windowNo.toString(),
-                          isMarked: isMarked,
-                        ),
+                        _buildCutCell(cut.lengthDisplay, isMarked: isMarked),
                       ),
                       DataCell(
                         _buildCutCell(
@@ -746,7 +750,16 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                         ),
                       ),
                       DataCell(
-                        _buildCutCell(cut.lengthDisplay, isMarked: isMarked),
+                        _buildCutCell(
+                          cut.windowNo.toString(),
+                          isMarked: isMarked,
+                        ),
+                      ),
+                      DataCell(
+                        _buildCutCell(cut.windowName, isMarked: isMarked),
+                      ),
+                      DataCell(
+                        _buildCutCell(_winSizeForCut(cut), isMarked: isMarked),
                       ),
                     ],
                   );

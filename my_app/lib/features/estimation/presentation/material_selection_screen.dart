@@ -17,6 +17,7 @@ import '../data/rate_review_api_client.dart';
 import '../models/estimate_flow_state.dart';
 import '../state/estimate_session_store.dart';
 import 'rate_review_screen.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 class MaterialSelectionScreen extends StatefulWidget {
   final EstimateSessionStore session;
@@ -144,9 +145,12 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
         body: AppScreenShell(
           child: ListView(
             children: <Widget>[
-              const AppHeroHeader(
+              AppHeroHeader(
                 eyebrow: 'MATERIAL',
-                title: 'Choose gauge and finish',
+                title: 'Choose gauge and color',
+                videoKey: widget.requestContext == 'fabrication'
+                    ? TutorialVideos.fabricationMaterialSelection
+                    : TutorialVideos.estimationMaterialSelection,
                 subtitle:
                     'Set the base material properties before rates and cost calculations are reviewed.',
               ),

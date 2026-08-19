@@ -23,6 +23,7 @@ import '../data/project_repository.dart';
 import '../state/estimate_session_store.dart';
 import 'recent_projects_screen.dart';
 import 'window_navigation_screen.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 class EstimationMenuScreen extends StatelessWidget {
   const EstimationMenuScreen({super.key});
@@ -119,7 +120,8 @@ class EstimationMenuScreen extends StatelessWidget {
             children: <Widget>[
               AppHeroHeader(
                 eyebrow: 'ESTIMATION',
-                title: 'Estimation workspace built for daily production',
+                title: 'Estimation process for quotation',
+                videoKey: TutorialVideos.estimationMenu,
                 subtitle:
                     'Create projects, pick windows visually, and move through review, optimization, rates, and billing with a consistent premium workflow.',
                 trailing: Container(

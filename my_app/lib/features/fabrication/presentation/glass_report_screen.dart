@@ -15,6 +15,7 @@ import '../data/glass_report_api_client.dart';
 import '../models/glass_report.dart';
 import 'glass_row_editor_sheet.dart';
 import 'glass_sheet_optimization_screen.dart';
+import '../../help_videos/tutorial_videos.dart';
 
 /// Glass Cutting Report — now fully editable.
 ///
@@ -505,7 +506,8 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
       children: <Widget>[
         const AppHeroHeader(
           eyebrow: 'GLASS REPORT',
-          title: 'Fabrication glass table ready for issue and print',
+          title: 'Glass Size List',
+          videoKey: TutorialVideos.glassSizeList,
           subtitle:
               'Review, edit, add, or delete glass rows. You can also build a '
               'glass cutting list manually without any window calculation.',
@@ -671,12 +673,16 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
           child: DataTable(
             columnSpacing: 22,
             columns: const <DataColumn>[
-              DataColumn(label: Text('WinSize')),
-              DataColumn(label: Text('Label')),
-              DataColumn(label: Text('WinNo')),
-              DataColumn(label: Text('Rub')),
-              DataColumn(label: Text('Qty')),
+              // Glass size first: it is what the cutter is looking for, and it
+              // was previously the last thing on a table that scrolls
+              // sideways. The window size, which is background, moved to the
+              // far end. Edit stays put — it is an action, not data.
               DataColumn(label: Text('Glass Size')),
+              DataColumn(label: Text('Qty')),
+              DataColumn(label: Text('Rub')),
+              DataColumn(label: Text('WinNo')),
+              DataColumn(label: Text('Label')),
+              DataColumn(label: Text('WinSize')),
               DataColumn(label: Text('Edit')),
             ],
             rows: _rows
@@ -686,21 +692,12 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
                   final int index = entry.key;
                   final GlassReportRow row = entry.value;
                   return DataRow(
+                    // Same order as the headers above. Kept adjacent in the
+                    // file for exactly that reason: a cell list that drifts
+                    // from its headers puts every number under the wrong name.
                     cells: <DataCell>[
                       DataCell(
-                        Text(_winSizeForRow(row)),
-                        onTap: () => _editRow(index),
-                      ),
-                      DataCell(
-                        Text(row.windowName.isEmpty ? '--' : row.windowName),
-                        onTap: () => _editRow(index),
-                      ),
-                      DataCell(
-                        Text(row.windowNo > 0 ? '${row.windowNo}' : '--'),
-                        onTap: () => _editRow(index),
-                      ),
-                      DataCell(
-                        Text(row.rubberType.isEmpty ? '--' : row.rubberType),
+                        Text(_glassSizeForRow(row)),
                         onTap: () => _editRow(index),
                       ),
                       DataCell(
@@ -708,7 +705,19 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
                         onTap: () => _editRow(index),
                       ),
                       DataCell(
-                        Text(_glassSizeForRow(row)),
+                        Text(row.rubberType.isEmpty ? '--' : row.rubberType),
+                        onTap: () => _editRow(index),
+                      ),
+                      DataCell(
+                        Text(row.windowNo > 0 ? '${row.windowNo}' : '--'),
+                        onTap: () => _editRow(index),
+                      ),
+                      DataCell(
+                        Text(row.windowName.isEmpty ? '--' : row.windowName),
+                        onTap: () => _editRow(index),
+                      ),
+                      DataCell(
+                        Text(_winSizeForRow(row)),
                         onTap: () => _editRow(index),
                       ),
                       DataCell(
