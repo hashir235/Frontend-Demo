@@ -21,6 +21,16 @@ class MyApp extends StatelessWidget {
       listenable: ThemeController.instance,
       builder: (BuildContext context, Widget? child) {
         return MaterialApp(
+          // Keyed on the mode so the whole tree is discarded and rebuilt when
+          // it changes.
+          //
+          // AppTheme's colours come from one global that is swapped in place,
+          // not from ThemeData, so a widget only picks up the new palette when
+          // it rebuilds -- and a `const` widget is the same instance either
+          // side of the switch, which Flutter recognises and skips. Home is
+          // full of them, so switching to light left it painted half in each:
+          // new background, old cards. Changing the key makes that impossible.
+          key: ValueKey<bool>(AppTheme.isDark),
           title: 'Quick AL',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.current(),
