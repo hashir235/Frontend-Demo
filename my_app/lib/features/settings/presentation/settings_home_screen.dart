@@ -942,6 +942,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Rates get their own full screen -- the table is far too wide to sit
   /// inside a settings card -- so this card is the door to it.
+  /// Section rates and bill rates, one above the other, under one heading.
+  ///
+  /// They were two separate entries in Settings, which read as two unrelated
+  /// jobs. They are not: both are "what this workshop charges", and someone
+  /// setting up their prices wants to do it in one sitting rather than find
+  /// half of it somewhere else in the list.
+  ///
+  /// Section rates stay on top -- they are the ones that change with the
+  /// market and get opened again and again. The bill rates are set once and
+  /// rarely touched, so they sit below.
+  Widget _buildRatesOfSectionsAndBillCard(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _buildRatesCard(context),
+        const SizedBox(height: AppTheme.space5),
+        _buildBillRatesCard(context),
+      ],
+    );
+  }
+
   Widget _buildRatesCard(BuildContext context) {
     return _buildSettingsCard(
       context,
@@ -2500,7 +2521,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Yahan Navigator use nahi kiya kyunke saare controllers aur loaders isi
   /// State mein hain — section badalna sirf ek setState ha, is liye koi bhi
   /// adhoora load ya likha hua text zaya nahi hota.
-  List<_SettingsSection> get _sections => <_SettingsSection>[
+  List<_SettingsSection> get _allSections => <_SettingsSection>[
     // Ordered by how often a working day needs them: the settings that change
     // a job come first, then money, then the things you set up once. Help and
     // App Update sit near the bottom, just above Account -- useful, but not
@@ -2516,9 +2537,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _SettingsSection(
       id: 'rates',
       icon: Icons.price_change_rounded,
-      title: 'Rates',
-      subtitle: 'Section ke rates dekhein aur apne mutabiq badlein.',
-      builder: _buildRatesCard,
+      title: 'Rates of Sections and Bill',
+      subtitle:
+          'Section ke rates, aur labour/hardware/glass ke bill rates — ek hi '
+          'jagah.',
+      builder: _buildRatesOfSectionsAndBillCard,
       accent: const Color(0xFF12A594),
     ),
     _SettingsSection(
@@ -2545,14 +2568,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: _buildCompanyInformationCard,
       accent: const Color(0xFF2E7D9A),
     ),
-    _SettingsSection(
-      id: 'bill_rates',
-      icon: Icons.receipt_long_rounded,
-      title: 'Bill Rates',
-      subtitle: 'Labour, hardware aur glass ke rates — bill par khud bhar jayenge.',
-      builder: _buildBillRatesCard,
-      accent: const Color(0xFF11845E),
-    ),
+    // Bill Rates has no entry of its own: it lives inside "Rates of Sections
+    // and Bill", directly under the section rates. Both answer the same
+    // question -- what this workshop charges -- and splitting them meant
+    // setting your prices in two places.
     _SettingsSection(
       id: 'theme',
       icon: Icons.palette_outlined,
@@ -2568,6 +2587,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       subtitle: 'Aap ka plan aur renewal.',
       builder: _buildPaymentRenewalCard,
       accent: const Color(0xFF1F9254),
+      // Hidden while the app is free. Set this back to false to bring it back
+      // exactly as it was -- nothing else has changed.
+      hidden: true,
     ),
     _SettingsSection(
       id: 'legal',
@@ -2602,6 +2624,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       accent: const Color(0xFF64748B),
     ),
   ];
+
+  /// What the list actually shows.
+  ///
+  /// [_allSections] is the whole set, including anything switched off for
+  /// now. Filtering here rather than deleting entries means a hidden section
+  /// keeps its place, its colour and its card, and comes back by flipping one
+  /// flag.
+  List<_SettingsSection> get _sections =>
+      _allSections.where((_SettingsSection s) => !s.hidden).toList(growable: false);
 
   /// The open section's colour, or the app blue when the menu is showing.
   ///
@@ -2765,6 +2796,14 @@ class _SettingsSection {
   /// shape you remember, so the second visit is quicker than the first.
   final Color accent;
 
+  /// Kept out of the list without being taken out of the app.
+  ///
+  /// Used while Quick AL is free: there is nothing to pay for, so a Payment
+  /// entry only raises a question the app cannot answer. Everything behind it
+  /// — the card, the plans, the whole subscription flow — is untouched and
+  /// still reachable in code, so putting it back is this one flag.
+  final bool hidden;
+
   const _SettingsSection({
     required this.id,
     required this.icon,
@@ -2772,6 +2811,7 @@ class _SettingsSection {
     required this.subtitle,
     required this.builder,
     required this.accent,
+    this.hidden = false,
   });
 }
 

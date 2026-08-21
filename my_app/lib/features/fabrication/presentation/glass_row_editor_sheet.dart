@@ -521,7 +521,13 @@ class _DimensionRowState extends State<_DimensionRow> {
   }
 
   /// Whole numbers read better without a trailing ".0" on a cutting slip.
+  ///
+  /// Zero shows as an empty box rather than "0". A pre-filled zero has to be
+  /// cleared before a number can be typed — on a screen where a run of glass
+  /// is entered piece after piece, that is one deletion per piece. Blank means
+  /// zero anyway, which is what [_parseSutter] does with it.
   static String _formatSutter(double value) {
+    if (value == 0) return '';
     if (value == value.roundToDouble()) return value.toInt().toString();
     return value.toString();
   }

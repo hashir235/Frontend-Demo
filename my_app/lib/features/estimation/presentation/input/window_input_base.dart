@@ -75,6 +75,18 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   final FocusNode _leftWidthFocusNode = FocusNode();
   final FocusNode _archFocusNode = FocusNode();
   final FocusNode _descriptionFocusNode = FocusNode();
+
+  /// The sub-part boxes — inch in feet mode, suter in inches mode.
+  ///
+  /// They only take focus when sizes are typed rather than picked on the
+  /// wheel, which is now the default. Without these the keyboard's next jumped
+  /// straight from Height to Width, skipping the half of the measurement the
+  /// user was about to type.
+  final FocusNode _heightSubFocusNode = FocusNode();
+  final FocusNode _widthSubFocusNode = FocusNode();
+  final FocusNode _leftWidthSubFocusNode = FocusNode();
+
+  final FocusNode _quantityFocusNode = FocusNode();
   final GlobalKey _winNoFieldKey = GlobalKey(debugLabel: 'winNoField');
   final GlobalKey _heightFieldKey = GlobalKey(debugLabel: 'heightField');
   final GlobalKey _widthFieldKey = GlobalKey(debugLabel: 'widthField');
@@ -580,16 +592,35 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (_numberingMode == NumberingMode.manual && !widget.isEditMode) {
       targets.add((node: _winNoFocusNode, key: _winNoFieldKey));
     }
-    // In split modes the sub-part (suter / inch) is picked on the tape wheel,
-    // not typed, so keyboard "next" simply hops between the typed whole-number
-    // fields (and arch, which stays a single typed field in every mode).
+    // A size is two boxes — whole and sub-part — and the order below is the
+    // order a person reads a tape: height and its suter, then width and its
+    // suter. The sub-part joins the chain only when it is a typing box; on the
+    // wheel there is nothing to focus, and "next" hops the typed fields alone.
     targets.add((node: _heightFocusNode, key: _heightFieldKey));
+    if (_usesKeypadSizeInput) {
+      targets.add((node: _heightSubFocusNode, key: _heightFieldKey));
+    }
     targets.add((node: _widthFocusNode, key: _widthFieldKey));
+    if (_usesKeypadSizeInput) {
+      targets.add((node: _widthSubFocusNode, key: _widthFieldKey));
+    }
     if (_usesSplitWidthInputs) {
       targets.add((node: _leftWidthFocusNode, key: _leftWidthFieldKey));
+      if (_usesKeypadSizeInput) {
+        targets.add((node: _leftWidthSubFocusNode, key: _leftWidthFieldKey));
+      }
     }
     if (_usesArchInput) {
       targets.add((node: _archFocusNode, key: _archFieldKey));
+    }
+    // Quantity before description: it is part of the measurement, and a
+    // description is the last thing anyone types — if they type one at all.
+    //
+    // Only when it is on screen. Editing one saved window has no quantity
+    // field, and a chain that steps onto a box that is not there loses the
+    // cursor entirely.
+    if (!widget.isEditMode) {
+      targets.add((node: _quantityFocusNode, key: _descriptionFieldKey));
     }
     targets.add((node: _descriptionFocusNode, key: _descriptionFieldKey));
 
@@ -634,6 +665,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           identical(target.node, currentNode),
     );
     if (currentIndex == -1 || currentIndex == targets.length - 1) {
+      // The end of the chain is not a wrap. Saving is what returns the cursor
+      // to the first box -- see the reset at the end of _onSavePressed -- and
+      // it keeps the window that was just typed. Wrapping here instead would
+      // put the cursor back at the top and quietly throw that window away.
       return false;
     }
     final ({FocusNode node, GlobalKey key}) nextTarget =
@@ -671,6 +706,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _leftWidthFocusNode.dispose();
     _archFocusNode.dispose();
     _descriptionFocusNode.dispose();
+    _heightSubFocusNode.dispose();
+    _widthSubFocusNode.dispose();
+    _leftWidthSubFocusNode.dispose();
+    _quantityFocusNode.dispose();
     _collarPageController.removeListener(_onCollarScroll);
     _collarPageController.dispose();
     super.dispose();
@@ -1733,6 +1772,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     required TextStyle? numberInputStyle,
     required VoidCallback onChanged,
     required FocusNode wholeFocusNode,
+
+    /// Focus for the sub-part box. Only used when sizes are typed — the wheel
+    /// takes no focus, so the chain skips it there.
+    FocusNode? subFocusNode,
     // Only the first field on screen carries the tour's wheel target; ids are
     // unique, so registering it on all three would leave the spotlight
     // pointing at whichever built last.
@@ -1781,6 +1824,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       feetMode: feetMode,
                       numberInputStyle: numberInputStyle,
                       onChanged: onChanged,
+                      focusNode: subFocusNode,
                     )
                   : feetMode
                   ? InchWheel(
@@ -1826,14 +1870,22 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     required bool feetMode,
     required TextStyle? numberInputStyle,
     required VoidCallback onChanged,
+    FocusNode? focusNode,
   }) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       style: numberInputStyle,
       keyboardType: TextInputType.numberWithOptions(
         signed: false,
         decimal: !feetMode,
       ),
+      textInputAction: focusNode == null
+          ? TextInputAction.next
+          : _textInputActionForField(focusNode),
+      onSubmitted: (_) {
+        if (focusNode != null) _submitFromField(focusNode);
+      },
       inputFormatters: <TextInputFormatter>[
         if (feetMode)
           FilteringTextInputFormatter.digitsOnly
@@ -2314,6 +2366,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                                   errorText: _heightError,
                                   numberInputStyle: numberInputStyle,
                                   wholeFocusNode: _heightFocusNode,
+                                  subFocusNode: _heightSubFocusNode,
                                   onChanged: () {
                                     setState(() {
                                       _heightController.text =
@@ -2366,6 +2419,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                                   errorText: _widthError,
                                   numberInputStyle: numberInputStyle,
                                   wholeFocusNode: _widthFocusNode,
+                                  subFocusNode: _widthSubFocusNode,
                                   onChanged: () {
                                     setState(() {
                                       _widthController.text =
@@ -2419,6 +2473,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                                     errorText: _leftWidthError,
                                     numberInputStyle: numberInputStyle,
                                     wholeFocusNode: _leftWidthFocusNode,
+                                    subFocusNode: _leftWidthSubFocusNode,
                                     onChanged: () {
                                       setState(() {
                                         _leftWidthController.text =
@@ -2492,6 +2547,37 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             ],
                           ),
                         ),
+                        // Quantity sits above the description: it belongs with
+                        // the measurement, and a description is the last thing
+                        // anyone types — when they type one at all.
+                        if (!widget.isEditMode) ...[
+                          const SizedBox(height: 12),
+                          TutorialTarget(
+                            id: 'input.quantity',
+                            child: TextField(
+                              controller: _quantityController,
+                              focusNode: _quantityFocusNode,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    signed: false,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              textInputAction: _textInputActionForField(
+                                _quantityFocusNode,
+                              ),
+                              onSubmitted: (_) =>
+                                  _submitFromField(_quantityFocusNode),
+                              decoration: InputDecoration(
+                                labelText: 'Quantity (Optional)',
+                                hintText: 'e.g. 6  (default: 1)',
+                                hintStyle: hintStyle,
+                                prefixIcon: const Icon(Icons.copy_all_rounded),
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         TutorialTarget(
                           id: 'input.description',
@@ -2513,30 +2599,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             ),
                           ),
                         ),
-                        if (!widget.isEditMode) ...[
-                          const SizedBox(height: 12),
-                          TutorialTarget(
-                            id: 'input.quantity',
-                            child: TextField(
-                              controller: _quantityController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    signed: false,
-                                  ),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              textInputAction: TextInputAction.done,
-                              onSubmitted: (_) => _onSavePressed(),
-                              decoration: InputDecoration(
-                                labelText: 'Quantity (Optional)',
-                                hintText: 'e.g. 6  (default: 1)',
-                                hintStyle: hintStyle,
-                                prefixIcon: const Icon(Icons.copy_all_rounded),
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),

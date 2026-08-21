@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
@@ -26,9 +28,11 @@ import '../../help_videos/tutorial_videos.dart';
 ///  3. Built entirely by hand — a user who only has loose glass sizes (no
 ///     window calculation) can open this screen and add rows manually.
 ///
-/// Edits are kept in [_rows] locally and pushed to the backend via
-/// [GlassReportApiClient.saveGlassReport] before any PDF / optimization step so
-/// the saved rows always match what the user sees.
+/// Edits are kept in [_rows] and saved on their own: a couple of seconds after
+/// the last change, and again on the way out of the screen. They used to reach
+/// the server only when a report or a sheet layout was generated, so a shop
+/// that just wanted the list — typed it, then left — got the project back from
+/// history with every row gone.
 class GlassReportScreen extends StatefulWidget {
   final String? projectId;
   final GlassReportApiClient? apiClient;
@@ -60,6 +64,21 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   bool _dirty = false;
+
+  /// Sends the rows to the server shortly after the last change.
+  ///
+  /// Rows used to reach the server only when a report or a sheet layout was
+  /// generated, or when Save was pressed. Someone who typed a glass list and
+  /// then simply left — which is the whole job, for a shop that only wanted
+  /// the list — lost every row: the project came back from history empty,
+  /// with nothing to say it had ever held anything.
+  ///
+  /// Delayed rather than immediate because a glass list is typed as a run of
+  /// pieces one after another, and a request per piece would be a request
+  /// every few seconds on a phone in a workshop.
+  Timer? _autoSaveTimer;
+
+  static const Duration _autoSaveDelay = Duration(seconds: 2);
 
   // A non-blocking note shown above the table (e.g. "no saved rows yet").
   String? _note;
@@ -168,6 +187,7 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
           _dirty = true;
           _note = null;
         });
+        _scheduleAutoSave();
       },
     );
   }
@@ -185,6 +205,7 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
       _rows[index] = updated;
       _dirty = true;
     });
+    _scheduleAutoSave();
   }
 
   Future<void> _deleteRow(int index) async {
@@ -211,6 +232,41 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
       _rows.removeAt(index);
       _dirty = true;
     });
+    _scheduleAutoSave();
+  }
+
+  @override
+  void dispose() {
+    _autoSaveTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Saves anything still unsaved as the screen is being left.
+  ///
+  /// The timer covers someone who pauses; this covers someone who does not —
+  /// typing the last row and going straight back would otherwise leave that
+  /// row, and on a brand new project every row, only in memory.
+  ///
+  /// Deliberately does not block leaving. If the save fails the rows are still
+  /// on the device and the next visit to this screen will send them; holding
+  /// someone on a screen they have finished with would be worse.
+  ///
+  /// Posts directly rather than through [_saveReport], which calls setState —
+  /// by the time this runs the screen is being torn down, and touching state
+  /// on a widget that is going away throws.
+  Future<void> _saveOnLeave() async {
+    _autoSaveTimer?.cancel();
+    if (!_dirty || _isSaving) return;
+    final GlassReport report = _buildReport();
+    try {
+      await _apiClient.saveGlassReport(
+        report: report,
+        projectId: widget.projectId,
+      );
+    } catch (_) {
+      // Nobody is here to be told. The rows stay on the device and go up on
+      // the next visit; a failed save must not throw on the way out.
+    }
   }
 
   // ── Persistence ───────────────────────────────────────────────────────────
@@ -223,6 +279,26 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
       projectLocation: _projectLocation,
       rows: List<GlassReportRow>.unmodifiable(_rows),
     );
+  }
+
+  /// Restarts the countdown to the next automatic save.
+  ///
+  /// Called from every edit. A save already running is left alone and another
+  /// is queued behind it, so two requests can never be in flight writing the
+  /// same list.
+  void _scheduleAutoSave() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(_autoSaveDelay, () {
+      if (!mounted || !_dirty) return;
+      if (_isSaving) {
+        // Try again once the one in flight is done.
+        _scheduleAutoSave();
+        return;
+      }
+      // Silent: this is housekeeping, not something the user asked for, and a
+      // snackbar every few seconds while typing a list would be maddening.
+      _saveReport(silent: true);
+    });
   }
 
   /// Saves the current rows to the backend. Returns true on success. When
@@ -433,6 +509,18 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Catches the rows typed right before someone goes back. The timer handles
+    // a pause; this handles no pause at all.
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (bool didPop, Object? _) {
+        if (didPop) _saveOnLeave();
+      },
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Glass Report'),

@@ -13,9 +13,10 @@ Finder _textFieldByLabel(String label) {
 }
 
 /// Estimation opens in inches, where a size is a typed inch box plus a suter
-/// wheel -- hence the unit in the label. The keyboard traversal these tests are
-/// about runs across the typed boxes; leaving the wheel alone means the saved
-/// value comes back as whole inches, `45` -> `45.0`.
+/// box -- hence the unit in the label. Sizes are typed rather than picked on
+/// the wheel by default, so the suter is part of the keyboard chain: next goes
+/// inch, suter, inch, suter, quantity, description. Leaving the suter boxes
+/// empty means the saved value comes back as whole inches, `45` -> `45.0`.
 const String _heightLabel = 'Height (Inch)';
 const String _widthLabel = 'Width (Inch)';
 
@@ -65,6 +66,8 @@ void main() {
 
     final Finder heightField = _textFieldByLabel(_heightLabel);
     final Finder widthField = _textFieldByLabel(_widthLabel);
+    final Finder suterField = _textFieldByLabel('Suter');
+    final Finder quantityField = _textFieldByLabel('Quantity (Optional)');
     final Finder descriptionField = _textFieldByLabel('Description (Optional)');
 
     // The size fields sit under the pinned Save bar on a short screen, so a
@@ -77,9 +80,33 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.next);
     await tester.pump();
 
+    // A size is two boxes, so next goes to the suter beside the inch it was
+    // typed in -- not past it to the next measurement.
+    expect(
+      tester.widget<TextField>(suterField.at(0)).focusNode?.hasFocus,
+      isTrue,
+    );
+
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
     expect(tester.widget<TextField>(widthField).focusNode?.hasFocus, isTrue);
 
     await tester.enterText(widthField, '22');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(suterField.at(1)).focusNode?.hasFocus,
+      isTrue,
+    );
+
+    // Quantity comes before the description: it belongs with the measurement.
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(quantityField).focusNode?.hasFocus,
+      isTrue,
+    );
+
     await tester.testTextInput.receiveAction(TextInputAction.next);
     await tester.pump();
 
