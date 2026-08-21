@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_theme.dart';
 import 'tutorial_videos.dart';
+import 'video_links_store.dart';
 
 /// The "watch how this works" button that sits in a screen's header.
 ///
@@ -47,6 +48,15 @@ class HelpVideoButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Rebuilt when the links arrive, so a screen that was already open when
+    // the fetch finished starts working without being reopened.
+    return ListenableBuilder(
+      listenable: VideoLinksStore.instance,
+      builder: (BuildContext context, Widget? _) => _buildButton(context),
+    );
+  }
+
+  Widget _buildButton(BuildContext context) {
     return Semantics(
       button: true,
       label: 'Watch the video for this step',

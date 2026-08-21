@@ -1,45 +1,19 @@
-/// Where every "how do I do this" video lives.
+import 'video_links_store.dart';
+
+/// The name each screen goes by when it asks for its "how do I do this" video.
 ///
-/// One place on purpose. There is a button on seventeen screens, and links
-/// scattered across seventeen files is how three of them end up pointing at
-/// last year's video and nobody notices. Fill a link in here and the screen
-/// picks it up.
+/// Only the names live here. The links themselves come from the server via
+/// [VideoLinksStore], so recording a new video — or re-uploading one, which
+/// changes its link — is a file edit rather than a release.
 ///
-/// A blank entry is not a mistake — it means that video has not been recorded
-/// yet, and the button says so rather than opening nothing.
+/// Named after the screen rather than the order they were added, so adding a
+/// video later does not shuffle the rest.
+///
+/// No link yet is not a mistake: it means that video is not made, and the
+/// button says so rather than opening nothing.
+
 class TutorialVideos {
   const TutorialVideos._();
-
-  /// Screen key -> YouTube link.
-  ///
-  /// Keys are named after the screen, not the order they were added, so adding
-  /// a video later does not shuffle the rest.
-  static const Map<String, String> _links = <String, String>{
-    // --- Shared ---------------------------------------------------------
-    home: '',
-
-    // --- Estimation -----------------------------------------------------
-    estimationMenu: '',
-    estimationLibrary: '',
-    estimationLengthOptimization: '',
-    estimationMaterialSelection: '',
-    estimationRates: '',
-    estimationMaterialTable: '',
-    estimationBillInputs: '',
-    estimationFinalBill: '',
-
-    // --- Fabrication ----------------------------------------------------
-    fabricationMenu: '',
-    fabricationLibrary: '',
-    fabricationLengthOptimization: '',
-    fabricationMaterialSelection: '',
-    fabricationRates: '',
-    fabricationMaterialTable: '',
-
-    // --- Glass ----------------------------------------------------------
-    glassSizeList: '',
-    glassSheetLayout: '',
-  };
 
   static const String home = 'home';
 
@@ -63,7 +37,10 @@ class TutorialVideos {
   static const String glassSheetLayout = 'glass.sheetLayout';
 
   /// The link for a screen, or empty when it has not been recorded yet.
-  static String linkFor(String key) => _links[key] ?? '';
+  ///
+  /// Comes from [VideoLinksStore], which reads it from the server -- so a new
+  /// or corrected link reaches people without a release.
+  static String linkFor(String key) => VideoLinksStore.instance.linkFor(key);
 
-  static bool hasLink(String key) => linkFor(key).trim().isNotEmpty;
+  static bool hasLink(String key) => VideoLinksStore.instance.hasLink(key);
 }

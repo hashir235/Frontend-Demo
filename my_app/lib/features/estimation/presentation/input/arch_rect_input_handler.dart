@@ -6,8 +6,13 @@ class ArchRectInputHandler extends WindowInputHandler {
   @override
   int get collarCount => 8;
 
+  /// No arch box: a rectangle arch is cut from its height and width alone.
+  ///
+  /// The engine's Rectangle branch never reads the arch value — it was being
+  /// asked for, validated, sent, and then thrown away, while a window could
+  /// not be saved without it. The round arch is the one that has an arch.
   @override
-  bool get usesArchInput => true;
+  bool get usesArchInput => false;
 
   @override
   Map<int, List<String>> get sectionsByCollar => const <int, List<String>>{
