@@ -11,7 +11,10 @@ import '../models/pakistan_cities.dart';
 /// list, and a city that exists on one screen but not the other would mean a
 /// workshop pointing at rates that are not there.
 ///
-/// Deliberately not a free text box: "lahor" would quietly miss its rate list.
+/// A list rather than a bare text box, because "lahor" would quietly miss its
+/// rate list — but a town that is not on the list can still be typed and kept,
+/// since the list covers the trading centres rather than every town, and
+/// nobody should be unable to finish setting up their workshop.
 class CityPickerField extends StatelessWidget {
   /// The chosen city, or empty when nothing has been picked yet.
   final String value;
@@ -201,6 +204,47 @@ class _CityListSheetState extends State<_CityListSheet> {
         .toList(growable: false);
   }
 
+  /// Lets someone keep a town that is not on the list.
+  ///
+  /// The list covers the trading centres, not every town in the country, and
+  /// refusing a name outright would leave a workshop unable to finish setting
+  /// up. A typed city simply has no rate list of its own yet, which the field
+  /// already says plainly and gives a number to ring about — better than being
+  /// told their town does not exist.
+  Widget _buildCustomOption(BuildContext context) {
+    final String typed = _query.trim();
+    if (typed.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      children: <Widget>[
+        Text(
+          'Not on the list.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.tonalIcon(
+          key: const Key('city_use_typed'),
+          onPressed: () => Navigator.of(context).pop(typed),
+          icon: const Icon(Icons.edit_location_alt_rounded),
+          label: Text('Use "$typed"'),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'A city we do not keep a rate list for yet. You can still use it — '
+          'you will get the general rates, and you can change any of them '
+          'yourself.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<String> cities = _visible;
@@ -246,7 +290,7 @@ class _CityListSheetState extends State<_CityListSheet> {
                       autofocus: false,
                       onChanged: (String v) => setState(() => _query = v),
                       decoration: const InputDecoration(
-                        hintText: 'Search',
+                        hintText: 'Search, or type your own city',
                         prefixIcon: Icon(Icons.search_rounded),
                         border: OutlineInputBorder(),
                         isDense: true,
@@ -257,19 +301,7 @@ class _CityListSheetState extends State<_CityListSheet> {
               ),
               Expanded(
                 child: cities.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            'No city by that name. Pick the city you buy your '
-                            'material from — those are the rates that apply to '
-                            'you.',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: AppTheme.textSecondary),
-                          ),
-                        ),
-                      )
+                    ? _buildCustomOption(context)
                     : ListView.builder(
                         itemCount: cities.length,
                         itemBuilder: (BuildContext context, int index) {
