@@ -1,3 +1,5 @@
+import '../../help_videos/help_video_button.dart';
+import '../../help_videos/tutorial_videos.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -967,7 +969,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _buildSettingsCard(
       context,
       icon: Icons.price_change_rounded,
-      title: 'Rates',
+      title: 'Section Rates',
+      videoKey: TutorialVideos.settingsRates,
       subtitle:
           'The rate for every section, by gauge and colour. Change any of '
           'them to price with your own.',
@@ -1514,6 +1517,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     required String subtitle,
     required Widget child,
+
+    /// A key from [TutorialVideos]. Puts the watch button in the header, where
+    /// someone looks when a setting is not obvious — which is most of them,
+    /// the first time.
+    String? videoKey,
   }) {
     return Container(
       padding: const EdgeInsets.all(22),
@@ -1558,6 +1566,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
+              if (videoKey != null) ...<Widget>[
+                const SizedBox(width: 8),
+                HelpVideoButton(videoKey: videoKey),
+              ],
             ],
           ),
           const SizedBox(height: 20),
@@ -1644,6 +1656,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       icon: Icons.tune_rounded,
       title: 'Window Input',
+      videoKey: TutorialVideos.settingsWindowInput,
       subtitle: 'How window numbers and sizes are entered.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1749,6 +1762,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       icon: Icons.apartment_rounded,
       title: 'Company Information',
+      videoKey: TutorialVideos.settingsCompany,
       subtitle: 'These values are loaded automatically into the billing flow.',
       child: _isLoadingBillingSettings
           ? _buildLoadingCard()
@@ -1822,6 +1836,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       icon: Icons.tune_rounded,
       title: 'Estimation Settings',
+      videoKey: TutorialVideos.settingsEstimation,
       subtitle:
           'Manage allowed lengths, cutting margins, and optimization thresholds.',
       child: _isLoadingEstimationSettings
@@ -2037,6 +2052,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       icon: Icons.construction_rounded,
       title: 'Fabrication Settings',
+      videoKey: TutorialVideos.settingsFabrication,
       subtitle:
           'Fabrication has its own lengths, red zones and allowance. Nothing '
           'here touches Estimation, and nothing there touches fabrication.',
@@ -2236,6 +2252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       icon: Icons.gavel_rounded,
       title: 'Legal & Support',
+      videoKey: TutorialVideos.settingsLegal,
       subtitle:
           'Our policies and how to reach us. Everything opens inside the app.',
       child: Column(

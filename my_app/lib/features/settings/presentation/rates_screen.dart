@@ -33,6 +33,43 @@ class _RatesScreenState extends State<RatesScreen> {
   String? _error;
   bool _dirty = false;
 
+  /// One controller per editable cell, keyed "section|colour".
+  ///
+  /// The cells used to be built with `initialValue` under a key that had the
+  /// value in it. Every keystroke changed the value, which changed the key,
+  /// which told Flutter this was a different widget -- so the field was thrown
+  /// away and rebuilt mid-typing. The cursor jumped to the start and the
+  /// keyboard shut, once per character.
+  ///
+  /// A controller holds the text instead, and the key below is now just the
+  /// cell's identity, which does not move while someone types in it.
+  final Map<String, TextEditingController> _rateControllers =
+      <String, TextEditingController>{};
+
+  TextEditingController _controllerFor(
+    String section,
+    String colour,
+    String value,
+  ) {
+    return _rateControllers.putIfAbsent(
+      '$section|$colour',
+      () => TextEditingController(text: value),
+    );
+  }
+
+  /// Throws the controllers away so the cells are rebuilt from fresh values.
+  ///
+  /// Called when the list is replaced from the server -- a load, a save, a
+  /// reset. Never while someone is typing: writing into a live controller
+  /// would move the cursor under their finger, which is the whole problem
+  /// these controllers exist to solve.
+  void _resetRateControllers() {
+    for (final TextEditingController c in _rateControllers.values) {
+      c.dispose();
+    }
+    _rateControllers.clear();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +85,7 @@ class _RatesScreenState extends State<RatesScreen> {
       final RateList list = await _api.fetch();
       if (!mounted) return;
       setState(() {
+        _resetRateControllers();
         _list = list;
         _loading = false;
         _dirty = false;
@@ -67,6 +105,7 @@ class _RatesScreenState extends State<RatesScreen> {
       final RateList saved = await _api.save(_list.rows);
       if (!mounted) return;
       setState(() {
+        _resetRateControllers();
         _list = saved;
         _saving = false;
         _dirty = false;
@@ -107,6 +146,7 @@ class _RatesScreenState extends State<RatesScreen> {
       final RateList fresh = await _api.resetToMaster();
       if (!mounted) return;
       setState(() {
+        _resetRateControllers();
         _list = fresh;
         _saving = false;
         _dirty = false;
@@ -132,6 +172,11 @@ class _RatesScreenState extends State<RatesScreen> {
       ..[colour] = value.trim();
     final List<RateRow> rows = List<RateRow>.from(_list.rows)
       ..[rowIndex] = row.copyWith(byColour: next);
+
+    // Rebuilt on every keystroke, deliberately. The "was 1200" note under a
+    // cell and the Save bar both have to follow what is being typed, and with
+    // the cell now keyed by identity and holding its text in a controller, a
+    // rebuild no longer takes the cursor with it -- which was the actual bug.
     setState(() {
       _list = RateList(rows: rows, master: _list.master, customised: true);
       _dirty = true;
@@ -174,11 +219,20 @@ class _RatesScreenState extends State<RatesScreen> {
     _toast('Removed ${row.section}.');
   }
 
+
+  @override
+  void dispose() {
+    for (final TextEditingController c in _rateControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Rates'),
+        title: const Text('Section Rates'),
         actions: <Widget>[
           IconButton(
             tooltip: 'Back to standard rates',
@@ -354,8 +408,11 @@ class _RatesScreenState extends State<RatesScreen> {
           Expanded(
             flex: 2,
             child: TextFormField(
-              key: ValueKey<String>('${row.section}|$colour|$current'),
-              initialValue: current,
+              // The cell's identity, and nothing that changes as it is typed
+              // in. Putting the value in here rebuilt the field on every
+              // keystroke.
+              key: ValueKey<String>('${row.section}|$colour'),
+              controller: _controllerFor(row.section, colour, current),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),

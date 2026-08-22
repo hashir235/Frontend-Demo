@@ -36,6 +36,18 @@ class TutorialVideos {
   static const String glassSizeList = 'glass.sizeList';
   static const String glassSheetLayout = 'glass.sheetLayout';
 
+  // --- Setting up the workshop ----------------------------------------
+  //
+  // The things a shop does once, and therefore the things nobody remembers
+  // how to do the second time.
+  static const String workshopSetup = 'setup.workshop';
+  static const String settingsWindowInput = 'settings.windowInput';
+  static const String settingsRates = 'settings.rates';
+  static const String settingsEstimation = 'settings.estimation';
+  static const String settingsFabrication = 'settings.fabrication';
+  static const String settingsCompany = 'settings.company';
+  static const String settingsLegal = 'settings.legal';
+
   /// The link for a screen, or empty when it has not been recorded yet.
   ///
   /// Comes from [VideoLinksStore], which reads it from the server -- so a new

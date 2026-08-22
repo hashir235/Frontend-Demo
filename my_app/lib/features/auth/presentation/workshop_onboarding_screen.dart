@@ -1,3 +1,5 @@
+import 'package:my_app/features/help_videos/help_video_button.dart';
+import 'package:my_app/features/help_videos/tutorial_videos.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/core/config/api_config.dart';
@@ -213,6 +215,14 @@ class _WorkshopOnboardingScreenState extends State<WorkshopOnboardingScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text('Set up your workshop'),
+        actions: const <Widget>[
+          // The first screen a new workshop ever sees, and the one where being
+          // shown beats being told.
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: HelpVideoButton(videoKey: TutorialVideos.workshopSetup),
+          ),
+        ],
       ),
       body: AppScreenShell(
         child: ListView(
