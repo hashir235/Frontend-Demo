@@ -57,11 +57,17 @@ class _MaterialSelectionScreenState extends State<MaterialSelectionScreen> {
     _MaterialChoice(label: '2mm', value: '2mm'),
   ];
 
+  /// The finishes the rate list is priced in.
+  ///
+  /// `value` has to match the rate list's column heading exactly -- that string
+  /// is how a rate is looked up, so a label here that reads nicely but does not
+  /// match would price the job at nothing.
   static const List<_MaterialChoice> _colorOptions = <_MaterialChoice>[
     _MaterialChoice(label: 'H23/PC-RAL (champain)', value: 'H23/PC-RAL'),
     _MaterialChoice(label: 'DULL', value: 'DULL'),
     _MaterialChoice(label: 'SAHARA/ BROW', value: 'SAHARA/ BROWN'),
     _MaterialChoice(label: 'BLACK/ MULTI', value: 'BLACK/ MULTI'),
+    _MaterialChoice(label: 'WOOD COAT', value: 'WOOD COAT'),
   ];
 
   _MaterialChoice _selectedGage = _gageOptions.first;
