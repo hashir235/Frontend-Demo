@@ -9,6 +9,8 @@ import '../../estimation/state/estimate_session_store.dart';
 import '../../fabrication/presentation/glass_report_screen.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/state/flow_progress.dart';
+import '../../help_videos/help_video_button.dart';
+import '../../help_videos/tutorial_videos.dart';
 import 'new_glass_project_dialog.dart';
 
 /// Glass work on its own, alongside aluminium rather than inside it.
@@ -52,6 +54,11 @@ class GlassFabricationMenuScreen extends StatelessWidget {
               subtitle:
                   'Type glass sizes, lay them out on sheets, and reopen past '
                   'glass jobs.',
+              // The other two module menus carry their own video button; this
+              // one was the only entry screen without one.
+              trailing: const HelpVideoButton(
+                videoKey: TutorialVideos.glassMenu,
+              ),
               child: Column(
                 children: <Widget>[
                   PrimaryCardButton(

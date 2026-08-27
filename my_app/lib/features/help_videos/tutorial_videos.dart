@@ -33,6 +33,7 @@ class TutorialVideos {
   static const String fabricationRates = 'fabrication.rates';
   static const String fabricationMaterialTable = 'fabrication.materialTable';
 
+  static const String glassMenu = 'glass.menu';
   static const String glassSizeList = 'glass.sizeList';
   static const String glassSheetLayout = 'glass.sheetLayout';
 

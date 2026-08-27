@@ -6,7 +6,6 @@ import 'package:my_app/shared/widgets/app_hero_header.dart';
 import 'package:my_app/shared/widgets/app_screen_shell.dart';
 import 'package:my_app/shared/widgets/section_surface_card.dart';
 import 'package:my_app/features/tutorial/urdu_text.dart';
-import 'package:my_app/shared/widgets/social_links_card.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -343,8 +342,6 @@ class _AuthScreenState extends State<AuthScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: AppTheme.space6),
-                    const SocialLinksCard(),
                     const SizedBox(height: AppTheme.space6),
                     _buildAccessPanel(context),
                     const SizedBox(height: AppTheme.space6),

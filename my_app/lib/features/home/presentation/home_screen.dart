@@ -11,7 +11,6 @@ import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/metric_card.dart';
 import '../../../shared/widgets/primary_card_button.dart';
 import '../../../shared/widgets/section_surface_card.dart';
-import '../../../shared/widgets/social_links_card.dart';
 import '../../estimation/presentation/estimation_menu_screen.dart';
 import '../../fabrication/presentation/fabrication_menu_screen.dart';
 import '../../flow_nav/models/flow_step.dart';
@@ -391,8 +390,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: AppTheme.space6),
-              const SocialLinksCard(),
               const SizedBox(height: AppTheme.space6),
               // The tours sit down here rather than above the modules: someone
               // opening the app to do a job wants the job, not the lesson.

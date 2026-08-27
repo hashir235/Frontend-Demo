@@ -4,68 +4,11 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import 'section_surface_card.dart';
 
-/// "Learn & Connect" card — the YouTube how-to playlist + Facebook page, shown
-/// on both the sign-in screen and Home so every user (even before they take a
-/// plan) can reach the guides and follow the social pages.
-class SocialLinksCard extends StatelessWidget {
-  const SocialLinksCard({super.key});
-
-  // Same links that live on the Quick AL website.
-  static const String _youtubeUrl =
-      'https://www.youtube.com/playlist?list=PLHV3ATsOdETE';
-  static const String _facebookUrl =
-      'https://www.facebook.com/profile.php?id=61590000736332';
-
-  Future<void> _launch(BuildContext context, String url) async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    try {
-      final bool opened = await launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      );
-      if (!opened) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Could not open the link. Please try again.'),
-          ),
-        );
-      }
-    } catch (_) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Could not open the link. Please try again.'),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SectionSurfaceCard(
-      title: 'Learn & Connect',
-      subtitle: 'Watch step-by-step guides and follow Quick AL for updates.',
-      child: Column(
-        children: <Widget>[
-          _SocialTile(
-            icon: Icons.smart_display_rounded,
-            iconColor: const Color(0xFFFF0000),
-            title: 'How to Use',
-            subtitle: 'Step-by-step video guides on YouTube',
-            onTap: () => _launch(context, _youtubeUrl),
-          ),
-          const SizedBox(height: AppTheme.space4),
-          _SocialTile(
-            icon: Icons.facebook,
-            iconColor: const Color(0xFF1877F2),
-            title: 'Follow us on Facebook',
-            subtitle: 'Updates, tips, and announcements',
-            onTap: () => _launch(context, _facebookUrl),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// The "Learn & Connect" card that used to sit on Home and the sign-in screen
+// lived here. It pointed at one YouTube playlist and the Facebook page, which
+// made sense when there was nowhere else to look. Every screen now carries its
+// own video button for the exact step you are standing on, so a single link to
+// "all the videos" was the long way round to a worse answer.
 
 /// "How to pay the bill" — shown on the paywall and in Settings > Payment &
 /// Renewal, so a user who is stuck at the payment step can watch the walkthrough

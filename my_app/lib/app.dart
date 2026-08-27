@@ -41,10 +41,11 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Runs the startup version check (direct build only) before the app is usable.
+/// Runs the startup version check before the app is usable, on both builds.
 /// A forced update fully blocks the app; an optional update shows a one-time
-/// dialog over the normal flow. On the Play build or any error this resolves to
-/// [AppUpdateRequirement.none] immediately, so it never blocks by mistake.
+/// dialog over the normal flow — on the Play build its Update button opens the
+/// store listing, on the website build it downloads the APK. Any error resolves
+/// to [AppUpdateRequirement.none], so a failed check never blocks anyone.
 class _UpdateGate extends StatefulWidget {
   const _UpdateGate();
 
