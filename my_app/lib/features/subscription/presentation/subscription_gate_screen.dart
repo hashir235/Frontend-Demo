@@ -115,8 +115,16 @@ class _SubscriptionGateScreenState extends State<SubscriptionGateScreen> {
   @override
   Widget build(BuildContext context) {
     final SubscriptionStatus? status = _status;
+    // Only a status we actually received and that actually says "not entitled"
+    // holds someone back. No status is not a "no": while the check is still in
+    // flight, or when the phone is offline, or when the call failed, the user
+    // goes straight through to the work they opened the app to do.
+    //
+    // The old test needed a status object before it would let anyone in, so a
+    // workshop with no signal was shown a payment screen -- for an app that is
+    // free, on a phone whose only fault was being out of range.
     if (!widget.manage &&
-        ((status != null && status.active) || _previewBypass)) {
+        (status == null || status.active || _previewBypass)) {
       return widget.child!;
     }
 
