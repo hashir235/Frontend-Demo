@@ -3,6 +3,12 @@ class BillRequest {
   final double glassRatePerSqFt;
   final double laborRatePerSqFt;
   final double hardwareRatePerWindow;
+
+  /// Hardware rate per window type, keyed by the window name the bill groups
+  /// by. Empty when the job holds only one type, or for anything the engine
+  /// should price at [hardwareRatePerWindow] instead.
+  final Map<String, double> hardwareRateByType;
+
   final double aluminiumDiscountPercent;
   final double aluminiumTotal;
   final double extraCharges;
@@ -22,6 +28,7 @@ class BillRequest {
     required this.glassRatePerSqFt,
     required this.laborRatePerSqFt,
     required this.hardwareRatePerWindow,
+    this.hardwareRateByType = const <String, double>{},
     required this.aluminiumDiscountPercent,
     required this.aluminiumTotal,
     required this.extraCharges,
@@ -43,6 +50,10 @@ class BillRequest {
       'glassRatePerSqFt': glassRatePerSqFt,
       'laborRatePerSqFt': laborRatePerSqFt,
       'hardwareRatePerWindow': hardwareRatePerWindow,
+      // Left out entirely when empty rather than sent as {}, so an unchanged
+      // single-rate bill goes over the wire exactly as it always did.
+      if (hardwareRateByType.isNotEmpty)
+        'hardwareRateByType': hardwareRateByType,
       'aluminiumDiscountPercent': aluminiumDiscountPercent,
       'aluminiumTotal': aluminiumTotal,
       'extraCharges': extraCharges,

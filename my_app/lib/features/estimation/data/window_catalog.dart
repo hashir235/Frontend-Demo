@@ -245,6 +245,34 @@ class WindowCatalog {
         .toList(growable: false);
   }
 
+  /// Every window kind a job can contain, by the name it is saved under.
+  ///
+  /// These are the leaf labels -- the thing the user actually picks -- and
+  /// they are the same strings the bill groups its rows by, so a hardware rate
+  /// entered against one of these lands on the bill line the customer reads.
+  ///
+  /// De-duplicated: the M_Section variants of the panel and sliding-corner
+  /// windows carry the same labels as the plain ones, and one bill row covers
+  /// both, so one rate does too.
+  ///
+  /// Derived from the catalogue rather than written out again, so a window
+  /// added above cannot be forgotten here.
+  static List<String> get allTypeNames {
+    final List<String> names = <String>[];
+    void walk(List<WindowType> nodes) {
+      for (final WindowType node in nodes) {
+        if (node.children.isEmpty) {
+          if (!names.contains(node.label)) names.add(node.label);
+        } else {
+          walk(node.children);
+        }
+      }
+    }
+
+    walk(root);
+    return List<String>.unmodifiable(names);
+  }
+
   static WindowType? byDisplayIndex(int index) {
     return _findIn(root, index);
   }

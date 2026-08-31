@@ -14,6 +14,7 @@ import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../models/bill_request.dart';
+import '../models/window_review_item.dart';
 import '../../settings/data/bill_defaults_api_client.dart';
 import '../../settings/models/bill_defaults.dart';
 import '../models/estimate_flow_state.dart';
@@ -55,6 +56,28 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
   final TextEditingController _glassRateController = TextEditingController();
   final TextEditingController _laborRateController = TextEditingController();
   final TextEditingController _hardwareRateController = TextEditingController();
+
+  /// The window kinds this job actually contains, in the order they appear on
+  /// the bill, with how many of each. Read once: the windows are fixed by the
+  /// time anyone reaches this screen.
+  late final List<MapEntry<String, int>> _windowTypeCounts = _countWindowTypes();
+
+  /// One hardware box per kind, but only when there is more than one kind to
+  /// tell apart. A job of nothing but sliding windows keeps the single box it
+  /// has always had -- splitting it into a list of one would be a worse screen
+  /// for the commonest job.
+  final Map<String, TextEditingController> _hardwareByType =
+      <String, TextEditingController>{};
+
+  bool get _pricesHardwarePerType => _windowTypeCounts.length > 1;
+
+  List<MapEntry<String, int>> _countWindowTypes() {
+    final Map<String, int> counts = <String, int>{};
+    for (final WindowReviewItem item in widget.session.items) {
+      counts[item.windowLabel] = (counts[item.windowLabel] ?? 0) + 1;
+    }
+    return counts.entries.toList(growable: false);
+  }
   final TextEditingController _glassColorController = TextEditingController();
   final TextEditingController _aluminiumCompanyController =
       TextEditingController();
@@ -88,6 +111,11 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
   @override
   void initState() {
     super.initState();
+    if (_pricesHardwarePerType) {
+      for (final MapEntry<String, int> entry in _windowTypeCounts) {
+        _hardwareByType[entry.key] = TextEditingController();
+      }
+    }
     _loadSavedRates();
     final EstimateBillDraft? draft = widget.session.billDraft;
     if (draft == null) {
@@ -129,6 +157,16 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       _savedRates = defaults;
       fill(_laborRateController, defaults.labourRate);
       fill(_hardwareRateController, defaults.hardwareRate);
+      // Each kind gets the rate saved against it; anything the user never
+      // priced by kind falls back to the one hardware rate, so the boxes are
+      // never all blank just because the per-type list is new.
+      for (final MapEntry<String, TextEditingController> e
+          in _hardwareByType.entries) {
+        fill(
+          e.value,
+          defaults.rateForWindowType(e.key) ?? defaults.hardwareRate,
+        );
+      }
       fill(_discountController, defaults.aluminiumDiscount);
       final String? glassRate = defaults.rateForGlass(
         _glassColorController.text,
@@ -153,6 +191,9 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     _glassRateController.dispose();
     _laborRateController.dispose();
     _hardwareRateController.dispose();
+    for (final TextEditingController c in _hardwareByType.values) {
+      c.dispose();
+    }
     _glassColorController.dispose();
     _aluminiumCompanyController.dispose();
     _discountController.dispose();
@@ -264,7 +305,18 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       projectId: widget.projectId,
       glassRatePerSqFt: _parseRequiredNumber(_glassRateController),
       laborRatePerSqFt: _parseRequiredNumber(_laborRateController),
-      hardwareRatePerWindow: _parseRequiredNumber(_hardwareRateController),
+      // With several kinds on the job the single rate is no longer the whole
+      // answer, so it carries the first kind's rate: it is what the engine
+      // falls back to, and a window kind that somehow reached the bill without
+      // a box of its own is then priced at a real rate rather than at nothing.
+      hardwareRatePerWindow: _pricesHardwarePerType
+          ? _parseRequiredNumber(_hardwareByType[_windowTypeCounts.first.key]!)
+          : _parseRequiredNumber(_hardwareRateController),
+      hardwareRateByType: <String, double>{
+        for (final MapEntry<String, TextEditingController> e
+            in _hardwareByType.entries)
+          e.key: _parseRequiredNumber(e.value),
+      },
       aluminiumDiscountPercent: _parseRequiredNumber(_discountController),
       aluminiumTotal: widget.aluminiumTotal,
       extraCharges: _parseOptionalNumber(_extraChargesController),
@@ -353,12 +405,28 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
                         validator: _requiredNumberValidator,
                         tourId: 'bill.laborRate',
                       ),
-                      _buildNumberField(
-                        controller: _hardwareRateController,
-                        label: 'Hardware Rate *',
-                        validator: _requiredNumberValidator,
-                        tourId: 'bill.hardwareRate',
-                      ),
+                      if (!_pricesHardwarePerType)
+                        _buildNumberField(
+                          controller: _hardwareRateController,
+                          label: 'Hardware Rate *',
+                          validator: _requiredNumberValidator,
+                          tourId: 'bill.hardwareRate',
+                        )
+                      else ...<Widget>[
+                        // The count is in the label because the rate is per
+                        // window, not per line: seeing "x 7" next to the box
+                        // is what stops someone entering the total for all
+                        // seven.
+                        for (final MapEntry<String, int> entry
+                            in _windowTypeCounts)
+                          _buildNumberField(
+                            controller: _hardwareByType[entry.key]!,
+                            label:
+                                'Hardware Rate — ${entry.key}  × ${entry.value} *',
+                            validator: _requiredNumberValidator,
+                            tourId: 'bill.hardwareRate',
+                          ),
+                      ],
                       _buildNumberField(
                         controller: _discountController,
                         label: 'Aluminium Discount % *',

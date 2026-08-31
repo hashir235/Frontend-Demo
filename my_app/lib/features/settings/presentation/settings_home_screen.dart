@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../auth/data/auth_api_client.dart';
 import '../../auth/state/auth_controller.dart';
+import '../../estimation/data/window_catalog.dart';
 import '../../subscription/data/subscription_api_client.dart';
 import '../../subscription/models/subscription_models.dart';
 import '../../subscription/presentation/subscription_gate_screen.dart';
@@ -103,6 +104,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         for (final String type in GlassTypes.all)
           type: TextEditingController(),
       };
+
+  /// Hardware per window, priced by window kind.
+  ///
+  /// Set once here and every bill afterwards arrives with the boxes already
+  /// filled -- which is the point: the shop's hardware prices do not change
+  /// from job to job, and retyping them per bill is how a wrong one gets in.
+  final Map<String, TextEditingController> _hardwareRateControllers =
+      <String, TextEditingController>{
+        for (final String type in WindowCatalog.allTypeNames)
+          type: TextEditingController(),
+      };
   bool _savingBillDefaults = false;
 
   // --- City -------------------------------------------------------------
@@ -162,6 +174,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             in _glassRateControllers.entries) {
           e.value.text = defaults.glass[e.key] ?? '';
         }
+        for (final MapEntry<String, TextEditingController> e
+            in _hardwareRateControllers.entries) {
+          e.value.text = defaults.hardware[e.key] ?? '';
+        }
       });
     } catch (_) {
       // Leave the boxes as they are; the rest of Settings still works.
@@ -179,6 +195,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           glass: <String, String>{
             for (final MapEntry<String, TextEditingController> e
                 in _glassRateControllers.entries)
+              e.key: e.value.text.trim(),
+          },
+          hardware: <String, String>{
+            for (final MapEntry<String, TextEditingController> e
+                in _hardwareRateControllers.entries)
               e.key: e.value.text.trim(),
           },
         ),
@@ -321,6 +342,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _labourRateController.dispose();
     _hardwareRateController.dispose();
     _aluminiumDiscountController.dispose();
+    for (final TextEditingController c in _hardwareRateControllers.values) {
+      c.dispose();
+    }
     for (final TextEditingController c in _glassRateControllers.values) {
       c.dispose();
     }
@@ -758,6 +782,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               context,
               key: Key('bill_default_glass_${type.replaceAll(' ', '_')}'),
               controller: _glassRateControllers[type]!,
+              label: type,
+            );
+          }),
+          const SizedBox(height: 16),
+          Text(
+            'Hardware ke rates (per window)',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Har window type ka apna hardware rate. Bill par sirf wahi types '
+            'poochi jayengi jo us project mein hain.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          ...WindowCatalog.allTypeNames.map((String type) {
+            return _buildRateField(
+              context,
+              key: Key('bill_default_hardware_${type.replaceAll(' ', '_')}'),
+              controller: _hardwareRateControllers[type]!,
               label: type,
             );
           }),
