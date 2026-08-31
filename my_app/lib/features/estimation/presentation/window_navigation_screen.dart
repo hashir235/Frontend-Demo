@@ -9,6 +9,7 @@ import '../../tutorial/tutorial_step.dart';
 import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
+import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../data/window_catalog.dart';
@@ -16,6 +17,7 @@ import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
 import '../widgets/window_navigation_card.dart';
 import 'input/input_registry.dart';
+import 'review_list_screen.dart';
 import '../../help_videos/tutorial_videos.dart';
 
 class WindowNavigationScreen extends StatefulWidget {
@@ -88,6 +90,15 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
       MaterialPageRoute<void>(
         settings: RouteSettings(name: FlowSteps.sizeInput.id),
         builder: (_) => buildInputScreen(node: node, session: widget.session),
+      ),
+    );
+  }
+
+  void _openReview() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: FlowSteps.review.id),
+        builder: (_) => ReviewListScreen(session: widget.session),
       ),
     );
   }
@@ -184,6 +195,20 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
           onPressed: () => Navigator.of(context).pop(),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
+        // Straight to the review list, without picking a window first.
+        //
+        // Reopening a finished job to look at it is a different errand from
+        // building a new one: the windows are already entered, and the only
+        // way through to them was to open a size-input screen and back out of
+        // it. Disabled while the job is empty, because there is nothing to
+        // review yet -- shown disabled rather than hidden so it is still
+        // findable the next time there is.
+        actions: <Widget>[
+          NextStepAction(
+            tooltip: 'Review list',
+            onPressed: widget.session.items.isEmpty ? null : _openReview,
+          ),
+        ],
       ),
       bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.library.id),
       body: TutorialOverlay(

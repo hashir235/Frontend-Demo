@@ -178,7 +178,9 @@ class _GlassSheetOptimizationScreenState
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.auto_awesome_mosaic_rounded),
-            label: Text(_isRunning ? 'Optimizing' : 'Run'),
+            // "Run" said what the button did to the machine; this says what it
+            // hands the fabricator, which is the sheet layouts he came for.
+            label: Text(_isRunning ? 'Optimizing' : 'Glass Sheets'),
           ),
         ),
         const SizedBox(width: AppTheme.space4),
