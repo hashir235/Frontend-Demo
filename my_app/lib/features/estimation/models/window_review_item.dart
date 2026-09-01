@@ -1,3 +1,5 @@
+import 'window_material.dart';
+
 enum UnitMode { inches, feet, cm }
 
 extension UnitModeLabels on UnitMode {
@@ -103,6 +105,15 @@ class WindowReviewItem {
   final String? rubberType;
   final String? description;
 
+  /// The aluminium this window is cut from. Per window, so one job can carry
+  /// 2mm outer frames and 1.2mm partitions, or a door in another colour --
+  /// which is what a real job usually looks like.
+  ///
+  /// A window read back from a project saved before this was per-window has no
+  /// stock of its own; it takes the pair that job was estimated at, so
+  /// reopening old work shows exactly what it always showed.
+  final WindowMaterial material;
+
   const WindowReviewItem({
     required this.winNo,
     required this.windowLabel,
@@ -122,6 +133,7 @@ class WindowReviewItem {
     this.lockType,
     this.rubberType,
     this.description,
+    this.material = WindowMaterial.initial,
   });
 
   WindowReviewItem copyWith({
@@ -143,6 +155,7 @@ class WindowReviewItem {
     int? lockType,
     String? rubberType,
     String? description,
+    WindowMaterial? material,
     bool clearDescription = false,
     bool clearRightWidthValue = false,
     bool clearLeftWidthValue = false,
@@ -173,6 +186,7 @@ class WindowReviewItem {
       lockType: clearLockType ? null : (lockType ?? this.lockType),
       rubberType: clearRubberType ? null : (rubberType ?? this.rubberType),
       description: clearDescription ? null : (description ?? this.description),
+      material: material ?? this.material,
     );
   }
 
@@ -196,6 +210,15 @@ class WindowReviewItem {
       lockType: json['lockType'] == null ? null : _asInt(json['lockType']),
       rubberType: (json['rubberType'] as String?)?.trim(),
       description: (json['description'] as String?)?.trim(),
+      // Missing on a window saved before stock was per-window. It reads as
+      // champagne 1.2mm here and is corrected by the caller, which knows the
+      // pair that whole job was estimated at.
+      material: WindowMaterial(
+        gauge: WindowGauges.all.contains((json['gauge'] as String? ?? '').trim())
+            ? (json['gauge'] as String).trim()
+            : WindowGauges.g12,
+        color: AluminiumColors.normalize(json['color'] as String?),
+      ),
     );
   }
 
@@ -219,6 +242,10 @@ class WindowReviewItem {
       'lockType': lockType,
       'rubberType': rubberType,
       'description': description,
+      // The engine keys its cutting piles and its rates on these, so they
+      // travel with every window on every request.
+      'gauge': material.gauge,
+      'color': material.color,
     };
   }
 

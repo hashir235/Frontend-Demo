@@ -104,6 +104,16 @@ const List<TutorialStep> fabricationTutorialSteps = <TutorialStep>[
   ),
   TutorialStep(
     screen: TutorialScreen.windowInput,
+    targetId: 'input.material',
+    title: 'گیج اور رنگ',
+    body:
+        'یہ ونڈو کس مال کی بنے گی — گیج یعنی موٹائی، اور رنگ۔ ہر ونڈو کا اپنا '
+        'ہو سکتا ہے، اس لیے ایک ہی جاب میں باہر کے فریم 2mm اور اندر کے '
+        '1.2mm میں رکھ سکتے ہیں۔ کٹنگ لسٹ میں ہر بار کے ساتھ یہی لکھا آئے گا۔',
+    tapHint: 'گیج اور رنگ چنیں',
+  ),
+  TutorialStep(
+    screen: TutorialScreen.windowInput,
     targetId: 'input.description',
     title: 'تفصیل',
     body:
@@ -324,33 +334,8 @@ const List<TutorialStep> fabricationTutorialSteps = <TutorialStep>[
     requiresTap: true,
   ),
 
-  // ---------------------------------------------------- Material selection
-  TutorialStep(
-    screen: TutorialScreen.materialSelection,
-    targetId: 'material.gauge',
-    title: 'گیج چنیں',
-    body: 'گیج یعنی ایلومینیم کی موٹائی۔ وہی چنیں جو آپ واقعی لگا رہے ہیں۔',
-    tapHint: 'کوئی ایک گیج چنیں',
-    requiresTap: true,
-  ),
-  TutorialStep(
-    screen: TutorialScreen.materialSelection,
-    targetId: 'material.colour',
-    title: 'رنگ چنیں',
-    body: 'اب ایلومینیم کا رنگ چنیں۔ ہر رنگ کا اپنا ریٹ ہوتا ہے۔',
-    tapHint: 'کوئی ایک رنگ چنیں',
-    requiresTap: true,
-  ),
-  TutorialStep(
-    screen: TutorialScreen.materialSelection,
-    targetId: 'material.next',
-    title: 'ریٹ آپ کے اپنے',
-    body:
-        'ریٹ ہر شہر میں الگ ہوتے ہیں۔ سیٹنگز میں "ریٹس" سے آپ ہر سیکشن، گیج '
-        'اور رنگ کا ریٹ اپنے حساب سے رکھ سکتے ہیں۔ ابھی آگے چلیں۔',
-    tapHint: 'آگے والا تیر دبائیں',
-    requiresTap: true,
-  ),
+  // Gauge and colour moved onto the size-input screen, where they now belong
+  // to each window instead of to the whole job.
 
   // -------------------------------------------------------- Rate setting
   TutorialStep(

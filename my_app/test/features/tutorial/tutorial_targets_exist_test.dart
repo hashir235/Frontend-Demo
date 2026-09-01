@@ -126,7 +126,6 @@ void main() {
         TutorialScreen.reviewList,
         TutorialScreen.lengthOptimization,
         TutorialScreen.sectionRecalculation,
-        TutorialScreen.materialSelection,
         TutorialScreen.rateSetting,
         TutorialScreen.materialTable,
         TutorialScreen.billInputs,

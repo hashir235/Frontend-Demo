@@ -1,20 +1,45 @@
 class RateReviewRow {
   final String section;
+
+  /// The stock this rate is for. M23 in 1.2mm and M23 in 2mm are two rows at
+  /// two prices, so the row has to carry which one it is -- both to show the
+  /// user and so an edited rate lands on the right one.
+  final String gauge;
+  final String color;
+
   final double totalFt;
   final String totalFtDisplay;
   final double rate;
 
   const RateReviewRow({
     required this.section,
+    this.gauge = '',
+    this.color = '',
     required this.totalFt,
     required this.totalFtDisplay,
     required this.rate,
   });
 
+  /// Identifies this row among the others. The section name alone does not:
+  /// a job can list the same profile twice.
+  String get key => '$section|$gauge|$color';
+
+  /// The stock, for showing beside the name. Empty on a review from before
+  /// stock was per-window, so nothing gains a stray separator.
+  String get materialLabel {
+    final List<String> bits = <String>[
+      if (gauge.trim().isNotEmpty) gauge.trim(),
+      if (color.trim().isNotEmpty) color.trim(),
+    ];
+    return bits.join(' · ');
+  }
+
   factory RateReviewRow.fromJson(Map<String, dynamic> json) {
     final double totalFt = (json['totalFt'] as num?)?.toDouble() ?? 0;
     return RateReviewRow(
       section: json['section'] as String? ?? '',
+      gauge: json['gauge'] as String? ?? '',
+      color: json['color'] as String? ?? '',
       totalFt: totalFt,
       totalFtDisplay: json['totalFtDisplay'] as String? ?? '$totalFt ft',
       rate: (json['rate'] as num?)?.toDouble() ?? 0,

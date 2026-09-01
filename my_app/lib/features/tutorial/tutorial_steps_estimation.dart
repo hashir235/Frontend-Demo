@@ -120,6 +120,17 @@ const List<TutorialStep> estimationTutorialSteps = <TutorialStep>[
   ),
   TutorialStep(
     screen: TutorialScreen.windowInput,
+    targetId: 'input.material',
+    title: 'گیج اور رنگ',
+    body:
+        'یہ ونڈو کس مال کی بنے گی — گیج یعنی ایلومینیم کی موٹائی، اور اس کا '
+        'رنگ۔ ہر ونڈو کا اپنا ہو سکتا ہے، اس لیے ایک ہی پروجیکٹ میں کچھ ونڈوز '
+        '2mm اور کچھ 1.2mm میں رکھ سکتے ہیں۔ اگلی ونڈو میں یہی خود آ جائے گا، '
+        'بدلنا ہو تو بدل دیجیے۔',
+    tapHint: 'گیج اور رنگ چنیں',
+  ),
+  TutorialStep(
+    screen: TutorialScreen.windowInput,
     targetId: 'input.description',
     title: 'تفصیل',
     body:
@@ -349,37 +360,9 @@ const List<TutorialStep> estimationTutorialSteps = <TutorialStep>[
     requiresTap: true,
   ),
 
-  // ---------------------------------------------------- Material selection
-  TutorialStep(
-    screen: TutorialScreen.materialSelection,
-    targetId: 'material.gauge',
-    title: 'گیج چنیں',
-    body:
-        'گیج یعنی ایلومینیم کی موٹائی۔ ریٹ اسی سے بدلتا ہے، اس لیے وہی گیج '
-        'چنیں جو آپ واقعی لگا رہے ہیں۔ کسی ایک پر دبائیں۔',
-    tapHint: 'کوئی ایک گیج چنیں',
-    requiresTap: true,
-  ),
-  TutorialStep(
-    screen: TutorialScreen.materialSelection,
-    targetId: 'material.colour',
-    title: 'رنگ چنیں',
-    body:
-        'اب ایلومینیم کا رنگ چنیں۔ ہر رنگ کا اپنا ریٹ ہوتا ہے۔ کسی ایک پر دبائیں۔',
-    tapHint: 'کوئی ایک رنگ چنیں',
-    requiresTap: true,
-  ),
-  TutorialStep(
-    screen: TutorialScreen.materialSelection,
-    targetId: 'material.next',
-    title: 'ریٹ آپ کے اپنے',
-    body:
-        'ایک ضروری بات: ریٹ ہر شہر میں الگ ہوتے ہیں۔ سیٹنگز میں "ریٹس" کا '
-        'آپشن ہے — وہاں سے آپ ہر سیکشن، ہر گیج اور ہر رنگ کا ریٹ اپنے حساب سے '
-        'رکھ سکتے ہیں، اور اپنے سیکشن بھی شامل کر سکتے ہیں۔ ابھی آگے چلیں۔',
-    tapHint: 'آگے والا تیر دبائیں',
-    requiresTap: true,
-  ),
+  // Gauge and colour used to be a screen of their own, asked once for a whole
+  // project. They now sit on the size-input screen and belong to each window,
+  // so the teaching moved there with them.
 
   // -------------------------------------------------------- Rate setting
   TutorialStep(

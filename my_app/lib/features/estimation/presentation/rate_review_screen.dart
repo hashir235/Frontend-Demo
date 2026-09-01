@@ -98,18 +98,23 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
         return;
       }
       setState(() {
-        final Map<String, double> overridesBySection = <String, double>{
+        // Keyed on the whole identity, not the profile name: a job can hold
+        // M23 twice, and a rate the user set for the 2mm one must not be
+        // pasted onto the 1.2mm one sitting above it.
+        final Map<String, double> overridesByRow = <String, double>{
           for (final RateOverrideInput override in widget.session.rateOverrides)
-            override.section: override.rate,
+            override.key: override.rate,
         };
         _editableRows = review.rows
             .map(
               (RateReviewRow row) => _EditableRateRow(
                 section: row.section,
+                gauge: row.gauge,
+                color: row.color,
                 totalFt: row.totalFt,
                 totalFtDisplay: row.totalFtDisplay,
                 rateText: _formatDecimal(
-                  overridesBySection[row.section] ?? row.rate,
+                  overridesByRow[row.key] ?? row.rate,
                 ),
               ),
             )
@@ -153,7 +158,14 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
       if (parsed == null || parsed <= 0) {
         continue;
       }
-      overrides.add(RateOverrideInput(section: row.section, rate: parsed));
+      overrides.add(
+        RateOverrideInput(
+          section: row.section,
+          gauge: row.gauge,
+          color: row.color,
+          rate: parsed,
+        ),
+      );
     }
 
     widget.session.setRateOverrides(overrides);
@@ -307,11 +319,26 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
           _maybeTourTarget(
             id: 'rate.section',
             enabled: index == 0,
-            child: Text(
-              row.section,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  row.section,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                // The stock under the name. Two cards can read "M23" and
+                // carry different rates; this is what tells them apart.
+                if (row.materialLabel.isNotEmpty)
+                  Text(
+                    row.materialLabel,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: AppTheme.space4),
@@ -365,16 +392,33 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
 
 class _EditableRateRow {
   final String section;
+
+  /// Carried so an edited rate is saved against the stock it was shown for.
+  final String gauge;
+  final String color;
+
   final double totalFt;
   final String totalFtDisplay;
   final String rateText;
 
   const _EditableRateRow({
     required this.section,
+    this.gauge = '',
+    this.color = '',
     required this.totalFt,
     required this.totalFtDisplay,
     required this.rateText,
   });
+
+  String get key => '$section|$gauge|$color';
+
+  String get materialLabel {
+    final List<String> bits = <String>[
+      if (gauge.trim().isNotEmpty) gauge.trim(),
+      if (color.trim().isNotEmpty) color.trim(),
+    ];
+    return bits.join(' · ');
+  }
 
   _EditableRateRow copyWith({String? rateText}) {
     return _EditableRateRow(

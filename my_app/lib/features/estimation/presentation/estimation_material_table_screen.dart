@@ -21,6 +21,7 @@ import '../../glass_fabrication/data/glass_project_api_client.dart';
 import '../data/cost_table_api_client.dart';
 import '../models/cost_table.dart';
 import '../models/estimate_flow_state.dart';
+import '../models/window_material.dart';
 import '../state/estimate_session_store.dart';
 import 'bill_inputs_screen.dart';
 import '../../help_videos/tutorial_videos.dart';
@@ -410,6 +411,11 @@ class _EstimationMaterialTableScreenState
     final List<CostTableRow> rows = List<CostTableRow>.from(_table!.rows);
     final CostTableRow updated = CostTableRow(
       section: result.section,
+      // An edited row keeps the stock it was priced for. Dropping it here
+      // would turn "M23 in 2mm" into a bare "M23" and quietly merge it with
+      // the 1.2mm row sitting above it.
+      gauge: existing?.gauge ?? '',
+      color: existing?.color ?? '',
       totalFt: result.totalFt,
       totalFtDisplay: result.totalFt.toString(),
       rate: result.rate,
@@ -420,21 +426,48 @@ class _EstimationMaterialTableScreenState
     if (existing == null) {
       rows.add(updated);
     } else {
+      // Matched on stock as well as name: a job can hold two M23 rows, and
+      // matching on the name alone would edit whichever came first -- not
+      // necessarily the one the user tapped.
       final int at = rows.indexWhere(
-        (CostTableRow r) => r.section == existing.section,
+        (CostTableRow r) =>
+            r.section == existing.section &&
+            r.gauge == existing.gauge &&
+            r.color == existing.color,
       );
       if (at >= 0) rows[at] = updated;
     }
     await _persist(rows);
   }
 
+  /// "2mm · Black" for a row, or the job-wide pair for a table costed before
+  /// stock was per-window.
+  ///
+  /// Without it two rows both read "M23" at two different rates, and there is
+  /// nothing on the page to say which bar each one is for.
+  String _materialFor(CostTable table, CostTableRow row) {
+    final String gauge = row.gauge.trim().isNotEmpty
+        ? row.gauge.trim()
+        : table.gauge.trim();
+    final String color = row.color.trim().isNotEmpty
+        ? row.color.trim()
+        : table.color.trim();
+    final List<String> bits = <String>[
+      if (gauge.isNotEmpty) gauge,
+      if (color.isNotEmpty) AluminiumColors.shortLabelFor(color),
+    ];
+    return bits.isEmpty ? '--' : bits.join(' · ');
+  }
+
   List<_MaterialDisplayRow> _displayRows(CostTable table) {
     final List<_MaterialDisplayRow> rows = <_MaterialDisplayRow>[];
     for (final CostTableRow row in table.rows) {
+      final String material = _materialFor(table, row);
       if (row.lengths.isEmpty) {
         rows.add(
           _MaterialDisplayRow(
             section: row.section,
+            material: material,
             lengthDisplay: '--',
             quantity: 0,
             totalFt: row.totalFt,
@@ -450,6 +483,7 @@ class _EstimationMaterialTableScreenState
         rows.add(
           _MaterialDisplayRow(
             section: row.section,
+            material: material,
             lengthDisplay: length.lengthDisplay,
             quantity: length.quantity,
             totalFt: row.totalFt,
@@ -640,6 +674,7 @@ class _EstimationMaterialTableScreenState
                   ? DataTable(
                       columns: const <DataColumn>[
                         DataColumn(label: Text('Section')),
+                        DataColumn(label: Text('Material')),
                         DataColumn(label: Text('Total ft')),
                         DataColumn(label: Text('Rates')),
                         DataColumn(label: Text('Total Rates')),
@@ -650,6 +685,7 @@ class _EstimationMaterialTableScreenState
                             (CostTableRow row) => DataRow(
                               cells: <DataCell>[
                                 DataCell(Text(row.section)),
+                                DataCell(Text(_materialFor(table, row))),
                                 DataCell(Text(row.totalFtDisplay)),
                                 DataCell(Text(_formatNumber(row.rate))),
                                 DataCell(Text(_formatNumber(row.totalPrice))),
@@ -690,6 +726,7 @@ class _EstimationMaterialTableScreenState
                   : DataTable(
                       columns: const <DataColumn>[
                         DataColumn(label: Text('Section')),
+                        DataColumn(label: Text('Material')),
                         DataColumn(label: Text('Length')),
                         DataColumn(label: Text('Quantity')),
                         DataColumn(label: Text('Total ft')),
@@ -701,6 +738,7 @@ class _EstimationMaterialTableScreenState
                             (_MaterialDisplayRow row) => DataRow(
                               cells: <DataCell>[
                                 DataCell(Text(row.section)),
+                                DataCell(Text(row.material)),
                                 DataCell(Text(row.lengthDisplay)),
                                 DataCell(Text('${row.quantity}')),
                                 DataCell(Text(row.totalFtDisplay)),
@@ -875,6 +913,7 @@ class _MaterialRowDialogState extends State<_MaterialRowDialog> {
 
 class _MaterialDisplayRow {
   final String section;
+  final String material;
   final String lengthDisplay;
   final int quantity;
   final double totalFt;
@@ -884,6 +923,7 @@ class _MaterialDisplayRow {
 
   const _MaterialDisplayRow({
     required this.section,
+    required this.material,
     required this.lengthDisplay,
     required this.quantity,
     required this.totalFt,

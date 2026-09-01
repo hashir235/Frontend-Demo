@@ -31,6 +31,13 @@ class CuttingReport {
 
 class CuttingReportSection {
   final String name;
+
+  /// The stock this pile is cut from. Two piles can share a profile name and
+  /// still be different bars, so the screen and the cutting sheet have to say
+  /// which is which. Empty on a report made before this existed.
+  final String gauge;
+  final String color;
+
   final CuttingReportSummary? summary;
   final List<CuttingReportGroup> groups;
   final List<double> allowedLengthsFt;
@@ -38,15 +45,35 @@ class CuttingReportSection {
 
   const CuttingReportSection({
     required this.name,
+    this.gauge = '',
+    this.color = '',
     required this.summary,
     required this.groups,
     required this.allowedLengthsFt,
     required this.allowedLengthsDisplay,
   });
 
+  /// Identifies this pile among the others.
+  ///
+  /// The profile name alone no longer does: a job can hold DC30F twice, in two
+  /// gauges, and picking one by name would land on whichever came first.
+  String get key => '$name|$gauge|$color';
+
+  /// The stock, for showing beside the name. Empty when the report predates
+  /// per-window stock, so nothing gains a stray separator.
+  String get materialLabel {
+    final List<String> bits = <String>[
+      if (gauge.trim().isNotEmpty) gauge.trim(),
+      if (color.trim().isNotEmpty) color.trim(),
+    ];
+    return bits.join(' · ');
+  }
+
   factory CuttingReportSection.fromJson(Map<String, dynamic> json) {
     return CuttingReportSection(
       name: (json['name'] as String?) ?? '',
+      gauge: (json['gauge'] as String?) ?? '',
+      color: (json['color'] as String?) ?? '',
       summary: json['summary'] is Map<String, dynamic>
           ? CuttingReportSummary.fromJson(
               json['summary'] as Map<String, dynamic>,

@@ -65,7 +65,6 @@ void main() {
         FlowSteps.sizeInput,
         FlowSteps.review,
         FlowSteps.lengthOptimization,
-        FlowSteps.gaugeColour,
       ]) {
         expect(
           progress.actionFor(indexOf(step), hasNextAction: true),
@@ -198,7 +197,6 @@ void main() {
     test('every abbreviation says what it stands for', () {
       for (final FlowStep step in <FlowStep>[
         FlowSteps.projects,
-        FlowSteps.gaugeColour,
       ]) {
         expect(step.meaning, isNotNull);
         expect(step.spoken, isNot(step.label));

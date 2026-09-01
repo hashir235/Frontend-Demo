@@ -117,13 +117,6 @@ class FlowSteps {
     meaning: 'Length optimization',
   );
 
-  static const FlowStep gaugeColour = FlowStep(
-    id: 'gauge_colour',
-    label: 'G&C',
-    icon: Icons.palette_rounded,
-    meaning: 'Gauge and colour',
-  );
-
   static const FlowStep rates = FlowStep(
     id: 'rates',
     label: 'Rates',
@@ -229,7 +222,6 @@ const AppFlow estimationFlow = AppFlow(
     FlowSteps.sizeInput,
     FlowSteps.review,
     FlowSteps.lengthOptimization,
-    FlowSteps.gaugeColour,
     FlowSteps.rates,
     FlowSteps.material,
     FlowSteps.billInputs,
@@ -249,7 +241,6 @@ const AppFlow fabricationFlow = AppFlow(
     FlowSteps.sizeInput,
     FlowSteps.review,
     FlowSteps.lengthOptimization,
-    FlowSteps.gaugeColour,
     FlowSteps.rates,
     FlowSteps.material,
     FlowSteps.glassSize,

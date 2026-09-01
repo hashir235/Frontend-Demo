@@ -10,12 +10,14 @@ import '../../tutorial/tutorial_step.dart';
 import '../../tutorial/tutorial_target.dart';
 import '../data/project_repository.dart';
 import '../data/window_catalog.dart';
+import '../models/window_material.dart';
 import '../models/window_review_item.dart';
 import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
+import '../widgets/window_material_picker.dart';
 import 'input/input_registry.dart';
 import 'length_optimization_screen.dart';
-import 'material_selection_screen.dart';
+import 'rate_review_screen.dart';
 
 class ReviewListScreen extends StatelessWidget {
   final EstimateSessionStore session;
@@ -120,8 +122,14 @@ class ReviewListScreen extends StatelessWidget {
                   String projectName,
                   String projectLocation,
                 ) {
-                  return MaterialSelectionScreen(
+                  final WindowMaterial material =
+                      session.representativeMaterial;
+                  return RateReviewScreen(
                     session: session,
+                    gaugeLabel: material.gauge,
+                    gaugeValue: material.gauge,
+                    colorLabel: AluminiumColors.labelFor(material.color),
+                    colorValue: material.color,
                     projectId: projectId,
                     projectName: projectName,
                     projectLocation: projectLocation,
@@ -252,6 +260,11 @@ class ReviewListScreen extends StatelessWidget {
         label: _unitLabel(item),
         accentColor: codeColor,
       ),
+      // The gauge and colour picked for this window, alongside the other
+      // choices made on the same screen. A job can mix them now, so this is
+      // the page where a wrong one gets caught -- reading down the list is how
+      // anyone checks their own work before it goes to the saw.
+      WindowMaterialChip(material: item.material),
     ];
 
     if (item.lockType != null) {

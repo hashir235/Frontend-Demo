@@ -22,6 +22,8 @@ import '../../../settings/state/app_settings.dart';
 import '../../../settings/state/numbering_mode.dart';
 import '../../../settings/state/size_input_mode.dart';
 import '../review_list_screen.dart';
+import '../../models/window_material.dart';
+import '../../widgets/window_material_picker.dart';
 
 class WindowInputScreen extends StatefulWidget {
   final WindowType node;
@@ -87,6 +89,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   final FocusNode _leftWidthSubFocusNode = FocusNode();
 
   final FocusNode _quantityFocusNode = FocusNode();
+
+  /// The aluminium this window is cut from.
+  ///
+  /// Editing an existing window shows that window's own stock; a new one
+  /// starts on whatever the last window was entered in, because a job is
+  /// usually mostly one stock with a few exceptions.
+  late WindowMaterial _material;
+
   final GlobalKey _winNoFieldKey = GlobalKey(debugLabel: 'winNoField');
   final GlobalKey _heightFieldKey = GlobalKey(debugLabel: 'heightField');
   final GlobalKey _widthFieldKey = GlobalKey(debugLabel: 'widthField');
@@ -535,6 +545,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
     _lockType = _lockTypeFromStored(widget.editingItem?.lockType);
     _normalizeLockTypeSelectionForWindow();
+    _material = widget.editingItem?.material ?? widget.session.materialForNextWindow;
     _unitMode =
         widget.editingItem?.unitMode ??
         (_isFabricationFlow ? UnitMode.feet : UnitMode.inches);
@@ -1538,6 +1549,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         lockType: lockTypeValue,
         rubberType: rubberTypeValue,
         description: description,
+        material: _material,
         clearDescription: description == null,
         clearRightWidthValue: !_usesSplitWidthInputs,
         clearLeftWidthValue: !_usesSplitWidthInputs,
@@ -1583,6 +1595,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           lockType: lockTypeValue,
           rubberType: rubberTypeValue,
           description: description,
+          material: _material,
         );
       }
     } on ArgumentError catch (_) {
@@ -2545,6 +2558,20 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                                 ),
                               ],
                             ],
+                          ),
+                        ),
+                        // Which aluminium this one is made from. Beside the
+                        // sizes, because it is the same kind of fact about the
+                        // same opening -- and the fabricator has the drawing in
+                        // front of him right now.
+                        const SizedBox(height: 16),
+                        TutorialTarget(
+                          id: 'input.material',
+                          child: WindowMaterialPicker(
+                            value: _material,
+                            onChanged: (WindowMaterial next) {
+                              setState(() => _material = next);
+                            },
                           ),
                         ),
                         // Quantity sits above the description: it belongs with

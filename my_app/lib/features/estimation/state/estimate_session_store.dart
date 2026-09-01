@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/cost_table.dart';
 import '../models/estimate_flow_state.dart';
 import '../models/window_review_item.dart';
+import '../models/window_material.dart';
 import '../../settings/state/numbering_mode.dart';
 
 /// Which kind of job a session belongs to.
@@ -138,6 +139,7 @@ class EstimateSessionStore extends ChangeNotifier {
     int? lockType,
     String? rubberType,
     String? description,
+    WindowMaterial? material,
   }) {
     final WindowReviewItem item = WindowReviewItem(
       winNo: winNo,
@@ -158,6 +160,7 @@ class EstimateSessionStore extends ChangeNotifier {
       lockType: lockType,
       rubberType: rubberType,
       description: description,
+      material: material ?? materialForNextWindow,
     );
     if (existsWinNo(winNo)) {
       throw ArgumentError('Window number already exists: $winNo');
@@ -184,5 +187,45 @@ class EstimateSessionStore extends ChangeNotifier {
     _items.removeWhere((WindowReviewItem item) => item.winNo == winNo);
     _syncNextWinNo();
     notifyListeners();
+  }
+
+  /// What the next window should start on: whatever the last one was entered
+  /// in.
+  ///
+  /// A shop doing ten windows in 2mm black should say so once, not ten times.
+  /// The exceptions -- the one door in a different colour -- are the windows
+  /// where the fabricator is already thinking about it and will change it
+  /// himself. Falls back to the opening default on the first window of a job.
+  WindowMaterial get materialForNextWindow {
+    if (_items.isEmpty) return WindowMaterial.initial;
+    // The one entered last, not the lowest-numbered: that is the one whose
+    // stock is still in mind.
+    return _items.last.material;
+  }
+
+  /// One material to stand for the job, for the few places that still want a
+  /// single pair.
+  ///
+  /// The engine prices each section from the window it came from, so this is
+  /// never what a bar is costed at. It fills the job-wide field the request
+  /// still carries -- which the engine uses only for windows that name no
+  /// material of their own -- and seeds the rate screen's header. The first
+  /// window's, because on the overwhelmingly common job every window shares
+  /// it, and on a mixed job no single answer is right anyway.
+  WindowMaterial get representativeMaterial {
+    if (_items.isEmpty) return WindowMaterial.initial;
+    return items.first.material;
+  }
+
+  /// Every distinct material in the job, in the order first used.
+  ///
+  /// What the bill header shows instead of one gauge, and how a screen can
+  /// tell at a glance whether this job is mixed at all.
+  List<WindowMaterial> get materialsUsed {
+    final List<WindowMaterial> out = <WindowMaterial>[];
+    for (final WindowReviewItem item in items) {
+      if (!out.contains(item.material)) out.add(item.material);
+    }
+    return out;
   }
 }

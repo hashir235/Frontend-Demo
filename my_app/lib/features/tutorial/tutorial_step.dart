@@ -22,7 +22,6 @@ enum TutorialScreen {
   reviewList,
   lengthOptimization,
   sectionRecalculation,
-  materialSelection,
 
   /// The "Rate Setting" screen -- section, total feet and the rate per foot.
   rateSetting,

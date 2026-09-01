@@ -19,9 +19,10 @@ import '../../../shared/widgets/state_message_card.dart';
 import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
 import '../models/optimization_error_text.dart';
+import '../models/window_material.dart';
 import '../models/window_review_item.dart';
 import '../state/estimate_session_store.dart';
-import 'material_selection_screen.dart';
+import 'rate_review_screen.dart';
 import 'section_recalculation_screen.dart';
 import '../../help_videos/tutorial_videos.dart';
 
@@ -67,7 +68,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
   CuttingReport? _report;
   String? _errorMessage;
   bool _isLoading = true;
-  String? _selectedSectionName;
+  String? _selectedSectionKey;
   final Set<String> _markedCutRowKeys = <String>{};
 
   bool get _canProceedToMaterialSelection {
@@ -86,12 +87,13 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     if (report == null || report.sections.isEmpty) {
       return null;
     }
-    final String? selectedSectionName = _selectedSectionName;
-    if (selectedSectionName == null) {
+    final String? selectedKey = _selectedSectionKey;
+    if (selectedKey == null) {
       return report.sections.first;
     }
     for (final CuttingReportSection section in report.sections) {
-      if (section.name == selectedSectionName) {
+      // Matched on the whole identity: two piles can share a profile name.
+      if (section.key == selectedKey) {
         return section;
       }
     }
@@ -297,16 +299,16 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     }
 
     final bool containsSelectedSection = updatedReport.sections.any(
-      (CuttingReportSection candidate) => candidate.name == section.name,
+      (CuttingReportSection candidate) => candidate.key == section.key,
     );
 
     setState(() {
       _report = updatedReport;
-      _selectedSectionName = containsSelectedSection
-          ? section.name
+      _selectedSectionKey = containsSelectedSection
+          ? section.key
           : (updatedReport.sections.isEmpty
                 ? null
-                : updatedReport.sections.first.name);
+                : updatedReport.sections.first.key);
       _markedCutRowKeys.clear();
     });
   }
@@ -323,6 +325,10 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
       return;
     }
 
+    // Straight to rates. Gauge and colour used to be asked here, once, for
+    // everything that followed; they now belong to each window and were
+    // answered while it was entered, so there is nothing left to ask.
+    final WindowMaterial material = widget.session.representativeMaterial;
     final Widget nextScreen =
         widget.materialSelectionBuilder?.call(
           context,
@@ -330,8 +336,12 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           widget.projectName,
           widget.projectLocation,
         ) ??
-        MaterialSelectionScreen(
+        RateReviewScreen(
           session: widget.session,
+          gaugeLabel: material.gauge,
+          gaugeValue: material.gauge,
+          colorLabel: AluminiumColors.labelFor(material.color),
+          colorValue: material.color,
           projectId: widget.projectId,
           projectName: widget.projectName,
           projectLocation: widget.projectLocation,
@@ -339,7 +349,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
         );
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        settings: RouteSettings(name: FlowSteps.gaugeColour.id),
+        settings: RouteSettings(name: FlowSteps.rates.id),
         builder: (BuildContext context) => nextScreen,
       ),
     );
@@ -431,9 +441,9 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
       setState(() {
         _report = report;
         _isLoading = false;
-        _selectedSectionName = report.sections.isEmpty
+        _selectedSectionKey = report.sections.isEmpty
             ? null
-            : report.sections.first.name;
+            : report.sections.first.key;
         _markedCutRowKeys.clear();
       });
     } on Exception catch (error) {
@@ -564,13 +574,33 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
               runSpacing: AppTheme.space3,
               children: report.sections
                   .map((CuttingReportSection item) {
-                    final bool isSelected = item.name == section?.name;
+                    final bool isSelected = item.key == section?.key;
                     return ChoiceChip(
-                      label: Text(item.name),
+                      // The stock under the name, because a job can list the
+                      // same profile twice and the two piles are cut from
+                      // different bars. Without it both chips read "DC30F".
+                      label: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(item.name),
+                          if (item.materialLabel.isNotEmpty)
+                            Text(
+                              item.materialLabel,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: isSelected
+                                        ? AppTheme.royalBlue
+                                        : AppTheme.textSecondary,
+                                  ),
+                            ),
+                        ],
+                      ),
                       selected: isSelected,
                       onSelected: (_) {
                         setState(() {
-                          _selectedSectionName = item.name;
+                          _selectedSectionKey = item.key;
                         });
                         TutorialController.instance.advanceAfterTap();
                       },
@@ -598,7 +628,11 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
               Expanded(
                 child: MetricCard(
                   label: 'Selected Section',
-                  value: section.name,
+                  // Name and stock together: this card is what tells you which
+                  // of two same-named piles you are looking at.
+                  value: section.materialLabel.isEmpty
+                      ? section.name
+                      : '${section.name}\n${section.materialLabel}',
                   icon: Icons.straighten_rounded,
                 ),
               ),
