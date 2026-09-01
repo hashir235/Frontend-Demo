@@ -17,6 +17,7 @@ import '../../../tutorial/tutorial_controller.dart';
 import '../../../tutorial/tutorial_overlay.dart';
 import '../../../tutorial/tutorial_step.dart';
 import '../../../tutorial/tutorial_target.dart';
+import '../../../../shared/widgets/option_switch.dart';
 import '../../../../shared/widgets/suter_wheel.dart';
 import '../../../settings/state/app_settings.dart';
 import '../../../settings/state/numbering_mode.dart';
@@ -1089,23 +1090,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     required String label,
     required List<Widget> chips,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        SizedBox(
-          width: 52,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.slate,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(child: Wrap(spacing: 8, runSpacing: 8, children: chips)),
-      ],
-    );
+    return OptionSwitchRow(label: label, options: chips);
   }
 
   /// Unit chips, and the keys the tests drive them by.
@@ -1141,41 +1126,21 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
   }
 
+  /// Unit, lock and rubber all draw from the same set as the gauge switches,
+  /// so the three rows of the input screen read as one control rather than
+  /// three borrowed ones.
   Widget _buildInlineChip({
     required String label,
     required bool selected,
     required VoidCallback onTap,
     Key? chipKey,
   }) {
-    return Material(
+    return OptionSwitch(
       key: chipKey,
-      // The app's own blue. Teal read as green next to the rest of the screen.
-      color: selected ? AppTheme.royalBlue : Colors.grey.shade200,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              if (selected) ...<Widget>[
-                const Icon(Icons.check_rounded, size: 16, color: Colors.white),
-                const SizedBox(width: 5),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected ? Colors.white : AppTheme.deepTeal,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      label: label,
+      selected: selected,
+      onTap: onTap,
+      expand: true,
     );
   }
 
@@ -1924,9 +1889,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         ?.copyWith(color: AppTheme.slate.withValues(alpha: 0.6));
     final TextStyle? numberInputStyle = Theme.of(context).textTheme.titleLarge
         ?.copyWith(
-          color: AppTheme.deepTeal,
+          color: AppTheme.inkBlue,
           fontWeight: FontWeight.w700,
           fontSize: 22,
+          // Tabular figures: every digit takes the same width, so a column of
+          // sizes lines up and a number does not shuffle sideways as it is
+          // typed. It is what a measurement should look like.
+          fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
         );
     final double keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     // The overlay wraps the whole Scaffold, not just its body: the settings
@@ -2367,6 +2336,22 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           id: 'input.unit',
                           child: _buildQuickControls(context),
                         ),
+                        // Which aluminium this one is made from, before the
+                        // sizes are typed. The stock is settled first -- it is
+                        // decided for the job, or carried over from the last
+                        // window -- and the measuring is the part that needs
+                        // attention, so it sits closest to the save button
+                        // with only the optional description after it.
+                        const SizedBox(height: 12),
+                        TutorialTarget(
+                          id: 'input.material',
+                          child: WindowMaterialPicker(
+                            value: _material,
+                            onChanged: (WindowMaterial next) {
+                              setState(() => _material = next);
+                            },
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         TutorialTarget(
                           id: 'input.sizes',
@@ -2562,20 +2547,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                                 ),
                               ],
                             ],
-                          ),
-                        ),
-                        // Which aluminium this one is made from. Beside the
-                        // sizes, because it is the same kind of fact about the
-                        // same opening -- and the fabricator has the drawing in
-                        // front of him right now.
-                        const SizedBox(height: 16),
-                        TutorialTarget(
-                          id: 'input.material',
-                          child: WindowMaterialPicker(
-                            value: _material,
-                            onChanged: (WindowMaterial next) {
-                              setState(() => _material = next);
-                            },
                           ),
                         ),
                         // Quantity sits above the description: it belongs with

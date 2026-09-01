@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/core/theme/app_theme.dart';
+import 'package:my_app/shared/widgets/option_switch.dart';
 import 'package:my_app/features/estimation/models/window_type.dart';
 import 'package:my_app/features/estimation/presentation/input/window_input_base.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
@@ -109,17 +110,30 @@ void main() {
     await pump(tester, flow: EstimateFlow.estimation);
 
     await tester.ensureVisible(find.byKey(const Key('unit_inches_radio')));
-    final Material selected = tester.widget<Material>(
+    final OptionSwitch selected = tester.widget<OptionSwitch>(
       find.byKey(const Key('unit_inches_radio')),
     );
-    final Material unselected = tester.widget<Material>(
+    final OptionSwitch unselected = tester.widget<OptionSwitch>(
       find.byKey(const Key('unit_feet_radio')),
     );
 
-    // tealAccent read as green next to the rest of the screen.
-    expect(selected.color, AppTheme.royalBlue);
-    expect(selected.color, isNot(AppTheme.tealAccent));
-    expect(unselected.color, isNot(AppTheme.royalBlue));
+    expect(selected.selected, isTrue);
+    expect(unselected.selected, isFalse);
+
+    // The chosen one wears the app's blue. tealAccent read as green next to
+    // the rest of the screen, which is what this test was written to catch.
+    final BoxDecoration decoration =
+        tester
+                .widget<AnimatedContainer>(
+                  find.descendant(
+                    of: find.byKey(const Key('unit_inches_radio')),
+                    matching: find.byType(AnimatedContainer),
+                  ),
+                )
+                .decoration!
+            as BoxDecoration;
+    expect(decoration.border!.top.color, AppTheme.royalBlue);
+    expect(decoration.border!.top.color, isNot(AppTheme.tealAccent));
   });
 
   testWidgets('fabrication CM sets the mode the engine actually reads', (

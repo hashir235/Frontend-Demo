@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/option_switch.dart';
 import '../models/window_material.dart';
 
 /// Picks the gauge and colour for the window being entered.
@@ -80,32 +81,20 @@ class WindowMaterialPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(
-          'GAUGE',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.8,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        const SizedBox(height: AppTheme.space3),
-        Row(
-          children: <Widget>[
-            for (final String gauge in WindowGauges.all) ...<Widget>[
-              Expanded(
-                child: _GaugeButton(
-                  label: gauge,
-                  selected: gauge == value.gauge,
-                  onTap: () {
-                    if (gauge != value.gauge) {
-                      onChanged(value.copyWith(gauge: gauge));
-                    }
-                  },
-                ),
+        OptionSwitchRow(
+          label: 'Gauge',
+          options: <Widget>[
+            for (final String gauge in WindowGauges.all)
+              OptionSwitch(
+                label: gauge,
+                selected: gauge == value.gauge,
+                expand: true,
+                onTap: () {
+                  if (gauge != value.gauge) {
+                    onChanged(value.copyWith(gauge: gauge));
+                  }
+                },
               ),
-              if (gauge != WindowGauges.all.last)
-                const SizedBox(width: AppTheme.space3),
-            ],
           ],
         ),
         const SizedBox(height: AppTheme.space5),
@@ -123,52 +112,6 @@ class WindowMaterialPicker extends StatelessWidget {
           onTap: () => _pickColor(context),
         ),
       ],
-    );
-  }
-}
-
-/// One of the three gauge switches.
-class _GaugeButton extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _GaugeButton({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: selected
-                ? AppTheme.royalBlue.withValues(alpha: 0.10)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            border: Border.all(
-              color: selected ? AppTheme.royalBlue : AppTheme.line,
-              width: selected ? 1.6 : 1,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                color: selected ? AppTheme.royalBlue : AppTheme.textSecondary,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

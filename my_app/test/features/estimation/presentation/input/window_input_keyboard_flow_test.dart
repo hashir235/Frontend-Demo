@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:my_app/features/estimation/models/window_type.dart';
 import 'package:my_app/features/estimation/presentation/input/window_input_base.dart';
+import 'package:my_app/shared/widgets/option_switch.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 
 Finder _textFieldByLabel(String label) {
@@ -205,13 +206,13 @@ void main() {
     await tester.tap(find.byKey(const Key('unit_inches_radio')));
     await tester.pumpAndSettle();
 
-    // The selected chip carries a tick.
+    // The one tapped is the one selected. Selection is drawn as colour and
+    // weight now rather than as a tick, so the flag is what to assert on.
     expect(
-      find.descendant(
-        of: find.byKey(const Key('unit_inches_radio')),
-        matching: find.byIcon(Icons.check_rounded),
-      ),
-      findsOneWidget,
+      tester
+          .widget<OptionSwitch>(find.byKey(const Key('unit_inches_radio')))
+          .selected,
+      isTrue,
     );
 
     await pumpInput(
@@ -228,11 +229,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(
-        of: find.byKey(const Key('unit_inches_radio')),
-        matching: find.byIcon(Icons.check_rounded),
-      ),
-      findsOneWidget,
+      tester
+          .widget<OptionSwitch>(find.byKey(const Key('unit_inches_radio')))
+          .selected,
+      isTrue,
     );
   });
 }

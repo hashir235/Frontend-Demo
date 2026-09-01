@@ -352,29 +352,60 @@ class AppTheme {
         ),
         dividerThickness: 0.4,
       ),
+      // Every text field in the app is drawn from here, so the shape of a
+      // field is decided once rather than per screen.
+      //
+      // A field at rest is quiet: a soft fill and a hairline, so a form of
+      // eight of them reads as one block instead of eight boxes competing for
+      // attention. The focused one is the only thing on screen wearing the
+      // brand blue -- a thicker ring and a faint blue wash -- so on a phone,
+      // one-handed, in a workshop, there is never a question about where
+      // typing is going.
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceAlt,
+        fillColor: WidgetStateColor.resolveWith((Set<WidgetState> states) {
+          if (states.contains(WidgetState.disabled)) {
+            return surfaceMuted;
+          }
+          if (states.contains(WidgetState.focused)) {
+            return royalBlue.withValues(alpha: 0.045);
+          }
+          return surfaceAlt;
+        }),
         hintStyle: textTheme.bodyMedium?.copyWith(
-          color: textSecondary.withValues(alpha: 0.72),
+          color: textSecondary.withValues(alpha: 0.55),
+          fontWeight: FontWeight.w500,
         ),
         labelStyle: textTheme.bodyMedium?.copyWith(
           color: textSecondary,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
         ),
-        floatingLabelStyle: textTheme.bodyMedium?.copyWith(
+        floatingLabelStyle: textTheme.labelLarge?.copyWith(
           color: royalBlue,
           fontWeight: FontWeight.w800,
+          letterSpacing: 0.2,
         ),
+        // Roomy enough to hit reliably with a thumb, without the field
+        // becoming a slab.
         contentPadding: const EdgeInsets.symmetric(
           horizontal: space5,
-          vertical: space5,
+          vertical: 15,
         ),
-        enabledBorder: roundedBorder(line),
-        focusedBorder: roundedBorder(royalBlue, width: 1.4),
-        errorBorder: roundedBorder(danger),
-        focusedErrorBorder: roundedBorder(danger, width: 1.4),
-        border: roundedBorder(line),
+        // The counter under a maxLength field is noise on every screen that
+        // has one; the limit does its work without being narrated.
+        counterStyle: textTheme.labelSmall?.copyWith(
+          color: textSecondary.withValues(alpha: 0.55),
+        ),
+        enabledBorder: roundedBorder(line.withValues(alpha: 0.85), width: 1),
+        focusedBorder: roundedBorder(royalBlue, width: 1.7),
+        disabledBorder: roundedBorder(line.withValues(alpha: 0.45), width: 1),
+        errorBorder: roundedBorder(danger, width: 1.2),
+        focusedErrorBorder: roundedBorder(danger, width: 1.7),
+        errorStyle: textTheme.labelSmall?.copyWith(
+          color: danger,
+          fontWeight: FontWeight.w700,
+        ),
+        border: roundedBorder(line.withValues(alpha: 0.85), width: 1),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
