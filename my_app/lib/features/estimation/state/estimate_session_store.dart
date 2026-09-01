@@ -103,7 +103,31 @@ class EstimateSessionStore extends ChangeNotifier {
     _materialSelection = estimateMaterialSelectionFromProjectOutputs(outputs);
     _rateOverrides = estimateRateOverridesFromProjectOutputs(outputs);
     _billDraft = estimateBillDraftFromProjectOutputs(outputs);
+    _adoptJobMaterialWhereUnset();
     notifyListeners();
+  }
+
+  /// Gives the windows of an older job the material that job was estimated at.
+  ///
+  /// Stock used to be one choice for a whole project, kept beside the job
+  /// rather than on its windows. Reopening such a job leaves every window
+  /// saying nothing, and defaulting those to champagne 1.2mm would quietly
+  /// re-specify a job that was cut in 2mm black. The pair the job was actually
+  /// estimated at is the one true answer available, so it is used.
+  ///
+  /// Windows saved since carry their own and are left alone.
+  void _adoptJobMaterialWhereUnset() {
+    final EstimateMaterialSelection? selection = _materialSelection;
+    if (selection == null || !selection.isComplete) return;
+    final WindowMaterial jobMaterial = WindowMaterial(
+      gauge: selection.gaugeValue,
+      color: selection.colorValue,
+    );
+    for (int i = 0; i < _items.length; i++) {
+      final WindowReviewItem item = _items[i];
+      if (item.material.isSet) continue;
+      _items[i] = item.copyWith(material: item.material.orElse(jobMaterial));
+    }
   }
 
   bool existsWinNo(int winNo) {
@@ -200,7 +224,9 @@ class EstimateSessionStore extends ChangeNotifier {
     if (_items.isEmpty) return WindowMaterial.initial;
     // The one entered last, not the lowest-numbered: that is the one whose
     // stock is still in mind.
-    return _items.last.material;
+    // orElse: a window from a job that was never estimated can still have no
+    // material of its own, and the picker needs something to open on.
+    return _items.last.material.orElse(WindowMaterial.initial);
   }
 
   /// One material to stand for the job, for the few places that still want a
@@ -214,7 +240,7 @@ class EstimateSessionStore extends ChangeNotifier {
   /// it, and on a mixed job no single answer is right anyway.
   WindowMaterial get representativeMaterial {
     if (_items.isEmpty) return WindowMaterial.initial;
-    return items.first.material;
+    return items.first.material.orElse(WindowMaterial.initial);
   }
 
   /// Every distinct material in the job, in the order first used.

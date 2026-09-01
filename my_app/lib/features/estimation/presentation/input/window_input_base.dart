@@ -545,7 +545,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
     _lockType = _lockTypeFromStored(widget.editingItem?.lockType);
     _normalizeLockTypeSelectionForWindow();
-    _material = widget.editingItem?.material ?? widget.session.materialForNextWindow;
+    // orElse: an old window may carry none of its own, and the picker must
+    // open on something the user can see.
+    _material =
+        widget.editingItem?.material.orElse(WindowMaterial.initial) ??
+        widget.session.materialForNextWindow;
     _unitMode =
         widget.editingItem?.unitMode ??
         (_isFabricationFlow ? UnitMode.feet : UnitMode.inches);

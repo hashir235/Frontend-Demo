@@ -210,14 +210,15 @@ class WindowReviewItem {
       lockType: json['lockType'] == null ? null : _asInt(json['lockType']),
       rubberType: (json['rubberType'] as String?)?.trim(),
       description: (json['description'] as String?)?.trim(),
-      // Missing on a window saved before stock was per-window. It reads as
-      // champagne 1.2mm here and is corrected by the caller, which knows the
-      // pair that whole job was estimated at.
+      // Left genuinely empty when the window was saved before stock was per
+      // window, rather than guessed at as 1.2mm champagne. A job estimated
+      // wholly in 2mm black would otherwise reopen claiming every window was
+      // champagne -- a confident wrong answer, which is worse than none.
+      // EstimateSessionStore.restoreOutputs fills these in from the pair that
+      // job was actually estimated at.
       material: WindowMaterial(
-        gauge: WindowGauges.all.contains((json['gauge'] as String? ?? '').trim())
-            ? (json['gauge'] as String).trim()
-            : WindowGauges.g12,
-        color: AluminiumColors.normalize(json['color'] as String?),
+        gauge: (json['gauge'] as String? ?? '').trim(),
+        color: (json['color'] as String? ?? '').trim(),
       ),
     );
   }

@@ -19,6 +19,15 @@ class OptimizationWindowRequest {
   final int? lockType;
   final String? rubberType;
 
+  /// The stock this window is made from.
+  ///
+  /// The engine keys its cutting piles and its rates on these, so a request
+  /// that leaves them out is a request for one pile per profile -- which is
+  /// what the whole job used to be. They have to be here, and not only on
+  /// [WindowReviewItem], because this class is what actually goes on the wire.
+  final String gauge;
+  final String color;
+
   const OptimizationWindowRequest({
     required this.winNo,
     required this.windowCode,
@@ -37,6 +46,8 @@ class OptimizationWindowRequest {
     required this.backCollarCm,
     required this.lockType,
     required this.rubberType,
+    required this.gauge,
+    required this.color,
   });
 
   factory OptimizationWindowRequest.fromReviewItem(
@@ -73,6 +84,8 @@ class OptimizationWindowRequest {
       backCollarCm: item.backCollarCm,
       lockType: item.lockType,
       rubberType: item.rubberType,
+      gauge: item.material.gauge,
+      color: item.material.color,
     );
   }
 
@@ -95,6 +108,8 @@ class OptimizationWindowRequest {
       'backCollarCm': backCollarCm,
       'lockType': lockType,
       'rubberType': rubberType,
+      'gauge': gauge,
+      'color': color,
     };
   }
 }

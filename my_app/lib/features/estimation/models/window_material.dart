@@ -27,6 +27,22 @@ class WindowMaterial {
   WindowMaterial copyWith({String? gauge, String? color}) =>
       WindowMaterial(gauge: gauge ?? this.gauge, color: color ?? this.color);
 
+  /// False for a window saved before stock was per-window: it has no material
+  /// of its own, and the job it belongs to has to supply one.
+  bool get isSet => gauge.trim().isNotEmpty && color.trim().isNotEmpty;
+
+  /// This material, or [fallback] where it says nothing.
+  ///
+  /// Half-set is possible in principle (a gauge with no colour), so each part
+  /// falls back on its own rather than the pair being all-or-nothing.
+  WindowMaterial orElse(WindowMaterial fallback) {
+    if (isSet) return this;
+    return WindowMaterial(
+      gauge: gauge.trim().isEmpty ? fallback.gauge : gauge,
+      color: color.trim().isEmpty ? fallback.color : color,
+    );
+  }
+
   /// "1.2mm · Champagne" -- for a line of text under a window in the review
   /// list, where the reader wants to know at a glance and not read a table.
   String get label => '$gauge · ${AluminiumColors.shortLabelFor(color)}';
