@@ -445,29 +445,35 @@ class _EstimationMaterialTableScreenState
   ///
   /// Without it two rows both read "M23" at two different rates, and there is
   /// nothing on the page to say which bar each one is for.
-  String _materialFor(CostTable table, CostTableRow row) {
+  /// The gauge this row is priced for, falling back to the job-wide one on a
+  /// table costed before stock was per-window.
+  String _gaugeFor(CostTable table, CostTableRow row) {
     final String gauge = row.gauge.trim().isNotEmpty
         ? row.gauge.trim()
         : table.gauge.trim();
+    return gauge.isEmpty ? '--' : gauge;
+  }
+
+  /// The colour, same fallback. Shown by its short name so the column stays
+  /// narrow enough to sit beside the rest of the table.
+  String _colorFor(CostTable table, CostTableRow row) {
     final String color = row.color.trim().isNotEmpty
         ? row.color.trim()
         : table.color.trim();
-    final List<String> bits = <String>[
-      if (gauge.isNotEmpty) gauge,
-      if (color.isNotEmpty) AluminiumColors.shortLabelFor(color),
-    ];
-    return bits.isEmpty ? '--' : bits.join(' · ');
+    return color.isEmpty ? '--' : AluminiumColors.shortLabelFor(color);
   }
 
   List<_MaterialDisplayRow> _displayRows(CostTable table) {
     final List<_MaterialDisplayRow> rows = <_MaterialDisplayRow>[];
     for (final CostTableRow row in table.rows) {
-      final String material = _materialFor(table, row);
+      final String gauge = _gaugeFor(table, row);
+      final String color = _colorFor(table, row);
       if (row.lengths.isEmpty) {
         rows.add(
           _MaterialDisplayRow(
             section: row.section,
-            material: material,
+            gauge: gauge,
+            color: color,
             lengthDisplay: '--',
             quantity: 0,
             totalFt: row.totalFt,
@@ -483,7 +489,8 @@ class _EstimationMaterialTableScreenState
         rows.add(
           _MaterialDisplayRow(
             section: row.section,
-            material: material,
+            gauge: gauge,
+            color: color,
             lengthDisplay: length.lengthDisplay,
             quantity: length.quantity,
             totalFt: row.totalFt,
@@ -674,7 +681,8 @@ class _EstimationMaterialTableScreenState
                   ? DataTable(
                       columns: const <DataColumn>[
                         DataColumn(label: Text('Section')),
-                        DataColumn(label: Text('Material')),
+                        DataColumn(label: Text('Gauge')),
+                        DataColumn(label: Text('Color')),
                         DataColumn(label: Text('Total ft')),
                         DataColumn(label: Text('Rates')),
                         DataColumn(label: Text('Total Rates')),
@@ -685,7 +693,8 @@ class _EstimationMaterialTableScreenState
                             (CostTableRow row) => DataRow(
                               cells: <DataCell>[
                                 DataCell(Text(row.section)),
-                                DataCell(Text(_materialFor(table, row))),
+                                DataCell(Text(_gaugeFor(table, row))),
+                                DataCell(Text(_colorFor(table, row))),
                                 DataCell(Text(row.totalFtDisplay)),
                                 DataCell(Text(_formatNumber(row.rate))),
                                 DataCell(Text(_formatNumber(row.totalPrice))),
@@ -726,7 +735,8 @@ class _EstimationMaterialTableScreenState
                   : DataTable(
                       columns: const <DataColumn>[
                         DataColumn(label: Text('Section')),
-                        DataColumn(label: Text('Material')),
+                        DataColumn(label: Text('Gauge')),
+                        DataColumn(label: Text('Color')),
                         DataColumn(label: Text('Length')),
                         DataColumn(label: Text('Quantity')),
                         DataColumn(label: Text('Total ft')),
@@ -738,7 +748,8 @@ class _EstimationMaterialTableScreenState
                             (_MaterialDisplayRow row) => DataRow(
                               cells: <DataCell>[
                                 DataCell(Text(row.section)),
-                                DataCell(Text(row.material)),
+                                DataCell(Text(row.gauge)),
+                                DataCell(Text(row.color)),
                                 DataCell(Text(row.lengthDisplay)),
                                 DataCell(Text('${row.quantity}')),
                                 DataCell(Text(row.totalFtDisplay)),
@@ -913,7 +924,8 @@ class _MaterialRowDialogState extends State<_MaterialRowDialog> {
 
 class _MaterialDisplayRow {
   final String section;
-  final String material;
+  final String gauge;
+  final String color;
   final String lengthDisplay;
   final int quantity;
   final double totalFt;
@@ -923,7 +935,8 @@ class _MaterialDisplayRow {
 
   const _MaterialDisplayRow({
     required this.section,
-    required this.material,
+    required this.gauge,
+    required this.color,
     required this.lengthDisplay,
     required this.quantity,
     required this.totalFt,
