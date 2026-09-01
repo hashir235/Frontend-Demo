@@ -20,6 +20,7 @@ import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
 import '../models/optimization_error_text.dart';
 import '../models/window_material.dart';
+import '../widgets/cut_layout_bar.dart';
 import '../models/window_review_item.dart';
 import '../state/estimate_session_store.dart';
 import 'rate_review_screen.dart';
@@ -736,13 +737,37 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           ),
         ),
       ),
-      child: _maybeTourTarget(
-        id: 'lo.cutsTable',
-        enabled: isTourExample,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            showCheckboxColumn: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          // The bar drawn to scale, above the list that details it. Ticking a
+          // cut below greys its block here, so what stays coloured is what is
+          // still to be cut.
+          CutLayoutBar(
+            segments: group.cuts.asMap().entries.map((
+              MapEntry<int, CuttingReportCut> entry,
+            ) {
+              final CuttingReportCut cut = entry.value;
+              return CutLayoutSegment(
+                label: '${cut.windowNo}/${_pieceSymbolForCut(cut)}',
+                lengthFt: cut.lengthFt,
+                isCut: _markedCutRowKeys.contains(
+                  _cutRowKey(sectionName, groupIndex, entry.key, cut),
+                ),
+              );
+            }).toList(growable: false),
+            wastageFt: group.wastageFt,
+            isOffcut: group.offcut,
+            totalLabel: _lengthDisplay(group.stockLenFt),
+          ),
+          const SizedBox(height: AppTheme.space5),
+          _maybeTourTarget(
+            id: 'lo.cutsTable',
+            enabled: isTourExample,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                showCheckboxColumn: false,
             columns: const <DataColumn>[
               // Cuts first: it is the number being worked to at the saw, and
               // it was the last column on a table that scrolls sideways. The
@@ -797,10 +822,12 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                       ),
                     ],
                   );
-                })
-                .toList(growable: false),
+                    })
+                    .toList(growable: false),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
