@@ -45,3 +45,7 @@ app.*.map.json
 /android/app/release
 /android/key.properties
 /android/app/upload-keystore.jks
+
+# Golden-test diff images: written only when a golden fails, and stale the
+# moment it is fixed.
+test/**/failures/

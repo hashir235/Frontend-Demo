@@ -92,14 +92,19 @@ void main() {
   testWidgets('shows every piece, in the fabricator\'s own names', (WidgetTester tester) async {
     await pump(tester);
 
-    // The first profile and its pieces.
+    // The first profile.
     expect(find.text('DC30C'), findsOneWidget);
-    expect(find.text('HL'), findsOneWidget);
-    expect(find.text('WT'), findsOneWidget);
 
-    // The formulas, with h and w replaced by the piece's own label.
-    expect(find.text('(HL + cm) / feet'), findsOneWidget);
-    expect(find.text('(WT + cm) / feet'), findsOneWidget);
+    // The formulas, in the pieces' own names and with the cutting margin and
+    // the feet conversion taken off -- the shipped sum for these is
+    // "(h + cm) / feet", of which "HL" is the part anybody chose.
+    final List<String> shown = tester
+        .widgetList<TextField>(find.byType(TextField))
+        .map((TextField field) => field.controller!.text)
+        .toList();
+    expect(shown.take(3), <String>['HL', 'HR', 'WT']);
+    expect(shown.any((String text) => text.contains('cm')), isFalse);
+    expect(shown.any((String text) => text.contains('feet')), isFalse);
 
     // M23 is below the fold on a test-sized screen, as it would be on a
     // phone: a real window runs to six profiles and twenty pieces.
@@ -127,7 +132,20 @@ void main() {
       find.textContaining('window height (cm)', findRichText: true),
       findsWidgets,
     );
-    expect(find.textContaining('cutting margin', findRichText: true), findsWidgets);
+  });
+
+  testWidgets('says which unit to write in, and what it adds behind the formula',
+      (WidgetTester tester) async {
+    await pump(tester);
+    // Both belong at the top, once. Without the first a workshop measuring in
+    // inches would think the numbers were wrong; without the second, one that
+    // knows its blade takes 2mm would wonder where that went.
+    expect(find.textContaining('Write in centimetres'), findsOneWidget);
+    expect(find.textContaining('converts it before the formula runs'), findsOneWidget);
+    expect(
+      find.text('Quick AL adds the cutting margin and converts to feet.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows what a formula comes to for the window on the bench',
@@ -149,7 +167,7 @@ void main() {
       (WidgetTester tester) async {
     await pump(tester);
 
-    await tester.enterText(find.byType(TextField).first, '(HL + cm / feet');
+    await tester.enterText(find.byType(TextField).first, '(HL + 6');
     await tester.pumpAndSettle();
 
     expect(find.textContaining('never closed'), findsOneWidget);
@@ -165,7 +183,7 @@ void main() {
     await pump(tester);
 
     // HL is driven by the height; the width is not one of its names.
-    await tester.enterText(find.byType(TextField).first, '(w + cm) / feet');
+    await tester.enterText(find.byType(TextField).first, 'w + 6');
     await tester.pumpAndSettle();
 
     expect(find.textContaining('not a measurement this window has'), findsOneWidget);
@@ -193,7 +211,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, '(HL + 12 + cm) / feet');
+    await tester.enterText(find.byType(TextField).first, 'HL + 12');
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FilledButton, 'Save formulas'));
@@ -237,7 +255,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, '(HL + 12 + cm) / feet');
+    await tester.enterText(find.byType(TextField).first, 'HL + 12');
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Save formulas'));
     await tester.pumpAndSettle();
@@ -258,14 +276,14 @@ void main() {
 
     await pump(tester, starting: starting);
 
-    expect(find.text('(HL + 99 + cm) / feet'), findsOneWidget);
+    expect(find.text('HL + 99'), findsOneWidget);
     expect(find.text('yours'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Put this one back'));
     await tester.pumpAndSettle();
 
-    expect(find.text('(HL + cm) / feet'), findsOneWidget);
-    expect(find.text('(HL + 99 + cm) / feet'), findsNothing);
+    expect(find.text('HL'), findsWidgets);
+    expect(find.text('HL + 99'), findsNothing);
   });
 
   testWidgets('nothing is saved unless something changed', (WidgetTester tester) async {

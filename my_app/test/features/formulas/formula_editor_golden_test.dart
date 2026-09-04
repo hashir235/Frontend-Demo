@@ -22,6 +22,25 @@ Future<void> _loadLato() async {
   }
 }
 
+/// The icon font, so a picture of this screen shows its icons rather than the
+/// empty boxes a test renders without it. Judging a layout by a picture full
+/// of tofu is judging the wrong picture.
+Future<void> _loadIcons() async {
+  final String root = Platform.environment['FLUTTER_ROOT'] ?? r'C:\flutter';
+  final List<String> candidates = <String>[
+    '$root/bin/cache/artifacts/material_fonts/materialicons-regular.otf',
+    '$root/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+  ];
+  for (final String path in candidates) {
+    final File file = File(path);
+    if (!file.existsSync()) continue;
+    final FontLoader loader = FontLoader('MaterialIcons')
+      ..addFont(Future<ByteData>.value(file.readAsBytesSync().buffer.asByteData()));
+    await loader.load();
+    return;
+  }
+}
+
 /// The real sliding window, collar 2 with a latch lock -- the configuration
 /// from the job that turned up the phantom pieces.
 Map<String, dynamic> _catalogue() {
@@ -69,6 +88,7 @@ Map<String, dynamic> _catalogue() {
 void main() {
   testWidgets('formula editor', (WidgetTester tester) async {
     await _loadLato();
+    await _loadIcons();
     tester.view.physicalSize = const Size(1000, 1900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);

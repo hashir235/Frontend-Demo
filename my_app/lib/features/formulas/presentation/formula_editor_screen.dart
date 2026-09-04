@@ -103,6 +103,22 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
 
   bool get _hasProblems => _problems.isNotEmpty;
 
+  /// What Quick AL puts around every formula on this screen.
+  ///
+  /// Taken from the first piece that has an envelope, because within one
+  /// window they all have the same one -- the margin and the feet conversion
+  /// belong to the context, not the piece. Said once at the top rather than
+  /// under twenty boxes.
+  String? get _appliedAutomatically {
+    for (final EffectiveSection section in _sections) {
+      for (final EffectiveFormula piece in section.pieces) {
+        final String? applied = piece.slot.appliedAutomatically;
+        if (applied != null) return applied;
+      }
+    }
+    return null;
+  }
+
   EffectiveFormula? _pieceFor(FormulaPieceRef ref) {
     for (final EffectiveSection section in _sections) {
       for (final EffectiveFormula piece in section.pieces) {
@@ -366,7 +382,10 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
               : ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
                   children: <Widget>[
-                    const _Introduction(),
+                    _Introduction(
+                      isFabrication: widget.windowKey.context == 'fabrication',
+                      applied: _appliedAutomatically,
+                    ),
                     const SizedBox(height: 16),
                     for (final EffectiveSection section in _sections) ...<Widget>[
                       _SectionBlock(
@@ -413,18 +432,26 @@ class _PendingEdit {
   final int reach;
 }
 
-/// Says what this screen is, once, at the top.
+/// Says what this screen is, and the two things about it that are not obvious.
 ///
-/// Somebody opening it for the first time is looking at the arithmetic behind
-/// their own cutting list, which is not a thing most software shows them. Two
-/// sentences are worth the space.
+/// Somebody opening this is looking at the arithmetic behind their own cutting
+/// list, which is not a thing most software shows them. Both notes exist
+/// because leaving them out would make a formula look wrong: a workshop that
+/// measures in inches would wonder why the numbers are in centimetres, and one
+/// that knows its blade takes 2mm would wonder where that went.
 class _Introduction extends StatelessWidget {
-  const _Introduction();
+  const _Introduction({required this.isFabrication, required this.applied});
 
+  final bool isFabrication;
+
+  /// What Quick AL adds after the workshop's own arithmetic, if anything.
+  final String? applied;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final String unit = isFabrication ? 'centimetres' : 'feet';
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -432,23 +459,69 @@ class _Introduction extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.royalBlue.withValues(alpha: 0.18)),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Icon(Icons.functions_rounded, size: 20, color: AppTheme.royalBlue),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'These are the sums Quick AL cuts this window by. Change one and '
-              'every cutting list from here on uses yours instead.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.textPrimary.withValues(alpha: 0.85),
-                height: 1.45,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Icon(Icons.functions_rounded, size: 20, color: AppTheme.royalBlue),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'These are the sums Quick AL cuts this window by. Change one '
+                  'and every cutting list from here on uses yours instead.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppTheme.textPrimary.withValues(alpha: 0.88),
+                    height: 1.45,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
+          const SizedBox(height: 12),
+          Divider(height: 1, color: AppTheme.royalBlue.withValues(alpha: 0.16)),
+          const SizedBox(height: 11),
+          _Note(
+            icon: Icons.straighten_rounded,
+            text: 'Write in $unit. If you measured this window in inches, '
+                'Quick AL converts it before the formula runs.',
+          ),
+          if (applied != null) ...<Widget>[
+            const SizedBox(height: 9),
+            _Note(icon: Icons.auto_awesome_rounded, text: applied!),
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// One short line of small print, with an icon to hang it on.
+class _Note extends StatelessWidget {
+  const _Note({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, size: 15, color: AppTheme.slate),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppTheme.slate,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

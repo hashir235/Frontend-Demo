@@ -105,48 +105,59 @@ class FormulaSlot {
     return null;
   }
 
+  /// The two things every formula ends with, and which are not arithmetic a
+  /// fabricator chose.
+  ///
+  /// Nearly every stored formula is `(something + cm) / feet`, or on the
+  /// estimation side `something + cm_SECTION`. Neither tail is part of what a
+  /// workshop decided: the margin is one blade width, set once in settings and
+  /// added to every cut alike, and the division by 30.48 only turns
+  /// centimetres into the feet the next screen works in. Showing them puts two
+  /// names in every box that a fabricator can neither change usefully nor
+  /// ignore safely, so they are taken off on the way to the screen and put
+  /// back on the way in.
+  ///
+  /// Null when a formula has neither -- the round arch's `ar + 1` is the one
+  /// such formula in the catalogue -- and then what is stored is what is shown.
+  _Envelope? get _envelope => __envelope ??= _Envelope.around(expression, marginName);
+  _Envelope? __envelope;
+
+  /// Just the arithmetic, with the margin and the feet conversion set aside.
+  FormulaExpression get _core => _envelope?.core ?? expression;
+
   /// How the names change on the way to the screen: the driving measurement
-  /// becomes the piece's own label, and whichever margin this formula reads
-  /// becomes plain `cm`.
-  Map<String, String> get _toDisplay {
-    final Map<String, String> names = <String, String>{dimension: label};
-    final String? margin = marginName;
-    if (margin != null && margin != FormulaVariables.margin) {
-      names[margin] = FormulaVariables.margin;
-    }
-    return names;
-  }
+  /// becomes the piece's own label.
+  Map<String, String> get _toDisplay => <String, String>{dimension: label};
 
-  Map<String, String> get _toStored {
-    return _toDisplay.map((String from, String to) => MapEntry<String, String>(to, from));
-  }
+  Map<String, String> get _toStored => <String, String>{label: dimension};
 
-  /// The formula as a fabricator reads it: `(HL + cm) / feet`.
-  String get display => expression.renameVariables(_toDisplay).toString();
+  /// The formula as a fabricator reads it: `HL + 6`, not `(h + 6 + cm) / feet`.
+  String get display => _core.renameVariables(_toDisplay).toString();
 
   /// The names this piece's formula may use, in display terms.
-  Set<String> get allowedDisplayVariables {
-    return <String>{
-      label,
-      FormulaVariables.margin,
-      if (isFabrication) FormulaVariables.feet,
+  ///
+  /// Its own, and nothing else. A formula that could name the margin would
+  /// invite somebody to add it twice.
+  Set<String> get allowedDisplayVariables => <String>{label};
+
+  /// What that name means, for the line under the box.
+  Map<String, String> get legend {
+    return <String, String>{
+      label: FormulaVariables.describe(dimension, isFabrication: isFabrication),
     };
   }
 
-  /// What each of those names means, for the legend under the box.
-  Map<String, String> get legend {
-    final Map<String, String> lines = <String, String>{
-      label: FormulaVariables.describe(dimension, isFabrication: isFabrication),
-      FormulaVariables.margin: FormulaVariables.describe(
-        FormulaVariables.margin,
-        isFabrication: isFabrication,
-      ),
-    };
-    if (isFabrication) {
-      lines[FormulaVariables.feet] =
-          FormulaVariables.describe(FormulaVariables.feet, isFabrication: isFabrication);
+  /// What Quick AL adds to this formula after the workshop's own arithmetic,
+  /// said once so it is understood rather than hidden.
+  ///
+  /// Null when nothing is added.
+  String? get appliedAutomatically {
+    final _Envelope? envelope = _envelope;
+    if (envelope == null) return null;
+    if (envelope.dividesByFeet) {
+      return 'Quick AL adds the cutting margin and converts to feet.';
     }
-    return lines;
+    return 'Quick AL adds the cutting margin.';
   }
 
   /// Reads what a fabricator typed and turns it back into the catalogue's
@@ -157,8 +168,11 @@ class FormulaSlot {
     if (!check.isUsable) {
       return FormulaEdit._(null, check.problem);
     }
-    final String storedForm = check.expression!.renameVariables(_toStored).toString();
-    return FormulaEdit._(storedForm, null);
+
+    final FormulaExpression core = check.expression!.renameVariables(_toStored);
+    final _Envelope? envelope = _envelope;
+    final FormulaExpression whole = envelope == null ? core : envelope.rebuild(core);
+    return FormulaEdit._(whole.toString(), null);
   }
 
   /// The same piece with a different formula behind it.
@@ -178,6 +192,68 @@ class FormulaSlot {
   /// other.
   FormulaResult lengthFor(Map<String, double> variables) {
     return FormulaResult.of(expression, variables, label: '$section $label');
+  }
+}
+
+/// The margin and the unit conversion wrapped around a formula's real work.
+///
+/// Recognised by shape rather than by text, and only in the exact shape the
+/// engine writes: the margin as the last thing added, the division by feet as
+/// the last thing done. Anything else is left alone and shown whole, because a
+/// formula this cannot take apart is one it must not put back together either.
+class _Envelope {
+  const _Envelope({
+    required this.core,
+    required this.marginName,
+    required this.dividesByFeet,
+  });
+
+  /// The arithmetic a fabricator actually chose.
+  final FormulaExpression core;
+
+  /// The margin that gets added -- `cm`, or `cm_DC30C` on the estimation side.
+  final String marginName;
+
+  /// Whether the result is turned from centimetres into feet.
+  final bool dividesByFeet;
+
+  /// Finds the envelope around [whole], or null if it is not in this shape.
+  static _Envelope? around(FormulaExpression whole, String? marginName) {
+    if (marginName == null) return null;
+
+    FormulaExpression inner = whole;
+    bool dividesByFeet = false;
+
+    // ... / feet
+    if (inner is FormulaBinary &&
+        inner.op == '/' &&
+        inner.right is FormulaVariable &&
+        (inner.right as FormulaVariable).name == FormulaVariables.feet) {
+      dividesByFeet = true;
+      inner = inner.left;
+    }
+
+    // ... + cm
+    if (inner is FormulaBinary &&
+        inner.op == '+' &&
+        inner.right is FormulaVariable &&
+        (inner.right as FormulaVariable).name == marginName) {
+      return _Envelope(
+        core: inner.left,
+        marginName: marginName,
+        dividesByFeet: dividesByFeet,
+      );
+    }
+
+    return null;
+  }
+
+  /// Puts the same envelope back around a new core.
+  FormulaExpression rebuild(FormulaExpression core) {
+    final FormulaExpression withMargin =
+        FormulaBinary('+', core, FormulaVariable(marginName));
+    if (!dividesByFeet) return withMargin;
+    return FormulaBinary('/', withMargin, const FormulaVariable(FormulaVariables.feet));
   }
 }
 
