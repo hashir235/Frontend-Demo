@@ -157,9 +157,10 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
         slot.withStored(edit.stored!).lengthFor(widget.measurements);
     if (!result.isUsable) return result.problem;
 
-    final double value = result.asCutLength!;
-    final String unit = widget.windowKey.context == 'fabrication' ? 'ft' : 'ft';
-    return '${value.toStringAsFixed(3)} $unit for this window';
+    // Feet either way. Fabrication measures in centimetres and divides by
+    // 30.48 on the way out; estimation is in feet from the start. Both end up
+    // as the length that gets cut, which is the whole point of showing it.
+    return '${result.asCutLength!.toStringAsFixed(3)} ft for this window';
   }
 
   Future<void> _resetPiece(FormulaPieceRef ref) async {
