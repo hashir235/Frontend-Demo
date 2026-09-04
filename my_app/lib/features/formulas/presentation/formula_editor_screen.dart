@@ -163,7 +163,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// allowance already off it, and it is given in all three units because a
   /// workshop that measures in suter should not have to work out in its head
   /// what taking 2mm off a formula does to the cut.
-  String? _preview(FormulaPieceRef ref, FormulaSlot slot) {
+  _Preview? _preview(FormulaPieceRef ref, FormulaSlot slot) {
     if (widget.measurements.isEmpty) return null;
     final String typed = _controllers[ref]?.text ?? slot.display;
     final FormulaEdit edit = slot.readDisplay(typed);
@@ -171,10 +171,12 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
 
     final FormulaResult result =
         slot.withStored(edit.stored!).cutLengthFor(widget.measurements);
-    if (!result.isUsable) return result.problem;
+    if (!result.isUsable) return _Preview.problem(result.problem!);
 
-    return CutLength.fromFeet(result.asCutLength!)
-        .threeWays(centimetresFirst: slot.isFabrication);
+    return _Preview.sizes(
+      CutLength.fromFeet(result.asCutLength!)
+          .readings(centimetresFirst: slot.isFabrication),
+    );
   }
 
   Future<void> _resetPiece(FormulaPieceRef ref) async {
@@ -556,7 +558,7 @@ class _SectionBlock extends StatelessWidget {
   final EffectiveSection section;
   final TextEditingController Function(FormulaPieceRef) controllerFor;
   final String? Function(FormulaPieceRef) problemFor;
-  final String? Function(FormulaPieceRef, FormulaSlot) previewFor;
+  final _Preview? Function(FormulaPieceRef, FormulaSlot) previewFor;
   final bool Function(FormulaPieceRef) isEdited;
   final void Function(FormulaPieceRef, String) onTyped;
   final Future<void> Function(FormulaPieceRef) onReset;
@@ -667,7 +669,7 @@ class _PieceRow extends StatelessWidget {
   final String? ordinal;
   final TextEditingController controller;
   final String? problem;
-  final String? preview;
+  final _Preview? preview;
   final bool edited;
   final ValueChanged<String> onTyped;
   final VoidCallback onReset;
@@ -771,23 +773,120 @@ class _PieceRow extends StatelessWidget {
           const SizedBox(height: 8),
           _Legend(slot: piece.slot),
           if (preview != null) ...<Widget>[
-            const SizedBox(height: 8),
-            Row(
-              children: <Widget>[
-                Icon(Icons.straighten_rounded, size: 15, color: AppTheme.tealAccent),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    preview!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppTheme.tealAccent,
-                      fontWeight: FontWeight.w700,
+            const SizedBox(height: 10),
+            _PreviewBlock(preview: preview!),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// What a formula comes to for the window on the bench: the size, or the
+/// reason there isn't one.
+class _Preview {
+  const _Preview._(this.sizes, this.reason);
+
+  const _Preview.sizes(List<CutReading> sizes) : this._(sizes, null);
+
+  const _Preview.problem(String reason) : this._(const <CutReading>[], reason);
+
+  /// The same cut, in each unit a workshop might read it in.
+  final List<CutReading> sizes;
+
+  /// Why this formula gives no size, if it gives none.
+  final String? reason;
+}
+
+/// The cut size under a formula, one unit to a line.
+///
+/// Stacked rather than run together on one line: a fabricator is comparing one
+/// of these numbers against a drawing, and three readings separated by dots
+/// make that a hunt. Down a column, with the units lined up, the one being
+/// looked for is where the eye already is.
+class _PreviewBlock extends StatelessWidget {
+  const _PreviewBlock({required this.preview});
+
+  final _Preview preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    if (preview.reason != null) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(Icons.report_problem_rounded, size: 15, color: theme.colorScheme.error),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              preview.reason!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(11, 9, 11, 9),
+      decoration: BoxDecoration(
+        color: AppTheme.tealAccent.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: AppTheme.tealAccent.withValues(alpha: 0.20)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.straighten_rounded, size: 14, color: AppTheme.tealAccent),
+              const SizedBox(width: 6),
+              Text(
+                'Cut size for this window',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppTheme.tealAccent,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          for (final CutReading reading in preview.sizes)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: <Widget>[
+                  // A fixed column for the unit, so the numbers start at the
+                  // same place down the block and can be read as a column.
+                  SizedBox(
+                    width: 24,
+                    child: Text(
+                      reading.unit,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppTheme.slate,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  Text(
+                    reading.value,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.tealAccent,
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
         ],
       ),
     );

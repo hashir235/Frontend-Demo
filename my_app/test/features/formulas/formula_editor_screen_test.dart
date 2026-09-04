@@ -158,18 +158,23 @@ void main() {
     });
 
     // The shipped sum is (h + cm) / feet. With the saw's 0.5cm allowance taken
-    // back off, the size cut is the window height itself -- 220.6cm, not
-    // 221.1cm. A fabricator adjusting this formula is reading the first.
-    expect(find.textContaining('220.6 cm'), findsNWidgets(2));
-    expect(find.textContaining('221.1 cm'), findsNothing);
+    // back off, the size cut is the window height itself -- 220.6, not 221.1.
+    // A fabricator adjusting this formula is reading the first.
+    expect(find.text('220.6'), findsNWidgets(2));
+    expect(find.text('221.1'), findsNothing);
 
     // The head rail is driven by the width instead.
-    expect(find.textContaining('182.5 cm'), findsOneWidget);
+    expect(find.text('182.5'), findsOneWidget);
 
-    // All three units on the same line, so a workshop working in suter can see
-    // what a centimetre off the formula does to the cut.
-    expect(find.textContaining('7.238 ft'), findsNWidgets(2));
-    expect(find.textContaining("7' 2'' 7'''"), findsNWidgets(2));
+    // Three readings, each on its own line, so a workshop working in suter can
+    // see what a centimetre off the formula does to the cut. Feet and inches
+    // are two different readings of the same bar: 7 feet 2 inches, or 86
+    // inches -- never the first read out to somebody who works in the second.
+    expect(find.text('cm'), findsWidgets);
+    expect(find.text('ft'), findsWidgets);
+    expect(find.text('in'), findsWidgets);
+    expect(find.text("7' 2'' 7'''"), findsNWidgets(2));
+    expect(find.text("86'' 7'''"), findsNWidgets(2));
   });
 
   testWidgets('refuses a formula it cannot read, and will not save',
