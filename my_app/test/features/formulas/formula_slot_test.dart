@@ -62,17 +62,18 @@ void main() {
       // The round arch's rib: no margin, no conversion, nothing to take off.
       final FormulaSlot piece = slot('D51F', 'Arch', 'ar + 1', fabrication: false);
       expect(piece.display, 'Arch + 1');
-      expect(piece.appliedAutomatically, isNull);
+      expect(piece.hasHiddenEnvelope, isFalse);
     });
 
-    test('says what it is adding behind the formula', () {
+    test('knows whether anything is hidden behind the formula', () {
+      expect(slot('DC30C', 'HL', '(h + cm) / feet').hasHiddenEnvelope, isTrue);
       expect(
-        slot('DC30C', 'HL', '(h + cm) / feet').appliedAutomatically,
-        'Quick AL adds the cutting margin and converts to feet.',
+        slot('DC30C', 'HL', 'h + cm_DC30C', fabrication: false).hasHiddenEnvelope,
+        isTrue,
       );
       expect(
-        slot('DC30C', 'HL', 'h + cm_DC30C', fabrication: false).appliedAutomatically,
-        'Quick AL adds the cutting margin.',
+        slot('D51F', 'Arch', 'ar + 1', fabrication: false).hasHiddenEnvelope,
+        isFalse,
       );
     });
 
@@ -178,6 +179,29 @@ void main() {
       });
       expect(result.isUsable, isTrue);
       expect(result.value, closeTo((220.6 + 0.5) / 30.48, 1e-12));
+    });
+
+    test('the size actually cut leaves the saw\'s allowance out', () {
+      // The optimizer is given the margin so it can leave the blade room; the
+      // cutting list takes it off again. A fabricator reads the second number,
+      // and setting a formula against the first would be wrong by one blade
+      // width on every piece.
+      final FormulaSlot piece = slot('DC30C', 'HL', '(h + cm) / feet');
+      const Map<String, double> window = <String, double>{
+        'h': 220.6,
+        'cm': 0.5,
+        'feet': 30.48,
+      };
+      expect(piece.lengthFor(window).value, closeTo((220.6 + 0.5) / 30.48, 1e-12));
+      expect(piece.cutLengthFor(window).value, closeTo(220.6 / 30.48, 1e-12));
+    });
+
+    test('estimation keeps its margin in, as its cutting list does', () {
+      // There the margin is an allowance on what to buy, not where to cut, and
+      // the report shows it. Hiding it here would disagree with that.
+      final FormulaSlot piece = slot('DC30C', 'HL', 'h + cm_DC30C', fabrication: false);
+      const Map<String, double> window = <String, double>{'h': 7.2, 'cm_DC30C': 0.07};
+      expect(piece.cutLengthFor(window).value, closeTo(7.27, 1e-12));
     });
 
     test('a window too small for its own deduction is refused, not cut', () {

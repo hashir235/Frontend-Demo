@@ -27,7 +27,9 @@ import '../../models/window_material.dart';
 import '../../widgets/window_material_picker.dart';
 import '../../../formulas/data/formula_book.dart';
 import '../../../formulas/data/formula_catalogue.dart';
+import '../../../formulas/data/formula_catalogue_asset.dart';
 import '../../../formulas/data/formula_overrides_store.dart';
+import '../../../formulas/model/formula_overrides.dart';
 import '../../../formulas/model/formula_window_key.dart';
 import '../../../formulas/presentation/formula_editor_screen.dart';
 
@@ -388,7 +390,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     final FormulaCatalogue catalogue;
     final FormulaOverrides overrides;
     try {
-      catalogue = await FormulaCatalogue.load();
+      catalogue = await FormulaCatalogueAsset.load();
       overrides = await const FormulaOverridesStore().load();
     } catch (_) {
       messenger.showSnackBar(

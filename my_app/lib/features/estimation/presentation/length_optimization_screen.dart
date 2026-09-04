@@ -15,6 +15,7 @@ import '../../../shared/widgets/metric_card.dart';
 import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
+import '../../../shared/format/cut_length.dart';
 import '../../../shared/widgets/state_message_card.dart';
 import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
@@ -122,28 +123,14 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
 
   /// Length figures (stock, used, total) for an inch.sutter fabrication run are
   /// shown in the fuller "feet' inch'' sutter'''" form the workshop reads off a
-  /// tape — e.g. 3.196 ft -> 3' 2'' 3'''. Sutter snaps to the nearest half, the
-  /// tape's finest mark. (Cut sizes stay in plain inch.sutter from the engine.)
-  String _lengthInchSutterDetailed(double ft) {
-    final double safe = ft < 0 ? 0 : ft;
-    int feet = safe.floor();
-    final double remInches = (safe - feet) * 12.0;
-    int inch = remInches.floor();
-    final double sutterRaw = (remInches - inch) * 8.0;
-    double sutter = (sutterRaw * 2).round() / 2.0; // nearest half-sutter
-    if (sutter >= 8.0) {
-      sutter = 0;
-      inch += 1;
-    }
-    if (inch >= 12) {
-      inch = 0;
-      feet += 1;
-    }
-    final String su = sutter == sutter.roundToDouble()
-        ? sutter.toInt().toString()
-        : sutter.toStringAsFixed(1);
-    return "$feet' $inch'' $su'''";
-  }
+  /// tape — e.g. 3.196 ft -> 3' 2'' 3'''. (Cut sizes stay in plain inch.sutter
+  /// from the engine.)
+  ///
+  /// The conversion itself lives in CutLength, because the formula screen
+  /// shows the same lengths in the same notation and two copies of a suter
+  /// calculation is one too many.
+  String _lengthInchSutterDetailed(double ft) =>
+      CutLength.fromFeet(ft).inInchSutter;
 
   /// Picks the length format for the current report. Only inch.sutter
   /// fabrication runs get the detailed feet/inch/sutter form; estimation (feet

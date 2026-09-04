@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/format/cut_length.dart';
 import '../data/formula_book.dart';
 import '../model/formula_overrides.dart';
 import '../model/formula_expression.dart';
@@ -103,17 +104,29 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
 
   bool get _hasProblems => _problems.isNotEmpty;
 
-  /// What Quick AL puts around every formula on this screen.
+  /// What Quick AL puts around every formula on this screen, and what that
+  /// means for the sizes shown under them.
   ///
-  /// Taken from the first piece that has an envelope, because within one
-  /// window they all have the same one -- the margin and the feet conversion
-  /// belong to the context, not the piece. Said once at the top rather than
-  /// under twenty boxes.
+  /// This is the note that stops a formula being set wrong. A cutting margin
+  /// goes onto every piece so the optimizer can leave the blade room, and the
+  /// fabrication cutting list takes it off again -- so a fabricator who
+  /// remembers the margin but not the taking-off would "correct" a formula for
+  /// an allowance that was never in the size they were reading. Saying both
+  /// halves, and saying which one the sizes below are, is the difference
+  /// between a screen that helps and one that quietly misleads.
+  ///
+  /// Taken from the first piece that has a margin, because within one window
+  /// they all work the same way.
   String? get _appliedAutomatically {
     for (final EffectiveSection section in _sections) {
       for (final EffectiveFormula piece in section.pieces) {
-        final String? applied = piece.slot.appliedAutomatically;
-        if (applied != null) return applied;
+        if (piece.slot.marginName == null) continue;
+        return piece.slot.isFabrication
+            ? 'A cutting margin is added to every piece for the saw, then taken '
+                'off again on the cutting list. The sizes below are the real '
+                'cut sizes, without it.'
+            : 'Each profile\'s cutting margin is added to every piece. The '
+                'sizes below include it, exactly as the cutting list does.';
       }
     }
     return null;
@@ -141,12 +154,15 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     });
   }
 
-  /// The length this formula gives for the window on the bench, or why it
-  /// gives none.
+  /// The size this formula gives for the window on the bench, or why it gives
+  /// none.
   ///
   /// Shown under every box as it is typed, because a formula is abstract and a
-  /// length is not: "3.68 ft" is checkable against the drawing in a way that
-  /// "(HL - 4.2 + cm) / feet" never is.
+  /// size is not: "216.4 cm" is checkable against the drawing in a way that
+  /// "HL - 4.2" never is. It is the size that will be cut, with the saw's own
+  /// allowance already off it, and it is given in all three units because a
+  /// workshop that measures in suter should not have to work out in its head
+  /// what taking 2mm off a formula does to the cut.
   String? _preview(FormulaPieceRef ref, FormulaSlot slot) {
     if (widget.measurements.isEmpty) return null;
     final String typed = _controllers[ref]?.text ?? slot.display;
@@ -154,13 +170,11 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     if (!edit.isUsable) return null;
 
     final FormulaResult result =
-        slot.withStored(edit.stored!).lengthFor(widget.measurements);
+        slot.withStored(edit.stored!).cutLengthFor(widget.measurements);
     if (!result.isUsable) return result.problem;
 
-    // Feet either way. Fabrication measures in centimetres and divides by
-    // 30.48 on the way out; estimation is in feet from the start. Both end up
-    // as the length that gets cut, which is the whole point of showing it.
-    return '${result.asCutLength!.toStringAsFixed(3)} ft for this window';
+    return CutLength.fromFeet(result.asCutLength!)
+        .threeWays(centimetresFirst: slot.isFabrication);
   }
 
   Future<void> _resetPiece(FormulaPieceRef ref) async {

@@ -142,13 +142,13 @@ void main() {
     // knows its blade takes 2mm would wonder where that went.
     expect(find.textContaining('Write in centimetres'), findsOneWidget);
     expect(find.textContaining('converts it before the formula runs'), findsOneWidget);
-    expect(
-      find.text('Quick AL adds the cutting margin and converts to feet.'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('added to every piece for the saw'), findsOneWidget);
+    // The half that stops a formula being set wrong: the sizes shown are the
+    // real cut sizes, so nobody "corrects" for an allowance that is not there.
+    expect(find.textContaining('the real cut sizes, without it'), findsOneWidget);
   });
 
-  testWidgets('shows what a formula comes to for the window on the bench',
+  testWidgets('shows the size that will actually be cut, in all three units',
       (WidgetTester tester) async {
     await pump(tester, measurements: <String, double>{
       'h': 220.6,
@@ -156,11 +156,20 @@ void main() {
       'cm': 0.5,
       'feet': 30.48,
     });
-    // (220.6 + 0.5) / 30.48 = 7.2539... for both uprights, which are cut by
-    // the same sum and so come to the same length.
-    expect(find.textContaining('7.254 ft for this window'), findsNWidgets(2));
-    // The head rail is driven by the width instead: (182.5 + 0.5) / 30.48.
-    expect(find.textContaining('6.004 ft for this window'), findsOneWidget);
+
+    // The shipped sum is (h + cm) / feet. With the saw's 0.5cm allowance taken
+    // back off, the size cut is the window height itself -- 220.6cm, not
+    // 221.1cm. A fabricator adjusting this formula is reading the first.
+    expect(find.textContaining('220.6 cm'), findsNWidgets(2));
+    expect(find.textContaining('221.1 cm'), findsNothing);
+
+    // The head rail is driven by the width instead.
+    expect(find.textContaining('182.5 cm'), findsOneWidget);
+
+    // All three units on the same line, so a workshop working in suter can see
+    // what a centimetre off the formula does to the cut.
+    expect(find.textContaining('7.238 ft'), findsNWidgets(2));
+    expect(find.textContaining("7' 2'' 7'''"), findsNWidgets(2));
   });
 
   testWidgets('refuses a formula it cannot read, and will not save',

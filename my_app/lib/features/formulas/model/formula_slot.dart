@@ -147,18 +147,13 @@ class FormulaSlot {
     };
   }
 
-  /// What Quick AL adds to this formula after the workshop's own arithmetic,
-  /// said once so it is understood rather than hidden.
+  /// Whether Quick AL wraps anything around this formula's own arithmetic.
   ///
-  /// Null when nothing is added.
-  String? get appliedAutomatically {
-    final _Envelope? envelope = _envelope;
-    if (envelope == null) return null;
-    if (envelope.dividesByFeet) {
-      return 'Quick AL adds the cutting margin and converts to feet.';
-    }
-    return 'Quick AL adds the cutting margin.';
-  }
+  /// False for the one formula in the catalogue that has no margin and no
+  /// conversion -- the round arch's rib -- where what is stored is what is
+  /// shown. The wording for the rest is the screen's business, not this
+  /// class's: what belongs here is only whether there is anything to say.
+  bool get hasHiddenEnvelope => _envelope != null;
 
   /// Reads what a fabricator typed and turns it back into the catalogue's
   /// names, or says why it cannot.
@@ -189,9 +184,39 @@ class FormulaSlot {
   ///
   /// [variables] is in the catalogue's names -- h, w, cm and the rest -- so a
   /// caller works in one set of names throughout and only the screen sees the
-  /// other.
+  /// other. This is the length that goes to the optimizer: the cutting margin
+  /// is in it, because the optimizer needs the blade's own width accounted for
+  /// when it decides what fits on a bar.
   FormulaResult lengthFor(Map<String, double> variables) {
     return FormulaResult.of(expression, variables, label: '$section $label');
+  }
+
+  /// The size that will actually be cut, as the cutting list shows it.
+  ///
+  /// Not the same number as [lengthFor], and the difference matters more than
+  /// its size. The cutting margin exists so the optimizer can leave the blade
+  /// room between pieces; the fabrication cutting list takes it off again
+  /// before anybody reads a size off it. Somebody adjusting a formula is
+  /// working from the size they will cut, and showing them a number with the
+  /// margin still in would invite them to correct for an allowance that is not
+  /// really there -- and a formula wrong by one blade width is wrong on every
+  /// piece of every job after it.
+  ///
+  /// The estimation side keeps its margin in the figures it shows, because
+  /// there the margin is an allowance on what to buy rather than where to cut.
+  /// This follows whichever the report does, so what is shown here and what is
+  /// shown there are the same number.
+  FormulaResult cutLengthFor(Map<String, double> variables) {
+    if (!isFabrication) return lengthFor(variables);
+
+    final String? margin = marginName;
+    if (margin == null) return lengthFor(variables);
+
+    // Setting the margin to nothing is exactly what the report does when it
+    // subtracts it: (core + cm) / feet, less cm / feet, is core / feet.
+    final Map<String, double> withoutMargin = Map<String, double>.of(variables);
+    withoutMargin[margin] = 0;
+    return FormulaResult.of(expression, withoutMargin, label: '$section $label');
   }
 }
 
