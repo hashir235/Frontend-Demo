@@ -6,6 +6,7 @@ import 'package:my_app/features/formulas/data/formula_catalogue.dart';
 import 'package:my_app/features/formulas/model/formula_overrides.dart';
 import 'package:my_app/features/formulas/model/formula_window_key.dart';
 import 'package:my_app/features/formulas/presentation/formula_editor_screen.dart';
+import 'package:my_app/features/help_videos/help_video_button.dart';
 
 /// The formula screen is where a workshop's own arithmetic gets set, and the
 /// only thing standing between a typo and a wrongly cut bar. These check what
@@ -175,6 +176,33 @@ void main() {
     expect(find.text('in'), findsWidgets);
     expect(find.text("7' 2'' 7'''"), findsNWidgets(2));
     expect(find.text("86'' 7'''"), findsNWidgets(2));
+  });
+
+  testWidgets('offers the how-it-works video', (WidgetTester tester) async {
+    await pump(tester);
+    // Sits before the reset, because it is what somebody opening this screen
+    // for the first time is looking for and the button beside it undoes
+    // everything they have done.
+    expect(find.byType(HelpVideoButton), findsOneWidget);
+  });
+
+  testWidgets('offers the help video, before the button that undoes everything',
+      (WidgetTester tester) async {
+    await pump(tester);
+
+    final Finder video = find.byKey(const Key('help_video_settings.formulas'));
+    final Finder resetAll = find.byTooltip('Put every formula back');
+    expect(video, findsOneWidget);
+    expect(resetAll, findsOneWidget);
+
+    // Order matters here. This screen is the one place a fabricator meets the
+    // arithmetic behind their own cuts, so the video is what they reach for
+    // first -- and the thing beside it throws away every change they have made.
+    expect(
+      tester.getCenter(video).dx,
+      lessThan(tester.getCenter(resetAll).dx),
+      reason: 'the video should sit before the reset, not after it',
+    );
   });
 
   testWidgets('refuses a formula it cannot read, and will not save',

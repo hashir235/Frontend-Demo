@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/format/cut_length.dart';
+import '../../help_videos/help_video_button.dart';
+import '../../help_videos/tutorial_videos.dart';
 import '../data/formula_book.dart';
 import '../model/formula_overrides.dart';
 import '../model/formula_expression.dart';
@@ -385,6 +387,13 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
             ],
           ),
           actions: <Widget>[
+            // Before the reset, because it is the one a fabricator opening
+            // this screen for the first time is looking for -- and the one
+            // beside it undoes everything they have done.
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: HelpVideoButton(videoKey: TutorialVideos.settingsFormulas),
+            ),
             IconButton(
               tooltip: 'Put every formula back',
               onPressed: _saving ? null : _resetEverything,

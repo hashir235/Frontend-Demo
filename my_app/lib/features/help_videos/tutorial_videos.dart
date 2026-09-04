@@ -43,6 +43,13 @@ class TutorialVideos {
   // how to do the second time.
   static const String workshopSetup = 'setup.workshop';
   static const String settingsWindowInput = 'settings.windowInput';
+
+  /// Changing the sums a window is cut by.
+  ///
+  /// Reached from the window input sidebar rather than the settings screen,
+  /// but it belongs with the rest of these: a shop sets its own formulas once
+  /// and then does not touch them for months.
+  static const String settingsFormulas = 'settings.formulas';
   static const String settingsRates = 'settings.rates';
   static const String settingsEstimation = 'settings.estimation';
   static const String settingsFabrication = 'settings.fabrication';
