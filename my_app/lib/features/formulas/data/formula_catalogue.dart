@@ -1,10 +1,6 @@
 /// The formulas Quick AL ships with, and the ones a workshop has changed.
 library;
 
-import 'dart:convert';
-
-import 'package:flutter/services.dart' show rootBundle;
-
 import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';
 
@@ -37,51 +33,12 @@ class FormulaCatalogue {
   /// windowKey -> configKey -> section -> [[label, formulaIndex], ...]
   final Map<String, Map<String, Map<String, List<dynamic>>>> _windows;
 
-  static FormulaCatalogue? _loaded;
-  static Future<FormulaCatalogue>? _loading;
-
-  /// Reads the catalogue, once per run.
+  /// Reads a catalogue from its JSON.
   ///
-  /// It is a megabyte and a half of JSON and every window screen wants it, so
-  /// a second caller arriving while the first is still reading waits for that
-  /// read rather than starting another.
-  static Future<FormulaCatalogue> load() {
-    final FormulaCatalogue? already = _loaded;
-    if (already != null) return Future<FormulaCatalogue>.value(already);
-    return _loading ??= _read();
-  }
-
-  static Future<FormulaCatalogue> _read() async {
-    final String source = await rootBundle.loadString('assets/formulas/catalogue.json');
-    final Map<String, dynamic> json = jsonDecode(source) as Map<String, dynamic>;
-
-    final List<String> formulas = (json['formulas'] as List<dynamic>).cast<String>();
-    final Map<String, Map<String, Map<String, List<dynamic>>>> windows =
-        <String, Map<String, Map<String, List<dynamic>>>>{};
-
-    (json['windows'] as Map<String, dynamic>).forEach((String windowKey, dynamic value) {
-      final Map<String, dynamic> configs =
-          (value as Map<String, dynamic>)['configs'] as Map<String, dynamic>;
-      windows[windowKey] = configs.map((String configKey, dynamic sections) {
-        return MapEntry<String, Map<String, List<dynamic>>>(
-          configKey,
-          (sections as Map<String, dynamic>).map(
-            (String section, dynamic pieces) => MapEntry<String, List<dynamic>>(
-              section,
-              (pieces as List<dynamic>),
-            ),
-          ),
-        );
-      });
-    });
-
-    final FormulaCatalogue catalogue = FormulaCatalogue._(formulas, windows);
-    _loaded = catalogue;
-    _loading = null;
-    return catalogue;
-  }
-
-  /// For tests, which have no asset bundle.
+  /// Where that JSON comes from is somebody else's business -- the app reads
+  /// it from its assets, the parity harness from a file on disk, a test from a
+  /// map it wrote itself. Keeping the loading out of here is what lets the
+  /// harness run the app's own cutting code outside a Flutter app at all.
   static FormulaCatalogue fromJson(Map<String, dynamic> json) {
     final List<String> formulas = (json['formulas'] as List<dynamic>).cast<String>();
     final Map<String, Map<String, Map<String, List<dynamic>>>> windows =

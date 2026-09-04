@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../data/formula_book.dart';
-import '../data/formula_overrides_store.dart';
+import '../model/formula_overrides.dart';
 import '../model/formula_expression.dart';
 import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';

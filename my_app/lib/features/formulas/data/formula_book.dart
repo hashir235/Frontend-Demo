@@ -5,7 +5,7 @@ library;
 import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';
 import 'formula_catalogue.dart';
-import 'formula_overrides_store.dart';
+import '../model/formula_overrides.dart';
 
 /// How widely a change should reach.
 enum FormulaEditScope {

@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/core/theme/app_theme.dart';
 import 'package:my_app/features/formulas/data/formula_book.dart';
 import 'package:my_app/features/formulas/data/formula_catalogue.dart';
-import 'package:my_app/features/formulas/data/formula_overrides_store.dart';
+import 'package:my_app/features/formulas/model/formula_overrides.dart';
 import 'package:my_app/features/formulas/model/formula_window_key.dart';
 import 'package:my_app/features/formulas/presentation/formula_editor_screen.dart';
 
