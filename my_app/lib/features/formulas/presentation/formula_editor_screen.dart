@@ -657,11 +657,18 @@ class _PieceRow extends StatelessWidget {
             inputFormatters: <TextInputFormatter>[
               FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9_ .+\-*/()]')),
             ],
+            // The app's own face rather than a monospace one. A formula here is
+            // six or seven symbols, not a program, and the terminal look would
+            // sit oddly against every other field in Quick AL. Figures are held
+            // to one width and the letters given a little air, which is what
+            // monospace was really being asked for: digits that line up and
+            // brackets that are easy to pair by eye.
             style: const TextStyle(
-              fontFamily: 'monospace',
               fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
-              fontSize: 15,
+              fontSize: 16,
               height: 1.4,
+              letterSpacing: 0.3,
+              fontWeight: FontWeight.w600,
             ),
             decoration: InputDecoration(
               isDense: true,
@@ -720,9 +727,10 @@ class _Legend extends StatelessWidget {
               children: <InlineSpan>[
                 TextSpan(
                   text: line.key,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.w700,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.royalBlue,
+                    letterSpacing: 0.3,
                   ),
                 ),
                 TextSpan(text: ' = ${line.value}'),
