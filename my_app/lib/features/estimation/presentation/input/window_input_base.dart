@@ -25,6 +25,11 @@ import '../../../settings/state/size_input_mode.dart';
 import '../review_list_screen.dart';
 import '../../models/window_material.dart';
 import '../../widgets/window_material_picker.dart';
+import '../../../formulas/data/formula_book.dart';
+import '../../../formulas/data/formula_catalogue.dart';
+import '../../../formulas/data/formula_overrides_store.dart';
+import '../../../formulas/model/formula_window_key.dart';
+import '../../../formulas/presentation/formula_editor_screen.dart';
 
 class WindowInputScreen extends StatefulWidget {
   final WindowType node;
@@ -320,6 +325,107 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     return availableSections.contains(normalized) ? normalized : null;
   }
 
+  /// Which set of formulas this window, as it is currently set up, is cut by.
+  ///
+  /// Null when the catalogue has nothing for it -- a collar type this window
+  /// type does not offer, or a window whose formulas have not been brought
+  /// across yet. The button is simply not shown then, rather than opening a
+  /// screen that would have to apologise.
+  FormulaWindowKey? _formulaKeyFor(FormulaCatalogue catalogue) {
+    final String context = _isFabricationFlow ? 'fabrication' : 'estimation';
+    if (!FormulaWindowKey.knows(_windowCode)) return null;
+
+    // The dimensions come from the catalogue itself, so a window that gains or
+    // loses a setting needs no change here.
+    final FormulaWindowKey? probe = FormulaWindowKey.of(
+      context: context,
+      appWindowCode: _windowCode,
+      dimensions: const <String>{},
+      collarIndex: _selectedCollar,
+    );
+    if (probe == null) return null;
+
+    return FormulaWindowKey.of(
+      context: context,
+      appWindowCode: _windowCode,
+      dimensions: catalogue.dimensionsFor(probe.windowKey),
+      collarIndex: _selectedCollar,
+      lockType: _showsLockTypeSelector ? _lockTypeCode(_lockType) : null,
+      rubberType: _rubberType == _RubberType.u ? 'U' : 'F',
+      addBottom: _doorD46Enabled,
+      addTee: _doorD52Enabled,
+      addNet: _openableNetEnabled,
+      backCollarCm: _backCollarCm,
+    );
+  }
+
+  /// How this window is set up, in the words the fabricator chose it by.
+  String get _formulaConfigSummary {
+    final List<String> parts = <String>['Collar $_selectedCollar'];
+    if (_showsLockTypeSelector) {
+      parts.add(_lockTypeLabel(_lockType));
+    }
+    if (_isFabricationFlow) {
+      parts.add(_rubberType == _RubberType.u ? 'U rubber' : 'F rubber');
+    }
+    if (_showsDoorSectionToggles) {
+      if (_doorD46Enabled) parts.add('D46');
+      if (_doorD52Enabled) parts.add('D52');
+    }
+    if (_showsOpenableNetToggle && _openableNetEnabled) {
+      parts.add('Net');
+    }
+    if (_showsBackCollarOption) {
+      parts.add('${_backCollarCm}cm collar');
+    }
+    return parts.join(' · ');
+  }
+
+  Future<void> _openFormulaEditor() async {
+    final NavigatorState navigator = Navigator.of(context);
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
+    final FormulaCatalogue catalogue;
+    final FormulaOverrides overrides;
+    try {
+      catalogue = await FormulaCatalogue.load();
+      overrides = await const FormulaOverridesStore().load();
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not open the formulas just now.')),
+      );
+      return;
+    }
+    if (!mounted) return;
+
+    final FormulaWindowKey? key = _formulaKeyFor(catalogue);
+    if (key == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('This window does not have editable formulas yet.'),
+        ),
+      );
+      return;
+    }
+
+    // The drawer is over the screen it belongs to; leaving it open behind a
+    // full screen means coming back to a sidebar nobody asked for.
+    navigator.pop();
+
+    await navigator.push(
+      MaterialPageRoute<bool>(
+        builder: (BuildContext context) => FormulaEditorScreen(
+          windowKey: key,
+          windowTitle: widget.node.label,
+          configSummary: _formulaConfigSummary,
+          book: FormulaBook(catalogue, overrides),
+          onSaved: (FormulaOverrides edited) =>
+              const FormulaOverridesStore().save(edited),
+        ),
+      ),
+    );
+  }
+
   WindowInputSidebarPreferences _currentSidebarPreferences() {
     return WindowInputSidebarPreferences(
       selectedCollar: _selectedCollar,
@@ -523,6 +629,19 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         return 2;
       case _LockType.handal:
         return 3;
+    }
+  }
+
+  /// The lock as a fabricator names it, for saying which window a set of
+  /// formulas belongs to.
+  String _lockTypeLabel(_LockType value) {
+    switch (value) {
+      case _LockType.latch:
+        return 'Latch';
+      case _LockType.self:
+        return 'Self';
+      case _LockType.handal:
+        return 'Handal';
     }
   }
 
@@ -1931,6 +2050,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  // The arithmetic behind this window's cut lengths. It sits
+                  // at the top of the sidebar rather than in settings because
+                  // it belongs to the window on the bench, not to the app: a
+                  // formula only means anything alongside the collar and lock
+                  // it is cut with.
+                  _FormulaEditorButton(onTap: _openFormulaEditor),
                   const SizedBox(height: 8),
                   const Divider(),
                   const SizedBox(height: 8),
@@ -2697,4 +2823,57 @@ class _ArchPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ArchPainter oldDelegate) =>
       oldDelegate.color != color;
+}
+
+/// Opens the arithmetic behind this window's cut lengths.
+///
+/// Given its own look rather than the sidebar's plain rows: it leaves the
+/// screen, which the rows do not, and what it opens is the one place in Quick
+/// AL where a workshop can change what the saw is told. That deserves to look
+/// like a door rather than another switch.
+class _FormulaEditorButton extends StatelessWidget {
+  const _FormulaEditorButton({required this.onTap});
+
+  final Future<void> Function() onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => unawaited(onTap()),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: AppTheme.brandGradient,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            child: Row(
+              children: <Widget>[
+                const Icon(Icons.functions_rounded, size: 18, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Edit formulas',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: Colors.white.withValues(alpha: 0.85),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -83,6 +83,15 @@ sealed class FormulaExpression {
 
   void _collectVariables(Set<String> into);
 
+  /// The same arithmetic with its measurements called something else.
+  ///
+  /// Used to show a formula in the fabricator's own terms -- a piece labelled
+  /// HL reads `HL - 4.2` rather than `h - 4.2` -- and to turn what they type
+  /// back into the names the catalogue stores. Renaming through the tree
+  /// rather than the text is what keeps `h` inside `half` or `feet` from being
+  /// caught by a careless search and replace.
+  FormulaExpression renameVariables(Map<String, String> names);
+
   /// The formula written back out, bracketed only where the brackets change
   /// the answer.
   ///
@@ -104,6 +113,9 @@ class FormulaNumber extends FormulaExpression {
 
   @override
   void _collectVariables(Set<String> into) {}
+
+  @override
+  FormulaExpression renameVariables(Map<String, String> names) => this;
 
   @override
   String toString() {
@@ -133,6 +145,12 @@ class FormulaVariable extends FormulaExpression {
 
   @override
   void _collectVariables(Set<String> into) => into.add(name);
+
+  @override
+  FormulaExpression renameVariables(Map<String, String> names) {
+    final String? replacement = names[name];
+    return replacement == null ? this : FormulaVariable(replacement);
+  }
 
   @override
   String toString() => name;
@@ -174,6 +192,11 @@ class FormulaBinary extends FormulaExpression {
   }
 
   @override
+  FormulaExpression renameVariables(Map<String, String> names) {
+    return FormulaBinary(op, left.renameVariables(names), right.renameVariables(names));
+  }
+
+  @override
   String toString() {
     final int mine = _precedenceOf(op);
     // The left side only needs brackets when it binds looser than we do.
@@ -203,6 +226,11 @@ class FormulaNegate extends FormulaExpression {
 
   @override
   void _collectVariables(Set<String> into) => operand._collectVariables(into);
+
+  @override
+  FormulaExpression renameVariables(Map<String, String> names) {
+    return FormulaNegate(operand.renameVariables(names));
+  }
 
   @override
   String toString() {
