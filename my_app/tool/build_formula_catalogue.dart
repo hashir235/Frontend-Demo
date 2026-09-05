@@ -26,6 +26,8 @@ import 'dart:io';
 
 import 'package:my_app/features/formulas/model/formula_expression.dart';
 
+import 'glass_formulas.dart';
+
 /// Centimetres in a foot, as the engine spells it.
 const double kFeet = 30.48;
 
@@ -48,6 +50,11 @@ void main(List<String> args) {
   final Directory root = Directory(args[1]);
   final String outputPath = args.length > 2 ? args[2] : 'assets/formulas/catalogue.json';
 
+  // A second dump, taken at measurements sharing no value with the first. The
+  // glass formulas are recovered from numbers rather than read from source, so
+  // they are held against a set they were never fitted to before they ship.
+  final String? altPath = args.length > 3 ? args[3] : null;
+
   if (!truthFile.existsSync()) {
     stderr.writeln('No ground truth at ${truthFile.path}');
     exit(2);
@@ -68,7 +75,12 @@ void main(List<String> args) {
 
   builder.report();
 
-  if (builder.unmatched.isNotEmpty || builder.rewritten.isNotEmpty) {
+  stdout.writeln('\nWorking the glass out of the engine\'s own answers...');
+  final int glassProblems = builder.takeGlass(records, altPath);
+
+  if (builder.unmatched.isNotEmpty ||
+      builder.rewritten.isNotEmpty ||
+      glassProblems > 0) {
     stderr.writeln('\nRefusing to write a catalogue with unproved formulas in it.');
     exit(1);
   }
@@ -638,6 +650,100 @@ class _Builder {
     }
   }
 
+  /// windowKey -> configKey -> the panes of glass that window makes.
+  final Map<String, Map<String, List<dynamic>>> _glass =
+      <String, Map<String, List<dynamic>>>{};
+
+  int glassPanes = 0;
+  int glassConfigs = 0;
+
+  /// Recovers every glass formula, and refuses any it cannot prove.
+  ///
+  /// Returns how many were unproved, which is how many reasons there are not
+  /// to ship.
+  int takeGlass(List<dynamic> records, String? altPath) {
+    final GlassReader reader = GlassReader.of(records);
+    final GlassReader? alt =
+        altPath == null ? null : GlassReader.of(readDump(altPath));
+
+    final List<String> problems = <String>[];
+    final List<String> unwritable = <String>[];
+    int noGlass = 0;
+
+    for (final MapEntry<String, Map<String, dynamic>> entry in reader.records.entries) {
+      final Map<String, dynamic> record = entry.value;
+      final (List<List<Affine>>?, String?) solved = reader.solve(record);
+      if (solved.$1 == null) {
+        if (solved.$2 != 'no glass') problems.add('${entry.key}: ${solved.$2}');
+        noGlass++;
+        continue;
+      }
+      final List<List<Affine>> panes = solved.$1!;
+
+      // Against its own points, then against a dump it has never seen.
+      problems.addAll(reader.check(record, panes));
+      final Map<String, dynamic>? other = alt?.records[entry.key];
+      if (other != null) problems.addAll(alt!.check(other, panes));
+
+      final Map<String, dynamic> base =
+          (record['samples'] as List<dynamic>).first as Map<String, dynamic>;
+      final List<String?> roles = GlassReader.rolesOf(base, panes.length);
+
+      final List<dynamic> written = <dynamic>[];
+      for (int index = 0; index < panes.length; index++) {
+        final String? height = panes[index][0].write(_paneName(panes[index][0]));
+        final String? width = panes[index][1].write(_paneName(panes[index][1]));
+        if (height == null || width == null) {
+          unwritable.add('${entry.key} pane $index');
+          continue;
+        }
+        written.add(<String, dynamic>{
+          if (roles[index] != null) 'role': roles[index],
+          'h': _internFormula(height),
+          'w': _internFormula(width),
+        });
+        glassPanes++;
+      }
+
+      if (written.length != panes.length) continue;
+
+      final String windowKey = 'fabrication/${record['window']}';
+      final Map<String, dynamic> config = record['config'] as Map<String, dynamic>;
+      final List<String> names = config.keys.toList()..sort();
+      final String configKey =
+          names.map((String n) => '$n=${config[n]}').join('|');
+
+      _glass
+          .putIfAbsent(windowKey, () => <String, List<dynamic>>{})[configKey] = written;
+      glassConfigs++;
+    }
+
+    stdout.writeln('  configurations with glass : $glassConfigs');
+    stdout.writeln('  panes described           : $glassPanes');
+    stdout.writeln('  configurations without    : $noGlass');
+    stdout.writeln('  formulas that failed      : ${problems.length}');
+    stdout.writeln('  formulas that cannot be written readably : ${unwritable.length}');
+
+    for (final String problem in problems.take(10)) {
+      stdout.writeln('    $problem');
+    }
+    for (final String problem in unwritable.take(10)) {
+      stdout.writeln('    $problem');
+    }
+
+    return problems.length + unwritable.length;
+  }
+
+  /// What the measurement is called inside a stored glass formula.
+  ///
+  /// The catalogue's own name, the same as every section formula uses. What a
+  /// fabricator sees -- `H`, `W`, `W_left` -- is put there on the way to the
+  /// screen and taken off again on the way back, by the one piece of code that
+  /// does that for every formula in the app. Storing the display name instead
+  /// would give the screen something to read and the calculator something it
+  /// cannot evaluate.
+  static String _paneName(Affine formula) => formula.dimension;
+
   Map<String, dynamic> catalogue() {
     return <String, dynamic>{
       'version': 1,
@@ -650,6 +756,11 @@ class _Builder {
         return MapEntry<String, dynamic>(key, <String, dynamic>{
           'variables': (_variables[key]?.toList() ?? <String>[])..sort(),
           'configs': configs,
+          // Kept apart from the aluminium. Both are formulas a workshop can
+          // change, but only one of them is cut from a bar -- and a pane of
+          // glass sent to the length optimizer would be optimised into a
+          // cutting list nobody can cut.
+          if (_glass[key] != null) 'glass': _glass[key],
         });
       }),
     };

@@ -126,14 +126,23 @@ class OptimizationRepository {
         return request;
       }
 
-      windows.add(window.withComputedPieces(<Map<String, Object?>>[
-        for (final CutPiece piece in cut.pieces)
-          <String, Object?>{
-            'section': piece.section,
-            'piece': piece.label,
-            'lengthFt': piece.lengthFt,
-          },
-      ]));
+      windows.add(window.withComputed(
+        <Map<String, Object?>>[
+          for (final CutPiece piece in cut.pieces)
+            <String, Object?>{
+              'section': piece.section,
+              'piece': piece.label,
+              'lengthFt': piece.lengthFt,
+            },
+        ],
+        <Map<String, Object?>>[
+          for (final GlassPiece pane in cut.glass)
+            <String, Object?>{
+              'heightCm': pane.heightCm,
+              'widthCm': pane.widthCm,
+            },
+        ],
+      ));
     }
 
     return request.withWindows(windows);

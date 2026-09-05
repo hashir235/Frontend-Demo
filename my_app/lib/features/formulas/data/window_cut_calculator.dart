@@ -30,11 +30,29 @@ class CutPiece {
   String toString() => '$section $label ${lengthFt.toStringAsFixed(3)}ft';
 }
 
+/// One pane of glass, at the size it is cut to.
+class GlassPiece {
+  const GlassPiece({required this.heightCm, required this.widthCm});
+
+  /// In centimetres, both. Glass carries no cutting margin -- the blade's
+  /// allowance is an aluminium matter -- and no conversion to feet, because a
+  /// sheet is measured and scored in centimetres from end to end.
+  final double heightCm;
+  final double widthCm;
+
+  @override
+  String toString() =>
+      '${heightCm.toStringAsFixed(1)} x ${widthCm.toStringAsFixed(1)} cm';
+}
+
 /// A window's cut list, or the reason there isn't one.
 class WindowCutList {
-  const WindowCutList._(this.pieces, this.problems);
+  const WindowCutList._(this.pieces, this.problems, {this.glass = const <GlassPiece>[]});
 
   final List<CutPiece> pieces;
+
+  /// The panes this window takes, in the order the engine cuts them.
+  final List<GlassPiece> glass;
 
   /// Everything that stopped a piece being worked out. A cut list with any of
   /// these is not a cut list -- it is shown to the fabricator instead.
@@ -188,7 +206,27 @@ class WindowCutCalculator {
       }
     }
 
-    return WindowCutList._(pieces, problems);
+    // The panes. Worked out here for the same reason the aluminium is: a
+    // workshop that has changed a glass formula has to get glass cut to it.
+    final List<GlassPiece> glass = <GlassPiece>[];
+    for (final EffectiveSection pane in book.glassFor(key)) {
+      if (pane.pieces.length != 2) continue;
+      final FormulaResult height = pane.pieces[0].slot.lengthFor(variables);
+      final FormulaResult width = pane.pieces[1].slot.lengthFor(variables);
+
+      // A pane that comes out at nothing is one the engine does not cut
+      // either -- it refuses anything that is not positive. Saying so is the
+      // difference between a missing pane noticed at the desk and one noticed
+      // when the frame is already up.
+      if (!height.isUsable || !width.isUsable) {
+        problems.add('${pane.displayName}: '
+            '${height.problem ?? width.problem}');
+        continue;
+      }
+      glass.add(GlassPiece(heightCm: height.value!, widthCm: width.value!));
+    }
+
+    return WindowCutList._(pieces, problems, glass: glass);
   }
 
   /// The engine's name for a window, so its configuration dimensions can be

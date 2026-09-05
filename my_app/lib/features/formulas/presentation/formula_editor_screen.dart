@@ -91,7 +91,12 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   void initState() {
     super.initState();
     _draft = widget.book.copy();
-    _sections = _draft.sectionsFor(widget.windowKey) ?? <EffectiveSection>[];
+    _sections = <EffectiveSection>[
+      ...?_draft.sectionsFor(widget.windowKey),
+      // The glass after the aluminium, because that is the order a window is
+      // made in: the frame is cut, then the panes that go in it.
+      ..._draft.glassFor(widget.windowKey),
+    ];
     for (final EffectiveSection section in _sections) {
       for (final EffectiveFormula piece in section.pieces) {
         final String shown = piece.slot.display;
@@ -145,15 +150,28 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// Taken from the first piece that has a margin, because within one window
   /// they all work the same way.
   String? get _appliedAutomatically {
+    final bool hasGlass = _sections.any((EffectiveSection s) => s.isGlass);
+
     for (final EffectiveSection section in _sections) {
       for (final EffectiveFormula piece in section.pieces) {
         if (piece.slot.marginName == null) continue;
-        return piece.slot.isFabrication
-            ? 'A cutting margin is added to every piece for the saw, then taken '
+
+        if (!piece.slot.isFabrication) {
+          return 'Each profile\'s cutting margin is added to every piece. The '
+              'sizes below include it, exactly as the cutting list does.';
+        }
+
+        // Only the aluminium. Glass is scored on a sheet rather than sawn off
+        // a bar, so no blade allowance goes onto it -- and a note that said
+        // "every piece" on a screen showing panes would be telling a cutter
+        // something untrue about the glass in front of them.
+        return hasGlass
+            ? 'A cutting margin is added to every aluminium piece for the saw, '
+                'then taken off again on the cutting list. The glass carries '
+                'none. Either way, the sizes below are the real cut sizes.'
+            : 'A cutting margin is added to every piece for the saw, then taken '
                 'off again on the cutting list. The sizes below are the real '
-                'cut sizes, without it.'
-            : 'Each profile\'s cutting margin is added to every piece. The '
-                'sizes below include it, exactly as the cutting list does.';
+                'cut sizes, without it.';
       }
     }
     return null;
@@ -202,10 +220,15 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
         slot.withStored(edit.stored!).cutLengthFor(measurements);
     if (!result.isUsable) return _Preview.problem(result.problem!);
 
-    return _Preview.sizes(
-      CutLength.fromFeet(result.asCutLength!)
-          .readings(centimetresFirst: slot.isFabrication),
-    );
+    // Glass comes out in centimetres and aluminium in feet, because that is
+    // what each is measured and cut in. Reading one as the other would show an
+    // 88cm pane as 88 feet, which is the sort of number somebody acts on.
+    final double value = result.asCutLength!;
+    final CutLength length = slot.measuresInCentimetres
+        ? CutLength.fromCm(value)
+        : CutLength.fromFeet(value);
+
+    return _Preview.sizes(length.readings(centimetresFirst: slot.isFabrication));
   }
 
   /// The measurements this one piece is worked out against.
@@ -650,11 +673,14 @@ class _SectionBlock extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppTheme.deepTeal,
+                  // Glass reads as glass at a glance. It is cut from a sheet,
+                  // not from a bar, and a fabricator scanning this screen for
+                  // the pane sizes should not have to read to find them.
+                  color: section.isGlass ? AppTheme.tealAccent : AppTheme.deepTeal,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  section.section,
+                  section.displayName,
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -664,7 +690,12 @@ class _SectionBlock extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                section.pieces.length == 1 ? '1 piece' : '${section.pieces.length} pieces',
+                // A pane is one thing with two sides, not two pieces.
+                section.isGlass
+                    ? 'height and width'
+                    : section.pieces.length == 1
+                        ? '1 piece'
+                        : '${section.pieces.length} pieces',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppTheme.slate,
                   fontWeight: FontWeight.w600,

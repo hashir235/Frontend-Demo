@@ -49,6 +49,7 @@ class OptimizationWindowRequest {
     required this.gauge,
     required this.color,
     this.computedPieces,
+    this.computedGlass,
   });
 
   factory OptimizationWindowRequest.fromReviewItem(
@@ -97,8 +98,14 @@ class OptimizationWindowRequest {
   /// not work them out and the engine should, exactly as it always has.
   final List<Map<String, Object?>>? computedPieces;
 
+  /// The panes of glass the app worked out for this window, when it did.
+  final List<Map<String, Object?>>? computedGlass;
+
   /// The same window, carrying the lengths the app worked out for it.
-  OptimizationWindowRequest withComputedPieces(List<Map<String, Object?>> pieces) {
+  OptimizationWindowRequest withComputed(
+    List<Map<String, Object?>> pieces,
+    List<Map<String, Object?>> glass,
+  ) {
     return OptimizationWindowRequest(
       winNo: winNo,
       windowCode: windowCode,
@@ -120,12 +127,14 @@ class OptimizationWindowRequest {
       gauge: gauge,
       color: color,
       computedPieces: pieces,
+      computedGlass: glass,
     );
   }
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
       if (computedPieces != null) 'computedPieces': computedPieces,
+      if (computedGlass != null) 'computedGlass': computedGlass,
       'winNo': winNo,
       'windowCode': windowCode,
       'windowLabel': windowLabel,

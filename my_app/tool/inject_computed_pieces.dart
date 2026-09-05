@@ -81,6 +81,10 @@ void main(List<String> args) {
             '${cut.problems.first}');
       }
 
+      window['computedGlass'] = <Map<String, dynamic>>[
+        for (final GlassPiece pane in cut.glass)
+          <String, dynamic>{'heightCm': pane.heightCm, 'widthCm': pane.widthCm},
+      ];
       window['computedPieces'] = <Map<String, dynamic>>[
         for (final CutPiece piece in cut.pieces)
           <String, dynamic>{

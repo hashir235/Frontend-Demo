@@ -6,10 +6,28 @@ import '../model/formula_window_key.dart';
 
 /// One profile and every piece cut from it for a given window.
 class SectionFormulas {
-  const SectionFormulas(this.section, this.pieces);
+  const SectionFormulas(this.section, this.pieces, {String? displayName})
+      : _displayName = displayName;
 
-  /// The profile -- "DC30C", "M24".
+  /// The profile -- "DC30C", "M24" -- or, for glass, a steady name like
+  /// "glass1" that a workshop's saved formulas hang off.
   final String section;
+
+  final String? _displayName;
+
+  /// What a fabricator sees at the head of this group.
+  ///
+  /// Separate from [section] because glass panes are shown as "Glass 2 · Fix"
+  /// and that wording could change; what a workshop has saved must not move
+  /// when it does.
+  String get displayName => _displayName ?? section;
+
+  /// True for the panes of glass rather than the lengths of aluminium.
+  ///
+  /// They are formulas either way and a workshop edits them the same way, but
+  /// only one of them is cut from a bar: glass sent to the length optimizer
+  /// would come back arranged into stock lengths nobody can cut it from.
+  bool get isGlass => section.startsWith('glass');
 
   /// In the order the engine cuts them. Two pieces can share a label -- a
   /// sliding window takes two M23 uprights -- so position, not name, is what
@@ -25,13 +43,21 @@ class SectionFormulas {
 /// a workshop's own changes are kept separately, so "reset" always has
 /// something true to go back to.
 class FormulaCatalogue {
-  FormulaCatalogue._(this._formulas, this._windows);
+  FormulaCatalogue._(this._formulas, this._windows, this._glass);
 
-  /// Every distinct formula, once. The whole engine is 134 of them.
+  /// Every distinct formula, once.
   final List<String> _formulas;
 
   /// windowKey -> configKey -> section -> [[label, formulaIndex], ...]
   final Map<String, Map<String, Map<String, List<dynamic>>>> _windows;
+
+  /// windowKey -> configKey -> the panes of glass, in cutting order.
+  ///
+  /// Kept apart from the aluminium because only one of the two is cut from a
+  /// bar. Each pane carries a height and a width formula, and on the panel
+  /// windows the job the panel does -- Slide or Fix -- which the engine's own
+  /// rail labels name.
+  final Map<String, Map<String, List<dynamic>>> _glass;
 
   /// Reads a catalogue from its JSON.
   ///
@@ -43,9 +69,12 @@ class FormulaCatalogue {
     final List<String> formulas = (json['formulas'] as List<dynamic>).cast<String>();
     final Map<String, Map<String, Map<String, List<dynamic>>>> windows =
         <String, Map<String, Map<String, List<dynamic>>>>{};
+    final Map<String, Map<String, List<dynamic>>> glass =
+        <String, Map<String, List<dynamic>>>{};
+
     (json['windows'] as Map<String, dynamic>).forEach((String windowKey, dynamic value) {
-      final Map<String, dynamic> configs =
-          (value as Map<String, dynamic>)['configs'] as Map<String, dynamic>;
+      final Map<String, dynamic> window = value as Map<String, dynamic>;
+      final Map<String, dynamic> configs = window['configs'] as Map<String, dynamic>;
       windows[windowKey] = configs.map((String configKey, dynamic sections) {
         return MapEntry<String, Map<String, List<dynamic>>>(
           configKey,
@@ -55,8 +84,17 @@ class FormulaCatalogue {
           ),
         );
       });
+
+      final Object? panes = window['glass'];
+      if (panes is Map<String, dynamic>) {
+        glass[windowKey] = panes.map(
+          (String configKey, dynamic list) =>
+              MapEntry<String, List<dynamic>>(configKey, list as List<dynamic>),
+        );
+      }
     });
-    return FormulaCatalogue._(formulas, windows);
+
+    return FormulaCatalogue._(formulas, windows, glass);
   }
 
   /// What a window's configuration is made of -- collarType, lockType and the
@@ -112,6 +150,83 @@ class FormulaCatalogue {
       ));
     }
     return out;
+  }
+
+  /// The panes of glass this window makes, as Quick AL ships them.
+  ///
+  /// Each pane is a group of two: its height and its width. They are given the
+  /// same shape as a profile's pieces so that everything which reads, edits,
+  /// saves and resets a formula does so one way -- a pane of glass is not a
+  /// special case to a workshop, and should not be one here.
+  List<SectionFormulas> shippedGlassFor(FormulaWindowKey key) {
+    final List<dynamic>? panes = _glass[key.windowKey]?[key.configKey];
+    if (panes == null) return const <SectionFormulas>[];
+
+    final List<SectionFormulas> out = <SectionFormulas>[];
+    for (int index = 0; index < panes.length; index++) {
+      final Map<String, dynamic> pane = panes[index] as Map<String, dynamic>;
+      final String? role = pane['role'] as String?;
+      final String height = _formulas[pane['h'] as int];
+      final String width = _formulas[pane['w'] as int];
+
+      out.add(SectionFormulas(
+        'glass${index + 1}',
+        <FormulaSlot>[
+          _glassSlot('glass${index + 1}', height),
+          _glassSlot('glass${index + 1}', width),
+        ],
+        displayName: role == null
+            ? 'Glass ${index + 1}'
+            : 'Glass ${index + 1} · $role',
+      ));
+    }
+    return out;
+  }
+
+  /// One side of a pane.
+  ///
+  /// Named for the measurement it follows, which on a corner window differs
+  /// between the two panes: one sits in the left width and one in the right.
+  /// The name is worked out from the stored formula rather than passed in, so
+  /// it cannot drift from the arithmetic it labels.
+  static FormulaSlot _glassSlot(String section, String formula) {
+    const Map<String, String> names = <String, String>{
+      'h': 'H',
+      'w': 'W',
+      'wl': 'W_left',
+      'wr': 'W_right',
+    };
+
+    String label = 'H';
+    for (final MapEntry<String, String> entry in names.entries) {
+      if (RegExp('(?<![A-Za-z0-9_])${entry.key}(?![A-Za-z0-9_])').hasMatch(formula)) {
+        label = entry.value;
+        break;
+      }
+    }
+
+    return FormulaSlot(
+      section: section,
+      label: label,
+      stored: formula,
+      isFabrication: true,
+      measuresInCentimetres: true,
+    );
+  }
+
+  /// The shipped formula for one glass side, or null if there is no such pane.
+  String? shippedGlassFormulaAt(
+    String windowKey,
+    String configKey,
+    String section,
+    int index,
+  ) {
+    final List<dynamic>? panes = _glass[windowKey]?[configKey];
+    if (panes == null) return null;
+    final int pane = int.tryParse(section.replaceFirst('glass', '')) ?? 0;
+    if (pane < 1 || pane > panes.length || index < 0 || index > 1) return null;
+    final Map<String, dynamic> found = panes[pane - 1] as Map<String, dynamic>;
+    return _formulas[found[index == 0 ? 'h' : 'w'] as int];
   }
 
   /// The shipped formula for one piece, or null if there is no such piece.

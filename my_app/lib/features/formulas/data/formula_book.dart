@@ -30,10 +30,25 @@ class EffectiveFormula {
 
 /// One profile's pieces, as this workshop cuts them.
 class EffectiveSection {
-  const EffectiveSection(this.section, this.pieces);
+  const EffectiveSection(
+    this.section,
+    this.pieces, {
+    String? displayName,
+    this.isGlass = false,
+  }) : _displayName = displayName;
 
   final String section;
   final List<EffectiveFormula> pieces;
+
+  final String? _displayName;
+
+  /// What a fabricator sees at the head of the group -- "DC30C", or
+  /// "Glass 2 · Fix".
+  String get displayName => _displayName ?? section;
+
+  /// True for a pane of glass rather than a length of aluminium. Both are cut
+  /// to a formula; only one goes to the length optimizer.
+  final bool isGlass;
 
   bool get hasWorkshopChanges =>
       pieces.any((EffectiveFormula piece) => piece.isWorkshopsOwn);
@@ -64,6 +79,25 @@ class FormulaBook {
     ];
   }
 
+  /// This window's panes of glass, with the workshop's own formulas where they
+  /// have set one.
+  ///
+  /// Empty for a window that takes no glass -- and for the estimation side,
+  /// which prices openings rather than cutting them.
+  List<EffectiveSection> glassFor(FormulaWindowKey key) {
+    return <EffectiveSection>[
+      for (final SectionFormulas pane in catalogue.shippedGlassFor(key))
+        EffectiveSection(
+          pane.section,
+          <EffectiveFormula>[
+            for (int i = 0; i < pane.pieces.length; i++) _effective(key, pane, i),
+          ],
+          displayName: pane.displayName,
+          isGlass: true,
+        ),
+    ];
+  }
+
   EffectiveFormula _effective(FormulaWindowKey key, SectionFormulas section, int index) {
     final FormulaSlot shipped = section.pieces[index];
     final FormulaPieceRef ref = FormulaPieceRef.of(key, section.section, index);
@@ -77,6 +111,14 @@ class FormulaBook {
   /// What Quick AL ships for this piece, whatever the workshop has since made
   /// of it. This is what "reset" goes back to.
   String? shippedFormulaFor(FormulaPieceRef ref) {
+    if (ref.section.startsWith('glass')) {
+      return catalogue.shippedGlassFormulaAt(
+        ref.windowKey,
+        ref.configKey,
+        ref.section,
+        ref.index,
+      );
+    }
     return catalogue.shippedFormulaAt(ref.windowKey, ref.configKey, ref.section, ref.index);
   }
 

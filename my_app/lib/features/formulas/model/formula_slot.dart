@@ -66,7 +66,17 @@ class FormulaSlot {
     required this.label,
     required this.stored,
     required this.isFabrication,
+    this.measuresInCentimetres = false,
   });
+
+  /// Whether this formula's answer is a length in centimetres rather than feet.
+  ///
+  /// True for glass and nothing else. Aluminium is worked out in centimetres
+  /// and divided by 30.48 on the way out, because the next screen packs it into
+  /// stock bars measured in feet. Glass is not packed into anything: it is
+  /// scored across a sheet, and the number a cutter wants is centimetres from
+  /// end to end. Reading one as the other would show a 88cm pane as 88 feet.
+  final bool measuresInCentimetres;
 
   /// The profile this piece is cut from -- "DC30C".
   final String section;
@@ -177,6 +187,7 @@ class FormulaSlot {
       label: label,
       stored: formula,
       isFabrication: isFabrication,
+      measuresInCentimetres: measuresInCentimetres,
     );
   }
 
