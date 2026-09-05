@@ -49,3 +49,4 @@ app.*.map.json
 # Golden-test diff images: written only when a golden fails, and stale the
 # moment it is fixed.
 test/**/failures/
+tool/scratch/
