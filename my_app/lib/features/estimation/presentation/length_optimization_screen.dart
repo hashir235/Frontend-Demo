@@ -130,7 +130,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
   /// shows the same lengths in the same notation and two copies of a suter
   /// calculation is one too many.
   String _lengthInchSutterDetailed(double ft) =>
-      CutLength.fromFeet(ft).inInchSutter;
+      CutLength.fromFeet(ft).inFeetInchSuter;
 
   /// Picks the length format for the current report. Only inch.sutter
   /// fabrication runs get the detailed feet/inch/sutter form; estimation (feet

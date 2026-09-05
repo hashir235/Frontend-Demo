@@ -19,7 +19,11 @@ import '../../../tutorial/tutorial_step.dart';
 import '../../../tutorial/tutorial_target.dart';
 import '../../../../shared/widgets/option_switch.dart';
 import '../../../../shared/widgets/suter_wheel.dart';
+import '../../../settings/data/estimation_settings_repository.dart';
+import '../../../settings/models/estimation_settings.dart';
 import '../../../settings/state/app_settings.dart';
+import '../../../formulas/data/formula_book_loader.dart';
+import '../../../formulas/model/window_measurements.dart';
 import '../../../settings/state/numbering_mode.dart';
 import '../../../settings/state/size_input_mode.dart';
 import '../review_list_screen.dart';
@@ -383,15 +387,91 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     return parts.join(' · ');
   }
 
+  /// This window's measurements, in the names the formulas are written in.
+  ///
+  /// Converted the same way they are converted on the wire, because a formula
+  /// shown working on the numbers a fabricator typed is only useful if they
+  /// are the numbers the engine will be handed. Empty while a dimension is
+  /// still blank or half-typed, and the screen simply shows no sizes then.
+  Map<String, double> _formulaMeasurements() {
+    final bool estimationCm = !_isFabricationFlow && _unitMode == UnitMode.cm;
+    String? dim(String raw) {
+      final String stored = _normalizeDimensionForStorage(raw);
+      if (stored.trim().isEmpty) return null;
+      return estimationCm ? cmDimensionToInchSutter(stored) : stored;
+    }
+
+    final String? height = dim(_heightController.text);
+    final String? width = dim(_widthController.text);
+    if (height == null || width == null) return const <String, double>{};
+
+    final String unitMode = _isFabricationFlow
+        ? (_unitMode == UnitMode.inches ? 'inches' : 'cm')
+        : (_unitMode == UnitMode.feet ? 'feet' : 'inches');
+
+    final WindowMeasurements? measured = WindowMeasurements.read(
+      isFabrication: _isFabricationFlow,
+      unitMode: unitMode,
+      heightValue: height,
+      widthValue: width,
+      leftWidthValue: _usesSplitWidthInputs ? dim(_leftWidthController.text) : null,
+      archValue: _usesArchInput ? dim(_archController.text) : null,
+    );
+    if (measured == null) return const <String, double>{};
+
+    return <String, double>{...measured.values, 'feet': 30.48};
+  }
+
+  /// The cutting margins, for the estimation side where the cut sizes carry
+  /// them. Fabrication takes its margin back off before anyone reads a size,
+  /// so the screen works those out without one and needs nothing here.
+  Future<Map<String, double>> _formulaMargins() async {
+    if (_isFabricationFlow) return const <String, double>{};
+    try {
+      final EstimationSettingsModel settings =
+          await EstimationSettingsRepository().fetchEstimationSettings();
+      return <String, double>{
+        for (final MapEntry<String, double> entry in settings.cuttingMargins.entries)
+          'cm_${entry.key}': entry.value,
+      };
+    } catch (_) {
+      // Sizes are worth showing without it; a margin is millimetres and the
+      // formula is what is being judged.
+      return const <String, double>{};
+    }
+  }
+
+  /// Saves changed formulas to the device, and to the server behind it.
+  ///
+  /// The device save is the one that counts -- the next cutting list reads
+  /// from there. If the server cannot be reached the change is still made and
+  /// still used; the fabricator is only told that it is not backed up yet, so
+  /// they know to expect it missing on a new phone.
+  Future<void> _saveFormulas(FormulaOverrides edited) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final String? notSynced = await const FormulaBookLoader().save(edited);
+    if (notSynced == null || !mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Saved on this phone. Quick AL could not back the formulas up just '
+          'now, so they are only here until it can.',
+        ),
+      ),
+    );
+  }
+
   Future<void> _openFormulaEditor() async {
     final NavigatorState navigator = Navigator.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
 
     final FormulaCatalogue catalogue;
     final FormulaOverrides overrides;
+    final Map<String, double> margins;
     try {
       catalogue = await FormulaCatalogueAsset.load();
       overrides = await const FormulaOverridesStore().load();
+      margins = await _formulaMargins();
     } catch (_) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Could not open the formulas just now.')),
@@ -421,8 +501,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           windowTitle: widget.node.label,
           configSummary: _formulaConfigSummary,
           book: FormulaBook(catalogue, overrides),
-          onSaved: (FormulaOverrides edited) =>
-              const FormulaOverridesStore().save(edited),
+          measurements: <String, double>{..._formulaMeasurements(), ...margins},
+          onSaved: _saveFormulas,
         ),
       ),
     );

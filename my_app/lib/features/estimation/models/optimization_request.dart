@@ -48,6 +48,7 @@ class OptimizationWindowRequest {
     required this.rubberType,
     required this.gauge,
     required this.color,
+    this.computedPieces,
   });
 
   factory OptimizationWindowRequest.fromReviewItem(
@@ -89,8 +90,42 @@ class OptimizationWindowRequest {
     );
   }
 
+  /// The lengths the app worked out for this window, when it did.
+  ///
+  /// The engine cuts to these instead of recomputing, so a formula this
+  /// workshop changed is the formula the saw is set to. Null means the app did
+  /// not work them out and the engine should, exactly as it always has.
+  final List<Map<String, Object?>>? computedPieces;
+
+  /// The same window, carrying the lengths the app worked out for it.
+  OptimizationWindowRequest withComputedPieces(List<Map<String, Object?>> pieces) {
+    return OptimizationWindowRequest(
+      winNo: winNo,
+      windowCode: windowCode,
+      windowLabel: windowLabel,
+      collarIndex: collarIndex,
+      unitMode: unitMode,
+      heightValue: heightValue,
+      widthValue: widthValue,
+      rightWidthValue: rightWidthValue,
+      leftWidthValue: leftWidthValue,
+      archValue: archValue,
+      description: description,
+      addBottom: addBottom,
+      addTee: addTee,
+      addNet: addNet,
+      backCollarCm: backCollarCm,
+      lockType: lockType,
+      rubberType: rubberType,
+      gauge: gauge,
+      color: color,
+      computedPieces: pieces,
+    );
+  }
+
   Map<String, Object?> toJson() {
     return <String, Object?>{
+      if (computedPieces != null) 'computedPieces': computedPieces,
       'winNo': winNo,
       'windowCode': windowCode,
       'windowLabel': windowLabel,
@@ -163,6 +198,20 @@ class OptimizationRequest {
           .toList(growable: false),
     );
   }
+
+  /// The same job, with the app's own lengths attached to each window.
+  OptimizationRequest withWindows(List<OptimizationWindowRequest> replaced) {
+    return OptimizationRequest(
+      projectId: projectId,
+      context: context,
+      displayUnit: displayUnit,
+      projectName: projectName,
+      projectLocation: projectLocation,
+      windows: replaced,
+    );
+  }
+
+  bool get isFabrication => context.toLowerCase() == 'fabrication';
 
   Map<String, Object?> toJson() {
     return <String, Object?>{

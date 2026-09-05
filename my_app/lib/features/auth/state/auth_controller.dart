@@ -6,6 +6,7 @@ import '../../../core/network/auth_http_client.dart';
 import '../data/auth_api_client.dart';
 import '../data/auth_session_store.dart';
 import '../data/google_sign_in_service.dart';
+import '../../formulas/data/formula_book_loader.dart';
 import '../models/auth_session_result.dart';
 import '../models/auth_user.dart';
 import 'auth_session.dart';
@@ -341,6 +342,11 @@ class AuthController extends ChangeNotifier {
       } else {
         AuthSession.apply(activeSession);
         _needsWorkshopSetup = activeSession.needsWorkshopSetup;
+        // A workshop's own cutting formulas, on a phone that has none. This
+        // is the moment a new handset or a reinstall gets them back, and it
+        // only ever fills an empty device -- formulas changed here and not yet
+        // synced are never overwritten by an older copy.
+        await const FormulaBookLoader().restoreIfEmpty();
       }
     } catch (_) {
       AuthSession.clear();
