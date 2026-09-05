@@ -43,6 +43,24 @@ class PasswordResetRequestResult {
 }
 
 class AuthApiClient {
+  /// How long to wait for the server before calling the network dead.
+  ///
+  /// Without this a request on a stalled mobile connection hangs with the
+  /// spinner turning until the user gives up, which reads as "the app is
+  /// broken". Twenty seconds is well past a slow 3G round trip and well short
+  /// of a person's patience.
+  static const Duration _networkTimeout = Duration(seconds: 20);
+
+  /// Shown whenever the request never reached us -- no DNS, no route, no TLS,
+  /// or no answer in time.
+  ///
+  /// It deliberately does not blame the server: the app cannot tell a server
+  /// outage from a phone that has dropped off the network, and the second is
+  /// far more common. Naming the connection is both likelier to be true and
+  /// the only half the user can act on.
+  static const String _unreachable =
+      'Could not reach Quick AL. Check your internet connection and try again.';
+
   final http.Client _httpClient;
   final String _baseUrl;
 
@@ -74,7 +92,7 @@ class AuthApiClient {
           'workshopAddress': workshopAddress.trim(),
       },
       failureMessage: 'Registration failed.',
-      unreachableMessage: 'Unable to reach authentication service.',
+      unreachableMessage: _unreachable,
     );
     return AuthSessionResult.fromJson(payload);
   }
@@ -87,7 +105,7 @@ class AuthApiClient {
       Uri.parse('$_baseUrl/api/auth/login'),
       <String, Object?>{'email': email, 'password': password},
       failureMessage: 'Login failed.',
-      unreachableMessage: 'Unable to reach authentication service.',
+      unreachableMessage: _unreachable,
     );
     return AuthSessionResult.fromJson(payload);
   }
@@ -100,7 +118,7 @@ class AuthApiClient {
       Uri.parse('$_baseUrl/api/auth/google'),
       <String, Object?>{'idToken': idToken},
       failureMessage: 'Google sign-in failed.',
-      unreachableMessage: 'Unable to reach authentication service.',
+      unreachableMessage: _unreachable,
     );
     return AuthSessionResult.fromJson(payload);
   }
@@ -112,7 +130,7 @@ class AuthApiClient {
       Uri.parse('$_baseUrl/api/auth/password-reset/request'),
       <String, Object?>{'email': email},
       failureMessage: 'Password reset request failed.',
-      unreachableMessage: 'Unable to reach authentication service.',
+      unreachableMessage: _unreachable,
     );
     return PasswordResetRequestResult.fromJson(payload);
   }
@@ -126,7 +144,7 @@ class AuthApiClient {
       Uri.parse('$_baseUrl/api/auth/password-reset/confirm'),
       <String, Object?>{'email': email, 'code': code, 'password': password},
       failureMessage: 'Password reset failed.',
-      unreachableMessage: 'Unable to reach authentication service.',
+      unreachableMessage: _unreachable,
     );
   }
 
@@ -138,18 +156,17 @@ class AuthApiClient {
 
     late final http.Response response;
     try {
-      response = await _httpClient.get(
-        Uri.parse('$_baseUrl/api/auth/me'),
-        headers: <String, String>{
-          'Authorization': 'Bearer $sessionToken',
-          'Content-Type': 'application/json',
-        },
-      );
+      response = await _httpClient
+          .get(
+            Uri.parse('$_baseUrl/api/auth/me'),
+            headers: <String, String>{
+              'Authorization': 'Bearer $sessionToken',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(_networkTimeout);
     } on Exception catch (error) {
-      throw AuthApiException(
-        'Unable to reach authentication service.',
-        detail: error,
-      );
+      throw AuthApiException(_unreachable, detail: error);
     }
 
     final Map<String, dynamic> payload = _decodeResponse(
@@ -175,18 +192,17 @@ class AuthApiClient {
 
     late final http.Response response;
     try {
-      response = await _httpClient.post(
-        Uri.parse('$_baseUrl/api/auth/logout'),
-        headers: <String, String>{
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      response = await _httpClient
+          .post(
+            Uri.parse('$_baseUrl/api/auth/logout'),
+            headers: <String, String>{
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(_networkTimeout);
     } on Exception catch (error) {
-      throw AuthApiException(
-        'Unable to reach authentication service.',
-        detail: error,
-      );
+      throw AuthApiException(_unreachable, detail: error);
     }
 
     _decodeResponse(response, 'Logout failed.');
@@ -204,13 +220,15 @@ class AuthApiClient {
 
     late final http.Response response;
     try {
-      response = await _httpClient.delete(
-        Uri.parse('$_baseUrl/api/account'),
-        headers: <String, String>{
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      response = await _httpClient
+          .delete(
+            Uri.parse('$_baseUrl/api/account'),
+            headers: <String, String>{
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(_networkTimeout);
     } on Exception catch (error) {
       throw AuthApiException(
         'Could not reach Quick AL. Check your connection and try again — '
@@ -230,11 +248,13 @@ class AuthApiClient {
   }) async {
     late final http.Response response;
     try {
-      response = await _httpClient.post(
-        uri,
-        headers: const <String, String>{'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
+      response = await _httpClient
+          .post(
+            uri,
+            headers: const <String, String>{'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(_networkTimeout);
     } on Exception catch (error) {
       throw AuthApiException(unreachableMessage, detail: error);
     }
