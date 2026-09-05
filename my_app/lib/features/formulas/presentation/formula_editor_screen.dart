@@ -2,7 +2,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/format/cut_length.dart';
@@ -13,6 +12,7 @@ import '../model/formula_overrides.dart';
 import '../model/formula_expression.dart';
 import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';
+import 'formula_field.dart';
 
 /// Reads and edits the formulas for one window configuration.
 ///
@@ -73,6 +73,18 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// person in this sitting, not merely different from what Quick AL ships.
   final Map<FormulaPieceRef, String> _opened = <FormulaPieceRef, String>{};
 
+  /// The measurement standing inside each formula, as it currently reads.
+  ///
+  /// Starts at the window's own, and a fabricator may type over it to ask what
+  /// the piece would come to at another size. That question belongs to one
+  /// piece on one screen: it is never saved, never sent, and gone when the
+  /// screen closes. The formula is the thing that is kept.
+  final Map<FormulaPieceRef, TextEditingController> _sizeControllers =
+      <FormulaPieceRef, TextEditingController>{};
+
+  /// Which formulas are being changed as text rather than tried as numbers.
+  final Set<FormulaPieceRef> _editingFormula = <FormulaPieceRef>{};
+
   bool _saving = false;
 
   @override
@@ -85,13 +97,26 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
         final String shown = piece.slot.display;
         _controllers[piece.ref] = TextEditingController(text: shown);
         _opened[piece.ref] = shown;
+        _sizeControllers[piece.ref] =
+            TextEditingController(text: _windowSizeFor(piece.slot));
       }
     }
+  }
+
+  /// The window's own measurement for this piece, as it first appears in the
+  /// formula. Blank when nothing has been measured yet.
+  String _windowSizeFor(FormulaSlot slot) {
+    final double? value = widget.measurements[slot.dimension];
+    if (value == null) return '';
+    return CutLength.trimZeros(value, 2);
   }
 
   @override
   void dispose() {
     for (final TextEditingController controller in _controllers.values) {
+      controller.dispose();
+    }
+    for (final TextEditingController controller in _sizeControllers.values) {
       controller.dispose();
     }
     super.dispose();
@@ -166,13 +191,15 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// workshop that measures in suter should not have to work out in its head
   /// what taking 2mm off a formula does to the cut.
   _Preview? _preview(FormulaPieceRef ref, FormulaSlot slot) {
-    if (widget.measurements.isEmpty) return null;
+    final Map<String, double> measurements = _measurementsFor(ref, slot);
+    if (measurements[slot.dimension] == null) return null;
+
     final String typed = _controllers[ref]?.text ?? slot.display;
     final FormulaEdit edit = slot.readDisplay(typed);
     if (!edit.isUsable) return null;
 
     final FormulaResult result =
-        slot.withStored(edit.stored!).cutLengthFor(widget.measurements);
+        slot.withStored(edit.stored!).cutLengthFor(measurements);
     if (!result.isUsable) return _Preview.problem(result.problem!);
 
     return _Preview.sizes(
@@ -180,6 +207,23 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
           .readings(centimetresFirst: slot.isFabrication),
     );
   }
+
+  /// The measurements this one piece is worked out against.
+  ///
+  /// The window's own, except where a fabricator has typed a different size
+  /// into this formula's inner box -- then that stands, for this piece and no
+  /// other. It is a question being asked, not a measurement being changed, so
+  /// it reaches no other piece and is never saved.
+  Map<String, double> _measurementsFor(FormulaPieceRef ref, FormulaSlot slot) {
+    final String typed = _sizeControllers[ref]?.text.trim() ?? '';
+    final double? asked = typed.isEmpty ? null : double.tryParse(typed);
+    if (asked == null) return widget.measurements;
+    return <String, double>{...widget.measurements, slot.dimension: asked};
+  }
+
+  /// Whether this piece has a measurement to stand in its formula.
+  bool _hasSize(FormulaPieceRef ref) =>
+      (_sizeControllers[ref]?.text.trim() ?? '').isNotEmpty;
 
   Future<void> _resetPiece(FormulaPieceRef ref) async {
     final EffectiveFormula? piece = _pieceFor(ref);
@@ -418,11 +462,22 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
                         section: section,
 
                         controllerFor: (FormulaPieceRef ref) => _controllers[ref]!,
+                        sizeControllerFor: (FormulaPieceRef ref) =>
+                            _sizeControllers[ref]!,
+                        editingFormulaFor: _editingFormula.contains,
+                        hasSizeFor: _hasSize,
                         problemFor: (FormulaPieceRef ref) => _problems[ref],
                         previewFor: _preview,
                         isEdited: (FormulaPieceRef ref) =>
                             _controllers[ref]!.text.trim() != _opened[ref],
                         onTyped: _onTyped,
+                        onSizeTyped: (FormulaPieceRef ref, String _) =>
+                            setState(() {}),
+                        onToggleEditing: (FormulaPieceRef ref) => setState(() {
+                          if (!_editingFormula.remove(ref)) {
+                            _editingFormula.add(ref);
+                          }
+                        }),
                         onReset: _resetPiece,
                       ),
                       const SizedBox(height: 18),
@@ -557,19 +612,29 @@ class _SectionBlock extends StatelessWidget {
   const _SectionBlock({
     required this.section,
     required this.controllerFor,
+    required this.sizeControllerFor,
+    required this.editingFormulaFor,
+    required this.hasSizeFor,
     required this.problemFor,
     required this.previewFor,
     required this.isEdited,
     required this.onTyped,
+    required this.onSizeTyped,
+    required this.onToggleEditing,
     required this.onReset,
   });
 
   final EffectiveSection section;
   final TextEditingController Function(FormulaPieceRef) controllerFor;
+  final TextEditingController Function(FormulaPieceRef) sizeControllerFor;
+  final bool Function(FormulaPieceRef) editingFormulaFor;
+  final bool Function(FormulaPieceRef) hasSizeFor;
   final String? Function(FormulaPieceRef) problemFor;
   final _Preview? Function(FormulaPieceRef, FormulaSlot) previewFor;
   final bool Function(FormulaPieceRef) isEdited;
   final void Function(FormulaPieceRef, String) onTyped;
+  final void Function(FormulaPieceRef, String) onSizeTyped;
+  final void Function(FormulaPieceRef) onToggleEditing;
   final Future<void> Function(FormulaPieceRef) onReset;
 
   @override
@@ -631,10 +696,15 @@ class _SectionBlock extends StatelessWidget {
                   ordinal: _ordinalWithin(section, i),
 
                   controller: controllerFor(section.pieces[i].ref),
+                  sizeController: sizeControllerFor(section.pieces[i].ref),
+                  editingFormula: editingFormulaFor(section.pieces[i].ref),
+                  hasSize: hasSizeFor(section.pieces[i].ref),
                   problem: problemFor(section.pieces[i].ref),
                   preview: previewFor(section.pieces[i].ref, section.pieces[i].slot),
                   edited: isEdited(section.pieces[i].ref),
                   onTyped: (String text) => onTyped(section.pieces[i].ref, text),
+                  onSizeTyped: (String text) => onSizeTyped(section.pieces[i].ref, text),
+                  onToggleEditing: () => onToggleEditing(section.pieces[i].ref),
                   onReset: () => onReset(section.pieces[i].ref),
                 ),
               ],
@@ -667,26 +737,35 @@ class _PieceRow extends StatelessWidget {
     required this.piece,
     required this.ordinal,
     required this.controller,
+    required this.sizeController,
+    required this.editingFormula,
+    required this.hasSize,
     required this.problem,
     required this.preview,
     required this.edited,
     required this.onTyped,
+    required this.onSizeTyped,
+    required this.onToggleEditing,
     required this.onReset,
   });
 
   final EffectiveFormula piece;
   final String? ordinal;
   final TextEditingController controller;
+  final TextEditingController sizeController;
+  final bool editingFormula;
+  final bool hasSize;
   final String? problem;
   final _Preview? preview;
   final bool edited;
   final ValueChanged<String> onTyped;
+  final ValueChanged<String> onSizeTyped;
+  final VoidCallback onToggleEditing;
   final VoidCallback onReset;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final bool broken = problem != null;
     final bool changed = piece.isWorkshopsOwn || edited;
 
     return Padding(
@@ -744,40 +823,17 @@ class _PieceRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          TextField(
-            controller: controller,
-            onChanged: onTyped,
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.next,
-            autocorrect: false,
-            enableSuggestions: false,
-            // Arithmetic only. Keeping everything else out of the field is
-            // gentler than telling somebody afterwards that they cannot use it.
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9_ .+\-*/()]')),
-            ],
-            // The app's own face rather than a monospace one. A formula here is
-            // six or seven symbols, not a program, and the terminal look would
-            // sit oddly against every other field in Quick AL. Figures are held
-            // to one width and the letters given a little air, which is what
-            // monospace was really being asked for: digits that line up and
-            // brackets that are easy to pair by eye.
-            style: const TextStyle(
-              fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
-              fontSize: 16,
-              height: 1.4,
-              letterSpacing: 0.3,
-              fontWeight: FontWeight.w600,
-            ),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              errorText: problem,
-              errorMaxLines: 3,
-              suffixIcon: broken
-                  ? const Icon(Icons.error_outline_rounded, size: 18)
-                  : null,
-            ),
+          FormulaField(
+            formula: controller.text,
+            label: piece.slot.label,
+            sizeController: sizeController,
+            formulaController: controller,
+            editingFormula: editingFormula,
+            hasSize: hasSize,
+            problem: problem,
+            onFormulaChanged: onTyped,
+            onSizeChanged: onSizeTyped,
+            onToggleEditing: onToggleEditing,
           ),
           const SizedBox(height: 8),
           _Legend(slot: piece.slot),

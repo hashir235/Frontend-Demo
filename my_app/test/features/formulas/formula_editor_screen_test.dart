@@ -62,6 +62,16 @@ void main() {
     )!;
   }
 
+  /// Puts the first piece into formula-editing mode.
+  ///
+  /// The box shows the window's size by default and edits that; changing the
+  /// formula itself is a separate, deliberate act, so a test that means to
+  /// change a formula has to say so the same way a fabricator does.
+  Future<void> editFirstFormula(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('Change the formula itself').first);
+    await tester.pumpAndSettle();
+  }
+
   Future<FormulaOverrides?> pump(
     WidgetTester tester, {
     FormulaOverrides? starting,
@@ -96,16 +106,17 @@ void main() {
     // The first profile.
     expect(find.text('DC30C'), findsOneWidget);
 
-    // The formulas, in the pieces' own names and with the cutting margin and
-    // the feet conversion taken off -- the shipped sum for these is
-    // "(h + cm) / feet", of which "HL" is the part anybody chose.
-    final List<String> shown = tester
-        .widgetList<TextField>(find.byType(TextField))
-        .map((TextField field) => field.controller!.text)
-        .toList();
-    expect(shown.take(3), <String>['HL', 'HR', 'WT']);
-    expect(shown.any((String text) => text.contains('cm')), isFalse);
-    expect(shown.any((String text) => text.contains('feet')), isFalse);
+    // With nothing measured, each formula still reads -- the piece's own name
+    // stands where its measurement will go. The shipped sum for these is
+    // "(h + cm) / feet", of which "HL" is the part anybody chose: no margin
+    // and no feet anywhere on the screen.
+    expect(find.textContaining('cm)'), findsNothing);
+    expect(find.textContaining('feet'), findsNothing);
+
+    // The labels appear twice over: once naming the piece, once standing in
+    // its formula.
+    expect(find.text('HL'), findsNWidgets(2));
+    expect(find.text('WT'), findsNWidgets(2));
 
     // M23 is below the fold on a test-sized screen, as it would be on a
     // phone: a real window runs to six profiles and twenty pieces.
@@ -161,11 +172,14 @@ void main() {
     // The shipped sum is (h + cm) / feet. With the saw's 0.5cm allowance taken
     // back off, the size cut is the window height itself -- 220.6, not 221.1.
     // A fabricator adjusting this formula is reading the first.
-    expect(find.text('220.6'), findsNWidgets(2));
+    //
+    // It shows up twice per upright: once inside the formula, standing where
+    // the measurement goes, and once underneath as the size that gets cut.
+    expect(find.text('220.6'), findsNWidgets(4));
     expect(find.text('221.1'), findsNothing);
 
     // The head rail is driven by the width instead.
-    expect(find.text('182.5'), findsOneWidget);
+    expect(find.text('182.5'), findsNWidgets(2));
 
     // Three readings, each on its own line, so a workshop working in suter can
     // see what a centimetre off the formula does to the cut. Feet and inches
@@ -209,6 +223,7 @@ void main() {
       (WidgetTester tester) async {
     await pump(tester);
 
+    await editFirstFormula(tester);
     await tester.enterText(find.byType(TextField).first, '(HL + 6');
     await tester.pumpAndSettle();
 
@@ -225,6 +240,7 @@ void main() {
     await pump(tester);
 
     // HL is driven by the height; the width is not one of its names.
+    await editFirstFormula(tester);
     await tester.enterText(find.byType(TextField).first, 'w + 6');
     await tester.pumpAndSettle();
 
@@ -253,6 +269,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await editFirstFormula(tester);
     await tester.enterText(find.byType(TextField).first, 'HL + 12');
     await tester.pumpAndSettle();
 
@@ -297,6 +314,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await editFirstFormula(tester);
     await tester.enterText(find.byType(TextField).first, 'HL + 12');
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Save formulas'));
@@ -316,16 +334,54 @@ void main() {
     final FormulaOverrides starting = FormulaOverrides.empty()
       ..set(FormulaPieceRef.of(keyForCollar(2), 'DC30C', 0), '(h + 99 + cm) / feet');
 
-    await pump(tester, starting: starting);
+    await pump(tester, starting: starting, measurements: <String, double>{
+      'h': 220.6,
+      'w': 182.5,
+      'cm': 0.5,
+      'feet': 30.48,
+    });
 
-    expect(find.text('HL + 99'), findsOneWidget);
+    // The measurement stands inside the formula, so what is left of it beside
+    // the box is the workshop's own arithmetic: " + 99".
+    expect(find.text(' + 99'), findsOneWidget);
     expect(find.text('yours'), findsOneWidget);
+    // 220.6 + 99 = 319.6, and the margin is off the cut size.
+    expect(find.text('319.6'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Put this one back'));
     await tester.pumpAndSettle();
 
-    expect(find.text('HL'), findsWidgets);
-    expect(find.text('HL + 99'), findsNothing);
+    expect(find.text(' + 99'), findsNothing);
+    expect(find.text('319.6'), findsNothing);
+    expect(find.text('220.6'), findsWidgets);
+  });
+
+  testWidgets('a size typed into a formula changes that piece and no other',
+      (WidgetTester tester) async {
+    await pump(tester, measurements: <String, double>{
+      'h': 220.6,
+      'w': 182.5,
+      'cm': 0.5,
+      'feet': 30.48,
+    });
+
+    // Both uprights start at the window's height.
+    expect(find.text('220.6'), findsNWidgets(4));
+
+    // Asking what the first would come to at 300 is a question, not a change:
+    // it belongs to this one piece and is never saved.
+    await tester.enterText(find.byType(TextField).first, '300');
+    await tester.pumpAndSettle();
+
+    expect(find.text('300'), findsWidgets, reason: 'the piece asked about');
+    // The other upright is untouched: its own box and its own cut size.
+    expect(find.text('220.6'), findsWidgets);
+
+    // Nothing to save -- no formula was changed.
+    final FilledButton save = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Save formulas'),
+    );
+    expect(save.onPressed, isNull);
   });
 
   testWidgets('nothing is saved unless something changed', (WidgetTester tester) async {

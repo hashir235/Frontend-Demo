@@ -72,6 +72,8 @@ class CutLength {
 
   /// Drops the zeros a tape would not show: 216.40 reads as 216.4, 216.00 as
   /// 216.
+  static String trimZeros(double value, int places) => _trim(value, places);
+
   static String _trim(double value, int places) {
     final String fixed = value.toStringAsFixed(places);
     if (!fixed.contains('.')) return fixed;
