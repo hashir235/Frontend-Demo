@@ -51,7 +51,11 @@ class FormulaBookLoader {
   Future<String?> save(FormulaOverrides overrides) async {
     await _store.save(overrides);
     try {
-      await _remote.save(overrides);
+      final int revision = await _remote.save(overrides);
+      // Recorded only once the server has taken it. A save that never landed
+      // leaves the device on the older revision, so the next sync still sees
+      // the server as behind and does not overwrite the change.
+      await _store.save(overrides, revision: revision);
       return null;
     } on FormulaSyncException catch (error) {
       return error.message;
@@ -60,21 +64,34 @@ class FormulaBookLoader {
 
   /// Brings this device up to date with what the server holds.
   ///
-  /// For a fresh install or a new phone, where the device has nothing and the
-  /// server has everything. Only ever fills an empty device: a workshop that
-  /// has changed a formula here and not yet synced it must not have it
-  /// overwritten by an older copy.
-  Future<void> restoreIfEmpty() async {
-    final FormulaOverrides local = await _store.load();
-    if (!local.isEmpty) return;
+  /// The server wins when it is newer, and only then. That is what lets a
+  /// workshop ring up, read their formulas down the phone, and have them set
+  /// from the office without touching anything themselves -- which the older
+  /// rule could not do, because it only ever filled an empty device and so
+  /// reached everyone except the people who had changed a formula and wanted
+  /// it put right.
+  ///
+  /// A device that has changes the server has not accepted keeps them: its
+  /// revision is unchanged, so the server is not newer and nothing is taken.
+  /// The one case that does lose work is a formula saved here while offline
+  /// and then set from the office before the phone reconnects -- and there the
+  /// office is the later word, which is the answer that was wanted.
+  Future<void> syncFromServer() async {
+    final RemoteFormulas remote;
     try {
-      final FormulaOverrides remote = await _remote.fetch();
-      if (remote.isEmpty) return;
-      await _store.save(remote);
+      remote = await _remote.fetch();
     } on FormulaSyncException {
-      // Nothing to restore from, or no way to reach it. The shipped formulas
-      // are what a workshop starts on anyway.
+      // No way to reach it. The device already holds what it needs.
+      return;
     }
+
+    final FormulaOverrides? incoming = remote.overrides;
+    if (incoming == null) return;
+
+    final int mine = await _store.revision();
+    if (remote.revision <= mine) return;
+
+    await _store.save(incoming, revision: remote.revision);
   }
 
   /// Forgets the catalogue, for tests.

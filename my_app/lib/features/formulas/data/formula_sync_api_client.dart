@@ -19,6 +19,26 @@ class FormulaSyncException implements Exception {
   String toString() => message;
 }
 
+/// What the server holds, and how new it is.
+///
+/// The revision is the whole point of asking: it is what tells a device
+/// whether the copy on the server is newer than its own, and so whether a
+/// formula set for this workshop from the office should replace what the
+/// phone is carrying.
+class RemoteFormulas {
+  const RemoteFormulas({required this.overrides, required this.revision});
+
+  const RemoteFormulas.none()
+      : overrides = null,
+        revision = 0;
+
+  /// Null when the server has never been told anything for this workshop.
+  final FormulaOverrides? overrides;
+
+  /// Counts up by one on every accepted write. Zero means nothing stored.
+  final int revision;
+}
+
 /// Carries a workshop's changed formulas to the server and back.
 ///
 /// The device is where they have to be instantly readable; the server is where
@@ -42,7 +62,7 @@ class FormulaSyncApiClient {
   final Uri _endpointUri;
 
   /// What this workshop has changed, as the server has it.
-  Future<FormulaOverrides> fetch() async {
+  Future<RemoteFormulas> fetch() async {
     late final http.Response response;
     try {
       response = await _httpClient.get(_endpointUri);
@@ -60,12 +80,17 @@ class FormulaSyncApiClient {
     }
 
     final Object? formulas = payload?['formulas'];
-    if (formulas is! Map<String, dynamic>) return FormulaOverrides.empty();
-    return FormulaOverrides.fromJson(formulas);
+    if (formulas is! Map<String, dynamic>) return const RemoteFormulas.none();
+    return RemoteFormulas(
+      overrides: FormulaOverrides.fromJson(formulas),
+      revision: _revisionIn(payload),
+    );
   }
 
-  /// Records what this workshop has changed.
-  Future<void> save(FormulaOverrides overrides) async {
+  /// Records what this workshop has changed, and reports which revision that
+  /// became so the device can tell later whether the server has moved on
+  /// without it.
+  Future<int> save(FormulaOverrides overrides) async {
     late final http.Response response;
     try {
       response = await _httpClient.put(
@@ -77,14 +102,25 @@ class FormulaSyncApiClient {
       throw FormulaSyncException('Could not reach the formulas service: $error');
     }
 
+    final Map<String, dynamic>? payload = _decode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final Map<String, dynamic>? payload = _decode(response.body);
       throw FormulaSyncException(
         (payload?['error'] as String?) ??
             'Saving your formulas failed with status ${response.statusCode}.',
         statusCode: response.statusCode,
       );
     }
+    return _revisionIn(payload);
+  }
+
+  /// An older server does not send one. Zero then means "no revision known",
+  /// which leaves the device on its own copy rather than throwing it away
+  /// over a field that was never there.
+  static int _revisionIn(Map<String, dynamic>? payload) {
+    final Object? raw = payload?['revision'];
+    if (raw is int) return raw < 0 ? 0 : raw;
+    if (raw is num) return raw < 0 ? 0 : raw.round();
+    return 0;
   }
 
   static Map<String, dynamic>? _decode(String body) {

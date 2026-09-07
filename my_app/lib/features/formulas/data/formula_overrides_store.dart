@@ -17,6 +17,17 @@ class FormulaOverridesStore {
   const FormulaOverridesStore();
 
   static const String _key = 'formula_overrides_v1';
+  static const String _revisionKey = 'formula_overrides_revision_v1';
+
+  /// The server revision this device last took a copy of.
+  ///
+  /// Zero for a phone that has never synced, which is also what a phone
+  /// upgrading from a build that did not keep this reads -- and the right
+  /// answer for both, since anything the server holds is then newer.
+  Future<int> revision() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_revisionKey) ?? 0;
+  }
 
   Future<FormulaOverrides> load() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -32,8 +43,17 @@ class FormulaOverridesStore {
     }
   }
 
-  Future<void> save(FormulaOverrides overrides) async {
+  /// Writes the formulas, and the revision they came from when there is one.
+  ///
+  /// The formulas go down first. If the process dies between the two writes
+  /// the device keeps the right formulas with a stale revision, which costs
+  /// one redundant sync; the other order would keep the wrong formulas and
+  /// call them current.
+  Future<void> save(FormulaOverrides overrides, {int? revision}) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, jsonEncode(overrides.toJson()));
+    if (revision != null) {
+      await prefs.setInt(_revisionKey, revision);
+    }
   }
 }

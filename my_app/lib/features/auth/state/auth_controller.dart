@@ -342,11 +342,11 @@ class AuthController extends ChangeNotifier {
       } else {
         AuthSession.apply(activeSession);
         _needsWorkshopSetup = activeSession.needsWorkshopSetup;
-        // A workshop's own cutting formulas, on a phone that has none. This
-        // is the moment a new handset or a reinstall gets them back, and it
-        // only ever fills an empty device -- formulas changed here and not yet
-        // synced are never overwritten by an older copy.
-        await const FormulaBookLoader().restoreIfEmpty();
+        // A workshop's own cutting formulas. A new handset or a reinstall gets
+        // them back here, and so does a shop whose formulas were set for them
+        // from the office -- the server's copy is taken when it is newer than
+        // this device's, and left alone when it is not.
+        await const FormulaBookLoader().syncFromServer();
       }
     } catch (_) {
       AuthSession.clear();
