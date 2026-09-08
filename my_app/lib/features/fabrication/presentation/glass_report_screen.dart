@@ -6,6 +6,8 @@ import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../estimation/models/glass_color.dart';
+import '../../estimation/widgets/glass_color_picker.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/bottom_action_bar.dart';
@@ -181,6 +183,11 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     await GlassRowEditorSheet.show(
       context,
       suggestedWindowNo: _nextWindowNo,
+      // A run of glass is usually one colour: open on whatever the last row
+      // was rather than making the shop re-pick it for every piece.
+      suggestedGlassColor: _rows.isEmpty
+          ? GlassColors.initial
+          : GlassColors.normalize(_rows.last.glassColor),
       onRowSaved: (GlassReportRow row) {
         setState(() {
           _rows.add(row);
@@ -767,6 +774,10 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
               // far end. Edit stays put — it is an action, not data.
               DataColumn(label: Text('Glass Size')),
               DataColumn(label: Text('Qty')),
+              // Which glass, right beside the size. Two rows of the same size
+              // in different glass are two different pieces, and the cutter
+              // has to be able to tell them apart at a glance.
+              DataColumn(label: Text('Glass')),
               DataColumn(label: Text('Rub')),
               DataColumn(label: Text('WinNo')),
               DataColumn(label: Text('Label')),
@@ -790,6 +801,21 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
                       ),
                       DataCell(
                         Text('${row.quantity}'),
+                        onTap: () => _editRow(index),
+                      ),
+                      DataCell(
+                        row.glassColor.isEmpty
+                            ? const Text('--')
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  GlassSwatch(color: row.glassColor, size: 14),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    GlassColors.shortLabelFor(row.glassColor),
+                                  ),
+                                ],
+                              ),
                         onTap: () => _editRow(index),
                       ),
                       DataCell(

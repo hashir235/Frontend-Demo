@@ -2973,23 +2973,25 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           ),
                         ),
                         // Glass sits under the aluminium because it is the same
-                        // kind of decision about the same opening, and because
-                        // the bill prices each glass separately -- what is
-                        // picked here is what that window's glazing is charged
-                        // at. Estimation only: a fabrication job is cutting
-                        // metal for glass somebody else is pricing.
-                        if (!_isFabricationFlow) ...<Widget>[
-                          const SizedBox(height: 12),
-                          TutorialTarget(
-                            id: 'input.glass',
-                            child: GlassColorPicker(
-                              value: _glassColor,
-                              onChanged: (String next) {
-                                setState(() => _glassColor = next);
-                              },
-                            ),
+                        // kind of decision about the same opening.
+                        //
+                        // Both flows need it, for different reasons. Estimation
+                        // prices each glass separately, so this decides what a
+                        // window's glazing is charged at. Fabrication cuts it:
+                        // the glass list carries the colour, and the sheet
+                        // optimizer keeps each colour on its own sheets -- two
+                        // colours packed onto one sheet is a sheet that cannot
+                        // be cut.
+                        const SizedBox(height: 12),
+                        TutorialTarget(
+                          id: 'input.glass',
+                          child: GlassColorPicker(
+                            value: _glassColor,
+                            onChanged: (String next) {
+                              setState(() => _glassColor = next);
+                            },
                           ),
-                        ],
+                        ),
                         const SizedBox(height: 12),
                         TutorialTarget(
                           id: 'input.sizes',

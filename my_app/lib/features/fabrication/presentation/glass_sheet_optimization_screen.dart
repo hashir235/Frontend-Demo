@@ -433,7 +433,12 @@ class _GlassSheetOptimizationScreenState
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space5),
       child: SectionSurfaceCard(
-        title: 'Sheet ${sheet.sheetNo}',
+        // The glass is part of the sheet's name, not a detail inside it. The
+        // cutter picks a sheet off the rack before reading anything else on
+        // the drawing, and picking the wrong colour wastes the whole sheet.
+        title: sheet.glassColor.isEmpty
+            ? 'Sheet ${sheet.sheetNo}'
+            : 'Sheet ${sheet.sheetNo}  ·  ${sheet.glassColor}',
         trailing: _MetaChip(
           label: 'Waste',
           value: formatPercent(sheet.wastagePercentage),

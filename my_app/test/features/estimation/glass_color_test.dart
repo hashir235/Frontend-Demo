@@ -3,6 +3,8 @@ import 'package:my_app/features/estimation/models/glass_color.dart';
 import 'package:my_app/features/estimation/models/optimization_request.dart';
 import 'package:my_app/features/estimation/models/window_review_item.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
+import 'package:my_app/features/fabrication/models/glass_report.dart';
+import 'package:my_app/features/fabrication/models/glass_sheet_optimization.dart';
 import 'package:my_app/features/settings/models/bill_defaults.dart';
 
 /// Glass belongs to the window, not to the job.
@@ -84,6 +86,60 @@ void main() {
           );
       expect(request.glassColor, 'Gray Simple');
       expect(request.toJson()['glassColor'], 'Gray Simple');
+    });
+  });
+
+  group('on the fabrication side', () {
+    GlassReportRow row({String glass = ''}) {
+      return GlassReportRow.fromInputs(
+        width: const GlassDimension(inches: 20, sutter: 0),
+        height: const GlassDimension(inches: 40, sutter: 0),
+        windowName: 'Sliding',
+        windowNo: 1,
+        rubberType: 'F',
+        quantity: 2,
+        glassColor: glass,
+      );
+    }
+
+    test('the glass rides on the cutting row', () {
+      expect(row(glass: 'Green Mercury').glassColor, 'Green Mercury');
+    });
+
+    test('it survives the trip to the server and back', () {
+      // The optimizer groups on this. A row that loses its glass on the wire
+      // is a row that gets packed onto somebody else's sheet.
+      final GlassReportRow sent = row(glass: 'Blue Simple');
+      final GlassReportRow back = GlassReportRow.fromJson(sent.toJson());
+      expect(back.glassColor, 'Blue Simple');
+    });
+
+    test('a row from an older server has no glass, not a wrong one', () {
+      final Map<String, dynamic> old = row(glass: 'Blue Simple').toJson()
+        ..remove('glassColor');
+      expect(GlassReportRow.fromJson(old).glassColor, '');
+    });
+
+    test('editing a row keeps its glass', () {
+      final GlassReportRow edited = row(glass: 'Ocean Blue').copyWith(
+        quantity: 5,
+      );
+      expect(edited.glassColor, 'Ocean Blue');
+      expect(edited.quantity, 5);
+    });
+
+    test('a sheet says which glass it is', () {
+      final GlassSheetLayout sheet = GlassSheetLayout.fromJson(
+        <String, dynamic>{
+          'sheetNo': 2,
+          'width': 84,
+          'height': 144,
+          'glassColor': 'Gray Mercury',
+          'placements': <dynamic>[],
+          'wasteRects': <dynamic>[],
+        },
+      );
+      expect(sheet.glassColor, 'Gray Mercury');
     });
   });
 

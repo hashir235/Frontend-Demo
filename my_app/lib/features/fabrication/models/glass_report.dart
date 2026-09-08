@@ -50,6 +50,14 @@ class GlassReportRow {
   final String heightDisplay;
   final String widthDisplay;
 
+  /// The glass this row is cut from.
+  ///
+  /// Shown as a column on the cutting list, and used to keep each colour on
+  /// its own sheets: a sheet in the rack is one colour, so a layout mixing two
+  /// is one nobody can cut from. Empty for a row entered before glass had a
+  /// colour.
+  final String glassColor;
+
   const GlassReportRow({
     required this.windowName,
     required this.windowNo,
@@ -60,6 +68,7 @@ class GlassReportRow {
     required this.widthCm,
     required this.heightDisplay,
     required this.widthDisplay,
+    this.glassColor = '',
   });
 
   factory GlassReportRow.fromJson(Map<String, dynamic> json) {
@@ -73,6 +82,7 @@ class GlassReportRow {
       widthCm: _toDouble(json['widthCm']),
       heightDisplay: (json['heightDisplay'] as String?) ?? '',
       widthDisplay: (json['widthDisplay'] as String?) ?? '',
+      glassColor: ((json['glassColor'] as String?) ?? '').trim(),
     );
   }
 
@@ -87,6 +97,7 @@ class GlassReportRow {
     String inputSize = '',
     String rubberType = '',
     int quantity = 1,
+    String glassColor = '',
   }) {
     return GlassReportRow(
       windowName: windowName,
@@ -98,6 +109,7 @@ class GlassReportRow {
       heightCm: height.cm,
       widthDisplay: width.display,
       heightDisplay: height.display,
+      glassColor: glassColor,
     );
   }
 
@@ -111,6 +123,7 @@ class GlassReportRow {
     double? widthCm,
     String? heightDisplay,
     String? widthDisplay,
+    String? glassColor,
   }) {
     return GlassReportRow(
       windowName: windowName ?? this.windowName,
@@ -122,6 +135,7 @@ class GlassReportRow {
       widthCm: widthCm ?? this.widthCm,
       heightDisplay: heightDisplay ?? this.heightDisplay,
       widthDisplay: widthDisplay ?? this.widthDisplay,
+      glassColor: glassColor ?? this.glassColor,
     );
   }
 
@@ -144,6 +158,7 @@ class GlassReportRow {
       'widthCm': widthCm,
       'heightDisplay': heightDisplay,
       'widthDisplay': widthDisplay,
+      'glassColor': glassColor,
     };
   }
 }

@@ -127,6 +127,13 @@ class GlassSheetLayout {
   final List<GlassSheetPlacement> placements;
   final List<GlassSheetWasteRect> wasteRects;
 
+  /// The glass this whole sheet is cut from.
+  ///
+  /// A sheet only ever holds one: the optimizer packs each colour separately,
+  /// because a sheet in the rack is one colour and a layout mixing two cannot
+  /// be cut from anything. Empty for a job whose rows carried no colour.
+  final String glassColor;
+
   /// The real sheet, as opposed to [width]/[height] which include whatever
   /// extra margin the layout was allowed to reach into.
   final double nominalWidth;
@@ -156,6 +163,7 @@ class GlassSheetLayout {
     required this.wastagePercentage,
     required this.placements,
     required this.wasteRects,
+    this.glassColor = '',
     this.nominalWidth = 0,
     this.nominalHeight = 0,
     this.usesExtraMargin = false,
@@ -183,6 +191,7 @@ class GlassSheetLayout {
           .whereType<Map<String, dynamic>>()
           .map(GlassSheetWasteRect.fromJson)
           .toList(growable: false),
+      glassColor: ((json['glassColor'] as String?) ?? '').trim(),
       // Falls back to the laid-out size for a reply from a server that predates
       // the margin, so an older backend simply reports no overshoot.
       nominalWidth: json['nominalWidth'] == null

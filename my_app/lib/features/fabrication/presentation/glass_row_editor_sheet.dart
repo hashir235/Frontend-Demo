@@ -5,6 +5,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/suter_wheel.dart';
 import '../../settings/state/app_settings.dart';
 import '../../settings/state/size_input_mode.dart';
+import '../../estimation/models/glass_color.dart';
+import '../../estimation/widgets/glass_color_picker.dart';
 import '../models/glass_report.dart';
 
 /// Modal editor used for both adding a new glass row and editing an existing
@@ -22,6 +24,10 @@ class GlassRowEditorSheet extends StatefulWidget {
   /// Window number suggested for a new row (continues the existing sequence).
   final int suggestedWindowNo;
 
+  /// The glass a new row opens on -- whatever the last row was, since a run of
+  /// glass is usually one colour.
+  final String suggestedGlassColor;
+
   /// Called for each row saved while the sheet stays open.
   ///
   /// Present only when adding. A glass job is a run of pieces typed one after
@@ -34,6 +40,7 @@ class GlassRowEditorSheet extends StatefulWidget {
     super.key,
     this.existingRow,
     required this.suggestedWindowNo,
+    this.suggestedGlassColor = GlassColors.initial,
     this.onRowSaved,
   });
 
@@ -41,6 +48,7 @@ class GlassRowEditorSheet extends StatefulWidget {
     BuildContext context, {
     GlassReportRow? existingRow,
     required int suggestedWindowNo,
+    String suggestedGlassColor = GlassColors.initial,
     ValueChanged<GlassReportRow>? onRowSaved,
   }) {
     return showModalBottomSheet<GlassReportRow>(
@@ -53,6 +61,7 @@ class GlassRowEditorSheet extends StatefulWidget {
       builder: (BuildContext ctx) => GlassRowEditorSheet(
         existingRow: existingRow,
         suggestedWindowNo: suggestedWindowNo,
+        suggestedGlassColor: suggestedGlassColor,
         onRowSaved: onRowSaved,
       ),
     );
@@ -68,6 +77,7 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
   late final TextEditingController _winNoController;
   late final TextEditingController _labelController;
   late final TextEditingController _rubberController;
+  late String _glassColor;
   late final TextEditingController _qtyController;
   late final TextEditingController _widthInchController;
   late final TextEditingController _heightInchController;
@@ -108,6 +118,11 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
     );
     _labelController = TextEditingController(text: row?.windowName ?? '');
     _rubberController = TextEditingController(text: row?.rubberType ?? '');
+    // A run of glass is usually one colour, so the next row opens on the last
+    // one entered rather than resetting to clear every time.
+    _glassColor = GlassColors.normalize(
+      row?.glassColor ?? widget.suggestedGlassColor,
+    );
     _qtyController = TextEditingController(
       text: row != null ? row.quantity.toString() : '1',
     );
@@ -188,6 +203,7 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
       inputSize: widget.existingRow?.inputSize ?? '',
       rubberType: _rubberController.text.trim(),
       quantity: qty < 1 ? 1 : qty,
+      glassColor: _glassColor,
     );
 
     final ValueChanged<GlassReportRow>? keepOpen = widget.onRowSaved;
@@ -386,6 +402,17 @@ class _GlassRowEditorSheetState extends State<GlassRowEditorSheet> {
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
+                ),
+                const SizedBox(height: 12),
+                // Which glass this piece is. A glass-only job never went
+                // through a window screen, so this is the one place its colour
+                // can be said -- and the sheet optimizer needs it, or every
+                // colour in the job gets packed onto the same sheets.
+                GlassColorPicker(
+                  value: _glassColor,
+                  onChanged: (String next) {
+                    setState(() => _glassColor = next);
+                  },
                 ),
 
                 const SizedBox(height: 22),
