@@ -132,10 +132,20 @@ class BillWindowSummary {
   final int quantity;
   final double areaSqFt;
 
+  /// What the ironmongery for one of these cost, and for all of them.
+  ///
+  /// The engine has priced hardware per window type for a while, but the bill
+  /// only ever showed the total. A customer's first question about a hardware
+  /// figure is which windows it covers, and this is the answer.
+  final double hardwareRate;
+  final double hardwareCost;
+
   const BillWindowSummary({
     required this.type,
     required this.quantity,
     required this.areaSqFt,
+    this.hardwareRate = 0,
+    this.hardwareCost = 0,
   });
 
   factory BillWindowSummary.fromJson(Map<String, dynamic> json) {
@@ -143,6 +153,36 @@ class BillWindowSummary {
       type: json['type'] as String? ?? '',
       quantity: (json['quantity'] as num?)?.toInt() ?? 0,
       areaSqFt: (json['areaSqFt'] as num?)?.toDouble() ?? 0,
+      hardwareRate: (json['hardwareRate'] as num?)?.toDouble() ?? 0,
+      hardwareCost: (json['hardwareCost'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+/// The glazing of one glass, across the whole job.
+class BillGlassSummary {
+  final String color;
+  final double areaSqFt;
+  final double rate;
+  final double cost;
+
+  const BillGlassSummary({
+    required this.color,
+    required this.areaSqFt,
+    required this.rate,
+    required this.cost,
+  });
+
+  /// What a window with no glass of its own is filed under. Jobs quoted before
+  /// glass was picked per window have one such group and no other.
+  bool get isUnnamed => color.trim().isEmpty;
+
+  factory BillGlassSummary.fromJson(Map<String, dynamic> json) {
+    return BillGlassSummary(
+      color: json['color'] as String? ?? '',
+      areaSqFt: (json['areaSqFt'] as num?)?.toDouble() ?? 0,
+      rate: (json['rate'] as num?)?.toDouble() ?? 0,
+      cost: (json['cost'] as num?)?.toDouble() ?? 0,
     );
   }
 }
@@ -161,6 +201,9 @@ class BillSnapshot {
   final BillTotals totals;
   final List<BillWindowSummary> windowSummary;
 
+  /// Glazing broken out by glass. One row per glass the job actually used.
+  final List<BillGlassSummary> glassSummary;
+
   const BillSnapshot({
     required this.ok,
     required this.errors,
@@ -174,6 +217,7 @@ class BillSnapshot {
     required this.rates,
     required this.totals,
     required this.windowSummary,
+    this.glassSummary = const <BillGlassSummary>[],
   });
 
   factory BillSnapshot.fromJson(Map<String, dynamic> json) {
@@ -208,6 +252,11 @@ class BillSnapshot {
           .whereType<Map<String, dynamic>>()
           .map(BillWindowSummary.fromJson)
           .toList(),
+      glassSummary:
+          (json['glassSummary'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map<String, dynamic>>()
+              .map(BillGlassSummary.fromJson)
+              .toList(),
     );
   }
 }

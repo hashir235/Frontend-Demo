@@ -104,6 +104,19 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
     }
   }
 
+  /// The glass rows worth printing.
+  ///
+  /// A job entered before glass was picked per window comes back as one
+  /// unnamed group; there is nothing to break out there, and a row reading
+  /// "  · 240 sq.ft" would only look broken.
+  static List<BillGlassSummary> _namedGlass(BillSnapshot snapshot) {
+    return snapshot.glassSummary
+        .where((BillGlassSummary row) => !row.isUnnamed)
+        .toList(growable: false);
+  }
+
+  static String _formatArea(double value) => value.toStringAsFixed(1);
+
   static String _formatNumber(double value, {int decimals = 2}) {
     final String fixed = value.toStringAsFixed(decimals);
     if (!fixed.contains('.')) {
@@ -516,6 +529,40 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
             ),
           ],
         ),
+        // Glazing and ironmongery, line by line, before the totals that add
+        // them up. Both are figures a customer questions, and "which windows
+        // is this for" and "which glass at what rate" are the questions. One
+        // lump labelled Glass Cost cannot answer either.
+        if (_namedGlass(snapshot).isNotEmpty) ...<Widget>[
+          const SizedBox(height: AppTheme.space5),
+          _buildDetailCard(
+            context,
+            title: 'Glass by Colour',
+            entries: <MapEntry<String, String>>[
+              for (final BillGlassSummary row in _namedGlass(snapshot))
+                MapEntry<String, String>(
+                  '${row.color}  ·  ${_formatArea(row.areaSqFt)} sq.ft '
+                  '@ ${_formatNumber(row.rate)}',
+                  _formatNumber(row.cost),
+                ),
+            ],
+          ),
+        ],
+        if (snapshot.windowSummary.length > 1) ...<Widget>[
+          const SizedBox(height: AppTheme.space5),
+          _buildDetailCard(
+            context,
+            title: 'Hardware by Window',
+            entries: <MapEntry<String, String>>[
+              for (final BillWindowSummary row in snapshot.windowSummary)
+                MapEntry<String, String>(
+                  '${_displayText(row.type)}  ·  × ${row.quantity} '
+                  '@ ${_formatNumber(row.hardwareRate)}',
+                  _formatNumber(row.hardwareCost),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: AppTheme.space5),
         _buildDetailCard(
           context,

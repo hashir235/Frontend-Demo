@@ -9,6 +9,12 @@ class BillRequest {
   /// should price at [hardwareRatePerWindow] instead.
   final Map<String, double> hardwareRateByType;
 
+  /// Glazing rate per glass, keyed by the glass name the windows carry.
+  ///
+  /// Empty when the job is glazed in one glass throughout, or for anything the
+  /// engine should price at [glassRatePerSqFt] instead.
+  final Map<String, double> glassRateByColor;
+
   final double aluminiumDiscountPercent;
   final double aluminiumTotal;
   final double extraCharges;
@@ -29,6 +35,7 @@ class BillRequest {
     required this.laborRatePerSqFt,
     required this.hardwareRatePerWindow,
     this.hardwareRateByType = const <String, double>{},
+    this.glassRateByColor = const <String, double>{},
     required this.aluminiumDiscountPercent,
     required this.aluminiumTotal,
     required this.extraCharges,
@@ -54,6 +61,7 @@ class BillRequest {
       // single-rate bill goes over the wire exactly as it always did.
       if (hardwareRateByType.isNotEmpty)
         'hardwareRateByType': hardwareRateByType,
+      if (glassRateByColor.isNotEmpty) 'glassRateByColor': glassRateByColor,
       'aluminiumDiscountPercent': aluminiumDiscountPercent,
       'aluminiumTotal': aluminiumTotal,
       'extraCharges': extraCharges,

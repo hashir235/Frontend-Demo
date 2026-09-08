@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/cost_table.dart';
 import '../models/estimate_flow_state.dart';
 import '../models/window_review_item.dart';
+import '../models/glass_color.dart';
 import '../models/window_material.dart';
 import '../../settings/state/numbering_mode.dart';
 
@@ -164,6 +165,7 @@ class EstimateSessionStore extends ChangeNotifier {
     String? rubberType,
     String? description,
     WindowMaterial? material,
+    String? glassColor,
   }) {
     final WindowReviewItem item = WindowReviewItem(
       winNo: winNo,
@@ -185,6 +187,7 @@ class EstimateSessionStore extends ChangeNotifier {
       rubberType: rubberType,
       description: description,
       material: material ?? materialForNextWindow,
+      glassColor: GlassColors.normalize(glassColor ?? glassColorForNextWindow),
     );
     if (existsWinNo(winNo)) {
       throw ArgumentError('Window number already exists: $winNo');
@@ -220,6 +223,16 @@ class EstimateSessionStore extends ChangeNotifier {
   /// The exceptions -- the one door in a different colour -- are the windows
   /// where the fabricator is already thinking about it and will change it
   /// himself. Falls back to the opening default on the first window of a job.
+  /// The glass the next window opens on.
+  ///
+  /// Whatever the last one was glazed in, because most jobs are mostly one
+  /// glass and a shop should not re-pick it twenty times. It moves only when
+  /// somebody moves it.
+  String get glassColorForNextWindow {
+    if (_items.isEmpty) return GlassColors.initial;
+    return GlassColors.normalize(_items.last.glassColor);
+  }
+
   WindowMaterial get materialForNextWindow {
     if (_items.isEmpty) return WindowMaterial.initial;
     // The one entered last, not the lowest-numbered: that is the one whose

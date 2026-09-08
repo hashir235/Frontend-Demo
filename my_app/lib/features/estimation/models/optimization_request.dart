@@ -28,6 +28,14 @@ class OptimizationWindowRequest {
   final String gauge;
   final String color;
 
+  /// The glass this window is glazed in.
+  ///
+  /// It changes nothing about the cutting -- the engine prices no glass off it
+  /// -- but the bill adds the glazing area up per glass, and the area is
+  /// worked out here. Sending it with the window is what lets that sum be made
+  /// at all.
+  final String glassColor;
+
   const OptimizationWindowRequest({
     required this.winNo,
     required this.windowCode,
@@ -48,6 +56,7 @@ class OptimizationWindowRequest {
     required this.rubberType,
     required this.gauge,
     required this.color,
+    required this.glassColor,
     this.computedPieces,
     this.computedGlass,
   });
@@ -88,6 +97,7 @@ class OptimizationWindowRequest {
       rubberType: item.rubberType,
       gauge: item.material.gauge,
       color: item.material.color,
+      glassColor: item.glassColor,
     );
   }
 
@@ -126,6 +136,7 @@ class OptimizationWindowRequest {
       rubberType: rubberType,
       gauge: gauge,
       color: color,
+      glassColor: glassColor,
       computedPieces: pieces,
       computedGlass: glass,
     );
@@ -154,6 +165,7 @@ class OptimizationWindowRequest {
       'rubberType': rubberType,
       'gauge': gauge,
       'color': color,
+      'glassColor': glassColor,
     };
   }
 }

@@ -101,6 +101,34 @@ class CostTableRow {
   }
 }
 
+/// How much glazing of one glass this job comes to.
+///
+/// Worked out by the engine, not here: the bill charges these feet, and a
+/// second opinion about what a window measures would eventually differ from
+/// the one being charged.
+class GlassAreaSummary {
+  final String color;
+  final double areaSqFt;
+  final int windows;
+
+  const GlassAreaSummary({
+    required this.color,
+    required this.areaSqFt,
+    required this.windows,
+  });
+
+  /// Windows entered before glass was a per-window choice carry no name.
+  bool get isUnnamed => color.trim().isEmpty;
+
+  factory GlassAreaSummary.fromJson(Map<String, dynamic> json) {
+    return GlassAreaSummary(
+      color: (json['color'] as String? ?? '').trim(),
+      areaSqFt: (json['areaSqFt'] as num?)?.toDouble() ?? 0,
+      windows: (json['windows'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
 class CostTable {
   final bool ok;
   final List<String> errors;
@@ -110,6 +138,10 @@ class CostTable {
   final double grandTotal;
   final List<CostTableRow> rows;
 
+  /// The glazing this job needs, per glass. Empty for a fabrication run, and
+  /// for anything answered by a server that predates it.
+  final List<GlassAreaSummary> glassAreas;
+
   const CostTable({
     required this.ok,
     required this.errors,
@@ -118,6 +150,7 @@ class CostTable {
     required this.color,
     required this.grandTotal,
     required this.rows,
+    this.glassAreas = const <GlassAreaSummary>[],
   });
 
   factory CostTable.fromJson(Map<String, dynamic> json) {
@@ -138,6 +171,10 @@ class CostTable {
       rows: rowItems
           .whereType<Map<String, dynamic>>()
           .map(CostTableRow.fromJson)
+          .toList(),
+      glassAreas: (json['glassAreas'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(GlassAreaSummary.fromJson)
           .toList(),
     );
   }

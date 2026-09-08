@@ -230,6 +230,9 @@ class _EstimationMaterialTableScreenState
         builder: (BuildContext context) => BillInputsScreen(
           session: widget.session,
           aluminiumTotal: table.grandTotal,
+          // Worked out by the engine on this same run, so the footage beside
+          // each glass rate is the footage that rate will be charged on.
+          glassAreas: table.glassAreas,
           gaugeLabel: widget.gaugeLabel,
           gaugeValue: widget.gaugeValue,
           colorLabel: widget.colorLabel,

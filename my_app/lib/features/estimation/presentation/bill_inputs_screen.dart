@@ -14,6 +14,8 @@ import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../models/bill_request.dart';
+import '../models/cost_table.dart';
+import '../widgets/glass_color_picker.dart';
 import '../models/window_review_item.dart';
 import '../../settings/data/bill_defaults_api_client.dart';
 import '../../settings/models/bill_defaults.dart';
@@ -25,6 +27,13 @@ import '../../help_videos/tutorial_videos.dart';
 class BillInputsScreen extends StatefulWidget {
   final EstimateSessionStore session;
   final double aluminiumTotal;
+
+  /// The glazing this job needs, per glass, as the engine measured it.
+  ///
+  /// One rate box is asked for per entry, labelled with the glass and the
+  /// footage it buys. Empty for a job answered by a server that predates this,
+  /// and the screen then asks for the single glass rate it always did.
+  final List<GlassAreaSummary> glassAreas;
   final String gaugeLabel;
   final String gaugeValue;
   final String colorLabel;
@@ -37,6 +46,7 @@ class BillInputsScreen extends StatefulWidget {
     super.key,
     required this.session,
     required this.aluminiumTotal,
+    this.glassAreas = const <GlassAreaSummary>[],
     required this.gaugeLabel,
     required this.gaugeValue,
     required this.colorLabel,
@@ -70,6 +80,23 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       <String, TextEditingController>{};
 
   bool get _pricesHardwarePerType => _windowTypeCounts.length > 1;
+
+  /// The glasses this job is glazed in, with the footage of each.
+  ///
+  /// Only the named ones: a job entered before glass was picked per window
+  /// arrives as one unnamed group, and that is the single-rate bill this
+  /// screen has always asked for.
+  late final List<GlassAreaSummary> _glassGroups = widget.glassAreas
+      .where((GlassAreaSummary g) => !g.isUnnamed && g.areaSqFt > 0)
+      .toList(growable: false);
+
+  /// One glass box per glass, once the job actually has them. A job glazed
+  /// throughout in one glass keeps the single box, the same way hardware does
+  /// -- a list of one is a worse screen than the box it replaced.
+  final Map<String, TextEditingController> _glassByColor =
+      <String, TextEditingController>{};
+
+  bool get _pricesGlassPerColor => _glassGroups.isNotEmpty;
 
   List<MapEntry<String, int>> _countWindowTypes() {
     final Map<String, int> counts = <String, int>{};
@@ -115,6 +142,9 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       for (final MapEntry<String, int> entry in _windowTypeCounts) {
         _hardwareByType[entry.key] = TextEditingController();
       }
+    }
+    for (final GlassAreaSummary group in _glassGroups) {
+      _glassByColor[group.color] = TextEditingController();
     }
     _loadSavedRates();
     final EstimateBillDraft? draft = widget.session.billDraft;
@@ -168,6 +198,13 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
         );
       }
       fill(_discountController, defaults.aluminiumDiscount);
+      // Each glass gets the rate saved against it in Settings. That list is
+      // keyed by the same names the windows carry, so a shop that priced
+      // "Green Mercury" once never types it again.
+      for (final GlassAreaSummary group in _glassGroups) {
+        final String? saved = defaults.rateForGlass(group.color);
+        if (saved != null) fill(_glassByColor[group.color]!, saved);
+      }
       final String? glassRate = defaults.rateForGlass(
         _glassColorController.text,
       );
@@ -192,6 +229,9 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     _laborRateController.dispose();
     _hardwareRateController.dispose();
     for (final TextEditingController c in _hardwareByType.values) {
+      c.dispose();
+    }
+    for (final TextEditingController c in _glassByColor.values) {
       c.dispose();
     }
     _glassColorController.dispose();
@@ -303,7 +343,18 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     widget.session.setBillDraft(draft);
     final BillRequest request = BillRequest(
       projectId: widget.projectId,
-      glassRatePerSqFt: _parseRequiredNumber(_glassRateController),
+      // With several glasses on the job the single rate is no longer the whole
+      // answer, so it carries the first glass's: it is what the engine falls
+      // back to, and a window whose glass somehow reached the bill without a
+      // box of its own is then priced at a real rate rather than at nothing.
+      glassRatePerSqFt: _pricesGlassPerColor
+          ? _parseRequiredNumber(_glassByColor[_glassGroups.first.color]!)
+          : _parseRequiredNumber(_glassRateController),
+      glassRateByColor: <String, double>{
+        for (final MapEntry<String, TextEditingController> e
+            in _glassByColor.entries)
+          e.key: _parseRequiredNumber(e.value),
+      },
       laborRatePerSqFt: _parseRequiredNumber(_laborRateController),
       // With several kinds on the job the single rate is no longer the whole
       // answer, so it carries the first kind's rate: it is what the engine
@@ -323,7 +374,12 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       advancePaid: _parseOptionalNumber(_advancePaidController),
       gauge: widget.gaugeValue,
       aluminiumColor: widget.colorValue,
-      glassColor: _glassColorController.text.trim(),
+      // The bill's heading still names the glass. With several on one job the
+      // heading names them all rather than picking one to stand for the rest;
+      // the per-glass rows underneath carry the detail.
+      glassColor: _pricesGlassPerColor
+          ? _glassGroups.map((GlassAreaSummary g) => g.color).join(', ')
+          : _glassColorController.text.trim(),
       aluminiumCompany: _aluminiumCompanyController.text.trim(),
       projectName: widget.projectName,
       projectLocation: widget.projectLocation,
@@ -393,12 +449,21 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
                       'These values drive the actual bill calculation and are required.',
                   child: Column(
                     children: <Widget>[
-                      _buildNumberField(
-                        controller: _glassRateController,
-                        label: 'Glass Rate *',
-                        validator: _requiredNumberValidator,
-                        tourId: 'bill.glassRate',
-                      ),
+                      if (!_pricesGlassPerColor)
+                        _buildNumberField(
+                          controller: _glassRateController,
+                          label: 'Glass Rate *',
+                          validator: _requiredNumberValidator,
+                          tourId: 'bill.glassRate',
+                        )
+                      else
+                        // One box per glass, each saying which glass and how
+                        // many feet that rate buys. The footage is in the
+                        // label because the rate is per foot: seeing "124.5 sq
+                        // ft" beside the box is what stops someone entering
+                        // the total for the lot.
+                        for (final GlassAreaSummary group in _glassGroups)
+                          _buildGlassRateField(group),
                       _buildNumberField(
                         controller: _laborRateController,
                         label: 'Labor Rate *',
@@ -455,13 +520,17 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
                         validator: _optionalNumberValidator,
                         tourId: 'bill.advance',
                       ),
-                      _buildTextField(
-                        onChanged: _onGlassColorChanged,
-                        controller: _glassColorController,
-                        label: 'Glass Color',
-                        inputFormatters: _glassColorInputFormatters,
-                        tourId: 'bill.glassColor',
-                      ),
+                      // Only when the windows did not say. Glass is picked per
+                      // window now, so typing it again here could only
+                      // contradict what was actually chosen.
+                      if (!_pricesGlassPerColor)
+                        _buildTextField(
+                          onChanged: _onGlassColorChanged,
+                          controller: _glassColorController,
+                          label: 'Glass Color',
+                          inputFormatters: _glassColorInputFormatters,
+                          tourId: 'bill.glassColor',
+                        ),
                       _buildTextField(
                         controller: _aluminiumCompanyController,
                         label: 'Aluminium Company',
@@ -499,6 +568,43 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       ),
     );
   }
+
+  /// The rate box for one glass, with a swatch of that glass beside it.
+  ///
+  /// The swatch is the same one the fitter picked on the input screen. A shop
+  /// that chose by sight should be able to check by sight that the rate is
+  /// going against the right glass, rather than matching two names.
+  Widget _buildGlassRateField(GlassAreaSummary group) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.space4),
+      child: _withTourTarget(
+        'bill.glassRate',
+        TextFormField(
+          controller: _glassByColor[group.color]!,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: _decimalInputFormatters,
+          validator: _requiredNumberValidator,
+          decoration: InputDecoration(
+            labelText:
+                'Glass Rate — ${group.color}  ·  '
+                '${_formatArea(group.areaSqFt)} sq ft *',
+            prefixIcon: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.space4,
+                vertical: 12,
+              ),
+              child: GlassSwatch(color: group.color, size: 20),
+            ),
+            prefixIconConstraints: const BoxConstraints(minWidth: 0),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Footage to one decimal: a tenth of a foot is the finest anyone quotes,
+  /// and a long tail of decimals beside a rate box reads as a bug.
+  static String _formatArea(double value) => value.toStringAsFixed(1);
 
   Widget _buildNumberField({
     required TextEditingController controller,

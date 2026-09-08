@@ -28,7 +28,9 @@ import '../../../settings/state/numbering_mode.dart';
 import '../../../settings/state/size_input_mode.dart';
 import '../review_list_screen.dart';
 import 'size_entry_notation.dart';
+import '../../models/glass_color.dart';
 import '../../models/window_material.dart';
+import '../../widgets/glass_color_picker.dart';
 import '../../widgets/window_material_picker.dart';
 import '../../../formulas/data/formula_book.dart';
 import '../../../formulas/data/formula_catalogue.dart';
@@ -109,6 +111,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// starts on whatever the last window was entered in, because a job is
   /// usually mostly one stock with a few exceptions.
   late WindowMaterial _material;
+  late String _glassColor;
 
   final GlobalKey _winNoFieldKey = GlobalKey(debugLabel: 'winNoField');
   final GlobalKey _heightFieldKey = GlobalKey(debugLabel: 'heightField');
@@ -772,6 +775,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _material =
         widget.editingItem?.material.orElse(WindowMaterial.initial) ??
         widget.session.materialForNextWindow;
+    _glassColor = GlassColors.normalize(
+      widget.editingItem?.glassColor ?? widget.session.glassColorForNextWindow,
+    );
     _unitMode =
         widget.editingItem?.unitMode ??
         (_isFabricationFlow ? UnitMode.feet : UnitMode.inches);
@@ -1880,6 +1886,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         rubberType: rubberTypeValue,
         description: description,
         material: _material,
+        glassColor: _glassColor,
         clearDescription: description == null,
         clearRightWidthValue: !_usesSplitWidthInputs,
         clearLeftWidthValue: !_usesSplitWidthInputs,
@@ -1926,6 +1933,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           rubberType: rubberTypeValue,
           description: description,
           material: _material,
+          glassColor: _glassColor,
         );
       }
     } on ArgumentError catch (_) {
@@ -2964,6 +2972,24 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             },
                           ),
                         ),
+                        // Glass sits under the aluminium because it is the same
+                        // kind of decision about the same opening, and because
+                        // the bill prices each glass separately -- what is
+                        // picked here is what that window's glazing is charged
+                        // at. Estimation only: a fabrication job is cutting
+                        // metal for glass somebody else is pricing.
+                        if (!_isFabricationFlow) ...<Widget>[
+                          const SizedBox(height: 12),
+                          TutorialTarget(
+                            id: 'input.glass',
+                            child: GlassColorPicker(
+                              value: _glassColor,
+                              onChanged: (String next) {
+                                setState(() => _glassColor = next);
+                              },
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         TutorialTarget(
                           id: 'input.sizes',

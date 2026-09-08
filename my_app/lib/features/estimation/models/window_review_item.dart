@@ -1,3 +1,4 @@
+import 'glass_color.dart';
 import 'window_material.dart';
 
 enum UnitMode { inches, feet, cm }
@@ -114,6 +115,17 @@ class WindowReviewItem {
   /// reopening old work shows exactly what it always showed.
   final WindowMaterial material;
 
+  /// The glass this window is glazed in, by the name the rates screen prices.
+  ///
+  /// Per window for the same reason the aluminium is: one job is rarely one
+  /// glass. The bill adds up the area of each glass separately, so this is
+  /// what decides which rate a window's glazing is charged at.
+  ///
+  /// A window saved before glass was a per-window choice reads back as clear,
+  /// which is what those jobs were quoted at when the bill carried one glass
+  /// for everything.
+  final String glassColor;
+
   const WindowReviewItem({
     required this.winNo,
     required this.windowLabel,
@@ -134,6 +146,7 @@ class WindowReviewItem {
     this.rubberType,
     this.description,
     this.material = WindowMaterial.initial,
+    this.glassColor = GlassColors.initial,
   });
 
   WindowReviewItem copyWith({
@@ -156,6 +169,7 @@ class WindowReviewItem {
     String? rubberType,
     String? description,
     WindowMaterial? material,
+    String? glassColor,
     bool clearDescription = false,
     bool clearRightWidthValue = false,
     bool clearLeftWidthValue = false,
@@ -187,6 +201,7 @@ class WindowReviewItem {
       rubberType: clearRubberType ? null : (rubberType ?? this.rubberType),
       description: clearDescription ? null : (description ?? this.description),
       material: material ?? this.material,
+      glassColor: glassColor ?? this.glassColor,
     );
   }
 
@@ -220,6 +235,11 @@ class WindowReviewItem {
         gauge: (json['gauge'] as String? ?? '').trim(),
         color: (json['color'] as String? ?? '').trim(),
       ),
+      // Unlike the aluminium, an absent glass is filled in rather than left
+      // blank: every bill before this one priced the whole job at one glass,
+      // and clear is what those jobs were quoted at. There is no per-job glass
+      // to recover it from the way there is for stock.
+      glassColor: GlassColors.normalize(json['glassColor'] as String?),
     );
   }
 
@@ -247,6 +267,9 @@ class WindowReviewItem {
       // travel with every window on every request.
       'gauge': material.gauge,
       'color': material.color,
+      // The bill groups glazing area by this, so it has to reach the engine
+      // with the window rather than being asked for once at billing time.
+      'glassColor': glassColor,
     };
   }
 
