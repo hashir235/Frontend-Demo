@@ -12,6 +12,13 @@ import '../models/glass_color.dart';
 ///
 /// The choice stays where it was put. Most jobs are mostly one glass, so it
 /// carries to the next window and only moves when somebody moves it.
+///
+/// Names are the short ones -- "Green Mer." beside "Green" -- the same wording
+/// the cutting list column uses. A glass called one thing here and another on
+/// the list it is cut from is a glass somebody has to stop and match up; the
+/// pair still reads apart, and the swatch carries the rest. The full names
+/// stay on the printed list and the sheet drawings, where there is room and
+/// the reader may be the customer.
 class GlassColorPicker extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
@@ -60,7 +67,7 @@ class GlassColorPicker extends StatelessWidget {
                       ListTile(
                         leading: GlassSwatch(color: option, size: 30),
                         title: Text(
-                          option,
+                          GlassColors.shortLabelFor(option),
                           style: TextStyle(
                             fontWeight: option == current
                                 ? FontWeight.w800
@@ -122,7 +129,7 @@ class GlassColorPicker extends StatelessWidget {
                   const SizedBox(width: AppTheme.space4),
                   Expanded(
                     child: Text(
-                      current,
+                      GlassColors.shortLabelFor(current),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textPrimary,
