@@ -414,7 +414,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       unitMode: unitMode,
       heightValue: height,
       widthValue: width,
-      leftWidthValue: _usesSplitWidthInputs ? dim(_leftWidthController.text) : null,
+      leftWidthValue: _usesSplitWidthInputs
+          ? dim(_leftWidthController.text)
+          : null,
       archValue: _usesArchInput ? dim(_archController.text) : null,
     );
     if (measured == null) return const <String, double>{};
@@ -431,7 +433,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       final EstimationSettingsModel settings =
           await EstimationSettingsRepository().fetchEstimationSettings();
       return <String, double>{
-        for (final MapEntry<String, double> entry in settings.cuttingMargins.entries)
+        for (final MapEntry<String, double> entry
+            in settings.cuttingMargins.entries)
           'cm_${entry.key}': entry.value,
       };
     } catch (_) {
@@ -786,6 +789,81 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _collarPageValue = (_selectedCollar - 1).toDouble();
     _collarPageController.addListener(_onCollarScroll);
     unawaited(_restorePersistedSidebarState());
+  }
+
+  /// Whether there is a collar [delta] steps away.
+  bool _canStepCollar(int delta) {
+    final int next = _collarPageValue.round() + delta;
+    return next >= 0 && next < _handler.collarCount;
+  }
+
+  /// Moves one collar along.
+  ///
+  /// Dragging through fourteen cards to reach the one you want is the slowest
+  /// part of entering a window, and it is done for every window in a project.
+  /// A tap on the near half of the strip is one movement instead of several.
+  void _stepCollar(int delta) {
+    if (!_collarPageController.hasClients) {
+      return;
+    }
+    final int current = (_collarPageController.page ?? _collarPageValue)
+        .round();
+    final int next = current + delta;
+    if (next < 0 || next >= _handler.collarCount) {
+      return;
+    }
+    // Selection follows from onPageChanged, so there is one place that decides
+    // which collar is current however it was reached -- tap, arrow or drag.
+    _collarPageController.animateToPage(
+      next,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  /// The two arrows under the collar cards.
+  ///
+  /// Tapping a half of the strip is quicker than dragging, but invisible until
+  /// somebody happens to try it. These say which way each half goes, and fade
+  /// at the ends so a strip that has stopped moving does not read as stuck.
+  Widget _buildCollarStepHint() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        _buildCollarStepArrow(
+          const Key('collar_step_back'),
+          Icons.arrow_back_rounded,
+          -1,
+        ),
+        const SizedBox(width: 40),
+        _buildCollarStepArrow(
+          const Key('collar_step_forward'),
+          Icons.arrow_forward_rounded,
+          1,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCollarStepArrow(Key key, IconData icon, int delta) {
+    final bool enabled = _canStepCollar(delta);
+    return GestureDetector(
+      key: key,
+      behavior: HitTestBehavior.opaque,
+      onTap: enabled ? () => _stepCollar(delta) : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 180),
+          opacity: enabled ? 1 : 0.3,
+          child: Icon(
+            icon,
+            size: 20,
+            color: AppTheme.deepTeal.withValues(alpha: 0.35),
+          ),
+        ),
+      ),
+    );
   }
 
   void _onCollarScroll() {
@@ -1804,83 +1882,67 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         ? AppTheme.violet
         : (isFocused ? AppTheme.sky : AppTheme.ice.withValues(alpha: 0.9));
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedCollar = collarIndex;
-          _selectedSectionCode = _normalizedSelectedSectionCode(
-            _selectedSectionCode,
-            collarIndex,
-          );
-        });
-        _persistSidebarSelections();
-        _collarPageController.animateToPage(
-          index,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeInOutCubic,
-        );
-      },
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: side * _collarCardWidthFactor,
-            maxHeight: side,
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                top: -18,
-                left: 0,
-                right: 0,
-                child: Center(child: _CollarArchBadge(number: collarIndex)),
-              ),
-              AspectRatio(
-                aspectRatio: _collarCardWidthFactor,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeInOutCubic,
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 14,
+    // No tap handler of its own. The strip takes taps as a whole, so which
+    // half the finger lands on decides the direction rather than which card it
+    // hit -- and since a neighbour card sits in that half anyway, tapping one
+    // still brings it to the middle, as it always did.
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: side * _collarCardWidthFactor,
+          maxHeight: side,
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: -18,
+              left: 0,
+              right: 0,
+              child: Center(child: _CollarArchBadge(number: collarIndex)),
+            ),
+            AspectRatio(
+              aspectRatio: _collarCardWidthFactor,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeInOutCubic,
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF8FBFD), Color(0xFFEAF1F5)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFF8FBFD), Color(0xFFEAF1F5)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: borderColor,
+                    width: isSelected ? 2.2 : 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.deepTeal.withValues(alpha: 0.08),
+                      blurRadius: 14,
+                      offset: const Offset(0, 8),
                     ),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: borderColor,
-                      width: isSelected ? 2.2 : 1.2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.deepTeal.withValues(alpha: 0.08),
-                        blurRadius: 14,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Builder(
-                    builder: (BuildContext context) {
-                      final Widget? overlayWidget = _handler.overlayForCollar(
-                        collarIndex,
-                        _selectedSectionCode,
-                      );
-                      return Stack(
-                        children: [
-                          if (overlayWidget case final Widget overlay) overlay,
-                        ],
-                      );
-                    },
-                  ),
+                  ],
+                ),
+                child: Builder(
+                  builder: (BuildContext context) {
+                    final Widget? overlayWidget = _handler.overlayForCollar(
+                      collarIndex,
+                      _selectedSectionCode,
+                    );
+                    return Stack(
+                      children: [
+                        if (overlayWidget case final Widget overlay) overlay,
+                      ],
+                    );
+                  },
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -2438,49 +2500,75 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         const SizedBox(height: 12),
                         TutorialTarget(
                           id: 'input.collarCards',
-                          child: SizedBox(
-                            height: _collarCardSize + 30,
-                            child: LayoutBuilder(
-                              builder:
-                                  (
-                                    BuildContext context,
-                                    BoxConstraints constraints,
-                                  ) {
-                                    final double availableWidth =
-                                        constraints.maxWidth;
-                                    final double side = math.min(
-                                      _collarCardSize,
-                                      availableWidth *
-                                          _collarViewportFraction *
-                                          0.9,
-                                    );
-                                    return PageView.builder(
-                                      key: const Key('collar_page_view'),
-                                      controller: _collarPageController,
-                                      physics: const BouncingScrollPhysics(),
-                                      itemCount: _handler.collarCount,
-                                      onPageChanged: (int index) {
-                                        setState(() {
-                                          _selectedCollar = index + 1;
-                                          _selectedSectionCode =
-                                              _normalizedSelectedSectionCode(
-                                                _selectedSectionCode,
-                                                _selectedCollar,
-                                              );
-                                        });
-                                        _persistSidebarSelections();
-                                      },
-                                      itemBuilder:
-                                          (BuildContext context, int index) {
-                                            return _buildCollarCard(
-                                              index,
-                                              isFocused: true,
-                                              side: side,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              SizedBox(
+                                height: _collarCardSize + 30,
+                                child: LayoutBuilder(
+                                  builder:
+                                      (
+                                        BuildContext context,
+                                        BoxConstraints constraints,
+                                      ) {
+                                        final double availableWidth =
+                                            constraints.maxWidth;
+                                        final double side = math.min(
+                                          _collarCardSize,
+                                          availableWidth *
+                                              _collarViewportFraction *
+                                              0.9,
+                                        );
+                                        // Taps are taken here rather than on
+                                        // the page or the cards: on the strip,
+                                        // so the rest of the screen keeps its
+                                        // own taps, and above the PageView, so
+                                        // dragging still works as before.
+                                        return GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTapUp: (TapUpDetails details) {
+                                            _stepCollar(
+                                              details.localPosition.dx <
+                                                      availableWidth / 2
+                                                  ? -1
+                                                  : 1,
                                             );
                                           },
-                                    );
-                                  },
-                            ),
+                                          child: PageView.builder(
+                                            key: const Key('collar_page_view'),
+                                            controller: _collarPageController,
+                                            physics:
+                                                const BouncingScrollPhysics(),
+                                            itemCount: _handler.collarCount,
+                                            onPageChanged: (int index) {
+                                              setState(() {
+                                                _selectedCollar = index + 1;
+                                                _selectedSectionCode =
+                                                    _normalizedSelectedSectionCode(
+                                                      _selectedSectionCode,
+                                                      _selectedCollar,
+                                                    );
+                                              });
+                                              _persistSidebarSelections();
+                                            },
+                                            itemBuilder:
+                                                (
+                                                  BuildContext context,
+                                                  int index,
+                                                ) {
+                                                  return _buildCollarCard(
+                                                    index,
+                                                    isFocused: true,
+                                                    side: side,
+                                                  );
+                                                },
+                                          ),
+                                        );
+                                      },
+                                ),
+                              ),
+                              _buildCollarStepHint(),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -2935,7 +3023,11 @@ class _FormulaEditorButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             child: Row(
               children: <Widget>[
-                const Icon(Icons.functions_rounded, size: 18, color: Colors.white),
+                const Icon(
+                  Icons.functions_rounded,
+                  size: 18,
+                  color: Colors.white,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
