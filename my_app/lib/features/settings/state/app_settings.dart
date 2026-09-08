@@ -18,7 +18,7 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
   }
 
-  SizeInputMode _sizeInputMode = SizeInputMode.keypad;
+  SizeInputMode _sizeInputMode = SizeInputMode.mergedKeypad;
 
   SizeInputMode get sizeInputMode => _sizeInputMode;
 

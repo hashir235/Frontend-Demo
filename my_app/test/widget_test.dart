@@ -44,22 +44,36 @@ Finder _fieldByLabel(String label) => find.byWidgetPredicate(
       widget is TextField && widget.decoration?.labelText == label,
 );
 
-/// Estimation opens in inches, where a size is a typed inch box plus a suter
-/// wheel. These pass whole inches and leave the wheel at 0.
+/// Estimation opens in inches, and a size goes into one box: the inch, a
+/// space, then the suter. These pass whole inches, which is the same size with
+/// the suter left off.
 Future<void> _enterInputValues(
   WidgetTester tester, {
   required String height,
   required String width,
   String? description,
 }) async {
-  await tester.enterText(_fieldByLabel('Height (Inch)'), height);
-  await tester.enterText(_fieldByLabel('Width (Inch)'), width);
+  await tester.enterText(_fieldByLabel('Width'), width);
+  await tester.enterText(_fieldByLabel('Height'), height);
   if (description != null) {
     await tester.enterText(
       _fieldByLabel('Description (Optional)'),
       description,
     );
   }
+}
+
+/// The size line of a review row, as plain text.
+///
+/// The row is a single RichText of coloured spans, so the only way to ask what
+/// order it reads in is to flatten it.
+String _reviewSizeLine(WidgetTester tester, Key row) {
+  final Iterable<RichText> texts = tester.widgetList<RichText>(
+    find.descendant(of: find.byKey(row), matching: find.byType(RichText)),
+  );
+  return texts
+      .map((RichText text) => text.text.toPlainText())
+      .firstWhere((String line) => line.contains('Width'), orElse: () => '');
 }
 
 Future<void> _tapSaveButton(WidgetTester tester) async {
@@ -213,12 +227,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // A corner window splits the width in two, and in inches each of those is
-    // an inch box plus a suter wheel -- so the labels carry the unit.
-    expect(_fieldByLabel('Right Width (Inch)'), findsOneWidget);
-    expect(_fieldByLabel('Left Width (Inch)'), findsOneWidget);
-    expect(find.text('Right Width (Inch)'), findsOneWidget);
-    expect(find.text('Left Width (Inch)'), findsOneWidget);
+    // A corner window splits the width in two, so both halves get a box of
+    // their own alongside the height.
+    expect(_fieldByLabel('Right Width'), findsOneWidget);
+    expect(_fieldByLabel('Left Width'), findsOneWidget);
+    expect(find.text('Right Width'), findsOneWidget);
+    expect(find.text('Left Width'), findsOneWidget);
   });
 
   testWidgets('MSCF input also shows right and left width fields', (
@@ -238,10 +252,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(_fieldByLabel('Right Width (Inch)'), findsOneWidget);
-    expect(_fieldByLabel('Left Width (Inch)'), findsOneWidget);
-    expect(find.text('Right Width (Inch)'), findsOneWidget);
-    expect(find.text('Left Width (Inch)'), findsOneWidget);
+    expect(_fieldByLabel('Right Width'), findsOneWidget);
+    expect(_fieldByLabel('Left Width'), findsOneWidget);
+    expect(find.text('Right Width'), findsOneWidget);
+    expect(find.text('Left Width'), findsOneWidget);
   });
 
   testWidgets('Non-corner windows keep 14 collar cards', (
@@ -529,8 +543,8 @@ void main() {
 
     await _enterInputValues(
       tester,
-      height: '45.7',
-      width: '22.4',
+      height: '45 7',
+      width: '22 4',
       description: 'bath room window',
     );
     await _tapSaveButton(tester);
@@ -542,6 +556,16 @@ void main() {
     // The row labels the description and prints it underneath.
     expect(find.text('Description'), findsOneWidget);
     expect(find.text('bath room window'), findsOneWidget);
+
+    // Width before height, the same order as the boxes it was typed into. A
+    // row that read the other way round to the screen gets misread.
+    final String sizes = _reviewSizeLine(tester, const Key('review_item_1'));
+    expect(sizes, contains('Width'));
+    expect(sizes.indexOf('Width'), lessThan(sizes.indexOf('Height')));
+    // And the merged entry stored the same size the two boxes would have:
+    // `22 4` typed, `22.4` kept.
+    expect(sizes, contains('22.4'));
+    expect(sizes, contains('45.7'));
   });
 
   testWidgets('Save without description keeps review row clean', (
@@ -550,7 +574,7 @@ void main() {
     await _openAddWindows(tester);
     await _tapFocusedCard(tester);
 
-    await _enterInputValues(tester, height: '21.3', width: '11.2');
+    await _enterInputValues(tester, height: '21 3', width: '11 2');
     await _tapSaveButton(tester);
 
     await tester.tap(find.byKey(const Key('open_review_button')));
@@ -568,13 +592,13 @@ void main() {
 
       await _enterInputValues(
         tester,
-        height: '31.6',
-        width: '12.3',
+        height: '31 6',
+        width: '12 3',
         description: 'bath room window',
       );
       await _tapSaveButton(tester);
 
-      await _enterInputValues(tester, height: '32.6', width: '13.3');
+      await _enterInputValues(tester, height: '32 6', width: '13 3');
       await _tapSaveButton(tester);
 
       await tester.tap(find.byKey(const Key('open_review_button')));

@@ -27,6 +27,7 @@ import '../../../formulas/model/window_measurements.dart';
 import '../../../settings/state/numbering_mode.dart';
 import '../../../settings/state/size_input_mode.dart';
 import '../review_list_screen.dart';
+import 'size_entry_notation.dart';
 import '../../models/window_material.dart';
 import '../../widgets/window_material_picker.dart';
 import '../../../formulas/data/formula_book.dart';
@@ -200,10 +201,26 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// (inch typed + suter wheel, both flows) and estimation feet (feet typed +
   /// inch wheel). CM and the fabrication "feet" slot (which is really cm) stay
   /// single typed fields.
-  bool get _usesInchSuterSplit => _unitMode == UnitMode.inches;
+  bool get _usesInchSuterSplit =>
+      _unitMode == UnitMode.inches && !_usesMergedSizeInput;
   bool get _usesFeetInchSplit =>
-      !_isFabricationFlow && _unitMode == UnitMode.feet;
+      !_isFabricationFlow &&
+      _unitMode == UnitMode.feet &&
+      !_usesMergedSizeInput;
   bool get _usesSplitInput => _usesInchSuterSplit || _usesFeetInchSplit;
+
+  /// Settings se: dono hisse ek hi box mein.
+  bool get _usesMergedSizeInput =>
+      AppSettings.instance.sizeInputMode == SizeInputMode.mergedKeypad;
+
+  /// Whether this screen is currently taking a whole size in one box.
+  ///
+  /// Only where there is a sub-part to merge. CM has none, so it is already a
+  /// single box and this changes nothing about it.
+  bool get _usesMergedInput => _usesMergedSizeInput && !_isCmMode;
+
+  /// Which pair the merged box is holding: feet and inch, or inch and suter.
+  bool get _mergedIsFeet => !_isFabricationFlow && _unitMode == UnitMode.feet;
 
   /// True when the active input is in centimetres — either fabrication's
   /// existing cm mode (which reuses the `feet` slot) or estimation's real
@@ -778,6 +795,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
     _archController.text = editingItem?.archValue ?? '';
     _syncSplitControllersFromCombined();
+    // A window opened for editing arrives in stored notation; the merged box
+    // has to show it the way it is typed.
+    if (_usesMergedInput) {
+      _applyMergedDisplayToControllers();
+    }
     _descriptionController.text = widget.editingItem?.description ?? '';
     if (widget.editingItem != null) {
       _winNoController.text = widget.editingItem!.winNo.toString();
@@ -887,14 +909,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (_numberingMode == NumberingMode.manual && !widget.isEditMode) {
       targets.add((node: _winNoFocusNode, key: _winNoFieldKey));
     }
-    // A size is two boxes — whole and sub-part — and the order below is the
-    // order a person reads a tape: height and its suter, then width and its
-    // suter. The sub-part joins the chain only when it is a typing box; on the
-    // wheel there is nothing to focus, and "next" hops the typed fields alone.
-    targets.add((node: _heightFocusNode, key: _heightFieldKey));
-    if (_usesKeypadSizeInput) {
-      targets.add((node: _heightSubFocusNode, key: _heightFieldKey));
-    }
+    // "Next" follows the boxes down the screen, and the boxes now read width
+    // first. A chain that jumped to height while the eye was on width would
+    // put the wrong number in the wrong box.
+    //
+    // The sub-part joins the chain only when it is a typing box of its own: on
+    // the wheel there is nothing to focus, and the merged box has no second
+    // half to move to.
     targets.add((node: _widthFocusNode, key: _widthFieldKey));
     if (_usesKeypadSizeInput) {
       targets.add((node: _widthSubFocusNode, key: _widthFieldKey));
@@ -904,6 +925,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       if (_usesKeypadSizeInput) {
         targets.add((node: _leftWidthSubFocusNode, key: _leftWidthFieldKey));
       }
+    }
+    targets.add((node: _heightFocusNode, key: _heightFieldKey));
+    if (_usesKeypadSizeInput) {
+      targets.add((node: _heightSubFocusNode, key: _heightFieldKey));
     }
     if (_usesArchInput) {
       targets.add((node: _archFocusNode, key: _archFieldKey));
@@ -1027,80 +1052,66 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
   }
 
-  String _combineInchSuterForStorage(String rawInch, String rawSuter) {
-    final String inchValue = rawInch.trim();
-    final String suterValue = rawSuter.trim();
-    if (suterValue.isEmpty) {
-      return '$inchValue.0';
-    }
-    if (!suterValue.contains('.')) {
-      return '$inchValue.$suterValue';
-    }
-    final List<String> parts = suterValue.split('.');
-    final String left = parts.first;
-    final String right = parts.length > 1 ? parts[1] : '';
-    if (right.isEmpty) {
-      return '$inchValue.$left';
-    }
-    return '$inchValue.${left[0]}${right[0]}';
-  }
+  String _combineInchSuterForStorage(String rawInch, String rawSuter) =>
+      SizeNotation.combineInchSuter(rawInch, rawSuter);
 
   ({String inch, String suter}) _splitStoredDimensionForInches(
     String rawValue,
-  ) {
-    final String value = rawValue.trim();
-    if (value.isEmpty) {
-      return (inch: '', suter: '');
-    }
-    final List<String> parts = value.split('.');
-    final String inchValue = parts.first;
-    if (parts.length < 2) {
-      return (inch: inchValue, suter: '');
-    }
-    final String right = parts[1];
-    if (right.isEmpty || right == '0') {
-      return (inch: inchValue, suter: '');
-    }
-    if (right.length == 1) {
-      return (inch: inchValue, suter: right);
-    }
-    return (inch: inchValue, suter: '${right[0]}.${right[1]}');
-  }
+  ) => SizeNotation.splitStoredInches(rawValue);
 
   // For the feet+inch split, the "inch" slot of the shared split controllers
   // holds the whole feet and the "suter" slot holds the whole inch (0..11)
   // picked on the wheel. Storage stays in the shop's `feet.inch` notation.
-  String _combineFeetInchForStorage(String rawFeet, String rawInch) {
-    final String feet = rawFeet.trim();
-    if (feet.isEmpty) {
-      return '';
-    }
-    final int inch = int.tryParse(rawInch.trim()) ?? 0;
-    return '$feet.$inch';
-  }
+  String _combineFeetInchForStorage(String rawFeet, String rawInch) =>
+      SizeNotation.combineFeetInch(rawFeet, rawInch);
 
-  ({String inch, String suter}) _splitStoredDimensionForFeet(String stored) {
-    final String value = stored.trim();
-    if (value.isEmpty) {
-      return (inch: '', suter: '');
-    }
-    final List<String> parts = value.split('.');
-    final String feet = parts.first;
-    if (parts.length < 2 || parts[1].trim().isEmpty) {
-      return (inch: feet, suter: '');
-    }
-    final int inch = int.tryParse(parts[1].trim()) ?? 0;
-    return (
-      inch: feet,
-      suter: InchWheel.snap(inch.toDouble()).round().toString(),
-    );
-  }
+  ({String inch, String suter}) _splitStoredDimensionForFeet(String stored) =>
+      SizeNotation.splitStoredFeet(stored);
 
   /// Mode-aware split of a stored dimension into (whole, wheel) parts.
   ({String inch, String suter}) _splitStoredForSplit(String stored) {
     return _usesFeetInchSplit
         ? _splitStoredDimensionForFeet(stored)
         : _splitStoredDimensionForInches(stored);
+  }
+
+  /// The two halves of what was typed into a merged box.
+  ///
+  /// A space separates them, because that is how the size is said out loud --
+  /// "twenty-three four" -- and it leaves the dot free to mean the half suter
+  /// it already means everywhere else. Returns null when there is more than
+  /// one space's worth of parts, which is a typo rather than a size.
+  ({String whole, String sub})? _splitMergedEntry(String rawValue) =>
+      SizeNotation.splitMergedEntry(rawValue);
+
+  /// Mode-aware combine for the merged box. Does not read the split flags,
+  /// which are off whenever this is in use.
+  String _combineMergedForStorage(String whole, String sub) {
+    if (whole.trim().isEmpty) {
+      return '';
+    }
+    return _mergedIsFeet
+        ? _combineFeetInchForStorage(whole, sub)
+        : _combineInchSuterForStorage(whole, sub);
+  }
+
+  /// Stored notation as the merged box shows it: `23.4` reads back as `23 4`,
+  /// and a size that lands on a whole inch shows just the inch.
+  String _mergedDisplayFromStorage(String stored) {
+    final String value = stored.trim();
+    if (value.isEmpty) {
+      return '';
+    }
+    final ({String inch, String suter}) parts = _mergedIsFeet
+        ? _splitStoredDimensionForFeet(value)
+        : _splitStoredDimensionForInches(value);
+    if (parts.inch.isEmpty) {
+      return '';
+    }
+    if (parts.suter.isEmpty || parts.suter == '0') {
+      return parts.inch;
+    }
+    return '${parts.inch} ${parts.suter}';
   }
 
   /// Mode-aware combine of the split controllers back into stored notation.
@@ -1152,6 +1163,34 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
   }
 
+  /// Every dimension controller, so the merged conversions do not have to name
+  /// them one at a time and cannot quietly miss one.
+  Iterable<TextEditingController> get _dimensionControllers sync* {
+    yield _heightController;
+    yield _widthController;
+    if (_usesSplitWidthInputs) yield _leftWidthController;
+    if (_usesArchInput) yield _archController;
+  }
+
+  /// Storage notation into what the merged boxes show.
+  void _applyMergedDisplayToControllers() {
+    for (final TextEditingController controller in _dimensionControllers) {
+      controller.text = _mergedDisplayFromStorage(controller.text);
+    }
+  }
+
+  /// What the merged boxes show, back into storage notation.
+  void _foldMergedDisplayToStorage() {
+    for (final TextEditingController controller in _dimensionControllers) {
+      final ({String whole, String sub})? parts = _splitMergedEntry(
+        controller.text,
+      );
+      controller.text = parts == null
+          ? ''
+          : _combineMergedForStorage(parts.whole, parts.sub);
+    }
+  }
+
   void _syncCombinedControllersFromSplit() {
     if (!_usesSplitInput) {
       return;
@@ -1188,36 +1227,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     return null;
   }
 
-  String? _validateFabricationInchPart(String rawValue) {
-    final String value = rawValue.trim();
-    if (value.isEmpty) {
-      return 'Required';
-    }
-    final int? parsed = int.tryParse(value);
-    if (parsed == null) {
-      return 'Use whole number';
-    }
-    if (parsed <= 0) {
-      return 'Must be greater than zero';
-    }
-    return null;
-  }
+  String? _validateFabricationInchPart(String rawValue) =>
+      SizeNotation.validateWholePart(rawValue);
 
-  String? _validateFabricationSuterPart(String rawValue) {
-    final String value = rawValue.trim();
-    if (value.isEmpty) {
-      return null;
-    }
-    final RegExp pattern = RegExp(r'^\d(?:\.\d)?$');
-    if (!pattern.hasMatch(value)) {
-      return 'Use 0..7.9 (one decimal)';
-    }
-    final double? parsed = double.tryParse(value);
-    if (parsed == null || parsed < 0 || parsed >= 8) {
-      return 'Suter must be less than 8';
-    }
-    return null;
-  }
+  String? _validateFabricationSuterPart(String rawValue) =>
+      SizeNotation.validateSuterPart(rawValue);
 
   String? _validateFabricationSplitDimension({
     required String inchValue,
@@ -1238,6 +1252,21 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           'Enter a single numeric value in cm.\n'
           'Examples: 34 or 34.5'
           '${_isEstimationCmMode ? '\n\nYour sizes stay in cm everywhere — review, cutting sizes and reports.' : ''}';
+    } else if (_usesMergedInput) {
+      instructionText = _mergedIsFeet
+          ? 'Feet mode — one box:\n'
+                'Type the feet, a space, then the inch.\n\n'
+                '4 9   →  4 feet 9 inch\n'
+                '4     →  4 feet\n\n'
+                '12 inches make the next foot, so the inch runs 0 to 11.'
+          : 'Inches mode — one box:\n'
+                'Type the inch, a space, then the suter. Add .5 to the suter '
+                'for a half.\n\n'
+                '23 4     →  23 inch 4 suter\n'
+                '44 5.5   →  44 inch 5½ suter\n'
+                '32 0.5   →  32 inch ½ suter\n'
+                '23       →  23 inch\n\n'
+                'Eight suter make the next inch, so the suter runs 0 to 7.5.';
     } else if (_usesInchSuterSplit) {
       instructionText =
           'Inches mode:\n'
@@ -1268,7 +1297,16 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Input Instructions'),
-          content: SingleChildScrollView(child: Text(instructionText)),
+          content: SingleChildScrollView(
+            child: Text(
+              // The order is worth saying once: the boxes read left to right
+              // the way a size is called out, and the review list matches.
+              '$instructionText\n\n'
+              '____________________________________\n'
+              'Width is the first box, height the second — the same order the '
+              'review list shows them in.',
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -1428,6 +1466,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return;
     }
     final bool wasSplit = _usesSplitInput;
+    final bool wasMerged = _usesMergedInput;
 
     setState(() {
       // Leaving a split mode: fold the split controllers back into the single
@@ -1435,10 +1474,19 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       if (wasSplit) {
         _syncCombinedControllersFromSplit();
       }
+      // Leaving a merged box: the controller is holding `23 4`, which is not
+      // what anything downstream reads. Put it back into stored notation while
+      // the old unit still says how to read it.
+      if (wasMerged) {
+        _foldMergedDisplayToStorage();
+      }
       _unitMode = mode;
       // Entering a split mode: seed the split controllers from the combined one.
       if (_usesSplitInput) {
         _syncSplitControllersFromCombined();
+      }
+      if (_usesMergedInput) {
+        _applyMergedDisplayToControllers();
       }
       _heightError = _dimensionErrorForCurrentMode(
         _heightController,
@@ -1459,9 +1507,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           : null;
       // Arch stays a single typed field, even in split modes.
       _archError = _usesArchInput
-          ? (_isCmMode
-                ? _validateCmDimension(_archController.text)
-                : _validateDimension(_archController.text))
+          ? _validateSingleDimension(_archController.text)
           : null;
     });
     _persistSidebarSelections();
@@ -1481,10 +1527,37 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         wheelController.text,
       );
     }
+    return _validateSingleDimension(combined.text);
+  }
+
+  /// The rules for whichever single box is on screen: cm, the merged
+  /// `inch suter` box, or the plain `inch.suter` one.
+  String? _validateSingleDimension(String text) {
     if (_isCmMode) {
-      return _validateCmDimension(combined.text);
+      return _validateCmDimension(text);
     }
-    return _validateDimension(combined.text);
+    if (_usesMergedInput) {
+      return _validateMergedDimension(text);
+    }
+    return _validateDimension(text);
+  }
+
+  String? _validateMergedDimension(String rawValue) {
+    if (rawValue.trim().isEmpty) {
+      return 'Required';
+    }
+    final ({String whole, String sub})? parts = _splitMergedEntry(rawValue);
+    if (parts == null) {
+      return _mergedIsFeet ? 'Use: feet inch' : 'Use: inch suter';
+    }
+    // The halves are held to exactly the rules the two separate boxes hold
+    // them to, so what is accepted does not depend on how it was typed.
+    return _mergedIsFeet
+        ? _validateFeetSplitDimension(parts.whole, parts.sub)
+        : _validateFabricationSplitDimension(
+            inchValue: parts.whole,
+            suterValue: parts.sub,
+          );
   }
 
   // Aluminium stock tops out around 19 ft, and real windows are well under
@@ -1590,6 +1663,15 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }
 
   String _normalizeDimensionForStorage(String rawValue) {
+    if (_usesMergedInput) {
+      // The single funnel every stored dimension goes through, so the merged
+      // box only has to be understood here rather than at each call site.
+      final ({String whole, String sub})? parts = _splitMergedEntry(rawValue);
+      if (parts == null) {
+        return '';
+      }
+      return _combineMergedForStorage(parts.whole, parts.sub);
+    }
     final String value = rawValue.trim();
     if (value.contains('.')) {
       return value;
@@ -1971,6 +2053,235 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         );
       });
 
+  /// What the empty box suggests typing.
+  String get _dimensionHint {
+    if (_isCmMode) {
+      return 'cm';
+    }
+    if (_usesMergedInput) {
+      // Short on purpose: these boxes sit two to a line, and the info button
+      // beside them carries the explanation.
+      return _mergedIsFeet ? '4 9' : '23 4';
+    }
+    return _unitMode.inputHint;
+  }
+
+  /// The height, width and arch boxes.
+  ///
+  /// Width comes first and sits beside height wherever each dimension is a
+  /// single box. That is the order a size is read off a tape and called out,
+  /// and one line instead of two leaves the collar cards and the sizes on
+  /// screen together. The wheel keeps a row per dimension: a box and a wheel
+  /// each, twice over, is four controls across a phone.
+  Widget _buildSizeFields(TextStyle? numberInputStyle, TextStyle? hintStyle) {
+    final Widget height = _buildHeightField(numberInputStyle, hintStyle);
+    final Widget width = _buildWidthField(numberInputStyle, hintStyle);
+    final Widget? leftWidth = _usesSplitWidthInputs
+        ? _buildLeftWidthField(numberInputStyle, hintStyle)
+        : null;
+
+    final List<Widget> rows = <Widget>[];
+    if (_usesSplitInput) {
+      rows.add(width);
+      if (leftWidth != null) {
+        rows.add(leftWidth);
+      }
+      rows.add(height);
+    } else if (leftWidth != null) {
+      rows.add(_buildSideBySide(width, leftWidth));
+      rows.add(height);
+    } else {
+      rows.add(_buildSideBySide(width, height));
+    }
+    if (_usesArchInput) {
+      rows.add(_buildArchField(numberInputStyle, hintStyle));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        for (int i = 0; i < rows.length; i++) ...<Widget>[
+          if (i > 0) const SizedBox(height: 12),
+          rows[i],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSideBySide(Widget first, Widget second) {
+    return Row(
+      // Top-aligned so one box growing an error message does not shove the
+      // other one down with it.
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(child: first),
+        const SizedBox(width: 12),
+        Expanded(child: second),
+      ],
+    );
+  }
+
+  Widget _buildHeightField(TextStyle? numberInputStyle, TextStyle? hintStyle) {
+    if (_usesSplitInput) {
+      return _buildSplitDimensionField(
+        label: 'Height',
+        wholeFieldKey: _heightFieldKey,
+        wholeController: _heightInchController,
+        wheelController: _heightSuterController,
+        errorText: _heightError,
+        numberInputStyle: numberInputStyle,
+        wholeFocusNode: _heightFocusNode,
+        subFocusNode: _heightSubFocusNode,
+        onChanged: () {
+          setState(() {
+            _heightController.text = _combineSplitForStorage(
+              _heightInchController.text,
+              _heightSuterController.text,
+            );
+            _heightError = _validateSplitDimension(
+              _heightInchController.text,
+              _heightSuterController.text,
+            );
+          });
+        },
+      );
+    }
+    return _buildSingleDimensionField(
+      fieldKey: _heightFieldKey,
+      controller: _heightController,
+      focusNode: _heightFocusNode,
+      label: 'Height',
+      errorText: _heightError,
+      numberInputStyle: numberInputStyle,
+      hintStyle: hintStyle,
+      hintText: _dimensionHint,
+      onChanged: (_) {
+        if (_heightError != null) {
+          setState(() {
+            _heightError = _validateSingleDimension(_heightController.text);
+          });
+        }
+      },
+    );
+  }
+
+  Widget _buildWidthField(TextStyle? numberInputStyle, TextStyle? hintStyle) {
+    final String label = _usesSplitWidthInputs ? 'Right Width' : 'Width';
+    if (_usesSplitInput) {
+      return _buildSplitDimensionField(
+        // Width is the first field on screen now, so it is the one the tour
+        // can point at when it explains the wheel.
+        isTourWheelExample: true,
+        label: label,
+        wholeFieldKey: _widthFieldKey,
+        wholeController: _widthInchController,
+        wheelController: _widthSuterController,
+        errorText: _widthError,
+        numberInputStyle: numberInputStyle,
+        wholeFocusNode: _widthFocusNode,
+        subFocusNode: _widthSubFocusNode,
+        onChanged: () {
+          setState(() {
+            _widthController.text = _combineSplitForStorage(
+              _widthInchController.text,
+              _widthSuterController.text,
+            );
+            _widthError = _validateSplitDimension(
+              _widthInchController.text,
+              _widthSuterController.text,
+            );
+          });
+        },
+      );
+    }
+    return _buildSingleDimensionField(
+      fieldKey: _widthFieldKey,
+      controller: _widthController,
+      focusNode: _widthFocusNode,
+      label: label,
+      errorText: _widthError,
+      numberInputStyle: numberInputStyle,
+      hintStyle: hintStyle,
+      hintText: _dimensionHint,
+      onChanged: (_) {
+        if (_widthError != null) {
+          setState(() {
+            _widthError = _validateSingleDimension(_widthController.text);
+          });
+        }
+      },
+    );
+  }
+
+  Widget _buildLeftWidthField(
+    TextStyle? numberInputStyle,
+    TextStyle? hintStyle,
+  ) {
+    if (_usesSplitInput) {
+      return _buildSplitDimensionField(
+        label: 'Left Width',
+        wholeFieldKey: _leftWidthFieldKey,
+        wholeController: _leftWidthInchController,
+        wheelController: _leftWidthSuterController,
+        errorText: _leftWidthError,
+        numberInputStyle: numberInputStyle,
+        wholeFocusNode: _leftWidthFocusNode,
+        subFocusNode: _leftWidthSubFocusNode,
+        onChanged: () {
+          setState(() {
+            _leftWidthController.text = _combineSplitForStorage(
+              _leftWidthInchController.text,
+              _leftWidthSuterController.text,
+            );
+            _leftWidthError = _validateSplitDimension(
+              _leftWidthInchController.text,
+              _leftWidthSuterController.text,
+            );
+          });
+        },
+      );
+    }
+    return _buildSingleDimensionField(
+      fieldKey: _leftWidthFieldKey,
+      controller: _leftWidthController,
+      focusNode: _leftWidthFocusNode,
+      label: 'Left Width',
+      errorText: _leftWidthError,
+      numberInputStyle: numberInputStyle,
+      hintStyle: hintStyle,
+      hintText: _dimensionHint,
+      onChanged: (_) {
+        if (_leftWidthError != null) {
+          setState(() {
+            _leftWidthError = _validateSingleDimension(
+              _leftWidthController.text,
+            );
+          });
+        }
+      },
+    );
+  }
+
+  Widget _buildArchField(TextStyle? numberInputStyle, TextStyle? hintStyle) {
+    return _buildSingleDimensionField(
+      fieldKey: _archFieldKey,
+      controller: _archController,
+      focusNode: _archFocusNode,
+      label: 'Arch',
+      errorText: _archError,
+      numberInputStyle: numberInputStyle,
+      hintStyle: hintStyle,
+      hintText: _dimensionHint,
+      onChanged: (_) {
+        if (_archError != null) {
+          setState(() {
+            _archError = _validateSingleDimension(_archController.text);
+          });
+        }
+      },
+    );
+  }
+
   Widget _buildSingleDimensionField({
     required GlobalKey fieldKey,
     required TextEditingController controller,
@@ -1989,7 +2300,12 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       textInputAction: _textInputActionForField(focusNode),
       style: numberInputStyle,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+      inputFormatters: <TextInputFormatter>[
+        FilteringTextInputFormatter.allow(
+          // The merged box needs the space that separates the two halves.
+          _usesMergedInput ? RegExp(r'[0-9. ]') : RegExp(r'[0-9.]'),
+        ),
+      ],
       onSubmitted: (_) => _submitFromField(focusNode),
       scrollPadding: EdgeInsets.zero,
       onChanged: onChanged,
@@ -2651,199 +2967,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         const SizedBox(height: 12),
                         TutorialTarget(
                           id: 'input.sizes',
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              if (_usesSplitInput)
-                                _buildSplitDimensionField(
-                                  isTourWheelExample: true,
-                                  label: 'Height',
-                                  wholeFieldKey: _heightFieldKey,
-                                  wholeController: _heightInchController,
-                                  wheelController: _heightSuterController,
-                                  errorText: _heightError,
-                                  numberInputStyle: numberInputStyle,
-                                  wholeFocusNode: _heightFocusNode,
-                                  subFocusNode: _heightSubFocusNode,
-                                  onChanged: () {
-                                    setState(() {
-                                      _heightController.text =
-                                          _combineSplitForStorage(
-                                            _heightInchController.text,
-                                            _heightSuterController.text,
-                                          );
-                                      _heightError = _validateSplitDimension(
-                                        _heightInchController.text,
-                                        _heightSuterController.text,
-                                      );
-                                    });
-                                  },
-                                )
-                              else
-                                _buildSingleDimensionField(
-                                  fieldKey: _heightFieldKey,
-                                  controller: _heightController,
-                                  focusNode: _heightFocusNode,
-                                  label: 'Height',
-                                  errorText: _heightError,
-                                  numberInputStyle: numberInputStyle,
-                                  hintStyle: hintStyle,
-                                  hintText: _isCmMode
-                                      ? 'cm'
-                                      : _unitMode.inputHint,
-                                  onChanged: (_) {
-                                    if (_heightError != null) {
-                                      setState(() {
-                                        _heightError = _isCmMode
-                                            ? _validateCmDimension(
-                                                _heightController.text,
-                                              )
-                                            : _validateDimension(
-                                                _heightController.text,
-                                              );
-                                      });
-                                    }
-                                  },
-                                ),
-                              const SizedBox(height: 12),
-                              if (_usesSplitInput)
-                                _buildSplitDimensionField(
-                                  label: _usesSplitWidthInputs
-                                      ? 'Right Width'
-                                      : 'Width',
-                                  wholeFieldKey: _widthFieldKey,
-                                  wholeController: _widthInchController,
-                                  wheelController: _widthSuterController,
-                                  errorText: _widthError,
-                                  numberInputStyle: numberInputStyle,
-                                  wholeFocusNode: _widthFocusNode,
-                                  subFocusNode: _widthSubFocusNode,
-                                  onChanged: () {
-                                    setState(() {
-                                      _widthController.text =
-                                          _combineSplitForStorage(
-                                            _widthInchController.text,
-                                            _widthSuterController.text,
-                                          );
-                                      _widthError = _validateSplitDimension(
-                                        _widthInchController.text,
-                                        _widthSuterController.text,
-                                      );
-                                    });
-                                  },
-                                )
-                              else
-                                _buildSingleDimensionField(
-                                  fieldKey: _widthFieldKey,
-                                  controller: _widthController,
-                                  focusNode: _widthFocusNode,
-                                  label: _usesSplitWidthInputs
-                                      ? 'Right Width'
-                                      : 'Width',
-                                  errorText: _widthError,
-                                  numberInputStyle: numberInputStyle,
-                                  hintStyle: hintStyle,
-                                  hintText: _isCmMode
-                                      ? 'cm'
-                                      : _unitMode.inputHint,
-                                  onChanged: (_) {
-                                    if (_widthError != null) {
-                                      setState(() {
-                                        _widthError = _isCmMode
-                                            ? _validateCmDimension(
-                                                _widthController.text,
-                                              )
-                                            : _validateDimension(
-                                                _widthController.text,
-                                              );
-                                      });
-                                    }
-                                  },
-                                ),
-                              if (_usesSplitWidthInputs) ...[
-                                const SizedBox(height: 12),
-                                if (_usesSplitInput)
-                                  _buildSplitDimensionField(
-                                    label: 'Left Width',
-                                    wholeFieldKey: _leftWidthFieldKey,
-                                    wholeController: _leftWidthInchController,
-                                    wheelController: _leftWidthSuterController,
-                                    errorText: _leftWidthError,
-                                    numberInputStyle: numberInputStyle,
-                                    wholeFocusNode: _leftWidthFocusNode,
-                                    subFocusNode: _leftWidthSubFocusNode,
-                                    onChanged: () {
-                                      setState(() {
-                                        _leftWidthController.text =
-                                            _combineSplitForStorage(
-                                              _leftWidthInchController.text,
-                                              _leftWidthSuterController.text,
-                                            );
-                                        _leftWidthError =
-                                            _validateSplitDimension(
-                                              _leftWidthInchController.text,
-                                              _leftWidthSuterController.text,
-                                            );
-                                      });
-                                    },
-                                  )
-                                else
-                                  _buildSingleDimensionField(
-                                    fieldKey: _leftWidthFieldKey,
-                                    controller: _leftWidthController,
-                                    focusNode: _leftWidthFocusNode,
-                                    label: 'Left Width',
-                                    errorText: _leftWidthError,
-                                    numberInputStyle: numberInputStyle,
-                                    hintStyle: hintStyle,
-                                    hintText: _isCmMode
-                                        ? 'cm'
-                                        : _unitMode.inputHint,
-                                    onChanged: (_) {
-                                      if (_leftWidthError != null) {
-                                        setState(() {
-                                          _leftWidthError = _isCmMode
-                                              ? _validateCmDimension(
-                                                  _leftWidthController.text,
-                                                )
-                                              : _validateDimension(
-                                                  _leftWidthController.text,
-                                                );
-                                        });
-                                      }
-                                    },
-                                  ),
-                              ],
-                              if (_usesArchInput) ...[
-                                const SizedBox(height: 12),
-                                _buildSingleDimensionField(
-                                  fieldKey: _archFieldKey,
-                                  controller: _archController,
-                                  focusNode: _archFocusNode,
-                                  label: 'Arch',
-                                  errorText: _archError,
-                                  numberInputStyle: numberInputStyle,
-                                  hintStyle: hintStyle,
-                                  hintText: _isCmMode
-                                      ? 'cm'
-                                      : _unitMode.inputHint,
-                                  onChanged: (_) {
-                                    if (_archError != null) {
-                                      setState(() {
-                                        _archError = _isCmMode
-                                            ? _validateCmDimension(
-                                                _archController.text,
-                                              )
-                                            : _validateDimension(
-                                                _archController.text,
-                                              );
-                                      });
-                                    }
-                                  },
-                                ),
-                              ],
-                            ],
-                          ),
+                          child: _buildSizeFields(numberInputStyle, hintStyle),
                         ),
                         // Quantity sits above the description: it belongs with
                         // the measurement, and a description is the last thing

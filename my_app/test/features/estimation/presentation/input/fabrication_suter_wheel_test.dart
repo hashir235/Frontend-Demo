@@ -38,7 +38,7 @@ void main() {
   });
 
   tearDown(() {
-    AppSettings.instance.setSizeInputMode(SizeInputMode.keypad);
+    AppSettings.instance.setSizeInputMode(SizeInputMode.mergedKeypad);
   });
 
   testWidgets(
@@ -99,8 +99,11 @@ void main() {
     // Drive the height wheel to half a suter through its own callback — this
     // is what a drag/tap ultimately does, without fighting the overlay tab in
     // the test. The width wheel is left untouched (suter 0).
+    //
+    // Width is the first field on screen, so height's wheel is the second one.
     final Finder wheels = find.byType(SuterWheel);
-    tester.widget<SuterWheel>(wheels.first).onChanged(0.5);
+    expect(wheels, findsNWidgets(2));
+    tester.widget<SuterWheel>(wheels.last).onChanged(0.5);
     await tester.pump();
 
     await tester.tap(find.byKey(const Key('input_save_button')));

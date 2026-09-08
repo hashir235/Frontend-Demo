@@ -381,11 +381,10 @@ class ReviewListScreen extends StatelessWidget {
       fontSize: 18,
     );
 
-    final List<InlineSpan> spans = <InlineSpan>[
-      TextSpan(text: 'Height = ', style: heightLabelStyle),
-      TextSpan(text: item.heightValue, style: heightValueStyle),
-      const TextSpan(text: '   '),
-    ];
+    // Width first, then height -- the order the sizes are entered in and the
+    // order a size is called off a tape. A row that read the other way round
+    // to the screen it was typed on is a row that gets misread.
+    final List<InlineSpan> spans = <InlineSpan>[];
 
     if (item.leftWidthValue != null || item.rightWidthValue != null) {
       spans.addAll(<InlineSpan>[
@@ -407,6 +406,12 @@ class ReviewListScreen extends StatelessWidget {
         TextSpan(text: item.widthValue, style: widthValueStyle),
       ]);
     }
+
+    spans.addAll(<InlineSpan>[
+      const TextSpan(text: '   '),
+      TextSpan(text: 'Height = ', style: heightLabelStyle),
+      TextSpan(text: item.heightValue, style: heightValueStyle),
+    ]);
 
     if (item.archValue != null && item.archValue!.isNotEmpty) {
       spans.addAll(<InlineSpan>[

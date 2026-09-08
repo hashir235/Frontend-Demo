@@ -5,6 +5,8 @@ import 'package:my_app/features/estimation/models/window_type.dart';
 import 'package:my_app/features/estimation/presentation/input/window_input_base.dart';
 import 'package:my_app/shared/widgets/option_switch.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
+import 'package:my_app/features/settings/state/app_settings.dart';
+import 'package:my_app/features/settings/state/size_input_mode.dart';
 
 Finder _textFieldByLabel(String label) {
   return find.byWidgetPredicate(
@@ -13,11 +15,13 @@ Finder _textFieldByLabel(String label) {
   );
 }
 
-/// Estimation opens in inches, where a size is a typed inch box plus a suter
-/// box -- hence the unit in the label. Sizes are typed rather than picked on
-/// the wheel by default, so the suter is part of the keyboard chain: next goes
-/// inch, suter, inch, suter, quantity, description. Leaving the suter boxes
-/// empty means the saved value comes back as whole inches, `45` -> `45.0`.
+/// The two-box chain, which is what the "Typing box" setting gives: a size is
+/// an inch box plus a suter box -- hence the unit in the label -- and next
+/// goes width, its suter, height, its suter, quantity, description. Leaving
+/// the suter boxes empty saves whole inches, `45` -> `45.0`.
+///
+/// These set that mode explicitly rather than leaning on the default, which is
+/// the merged single box and has a chain of its own.
 const String _heightLabel = 'Height (Inch)';
 const String _widthLabel = 'Width (Inch)';
 
@@ -47,6 +51,11 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
+    AppSettings.instance.setSizeInputMode(SizeInputMode.keypad);
+  });
+
+  tearDown(() {
+    AppSettings.instance.setSizeInputMode(SizeInputMode.mergedKeypad);
   });
 
   // Description is the last stop in the keyboard chain -- that is what makes it
@@ -72,12 +81,13 @@ void main() {
     final Finder descriptionField = _textFieldByLabel('Description (Optional)');
 
     // The size fields sit under the pinned Save bar on a short screen, so a
-    // raw tap lands on the bar instead of the field.
-    await tester.ensureVisible(heightField);
+    // raw tap lands on the bar instead of the field. Width is the first one:
+    // the chain follows the boxes down the screen.
+    await tester.ensureVisible(widthField);
     await tester.pumpAndSettle();
-    await tester.tap(heightField);
+    await tester.tap(widthField);
     await tester.pump();
-    await tester.enterText(heightField, '45');
+    await tester.enterText(widthField, '22');
     await tester.testTextInput.receiveAction(TextInputAction.next);
     await tester.pump();
 
@@ -90,9 +100,9 @@ void main() {
 
     await tester.testTextInput.receiveAction(TextInputAction.next);
     await tester.pump();
-    expect(tester.widget<TextField>(widthField).focusNode?.hasFocus, isTrue);
+    expect(tester.widget<TextField>(heightField).focusNode?.hasFocus, isTrue);
 
-    await tester.enterText(widthField, '22');
+    await tester.enterText(heightField, '45');
     await tester.testTextInput.receiveAction(TextInputAction.next);
     await tester.pump();
     expect(
@@ -130,7 +140,7 @@ void main() {
       tester.widget<TextField>(descriptionField).focusNode?.hasFocus,
       isFalse,
     );
-    expect(tester.widget<TextField>(heightField).focusNode?.hasFocus, isTrue);
+    expect(tester.widget<TextField>(widthField).focusNode?.hasFocus, isTrue);
     expect(find.text('winNo: 2'), findsOneWidget);
   });
 
@@ -173,7 +183,8 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 120));
 
-      expect(tester.widget<TextField>(heightField).focusNode?.hasFocus, isTrue);
+      // Back to the first box, which is width.
+      expect(tester.widget<TextField>(widthField).focusNode?.hasFocus, isTrue);
       expect(find.text('winNo: 2'), findsOneWidget);
     },
   );

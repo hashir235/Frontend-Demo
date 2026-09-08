@@ -1786,8 +1786,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           children: const <Widget>[
             RadioListTile<SizeInputMode>(
+              value: SizeInputMode.mergedKeypad,
+              title: Text('Merged typing box (default)'),
+              subtitle: Text(
+                'One box for the whole size, like cm: the inch, a space, then '
+                'the suter — 23 4, or 44 5.5 for a half.',
+              ),
+            ),
+            Divider(height: 1),
+            RadioListTile<SizeInputMode>(
               value: SizeInputMode.wheel,
-              title: Text('Wheel (default)'),
+              title: Text('Wheel'),
               subtitle: Text(
                 'Inch and suter are picked on a tape-style wheel.',
               ),
@@ -1797,7 +1806,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: SizeInputMode.keypad,
               title: Text('Typing box'),
               subtitle: Text(
-                'Every part of the size is typed into an input box.',
+                'Every part of the size is typed into its own input box.',
               ),
             ),
           ],

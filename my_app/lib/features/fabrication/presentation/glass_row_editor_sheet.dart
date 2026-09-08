@@ -544,8 +544,11 @@ class _DimensionRowState extends State<_DimensionRow> {
 
   @override
   Widget build(BuildContext context) {
+    // Anything that is not the wheel is typed. Glass keeps its two boxes --
+    // there is no merged entry here -- so the merged setting reads as "typed"
+    // rather than dropping this screen back to a wheel nobody asked for.
     final bool usesKeypad =
-        AppSettings.instance.sizeInputMode == SizeInputMode.keypad;
+        AppSettings.instance.sizeInputMode != SizeInputMode.wheel;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
