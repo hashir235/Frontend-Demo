@@ -11,7 +11,21 @@ class AuthApiException implements Exception {
   final int? statusCode;
   final Object? detail;
 
-  const AuthApiException(this.message, {this.statusCode, this.detail});
+  /// The server's own name for what went wrong, when it gave one.
+  ///
+  /// `account_blocked` is the one the app acts on: the message beside it was
+  /// written for this shop by the owner, so it cannot be recognised by its
+  /// wording -- only by this.
+  final String? code;
+
+  const AuthApiException(
+    this.message, {
+    this.statusCode,
+    this.detail,
+    this.code,
+  });
+
+  bool get isAccountBlocked => code == 'account_blocked';
 
   @override
   String toString() => message;
@@ -272,6 +286,7 @@ class AuthApiClient {
             '$failureMessage Status ${response.statusCode}.',
         statusCode: response.statusCode,
         detail: payload?['detail'],
+        code: payload?['code'] as String?,
       );
     }
     if (payload == null) {

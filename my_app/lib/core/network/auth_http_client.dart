@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 import 'package:my_app/core/config/api_config.dart';
 import 'package:my_app/features/auth/state/auth_session.dart';
@@ -25,6 +28,14 @@ class AuthHttpClient extends http.BaseClient {
   /// account was signed in on another device (single-device enforcement).
   /// [AuthController] registers this to sign the user out locally.
   static void Function()? onUnauthorized;
+
+  /// Invoked when an authenticated request comes back 403 because the account
+  /// has been switched off, carrying the reason its owner is to be shown.
+  ///
+  /// Separate from [onUnauthorized] because it is the opposite situation: the
+  /// session is perfectly valid, and signing out would lose the one thing that
+  /// lets the shop carry on the moment it is switched back on.
+  static void Function(String message)? onAccountBlocked;
 
   AuthHttpClient([http.Client? inner]) : _inner = inner ?? http.Client();
 
@@ -55,6 +66,41 @@ class AuthHttpClient extends http.BaseClient {
     if (sentWithToken && response.statusCode == 401) {
       onUnauthorized?.call();
     }
+    if (sentWithToken && response.statusCode == 403) {
+      return _checkForBlock(response);
+    }
     return response;
+  }
+
+  /// Looks inside a 403 for the "this account is switched off" refusal.
+  ///
+  /// Reading the body consumes the stream, so it is buffered and handed back
+  /// as a fresh response -- the caller still gets an intact one and cannot
+  /// tell this happened. Only 403 is buffered; every other reply streams
+  /// through untouched, which is what a report of any size depends on.
+  Future<http.StreamedResponse> _checkForBlock(
+    http.StreamedResponse response,
+  ) async {
+    final Uint8List bytes = await response.stream.toBytes();
+    try {
+      final Object? parsed = jsonDecode(utf8.decode(bytes, allowMalformed: true));
+      if (parsed is Map<String, dynamic> && parsed['code'] == 'account_blocked') {
+        final String message = (parsed['error'] as String?)?.trim() ?? '';
+        if (message.isNotEmpty) onAccountBlocked?.call(message);
+      }
+    } on FormatException {
+      // A 403 that is not ours -- a proxy, say. Nothing to read, and the
+      // caller still gets the body to make its own sense of.
+    }
+    return http.StreamedResponse(
+      Stream<List<int>>.value(bytes),
+      response.statusCode,
+      contentLength: bytes.length,
+      request: response.request,
+      headers: response.headers,
+      isRedirect: response.isRedirect,
+      persistentConnection: response.persistentConnection,
+      reasonPhrase: response.reasonPhrase,
+    );
   }
 }

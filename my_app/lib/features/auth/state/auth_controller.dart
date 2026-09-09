@@ -9,6 +9,7 @@ import '../data/google_sign_in_service.dart';
 import '../../formulas/data/formula_book_loader.dart';
 import '../models/auth_session_result.dart';
 import '../models/auth_user.dart';
+import 'account_block.dart';
 import 'auth_session.dart';
 
 class AuthController extends ChangeNotifier {
@@ -17,6 +18,10 @@ class AuthController extends ChangeNotifier {
     // (the server invalidated this session because the account signed in
     // elsewhere), sign out locally so the app returns to the login screen.
     AuthHttpClient.onUnauthorized = _onRemoteSessionInvalidated;
+    // Switched off from the admin panel. Not a sign-out: the session stays
+    // valid, so the shop carries straight on the moment it is switched back
+    // on, without signing in again.
+    AuthHttpClient.onAccountBlocked = AccountBlock.instance.raise;
   }
 
   static final AuthController instance = AuthController._();
@@ -104,6 +109,7 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return true;
     } on AuthApiException catch (error) {
+      _raiseIfBlocked(error);
       _errorMessage = error.message;
       _busy = false;
       notifyListeners();
@@ -213,6 +219,9 @@ class AuthController extends ChangeNotifier {
     await _googleSignIn.signOut();
     AuthSession.clear();
     await _sessionStore.clear();
+    // The account signing in on this handset next is somebody else, and must
+    // not meet the last shop's notice.
+    AccountBlock.instance.clear();
     _needsWorkshopSetup = false;
     _busy = false;
     notifyListeners();
@@ -278,6 +287,15 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Shows the owner's notice when a refusal turns out to be a switched-off
+  /// account. Keyed on the code, never on the wording -- the message is
+  /// written per shop and is different every time.
+  void _raiseIfBlocked(AuthApiException error) {
+    if (error.isAccountBlocked) {
+      AccountBlock.instance.raise(error.message);
+    }
+  }
+
   Future<bool> _runSessionAction(
     Future<AuthSessionResult> Function() action,
   ) async {
@@ -294,6 +312,11 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return true;
     } on AuthApiException catch (error) {
+      // Signing in works and the password is right; the account is switched
+      // off. Raised here as well as from the authenticated client because
+      // sign-in does not go through it -- otherwise the reason would land as a
+      // line of red text on the sign-in screen and nowhere else.
+      _raiseIfBlocked(error);
       _errorMessage = error.message;
       _busy = false;
       notifyListeners();

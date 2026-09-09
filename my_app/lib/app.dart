@@ -5,7 +5,9 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/app_update/app_update_service.dart';
 import 'features/app_update/presentation/force_update_screen.dart';
+import 'features/auth/presentation/account_blocked_screen.dart';
 import 'features/auth/presentation/auth_screen.dart';
+import 'features/auth/state/account_block.dart';
 import 'features/auth/presentation/workshop_onboarding_screen.dart';
 import 'features/auth/state/auth_controller.dart';
 import 'features/home/presentation/home_screen.dart';
@@ -34,9 +36,35 @@ class MyApp extends StatelessWidget {
           title: 'Quick AL',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.current(),
-          home: const _UpdateGate(),
+          home: const _BlockGate(),
         );
       },
+    );
+  }
+}
+
+/// Stands over everything: an account that has been switched off sees the
+/// owner's message and nothing else.
+///
+/// Above the update gate on purpose. A shop that has been stopped should not
+/// first be sent to the Play Store for an update they have no use for, and the
+/// refusal can arrive at any moment -- the account may be switched off while
+/// the app is open and halfway through a job, and this catches that too.
+class _BlockGate extends StatelessWidget {
+  const _BlockGate();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: AccountBlock.instance,
+      builder: (BuildContext context, Widget? child) {
+        final String? message = AccountBlock.instance.message;
+        if (message != null) {
+          return AccountBlockedScreen(message: message);
+        }
+        return child!;
+      },
+      child: const _UpdateGate(),
     );
   }
 }
