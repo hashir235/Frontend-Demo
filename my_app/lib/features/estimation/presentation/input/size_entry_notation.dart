@@ -10,6 +10,7 @@
 /// belong somewhere they can be checked directly.
 library;
 
+import 'package:flutter/services.dart';
 import 'package:my_app/shared/widgets/suter_wheel.dart';
 
 class SizeNotation {
@@ -91,7 +92,10 @@ class SizeNotation {
   /// it leaves the dot free to mean the half suter it already means. More than
   /// two parts is a typo rather than a size, and says so by coming back null.
   static ({String whole, String sub})? splitMergedEntry(String rawValue) {
-    final String value = rawValue.trim();
+    // The box shows the tape marks -- 34'' 4.5''' -- and they are decoration.
+    // Stripped here, at the one place every reader of a merged box comes
+    // through, so nothing downstream can mistake a quote for a digit.
+    final String value = stripMarks(rawValue).trim();
     if (value.isEmpty) {
       return null;
     }
@@ -100,6 +104,56 @@ class SizeNotation {
       return null;
     }
     return (whole: parts.first, sub: parts.length > 1 ? parts[1] : '');
+  }
+
+  /// A size without its marks: digits, dots, and a single separating space.
+  ///
+  /// Also what filters a merged box -- anything that is not part of a size is
+  /// dropped here rather than by a second formatter, so there is no ordering
+  /// between the two to get wrong.
+  static String stripMarks(String text) {
+    final StringBuffer out = StringBuffer();
+    bool spaced = false;
+    for (final int unit in text.codeUnits) {
+      final String ch = String.fromCharCode(unit);
+      if (ch == ' ') {
+        // One separator only; a second space would read as a third part.
+        if (out.isNotEmpty && !spaced) {
+          out.write(' ');
+          spaced = true;
+        }
+        continue;
+      }
+      final bool isDigit = ch.compareTo('0') >= 0 && ch.compareTo('9') <= 0;
+      if (isDigit || ch == '.') out.write(ch);
+    }
+    return out.toString();
+  }
+
+  /// A bare size as the box should show it, marks and all.
+  ///
+  ///     34            while the inch is still being typed
+  ///     34''          the moment space is pressed -- the inch is settled
+  ///     34'' 4.5'''   with the suter in
+  ///
+  /// A bare `34 4` on screen gives no hint which number is which, and a fitter
+  /// who has never met algebra has no reason to guess. These marks are what he
+  /// already reads off a tape.
+  static String displayMerged(String bare) {
+    final String raw = stripMarks(bare);
+    final int space = raw.indexOf(' ');
+    if (space < 0) {
+      // Nothing settled yet, so nothing is marked.
+      return raw;
+    }
+    final String inch = raw.substring(0, space);
+    final String suter = raw.substring(space + 1);
+    if (inch.isEmpty) return raw;
+    if (suter.isEmpty) return "$inch'' ";
+    // A suter still ending in its decimal point is mid-typing; marking there
+    // would wedge the quotes between the dot and the digit still to come.
+    if (suter.endsWith('.')) return "$inch'' $suter";
+    return "$inch'' $suter'''";
   }
 
   /// What was typed into the merged box, as the notation everything else
@@ -128,9 +182,9 @@ class SizeNotation {
       return '';
     }
     if (parts.suter.isEmpty || parts.suter == '0') {
-      return parts.inch;
+      return displayMerged(parts.inch);
     }
-    return '${parts.inch} ${parts.suter}';
+    return displayMerged('${parts.inch} ${parts.suter}');
   }
 
   /// The inch half: a whole number of inches, and there is no such window as
@@ -177,5 +231,46 @@ class SizeNotation {
       return 'Use: inch suter';
     }
     return validateWholePart(parts.whole) ?? validateSuterPart(parts.sub);
+  }
+}
+
+/// Puts the tape marks into a merged size box as the size is typed.
+///
+/// Filtering and marking in one pass: [SizeNotation.stripMarks] decides what
+/// counts as a size, [SizeNotation.displayMerged] decides how it reads.
+///
+/// The caret is carried by counting real characters rather than pinned to the
+/// end, so backspacing into the middle of a size still works -- a masked field
+/// that throws the caret to the end on every keystroke is worse than no mask.
+class MergedSizeFormatter extends TextInputFormatter {
+  const MergedSizeFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final int caret = newValue.selection.end.clamp(0, newValue.text.length);
+    final int bareCaret = SizeNotation.stripMarks(
+      newValue.text.substring(0, caret),
+    ).length;
+
+    final String shown = SizeNotation.displayMerged(newValue.text);
+    return TextEditingValue(
+      text: shown,
+      selection: TextSelection.collapsed(
+        offset: _offsetAfterBareChars(shown, bareCaret),
+      ),
+    );
+  }
+
+  static int _offsetAfterBareChars(String shown, int count) {
+    if (count <= 0) return 0;
+    for (int i = 1; i <= shown.length; i++) {
+      if (SizeNotation.stripMarks(shown.substring(0, i)).length >= count) {
+        return i;
+      }
+    }
+    return shown.length;
   }
 }

@@ -32,10 +32,12 @@ void main() {
 
     test('what is stored comes back the way it was typed', () {
       // A saved window opened for editing has to show the size its owner
-      // entered, not the notation the app keeps it in.
+      // entered, not the notation the app keeps it in. It comes back wearing
+      // the tape marks, so it is compared with them stripped off.
       for (final String typed in <String>['23 4', '44 5.5', '32 0.5', '23']) {
         final String stored = SizeNotation.mergedToStored(typed, isFeet: false);
-        expect(SizeNotation.storedToMerged(stored, isFeet: false), typed);
+        final String shown = SizeNotation.storedToMerged(stored, isFeet: false);
+        expect(SizeNotation.stripMarks(shown), typed);
       }
     });
 
@@ -50,6 +52,129 @@ void main() {
         SizeNotation.mergedToStored('23', isFeet: false),
         SizeNotation.combineInchSuter('23', ''),
       );
+    });
+  });
+
+  group('the tape marks', () {
+    // A bare "34 4" says nothing about which number is which. The marks are
+    // the notation already read off a tape, and they appear as the size is
+    // typed so the box tells the fitter where he has got to.
+    for (final (String bare, String shown, String why) in <
+        (String, String, String)>[
+      ('34', '34', 'nothing settled yet, so nothing marked'),
+      ('34 ', "34'' ", 'space pressed: the inch is settled'),
+      ('34 4', "34'' 4'''", 'the suter in'),
+      ('34 4.5', "34'' 4.5'''", 'half a suter'),
+      ('34 4.', "34'' 4.", 'mid-typing: no marks over an unfinished decimal'),
+      ('', '', 'an empty box stays empty'),
+    ]) {
+      test('"$bare" shows as "$shown" -- $why', () {
+        expect(SizeNotation.displayMerged(bare), shown);
+      });
+    }
+
+    test('the marks are decoration, never part of the size', () {
+      // Everything that reads a box comes through the same reader, so a quote
+      // can never be mistaken for a digit.
+      // 4.5 suter is stored as the two digits 45 -- the half goes in as a
+      // second digit, not a second dot, so the whole size survives as one
+      // number.
+      expect(SizeNotation.mergedToStored("34'' 4.5'''", isFeet: false), '34.45');
+      expect(SizeNotation.mergedToStored("43'' 3'''", isFeet: false), '43.3');
+      expect(SizeNotation.mergedToStored("23''", isFeet: false), '23.0');
+      expect(
+        SizeNotation.mergedToStored("34'' 4.5'''", isFeet: false),
+        SizeNotation.mergedToStored('34 4.5', isFeet: false),
+        reason: 'marked and bare must store identically',
+      );
+    });
+
+    test('a stored size opens wearing its marks', () {
+      expect(SizeNotation.storedToMerged('34.45', isFeet: false), "34'' 4.5'''");
+      expect(SizeNotation.storedToMerged('23.0', isFeet: false), '23');
+    });
+
+    test('rubbish is dropped rather than stored', () {
+      expect(SizeNotation.stripMarks("ab34''cd 4"), '34 4');
+      // A second space would read as a third part, which is a typo, not a size.
+      expect(SizeNotation.stripMarks('34   4'), '34 4');
+    });
+  });
+
+  group('typing into the box', () {
+    const MergedSizeFormatter formatter = MergedSizeFormatter();
+
+    TextEditingValue type(TextEditingValue from, String added) {
+      // An empty value carries no selection at all (offset -1), which is
+      // where a box starts before anything is typed into it.
+      final int at =
+          from.selection.end < 0 ? from.text.length : from.selection.end;
+      final String next =
+          from.text.substring(0, at) + added + from.text.substring(at);
+      return formatter.formatEditUpdate(
+        from,
+        TextEditingValue(
+          text: next,
+          selection: TextSelection.collapsed(offset: at + added.length),
+        ),
+      );
+    }
+
+    test('the marks appear as the size goes in', () {
+      TextEditingValue v = TextEditingValue.empty;
+      v = type(v, '3');
+      v = type(v, '4');
+      expect(v.text, '34', reason: 'still on the inch');
+      v = type(v, ' ');
+      expect(v.text, "34'' ", reason: 'space settles the inch');
+      v = type(v, '4');
+      expect(v.text, "34'' 4'''");
+      v = type(v, '.');
+      v = type(v, '5');
+      expect(v.text, "34'' 4.5'''");
+      expect(SizeNotation.mergedToStored(v.text, isFeet: false), '34.45');
+    });
+
+    test('the caret stays with the digits, not at the end', () {
+      // A masked field that throws the caret past the quotes on every
+      // keystroke is worse than no mask: the next digit lands outside the size.
+      TextEditingValue v = TextEditingValue.empty;
+      for (final String ch in <String>['3', '4', ' ', '4']) {
+        v = type(v, ch);
+      }
+      expect(v.text, "34'' 4'''");
+      expect(
+        v.selection.end,
+        v.text.indexOf("'''"),
+        reason: 'sitting after the 4, before its marks',
+      );
+    });
+
+    test('a size can still be corrected in the middle', () {
+      TextEditingValue v = TextEditingValue.empty;
+      for (final String ch in <String>['3', '4', ' ', '4']) {
+        v = type(v, ch);
+      }
+      // Put the caret after the first digit and backspace it.
+      v = formatter.formatEditUpdate(
+        v,
+        const TextEditingValue(
+          text: "4'' 4'''",
+          selection: TextSelection.collapsed(offset: 0),
+        ),
+      );
+      expect(SizeNotation.stripMarks(v.text), '4 4');
+    });
+
+    test('letters never reach the box', () {
+      final TextEditingValue v = formatter.formatEditUpdate(
+        TextEditingValue.empty,
+        const TextEditingValue(
+          text: 'ab12cd',
+          selection: TextSelection.collapsed(offset: 6),
+        ),
+      );
+      expect(v.text, '12');
     });
   });
 
@@ -168,11 +293,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // The space has to survive the field's own input filter, which is the
-      // one place a merged size could be silently truncated to "234".
+      // one place a merged size could be silently truncated to "234". It comes
+      // back wearing the tape marks, which is what the box is meant to show.
       await tester.enterText(fieldByLabel('Width'), '44 5.5');
       await tester.pumpAndSettle();
 
-      expect(find.text('44 5.5'), findsOneWidget);
+      expect(find.text("44'' 5.5'''"), findsOneWidget);
     });
   });
 }

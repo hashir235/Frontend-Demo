@@ -6,6 +6,7 @@ import '../../../shared/widgets/suter_wheel.dart';
 import '../../settings/state/app_settings.dart';
 import '../../settings/state/size_input_mode.dart';
 import '../../estimation/models/glass_color.dart';
+import '../../estimation/presentation/input/size_entry_notation.dart';
 import '../../estimation/widgets/glass_color_picker.dart';
 import '../models/glass_report.dart';
 
@@ -592,24 +593,22 @@ class _DimensionRowState extends State<_DimensionRow> {
     widget.onSutterChanged(SuterWheel.snap(clamped));
   }
 
-  /// `23 4` -- the inch, a space, then the suter, exactly as the window
-  /// screens take it. Null when it is not a size at all.
+  /// `34'' 4.5'''` -- the inch, the suter, and the tape marks the box shows.
+  /// Read through the shared notation so glass and windows agree on what a
+  /// typed size means, marks and all. Null when it is not a size at all.
   static ({String inch, double suter})? _splitMerged(String raw) {
-    final String value = raw.trim();
-    if (value.isEmpty) return null;
-    final List<String> parts = value.split(RegExp(r'\s+'));
-    if (parts.length > 2) return null;
-    return (
-      inch: parts.first,
-      suter: parts.length > 1 ? _parseSutter(parts[1]) : 0,
+    final ({String whole, String sub})? parts = SizeNotation.splitMergedEntry(
+      raw,
     );
+    if (parts == null) return null;
+    return (inch: parts.whole, suter: _parseSutter(parts.sub));
   }
 
   static String _mergedText(String inch, double suter) {
     final String whole = inch.trim();
     if (whole.isEmpty) return '';
     final String sub = _formatSutter(suter);
-    return sub.isEmpty ? whole : '$whole $sub';
+    return SizeNotation.displayMerged(sub.isEmpty ? whole : '$whole $sub');
   }
 
   void _onMergedTyped(String text) {
@@ -674,14 +673,15 @@ class _DimensionRowState extends State<_DimensionRow> {
               textInputAction: TextInputAction.next,
               onFieldSubmitted: (_) => widget.onRowComplete?.call(),
               inputFormatters: <TextInputFormatter>[
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9. ]')),
-                LengthLimitingTextInputFormatter(9),
+                // Filters and marks in one pass, exactly as the window screens
+                // do it: 34'' 4.5''' appearing as it is typed.
+                const MergedSizeFormatter(),
               ],
               onChanged: _onMergedTyped,
               validator: _validateMerged,
               decoration: const InputDecoration(
                 labelText: 'Inch  suter',
-                hintText: '23 4',
+                hintText: "34'' 4.5'''",
                 border: OutlineInputBorder(),
                 isDense: true,
               ),

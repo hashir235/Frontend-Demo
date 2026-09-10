@@ -2309,10 +2309,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       style: numberInputStyle,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: <TextInputFormatter>[
-        FilteringTextInputFormatter.allow(
-          // The merged box needs the space that separates the two halves.
-          _usesMergedInput ? RegExp(r'[0-9. ]') : RegExp(r'[0-9.]'),
-        ),
+        if (_usesMergedInput)
+          // Filters and marks in one pass: 34'' 4.5''' as it is typed.
+          const MergedSizeFormatter()
+        else
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
       ],
       onSubmitted: (_) => _submitFromField(focusNode),
       scrollPadding: EdgeInsets.zero,
