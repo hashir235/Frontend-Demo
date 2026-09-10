@@ -256,11 +256,16 @@ class _EstimationMaterialTableScreenState
   Future<void> _openGlassReport() async {
     final String? projectId = widget.projectId;
     if (projectId == null || projectId.isEmpty) {
-      // Nothing to hand over from; fall back to the plain screen.
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          settings: RouteSettings(name: FlowSteps.glassSize.id),
-          builder: (_) => const GlassReportScreen(),
+      // Opening the glass screen with no project used to land here. It reads
+      // whatever the last job left in the shared workspace, so a fabricator
+      // was shown another project's glass list -- which is why this looked
+      // like it worked some of the time. Better to say nothing can be handed
+      // over than to show somebody else's sizes.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This job has to be saved before its glass list can be opened.',
+          ),
         ),
       );
       return;
