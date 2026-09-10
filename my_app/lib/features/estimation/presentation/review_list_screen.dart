@@ -14,6 +14,7 @@ import '../models/window_material.dart';
 import '../models/window_review_item.dart';
 import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
+import '../widgets/glass_color_picker.dart';
 import '../widgets/window_material_picker.dart';
 import 'input/input_registry.dart';
 import 'length_optimization_screen.dart';
@@ -265,6 +266,11 @@ class ReviewListScreen extends StatelessWidget {
       // the page where a wrong one gets caught -- reading down the list is how
       // anyone checks their own work before it goes to the saw.
       WindowMaterialChip(material: item.material),
+      // The glass, beside the aluminium, because it was picked on the same
+      // screen and is priced and cut on its own. Reading down this list is how
+      // anyone checks their own work before it goes to the saw, and a window
+      // glazed in the wrong glass costs a sheet.
+      GlassColorChip(color: item.glassColor),
     ];
 
     if (item.lockType != null) {

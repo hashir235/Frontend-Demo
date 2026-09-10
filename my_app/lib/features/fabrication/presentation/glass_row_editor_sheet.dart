@@ -522,11 +522,17 @@ class _DimensionRow extends StatefulWidget {
 class _DimensionRowState extends State<_DimensionRow> {
   late final TextEditingController _sutterController;
 
+  /// The whole size in one box, for the merged entry style.
+  late final TextEditingController _mergedController;
+
   @override
   void initState() {
     super.initState();
     _sutterController = TextEditingController(
       text: _formatSutter(widget.sutterValue),
+    );
+    _mergedController = TextEditingController(
+      text: _mergedText(widget.inchController.text, widget.sutterValue),
     );
   }
 
@@ -539,11 +545,28 @@ class _DimensionRowState extends State<_DimensionRow> {
         _parseSutter(_sutterController.text) != widget.sutterValue) {
       _sutterController.text = _formatSutter(widget.sutterValue);
     }
+    // The sheet clears itself down between rows in a run. Rewriting the merged
+    // box only when what it holds no longer matches keeps the cursor still
+    // while somebody is typing into it.
+    final String expected = _mergedText(
+      widget.inchController.text,
+      widget.sutterValue,
+    );
+    final ({String inch, double suter})? showing = _splitMerged(
+      _mergedController.text,
+    );
+    final bool matches = showing != null &&
+        showing.inch == widget.inchController.text.trim() &&
+        showing.suter == widget.sutterValue;
+    if (!matches && !(expected.isEmpty && _mergedController.text.isEmpty)) {
+      _mergedController.text = expected;
+    }
   }
 
   @override
   void dispose() {
     _sutterController.dispose();
+    _mergedController.dispose();
     super.dispose();
   }
 
@@ -569,13 +592,104 @@ class _DimensionRowState extends State<_DimensionRow> {
     widget.onSutterChanged(SuterWheel.snap(clamped));
   }
 
+  /// `23 4` -- the inch, a space, then the suter, exactly as the window
+  /// screens take it. Null when it is not a size at all.
+  static ({String inch, double suter})? _splitMerged(String raw) {
+    final String value = raw.trim();
+    if (value.isEmpty) return null;
+    final List<String> parts = value.split(RegExp(r'\s+'));
+    if (parts.length > 2) return null;
+    return (
+      inch: parts.first,
+      suter: parts.length > 1 ? _parseSutter(parts[1]) : 0,
+    );
+  }
+
+  static String _mergedText(String inch, double suter) {
+    final String whole = inch.trim();
+    if (whole.isEmpty) return '';
+    final String sub = _formatSutter(suter);
+    return sub.isEmpty ? whole : '$whole $sub';
+  }
+
+  void _onMergedTyped(String text) {
+    final ({String inch, double suter})? parts = _splitMerged(text);
+    // Both halves are kept up to date behind the one box, so the sheet saves
+    // the same way whichever entry style is on and nothing downstream has to
+    // know which was used.
+    widget.inchController.text = parts?.inch ?? '';
+    widget.onSutterChanged(
+      SuterWheel.snap((parts?.suter ?? 0).clamp(0, 7.5).toDouble()),
+    );
+  }
+
+  String? _validateMerged(String? raw) {
+    final String value = (raw ?? '').trim();
+    if (value.isEmpty) return 'Required';
+    final ({String inch, double suter})? parts = _splitMerged(value);
+    if (parts == null) return 'Use: inch suter';
+    final String? inchError = widget.inchValidator(parts.inch);
+    if (inchError != null) return inchError;
+    if (parts.suter < 0 || parts.suter >= 8) return 'Suter must be under 8';
+    return null;
+  }
+
+  Widget _label(BuildContext context) {
+    return SizedBox(
+      width: 56,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Text(
+          widget.label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Anything that is not the wheel is typed. Glass keeps its two boxes --
-    // there is no merged entry here -- so the merged setting reads as "typed"
-    // rather than dropping this screen back to a wheel nobody asked for.
-    final bool usesKeypad =
-        AppSettings.instance.sizeInputMode != SizeInputMode.wheel;
+    final SizeInputMode mode = AppSettings.instance.sizeInputMode;
+    // Anything that is not the wheel is typed.
+    final bool usesKeypad = mode != SizeInputMode.wheel;
+
+    if (mode == SizeInputMode.mergedKeypad) {
+      // One box, the same as the window screens take: a fitter reading a tape
+      // says "twenty-three four" and types it that way, instead of crossing
+      // between two boxes for every piece in a run of glass.
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _label(context),
+          Expanded(
+            child: TextFormField(
+              controller: _mergedController,
+              focusNode: widget.inchFocusNode,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              textInputAction: TextInputAction.next,
+              onFieldSubmitted: (_) => widget.onRowComplete?.call(),
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9. ]')),
+                LengthLimitingTextInputFormatter(9),
+              ],
+              onChanged: _onMergedTyped,
+              validator: _validateMerged,
+              decoration: const InputDecoration(
+                labelText: 'Inch  suter',
+                hintText: '23 4',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
