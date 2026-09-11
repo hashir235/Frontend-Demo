@@ -14,6 +14,7 @@ import '../models/window_material.dart';
 import '../models/window_review_item.dart';
 import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
+import 'input/size_entry_notation.dart';
 import '../widgets/glass_color_picker.dart';
 import '../widgets/window_material_picker.dart';
 import 'input/input_registry.dart';
@@ -34,6 +35,28 @@ class ReviewListScreen extends StatelessWidget {
 
   Color _accentForIndex(int index) {
     return _cardAccentPalette[index % _cardAccentPalette.length];
+  }
+
+  /// A saved size as a person reads it, rather than as the app keeps it.
+  ///
+  /// Storage is one number -- `34.45` is thirty-four inches and four and a
+  /// half suter, `13.7` is thirteen feet seven. Printed raw it reads as a
+  /// decimal, which is not a size anyone can check their own work against.
+  /// Marked up, it is what the tape says.
+  ///
+  /// Centimetres are already a plain number and stay one.
+  String _sizeText(WindowReviewItem item, String stored) {
+    final String value = stored.trim();
+    if (value.isEmpty) return value;
+    // Fabrication's "feet" slot is really centimetres -- the same quirk the
+    // unit chip beside this already has to account for.
+    final bool isCm = item.unitMode == UnitMode.cm ||
+        (session.isFabrication && item.unitMode == UnitMode.feet);
+    if (isCm) return value;
+    return SizeNotation.storedToMerged(
+      value,
+      isFeet: !session.isFabrication && item.unitMode == UnitMode.feet,
+    );
   }
 
   String _unitLabel(WindowReviewItem item) {
@@ -396,27 +419,30 @@ class ReviewListScreen extends StatelessWidget {
       spans.addAll(<InlineSpan>[
         TextSpan(text: 'Right Width = ', style: widthLabelStyle),
         TextSpan(
-          text: item.rightWidthValue ?? item.widthValue,
+          text: _sizeText(item, item.rightWidthValue ?? item.widthValue),
           style: widthValueStyle,
         ),
         const TextSpan(text: '   '),
         TextSpan(text: 'Left Width = ', style: widthLabelStyle),
         TextSpan(
-          text: item.leftWidthValue ?? item.widthValue,
+          text: _sizeText(item, item.leftWidthValue ?? item.widthValue),
           style: widthValueStyle,
         ),
       ]);
     } else {
       spans.addAll(<InlineSpan>[
         TextSpan(text: 'Width = ', style: widthLabelStyle),
-        TextSpan(text: item.widthValue, style: widthValueStyle),
+        TextSpan(text: _sizeText(item, item.widthValue), style: widthValueStyle),
       ]);
     }
 
     spans.addAll(<InlineSpan>[
       const TextSpan(text: '   '),
       TextSpan(text: 'Height = ', style: heightLabelStyle),
-      TextSpan(text: item.heightValue, style: heightValueStyle),
+      TextSpan(
+        text: _sizeText(item, item.heightValue),
+        style: heightValueStyle,
+      ),
     ]);
 
     if (item.archValue != null && item.archValue!.isNotEmpty) {

@@ -132,28 +132,44 @@ class SizeNotation {
 
   /// A bare size as the box should show it, marks and all.
   ///
-  ///     34            while the inch is still being typed
-  ///     34''          the moment space is pressed -- the inch is settled
-  ///     34'' 4.5'''   with the suter in
+  /// Inches:            Feet:
+  ///     34''               13'
+  ///     34'' 4'''          13' 7''
+  ///     34'' 4.5'''
   ///
-  /// A bare `34 4` on screen gives no hint which number is which, and a fitter
-  /// who has never met algebra has no reason to guess. These marks are what he
-  /// already reads off a tape.
-  static String displayMerged(String bare) {
+  /// The mark goes on from the first digit, not once the next part is started.
+  /// Waiting until space was pressed left a number sitting bare on screen with
+  /// nothing to say what it was -- and the whole reason for the marks is that
+  /// a fitter should never be in doubt about which number he is typing.
+  ///
+  /// One quote is feet, two inches, three suter. That is what he already reads
+  /// off a tape, so which mark belongs to which part depends only on the unit
+  /// the screen is in.
+  static String displayMerged(String bare, {bool isFeet = false}) {
     final String raw = stripMarks(bare);
+    if (raw.isEmpty) return '';
+    final List<String> marks = isFeet
+        ? const <String>["'", "''"]
+        : const <String>["''", "'''"];
+
     final int space = raw.indexOf(' ');
     if (space < 0) {
-      // Nothing settled yet, so nothing is marked.
-      return raw;
+      return _marked(raw, marks[0]);
     }
-    final String inch = raw.substring(0, space);
-    final String suter = raw.substring(space + 1);
-    if (inch.isEmpty) return raw;
-    if (suter.isEmpty) return "$inch'' ";
-    // A suter still ending in its decimal point is mid-typing; marking there
-    // would wedge the quotes between the dot and the digit still to come.
-    if (suter.endsWith('.')) return "$inch'' $suter";
-    return "$inch'' $suter'''";
+    final String first = raw.substring(0, space);
+    final String second = raw.substring(space + 1);
+    if (first.isEmpty) return raw;
+    return '${_marked(first, marks[0])} ${_marked(second, marks[1])}';
+  }
+
+  /// One part of a size with its mark on it.
+  ///
+  /// A part still ending in its decimal point is mid-typing; marking there
+  /// would wedge the quotes between the dot and the digit still to come.
+  static String _marked(String part, String mark) {
+    if (part.isEmpty) return '';
+    if (part.endsWith('.')) return part;
+    return '$part$mark';
   }
 
   /// What was typed into the merged box, as the notation everything else
@@ -182,9 +198,9 @@ class SizeNotation {
       return '';
     }
     if (parts.suter.isEmpty || parts.suter == '0') {
-      return displayMerged(parts.inch);
+      return displayMerged(parts.inch, isFeet: isFeet);
     }
-    return displayMerged('${parts.inch} ${parts.suter}');
+    return displayMerged('${parts.inch} ${parts.suter}', isFeet: isFeet);
   }
 
   /// The inch half: a whole number of inches, and there is no such window as
@@ -243,7 +259,10 @@ class SizeNotation {
 /// end, so backspacing into the middle of a size still works -- a masked field
 /// that throws the caret to the end on every keystroke is worse than no mask.
 class MergedSizeFormatter extends TextInputFormatter {
-  const MergedSizeFormatter();
+  const MergedSizeFormatter({this.isFeet = false});
+
+  /// Which marks the parts wear: feet and inch, or inch and suter.
+  final bool isFeet;
 
   @override
   TextEditingValue formatEditUpdate(
@@ -255,7 +274,10 @@ class MergedSizeFormatter extends TextInputFormatter {
       newValue.text.substring(0, caret),
     ).length;
 
-    final String shown = SizeNotation.displayMerged(newValue.text);
+    final String shown = SizeNotation.displayMerged(
+      newValue.text,
+      isFeet: isFeet,
+    );
     return TextEditingValue(
       text: shown,
       selection: TextSelection.collapsed(

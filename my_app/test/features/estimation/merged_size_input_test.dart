@@ -61,8 +61,9 @@ void main() {
     // typed so the box tells the fitter where he has got to.
     for (final (String bare, String shown, String why) in <
         (String, String, String)>[
-      ('34', '34', 'nothing settled yet, so nothing marked'),
-      ('34 ', "34'' ", 'space pressed: the inch is settled'),
+      ('3', "3''", 'marked from the very first digit, not after the space'),
+      ('34', "34''", 'still the inch'),
+      ('34 ', "34'' ", 'space pressed, nothing typed after it yet'),
       ('34 4', "34'' 4'''", 'the suter in'),
       ('34 4.5', "34'' 4.5'''", 'half a suter'),
       ('34 4.', "34'' 4.", 'mid-typing: no marks over an unfinished decimal'),
@@ -70,6 +71,19 @@ void main() {
     ]) {
       test('"$bare" shows as "$shown" -- $why', () {
         expect(SizeNotation.displayMerged(bare), shown);
+      });
+    }
+
+    // One quote is feet, two inches, three suter -- so which mark a part wears
+    // depends on the unit the screen is in, not on where it sits.
+    for (final (String bare, String shown, String why) in <
+        (String, String, String)>[
+      ('13', "13'", 'feet, from the first digit'),
+      ('13 ', "13' ", 'space pressed'),
+      ('13 7', "13' 7''", 'feet and inch'),
+    ]) {
+      test('in feet, "$bare" shows as "$shown" -- $why', () {
+        expect(SizeNotation.displayMerged(bare, isFeet: true), shown);
       });
     }
 
@@ -91,7 +105,10 @@ void main() {
 
     test('a stored size opens wearing its marks', () {
       expect(SizeNotation.storedToMerged('34.45', isFeet: false), "34'' 4.5'''");
-      expect(SizeNotation.storedToMerged('23.0', isFeet: false), '23');
+      expect(SizeNotation.storedToMerged('23.0', isFeet: false), "23''");
+      // Feet wear one quote, and the inch after them two.
+      expect(SizeNotation.storedToMerged('13.7', isFeet: true), "13' 7''");
+      expect(SizeNotation.storedToMerged('4.0', isFeet: true), "4'");
     });
 
     test('rubbish is dropped rather than stored', () {
@@ -123,8 +140,13 @@ void main() {
     test('the marks appear as the size goes in', () {
       TextEditingValue v = TextEditingValue.empty;
       v = type(v, '3');
+      expect(
+        v.text,
+        "3''",
+        reason: 'marked on the first digit -- a bare number says nothing',
+      );
       v = type(v, '4');
-      expect(v.text, '34', reason: 'still on the inch');
+      expect(v.text, "34''", reason: 'still on the inch');
       v = type(v, ' ');
       expect(v.text, "34'' ", reason: 'space settles the inch');
       v = type(v, '4');
@@ -174,7 +196,28 @@ void main() {
           selection: TextSelection.collapsed(offset: 6),
         ),
       );
-      expect(v.text, '12');
+      expect(v.text, "12''");
+    });
+
+    test('a feet box marks feet, then inches', () {
+      const MergedSizeFormatter feet = MergedSizeFormatter(isFeet: true);
+      TextEditingValue v = feet.formatEditUpdate(
+        TextEditingValue.empty,
+        const TextEditingValue(
+          text: '13',
+          selection: TextSelection.collapsed(offset: 2),
+        ),
+      );
+      expect(v.text, "13'");
+      v = feet.formatEditUpdate(
+        v,
+        TextEditingValue(
+          text: '${v.text} 7',
+          selection: TextSelection.collapsed(offset: v.text.length + 2),
+        ),
+      );
+      expect(v.text, "13' 7''");
+      expect(SizeNotation.mergedToStored(v.text, isFeet: true), '13.7');
     });
   });
 

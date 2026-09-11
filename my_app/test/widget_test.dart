@@ -562,10 +562,11 @@ void main() {
     final String sizes = _reviewSizeLine(tester, const Key('review_item_1'));
     expect(sizes, contains('Width'));
     expect(sizes.indexOf('Width'), lessThan(sizes.indexOf('Height')));
-    // And the merged entry stored the same size the two boxes would have:
-    // `22 4` typed, `22.4` kept.
-    expect(sizes, contains('22.4'));
-    expect(sizes, contains('45.7'));
+    // And it reads as a size, not as the decimal the app keeps it in. `22 4`
+    // was typed, `22.4` is stored, and what a person checking their own work
+    // sees is the tape's own notation.
+    expect(sizes, contains("22'' 4'''"));
+    expect(sizes, contains("45'' 7'''"));
   });
 
   testWidgets('Save without description keeps review row clean', (

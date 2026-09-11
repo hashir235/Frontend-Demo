@@ -2068,8 +2068,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
     if (_usesMergedInput) {
       // Short on purpose: these boxes sit two to a line, and the info button
-      // beside them carries the explanation.
-      return _mergedIsFeet ? '4 9' : '23 4';
+      // beside them carries the explanation. Written in the notation the box
+      // will write it in, so the example and what appears under it match.
+      return _mergedIsFeet ? "4' 9''" : "23'' 4'''";
     }
     return _unitMode.inputHint;
   }
@@ -2311,7 +2312,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       inputFormatters: <TextInputFormatter>[
         if (_usesMergedInput)
           // Filters and marks in one pass: 34'' 4.5''' as it is typed.
-          const MergedSizeFormatter()
+          MergedSizeFormatter(isFeet: _mergedIsFeet)
         else
           FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
       ],
