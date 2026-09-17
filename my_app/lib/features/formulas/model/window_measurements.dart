@@ -67,6 +67,19 @@ class WindowMeasurements {
   /// What went wrong with the last read that returned null.
   static String? get lastProblem => _problem;
 
+  /// Reads one measurement on its own, the same way [read] reads each of them.
+  ///
+  /// For a window measured side by side, where each side is a measurement in
+  /// its own right rather than one of a fixed pair.
+  static double? readOne({
+    required bool isFabrication,
+    required String unitMode,
+    required String value,
+  }) {
+    _problem = null;
+    return _one(isFabrication, unitMode, value);
+  }
+
   static double? _oneOr(bool isFabrication, String unitMode, String? raw, double fallback) {
     if (raw == null || raw.trim().isEmpty) return fallback;
     return _one(isFabrication, unitMode, raw);

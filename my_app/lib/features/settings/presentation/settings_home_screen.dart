@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../help_videos/help_video_button.dart';
 import '../../help_videos/tutorial_videos.dart';
 import 'package:flutter/material.dart';
@@ -83,6 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   late NumberingMode _mode;
   late SizeInputMode _sizeInputMode;
+  late bool _perSideSizes;
 
   /// null = categories ka menu khula ha; warna wo section jo khula ha.
   String? _openSectionId;
@@ -251,6 +254,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _mode = AppSettings.instance.numberingMode;
     _sizeInputMode = AppSettings.instance.sizeInputMode;
+    _perSideSizes = AppSettings.instance.perSideSizes;
     _billingSettingsRepository = BillingSettingsRepository();
     _estimationSettingsRepository = EstimationSettingsRepository();
     _fabricationSettingsRepository = FabricationSettingsRepository();
@@ -378,6 +382,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _mode = AppSettings.instance.numberingMode;
       _sizeInputMode = AppSettings.instance.sizeInputMode;
+      _perSideSizes = AppSettings.instance.perSideSizes;
     });
   }
 
@@ -387,6 +392,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _updateSizeInputMode(SizeInputMode mode) {
     AppSettings.instance.setSizeInputMode(mode);
+  }
+
+  void _updatePerSideSizes(bool value) {
+    unawaited(AppSettings.instance.setPerSideSizes(value));
   }
 
   Future<void> _loadBillingSettings() async {
@@ -1717,6 +1726,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSubSectionLabel(context, 'Size Input Method'),
           const SizedBox(height: 8),
           _buildSizeInputOptions(context),
+          const SizedBox(height: 20),
+          _buildSubSectionLabel(context, 'Sides'),
+          const SizedBox(height: 8),
+          _buildPerSideOption(context),
         ],
       ),
     );
@@ -1810,6 +1823,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Measuring a window one side at a time.
+  ///
+  /// Kept apart from the three above because it is a different question: those
+  /// say how a size is typed, this says how many sizes a window has. A shop
+  /// can have the merged box and side-by-side sizes at once.
+  Widget _buildPerSideOption(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.ice.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
+      ),
+      child: SwitchListTile(
+        value: _perSideSizes,
+        onChanged: _updatePerSideSizes,
+        title: const Text('Measure every side'),
+        subtitle: const Text(
+          'For openings that are not square: the top, the bottom and each side '
+          'get their own box. A side left empty is taken as the one facing it. '
+          'Only the frame is cut to the wider edge — everything inside it is '
+          'cut to the smaller. Fabrication only.',
         ),
       ),
     );

@@ -94,7 +94,8 @@ class OptimizationRepository {
     // one must never be handed back to the engine to work out.
     final bool customised = !book.overrides.isEmpty ||
         request.windows.any(
-          (OptimizationWindowRequest window) => window.pieceSizes.isNotEmpty,
+          (OptimizationWindowRequest window) =>
+              window.pieceSizes.isNotEmpty || window.sideSizes.isNotEmpty,
         );
     final WindowCutCalculator calculator = WindowCutCalculator(book);
     final List<OptimizationWindowRequest> windows = <OptimizationWindowRequest>[];
@@ -118,6 +119,7 @@ class OptimizationRepository {
           addNet: window.addNet,
           backCollarCm: window.backCollarCm,
           pieceSizes: window.pieceSizes,
+          sideSizes: window.sideSizes,
         ),
         margins: margins,
       );

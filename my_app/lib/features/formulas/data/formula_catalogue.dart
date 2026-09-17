@@ -267,6 +267,95 @@ class FormulaCatalogue {
     return found;
   }
 
+  /// The profiles of this window that the collar decides -- its frame.
+  ///
+  /// Worked out from the catalogue rather than listed anywhere: hold every
+  /// other setting still, walk the collar types, and a profile that changes
+  /// with the collar is part of the frame. On a sliding window that finds
+  /// DC30C/DC30F and DC26C/DC26F and leaves D29, M23, M24 and M28 alone --
+  /// which is the line a fabricator draws too, because the frame is the part
+  /// the collar is fitted to.
+  ///
+  /// It matters because a window measured side by side is only wider at one
+  /// edge in its frame: everything inside it is cut to the smaller of the two,
+  /// or it would not fit in the frame at all.
+  Set<String> frameSectionsFor(String windowKey) {
+    final Set<String>? cached = _frameSections[windowKey];
+    if (cached != null) return cached;
+
+    final Map<String, Map<String, List<dynamic>>>? configs = _windows[windowKey];
+    if (configs == null) return const <String>{};
+
+    // The same window, the same everything, one collar type against another.
+    final Map<String, Map<String, Map<String, List<dynamic>>>> byRest =
+        <String, Map<String, Map<String, List<dynamic>>>>{};
+    configs.forEach((String configKey, Map<String, List<dynamic>> sections) {
+      final List<String> parts = configKey.split('|');
+      final Iterable<String> collar =
+          parts.where((String part) => part.startsWith('collarType='));
+      if (collar.isEmpty) return;
+      final String rest = parts
+          .where((String part) => !part.startsWith('collarType='))
+          .join('|');
+      (byRest[rest] ??= <String, Map<String, List<dynamic>>>{})[collar.first] =
+          sections;
+    });
+
+    final Set<String> frame = <String>{};
+    for (final Map<String, Map<String, List<dynamic>>> byCollar in byRest.values) {
+      if (byCollar.length < 2) continue;
+      final Set<String> sections = <String>{
+        for (final Map<String, List<dynamic>> one in byCollar.values) ...one.keys,
+      };
+      for (final String section in sections) {
+        final Set<String> shapes = <String>{
+          for (final Map<String, List<dynamic>> one in byCollar.values)
+            _shapeOf(one[section]),
+        };
+        if (shapes.length > 1) frame.add(section);
+      }
+    }
+
+    return _frameSections[windowKey] = Set<String>.unmodifiable(frame);
+  }
+
+  final Map<String, Set<String>> _frameSections = <String, Set<String>>{};
+
+  /// A profile's pieces as one string, for telling two collars apart. Absent
+  /// reads as its own shape: a profile only some collars carry is the frame
+  /// changing too.
+  static String _shapeOf(List<dynamic>? pieces) {
+    if (pieces == null) return '-';
+    return pieces
+        .map((dynamic piece) =>
+            '${(piece as List<dynamic>)[0]}:${piece[1]}')
+        .join(',');
+  }
+
+  /// The sides this window can be measured on, as the frame labels them.
+  ///
+  /// WT and WB are its top and bottom, HL and HR its left and right; a corner
+  /// window's two walls give WT_l/WT_r and WB_l/WB_r. A door has no WB at all,
+  /// because a door has no bottom frame -- which is why this is read off the
+  /// frame rather than assumed to be four.
+  ///
+  /// Empty for a window the catalogue does not describe, or one whose frame
+  /// does not move with the collar; those keep the plain height and width.
+  Set<String> frameSideLabelsFor(FormulaWindowKey key) {
+    final Map<String, List<dynamic>>? sections = _windows[key.windowKey]?[key.configKey];
+    if (sections == null) return const <String>{};
+    final Set<String> frame = frameSectionsFor(key.windowKey);
+
+    final Set<String> labels = <String>{};
+    sections.forEach((String section, List<dynamic> pieces) {
+      if (!frame.contains(section)) return;
+      for (final dynamic piece in pieces) {
+        labels.add((piece as List<dynamic>)[0] as String);
+      }
+    });
+    return labels;
+  }
+
   /// How many pieces this window is cut into, across every profile.
   int pieceCountFor(FormulaWindowKey key) {
     final Map<String, List<dynamic>>? sections = _windows[key.windowKey]?[key.configKey];

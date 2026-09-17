@@ -6,6 +6,7 @@ import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';
 import '../model/piece_size.dart';
 import '../model/window_measurements.dart';
+import '../model/window_sides.dart';
 import 'formula_book.dart';
 
 /// Centimetres in a foot.
@@ -81,6 +82,7 @@ class WindowCutRequest {
     this.addNet = false,
     this.backCollarCm = 1.7,
     this.pieceSizes = const <PieceSize>[],
+    this.sideSizes = const SideSizes.empty(),
   });
 
   final bool isFabrication;
@@ -101,6 +103,10 @@ class WindowCutRequest {
 
   /// Pieces of this window a fabricator set to a size of their own.
   final List<PieceSize> pieceSizes;
+
+  /// This window measured one side at a time, when it was. Empty for a window
+  /// measured the usual way, which is nearly all of them.
+  final SideSizes sideSizes;
 
   String get context => isFabrication ? 'fabrication' : 'estimation';
 }
@@ -163,30 +169,58 @@ class WindowCutCalculator {
       ]);
     }
 
-    final WindowMeasurements? measured = WindowMeasurements.read(
-      isFabrication: request.isFabrication,
-      unitMode: request.unitMode,
-      heightValue: request.heightValue,
-      widthValue: request.widthValue,
-      leftWidthValue: request.leftWidthValue,
-      rightWidthValue: request.rightWidthValue,
-      archValue: request.archValue,
-    );
-    if (measured == null) {
+    // A window measured side by side is read from its sides; every other
+    // window from its height and width, exactly as before.
+    final SideMeasurements? sides = request.sideSizes.isEmpty
+        ? null
+        : SideMeasurements.read(
+            unitMode: request.unitMode,
+            sizes: request.sideSizes,
+            sides: WindowSide.orderedFrom(
+              book.catalogue.frameSideLabelsFor(key),
+            ),
+          );
+    if (request.sideSizes.isNotEmpty && sides == null) {
       return WindowCutList._(const <CutPiece>[], <String>[
-        WindowMeasurements.lastProblem ?? 'This window\'s measurements cannot be read.',
+        SideMeasurements.lastProblem ?? 'This window\'s sides cannot be read.',
       ]);
     }
 
+    Map<String, double>? measuredValues = sides?.inner;
+    if (measuredValues == null) {
+      final WindowMeasurements? measured = WindowMeasurements.read(
+        isFabrication: request.isFabrication,
+        unitMode: request.unitMode,
+        heightValue: request.heightValue,
+        widthValue: request.widthValue,
+        leftWidthValue: request.leftWidthValue,
+        rightWidthValue: request.rightWidthValue,
+        archValue: request.archValue,
+      );
+      if (measured == null) {
+        return WindowCutList._(const <CutPiece>[], <String>[
+          WindowMeasurements.lastProblem ?? 'This window\'s measurements cannot be read.',
+        ]);
+      }
+      measuredValues = measured.values;
+    }
+
     final Map<String, double> variables = <String, double>{
-      ...measured.values,
+      ...measuredValues,
       'feet': _feetInCm,
       ...margins,
     };
 
+    // The frame is what the collar is fitted to, and the only part cut to a
+    // side of its own. Everything else is cut to the smaller of each pair,
+    // already standing in [variables].
+    final Set<String> frameSections =
+        sides == null ? const <String>{} : book.catalogue.frameSectionsFor(key.windowKey);
+
     final List<CutPiece> pieces = <CutPiece>[];
     for (final EffectiveSection section in sections) {
       final String name = sectionAliases[section.section] ?? section.section;
+      final bool isFrame = frameSections.contains(section.section);
       for (final EffectiveFormula piece in section.pieces) {
         final FormulaSlot slot = piece.slot;
 
@@ -198,8 +232,14 @@ class WindowCutCalculator {
           variables[margin] = 0;
         }
 
+        final Map<String, double> forPiece = _withSide(
+          variables,
+          sides,
+          isFrame: isFrame,
+          label: slot.label,
+        );
         final ({Map<String, double>? variables, String? problem}) own =
-            _variablesFor(piece, variables, request.pieceSizes);
+            _variablesFor(piece, forPiece, request.pieceSizes);
         if (own.problem != null) {
           problems.add(own.problem!);
           continue;
@@ -250,6 +290,31 @@ class WindowCutCalculator {
     }
 
     return WindowCutList._(pieces, problems, glass: glass);
+  }
+
+  /// The measurements one piece is cut from when the window was measured side
+  /// by side.
+  ///
+  /// Only a frame piece gets a side of its own, and only the side it is: the
+  /// head to the top, the sill to the bottom, each jamb to its own. Everything
+  /// else -- sashes, beading, the glass -- keeps the smaller of each pair,
+  /// because a piece cut to the wider edge does not fit the frame.
+  ///
+  /// A frame piece whose label is not a side this window has (nothing in the
+  /// catalogue today) keeps the smaller measurement too, which is the safe way
+  /// round: too small can be packed out, too big cannot be put back.
+  static Map<String, double> _withSide(
+    Map<String, double> variables,
+    SideMeasurements? sides, {
+    required bool isFrame,
+    required String label,
+  }) {
+    if (sides == null || !isFrame) return variables;
+    final double? own = sides.bySide[label];
+    final String? dimension = WindowSide.dimension[label];
+    if (own == null || dimension == null) return variables;
+    if (variables[dimension] == own) return variables;
+    return <String, double>{...variables, dimension: own};
   }
 
   /// The measurements one piece is cut from: the window's own, with this

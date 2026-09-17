@@ -6,6 +6,7 @@ import '../models/window_review_item.dart';
 import '../models/glass_color.dart';
 import '../models/window_material.dart';
 import '../../formulas/model/piece_size.dart';
+import '../../formulas/model/window_sides.dart';
 import '../../settings/state/numbering_mode.dart';
 import 'last_glass_color.dart';
 
@@ -169,6 +170,7 @@ class EstimateSessionStore extends ChangeNotifier {
     WindowMaterial? material,
     String? glassColor,
     List<PieceSize> pieceSizes = const <PieceSize>[],
+    SideSizes sideSizes = const SideSizes.empty(),
   }) {
     final WindowReviewItem item = WindowReviewItem(
       winNo: winNo,
@@ -192,6 +194,7 @@ class EstimateSessionStore extends ChangeNotifier {
       material: material ?? materialForNextWindow,
       glassColor: GlassColors.normalize(glassColor ?? glassColorForNextWindow),
       pieceSizes: pieceSizes,
+      sideSizes: sideSizes,
     );
     if (existsWinNo(winNo)) {
       throw ArgumentError('Window number already exists: $winNo');

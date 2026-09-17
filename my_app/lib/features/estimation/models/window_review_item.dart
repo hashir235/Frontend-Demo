@@ -1,4 +1,5 @@
 import '../../formulas/model/piece_size.dart';
+import '../../formulas/model/window_sides.dart';
 import 'glass_color.dart';
 import 'window_material.dart';
 
@@ -132,6 +133,15 @@ class WindowReviewItem {
   /// the window's own measurement.
   final List<PieceSize> pieceSizes;
 
+  /// This window measured one side at a time -- top, bottom and each jamb --
+  /// for an opening that is not square.
+  ///
+  /// Empty for a window measured the usual way, and then [heightValue] and
+  /// [widthValue] are the whole of it. When it is not empty those two hold the
+  /// smaller of each pair: what the glass and everything inside the frame is
+  /// cut to, and what the rest of Quick AL is told the window is.
+  final SideSizes sideSizes;
+
   const WindowReviewItem({
     required this.winNo,
     required this.windowLabel,
@@ -154,6 +164,7 @@ class WindowReviewItem {
     this.material = WindowMaterial.initial,
     this.glassColor = GlassColors.initial,
     this.pieceSizes = const <PieceSize>[],
+    this.sideSizes = const SideSizes.empty(),
   });
 
   WindowReviewItem copyWith({
@@ -178,6 +189,7 @@ class WindowReviewItem {
     WindowMaterial? material,
     String? glassColor,
     List<PieceSize>? pieceSizes,
+    SideSizes? sideSizes,
     bool clearDescription = false,
     bool clearRightWidthValue = false,
     bool clearLeftWidthValue = false,
@@ -211,6 +223,7 @@ class WindowReviewItem {
       material: material ?? this.material,
       glassColor: glassColor ?? this.glassColor,
       pieceSizes: pieceSizes ?? this.pieceSizes,
+      sideSizes: sideSizes ?? this.sideSizes,
     );
   }
 
@@ -250,6 +263,7 @@ class WindowReviewItem {
       // to recover it from the way there is for stock.
       glassColor: GlassColors.normalize(json['glassColor'] as String?),
       pieceSizes: PieceSize.listFromJson(json['pieceSizes']),
+      sideSizes: SideSizes.fromJson(json['sideSizes']),
     );
   }
 
@@ -285,6 +299,9 @@ class WindowReviewItem {
       'pieceSizes': <Map<String, Object?>>[
         for (final PieceSize size in pieceSizes) size.toJson(),
       ],
+      // Saved with the window so a reopened job is still the window that was
+      // measured, side by side.
+      'sideSizes': sideSizes.toJson(),
     };
   }
 

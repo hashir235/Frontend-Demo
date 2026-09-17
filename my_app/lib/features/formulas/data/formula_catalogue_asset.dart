@@ -47,4 +47,15 @@ class FormulaCatalogueAsset {
     _loaded = null;
     _loading = null;
   }
+
+  /// Hands the catalogue in, already read.
+  ///
+  /// For widget tests: reading an asset needs the real event loop, and a test
+  /// that awaits one inside the fake clock waits for ever. A test reads the
+  /// same file from disk and puts it here, so the screen under test finds it
+  /// where it always looks.
+  static void preload(FormulaCatalogue catalogue) {
+    _loaded = catalogue;
+    _loading = null;
+  }
 }

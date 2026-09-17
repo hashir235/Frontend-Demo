@@ -1,4 +1,5 @@
 import '../../formulas/model/piece_size.dart';
+import '../../formulas/model/window_sides.dart';
 import 'window_review_item.dart';
 
 class OptimizationWindowRequest {
@@ -61,6 +62,7 @@ class OptimizationWindowRequest {
     this.computedPieces,
     this.computedGlass,
     this.pieceSizes = const <PieceSize>[],
+    this.sideSizes = const SideSizes.empty(),
   });
 
   factory OptimizationWindowRequest.fromReviewItem(
@@ -79,16 +81,48 @@ class OptimizationWindowRequest {
     final String unitMode = isFabrication
         ? (item.unitMode == UnitMode.inches ? 'inches' : 'cm')
         : (item.unitMode == UnitMode.feet ? 'feet' : 'inches');
+
+    // A window measured side by side goes on the wire as the smaller of each
+    // pair: that is what its glass is cut to, what its piece labels should
+    // read, and the only pair the engine could make sense of. The wider edges
+    // reach the frame through the lengths the app works out.
+    final SideSizes sides = item.sideSizes;
+    String smallest(List<String> of, String fallback) =>
+        sides.smallestRaw(of, unitMode: unitMode) ?? fallback;
+    final bool measuredBySide = isFabrication && sides.isNotEmpty;
+
     return OptimizationWindowRequest(
       winNo: item.winNo,
       windowCode: item.windowCode,
       windowLabel: item.windowLabel,
       collarIndex: item.collarIndex,
       unitMode: unitMode,
-      heightValue: dim(item.heightValue),
-      widthValue: dim(item.widthValue),
-      rightWidthValue: dimOrNull(item.rightWidthValue),
-      leftWidthValue: dimOrNull(item.leftWidthValue),
+      heightValue: measuredBySide
+          ? smallest(<String>[WindowSide.left, WindowSide.right], item.heightValue)
+          : dim(item.heightValue),
+      widthValue: measuredBySide
+          ? smallest(
+              <String>[
+                WindowSide.top,
+                WindowSide.bottom,
+                WindowSide.topRight,
+                WindowSide.bottomRight,
+              ],
+              item.widthValue,
+            )
+          : dim(item.widthValue),
+      rightWidthValue: measuredBySide && item.rightWidthValue != null
+          ? smallest(
+              <String>[WindowSide.topRight, WindowSide.bottomRight],
+              item.rightWidthValue!,
+            )
+          : dimOrNull(item.rightWidthValue),
+      leftWidthValue: measuredBySide && item.leftWidthValue != null
+          ? smallest(
+              <String>[WindowSide.topLeft, WindowSide.bottomLeft],
+              item.leftWidthValue!,
+            )
+          : dimOrNull(item.leftWidthValue),
       archValue: dimOrNull(item.archValue),
       description: item.description,
       addBottom: item.addBottom,
@@ -101,6 +135,7 @@ class OptimizationWindowRequest {
       color: item.material.color,
       glassColor: item.glassColor,
       pieceSizes: item.pieceSizes,
+      sideSizes: measuredBySide ? sides : const SideSizes.empty(),
     );
   }
 
@@ -109,6 +144,12 @@ class OptimizationWindowRequest {
   /// Used here, where the lengths are worked out, and never sent: the engine
   /// receives the finished lengths, which already carry these sizes.
   final List<PieceSize> pieceSizes;
+
+  /// This window's own sides, when it was measured one side at a time.
+  ///
+  /// Used here, where the lengths are worked out, and never sent: the engine
+  /// is handed the finished lengths, which already carry each side.
+  final SideSizes sideSizes;
 
   /// The lengths the app worked out for this window, when it did.
   ///
@@ -149,6 +190,7 @@ class OptimizationWindowRequest {
       computedPieces: pieces,
       computedGlass: glass,
       pieceSizes: pieceSizes,
+      sideSizes: sideSizes,
     );
   }
 

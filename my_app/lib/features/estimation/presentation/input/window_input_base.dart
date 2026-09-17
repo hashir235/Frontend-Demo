@@ -40,6 +40,7 @@ import '../../../formulas/data/formula_overrides_store.dart';
 import '../../../formulas/model/formula_overrides.dart';
 import '../../../formulas/model/formula_window_key.dart';
 import '../../../formulas/model/piece_size.dart';
+import '../../../formulas/model/window_sides.dart';
 import '../../../formulas/presentation/formula_editor_screen.dart';
 
 class WindowInputScreen extends StatefulWidget {
@@ -121,6 +122,26 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// window they can belong to. Cleared with the sizes for the next window:
   /// they are about this opening and would cut the next one wrong.
   List<PieceSize> _pieceSizes = const <PieceSize>[];
+
+  /// Whether this window is being measured one side at a time.
+  ///
+  /// Starts where Settings left it and can be turned off for this window
+  /// alone: a job is usually a run of square openings with one awkward one in
+  /// it, and both of those should be quick to enter.
+  bool _perSide = false;
+
+  /// One box per side. Made for every side there is, because which sides a
+  /// window has changes with its collar while this screen is open.
+  final Map<String, TextEditingController> _sideControllers =
+      <String, TextEditingController>{
+    for (final String side in WindowSide.all) side: TextEditingController(),
+  };
+
+  final Map<String, String?> _sideErrors = <String, String?>{};
+
+  /// The catalogue, for the one thing this screen needs from it: which sides
+  /// this window's frame has. Null until it has been read.
+  FormulaCatalogue? _catalogue;
 
   final GlobalKey _winNoFieldKey = GlobalKey(debugLabel: 'winNoField');
   final GlobalKey _heightFieldKey = GlobalKey(debugLabel: 'heightField');
@@ -493,6 +514,59 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
   }
 
+  /// What this window measures, for the formula screen and for the sizes set
+  /// on it: one map for the window, and -- when it was measured side by side
+  /// -- each side and which profiles are cut to them.
+  ///
+  /// Built in one place because the formula screen and the check that a piece
+  /// size still stands have to agree about what a piece is worked out
+  /// against. Two answers to that would put a size on screen that the cutting
+  /// list does not use.
+  ({
+    Map<String, double> flat,
+    Set<String> frame,
+    SideMeasurements? sides,
+  }) _measurementContext(
+    FormulaCatalogue? catalogue,
+    Map<String, double> margins,
+  ) {
+    final SideSizes sizes = _currentSideSizes();
+    final FormulaWindowKey? key =
+        catalogue == null ? null : _formulaKeyFor(catalogue);
+    final SideMeasurements? sides = sizes.isEmpty || catalogue == null || key == null
+        ? null
+        : SideMeasurements.read(
+            unitMode: _isCmMode ? 'cm' : 'inches',
+            sizes: sizes,
+            sides: _sideLabels,
+          );
+
+    final Map<String, double> flat = <String, double>{
+      ...(sides == null
+          ? _formulaMeasurements()
+          : <String, double>{...sides.inner, 'feet': 30.48}),
+      ...margins,
+    };
+    final Set<String> frame = sides == null || catalogue == null || key == null
+        ? const <String>{}
+        : catalogue.frameSectionsFor(key.windowKey);
+    return (flat: flat, frame: frame, sides: sides);
+  }
+
+  /// The measurements one piece of this window is cut from.
+  Map<String, double> _measurementsForPiece(
+    EffectiveFormula piece, {
+    required Map<String, double> flat,
+    required Set<String> frame,
+    required SideMeasurements? sides,
+  }) {
+    if (sides == null || !frame.contains(piece.slot.section)) return flat;
+    final double? own = sides.bySide[piece.slot.label];
+    final String? dimension = WindowSide.dimension[piece.slot.label];
+    if (own == null || dimension == null) return flat;
+    return <String, double>{...flat, dimension: own};
+  }
+
   /// This window's piece sizes that still fit the window as it now stands.
   ///
   /// A size is set against one measurement of one window set up one way. If
@@ -505,18 +579,38 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   Future<List<PieceSize>> _pieceSizesStillStanding() async {
     if (_pieceSizes.isEmpty) return const <PieceSize>[];
 
+    FormulaCatalogue? catalogue;
     FormulaWindowKey? key;
     try {
-      key = _formulaKeyFor(await FormulaCatalogueAsset.load());
+      catalogue = await FormulaCatalogueAsset.load();
+      key = _formulaKeyFor(catalogue);
     } catch (_) {
+      catalogue = null;
       key = null;
     }
-    final Map<String, double> measured = _formulaMeasurements();
+    final ({
+      Map<String, double> flat,
+      Set<String> frame,
+      SideMeasurements? sides,
+    }) sizing = _measurementContext(catalogue, const <String, double>{});
+
+    /// What this piece is worked out against now -- its own side, where the
+    /// window was measured side by side and the piece is part of the frame.
+    double? currentFor(PieceSize size) {
+      final SideMeasurements? sides = sizing.sides;
+      if (sides != null &&
+          sizing.frame.contains(size.ref.section) &&
+          WindowSide.dimension[size.label] == size.dimension) {
+        final double? own = sides.bySide[size.label];
+        if (own != null) return own;
+      }
+      return sizing.flat[size.dimension];
+    }
 
     final List<PieceSize> kept = <PieceSize>[];
     final List<String> dropped = <String>[];
     for (final PieceSize size in _pieceSizes) {
-      final double? current = measured[size.dimension];
+      final double? current = currentFor(size);
       final bool sameWindow = key != null &&
           size.ref.windowKey == key.windowKey &&
           size.ref.configKey == key.configKey;
@@ -574,6 +668,12 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return;
     }
 
+    final ({
+      Map<String, double> flat,
+      Set<String> frame,
+      SideMeasurements? sides,
+    }) sizing = _measurementContext(catalogue, margins);
+
     // The drawer is over the screen it belongs to; leaving it open behind a
     // full screen means coming back to a sidebar nobody asked for.
     navigator.pop();
@@ -585,7 +685,17 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           windowTitle: widget.node.label,
           configSummary: _formulaConfigSummary,
           book: FormulaBook(catalogue, overrides),
-          measurements: <String, double>{..._formulaMeasurements(), ...margins},
+          measurements: sizing.flat,
+          // A window measured side by side shows each frame piece working on
+          // its own side, because that is the size it is cut to.
+          measurementsFor: sizing.sides == null
+              ? null
+              : (EffectiveFormula piece) => _measurementsForPiece(
+                    piece,
+                    flat: sizing.flat,
+                    frame: sizing.frame,
+                    sides: sizing.sides,
+                  ),
           pieceSizes: _pieceSizes,
           onSaved: _saveFormulas,
           // Kept on this screen until the window is saved -- they belong to
@@ -846,6 +956,18 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       widget.editingItem?.glassColor ?? widget.session.glassColorForNextWindow,
     );
     _pieceSizes = widget.editingItem?.pieceSizes ?? const <PieceSize>[];
+
+    // A window already measured side by side opens that way, whatever
+    // Settings says; a new one follows Settings. Estimation prices by area and
+    // is left on the plain pair.
+    final SideSizes saved =
+        widget.editingItem?.sideSizes ?? const SideSizes.empty();
+    _perSide = _isFabricationFlow &&
+        (saved.isNotEmpty || (widget.editingItem == null && AppSettings.instance.perSideSizes));
+    for (final String side in WindowSide.all) {
+      _sideControllers[side]!.text = saved.raw(side);
+    }
+    unawaited(_loadCatalogueForSides());
     _unitMode =
         widget.editingItem?.unitMode ??
         (_isFabricationFlow ? UnitMode.feet : UnitMode.inches);
@@ -1091,6 +1213,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _leftWidthInchController.dispose();
     _leftWidthSuterController.dispose();
     _archController.dispose();
+    for (final TextEditingController controller in _sideControllers.values) {
+      controller.dispose();
+    }
     _descriptionController.dispose();
     _quantityController.dispose();
     _winNoController.dispose();
@@ -1244,7 +1369,45 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     yield _widthController;
     if (_usesSplitWidthInputs) yield _leftWidthController;
     if (_usesArchInput) yield _archController;
+    // The sides are dimensions too: a unit change has to reach them or they
+    // would be read in the unit they were not typed in.
+    for (final String side in _sideLabels) {
+      yield _sideControllers[side]!;
+    }
   }
+
+  /// Reads the catalogue once, for the sides this window's frame has.
+  Future<void> _loadCatalogueForSides() async {
+    if (!_isFabricationFlow) return;
+    try {
+      final FormulaCatalogue catalogue = await FormulaCatalogueAsset.load();
+      if (!mounted) return;
+      setState(() => _catalogue = catalogue);
+    } catch (_) {
+      // Without it this window keeps the plain height and width, which is
+      // what every window had until now.
+    }
+  }
+
+  /// The sides this window can be measured on, as its frame names them.
+  ///
+  /// Read from the catalogue's frame for the window as it is set up right now,
+  /// so a collar change that changes the frame changes the boxes with it.
+  /// Empty for a window the catalogue does not describe -- the arches -- and
+  /// for estimation, which prices by area rather than cutting.
+  List<String> get _sideLabels {
+    final FormulaCatalogue? catalogue = _catalogue;
+    if (!_isFabricationFlow || catalogue == null) return const <String>[];
+    final FormulaWindowKey? key = _formulaKeyFor(catalogue);
+    if (key == null) return const <String>[];
+    return WindowSide.orderedFrom(catalogue.frameSideLabelsFor(key));
+  }
+
+  /// Whether this window has a frame with sides to measure. Three is the
+  /// fewest that means anything: a door's head and its two jambs.
+  bool get _canMeasureSides => _sideLabels.length >= 3;
+
+  bool get _usesSideInput => _perSide && _canMeasureSides;
 
   /// Storage notation into what the merged boxes show.
   void _applyMergedDisplayToControllers() {
@@ -1776,6 +1939,27 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (_numberingMode == NumberingMode.manual) {
       winNoError = _validateWinNo(_winNoController.text);
     }
+
+    // Measured side by side, the sides are the measurements: the plain pair
+    // is not on screen and has nothing in it to judge.
+    if (_usesSideInput) {
+      final Map<String, String?> sideErrors = <String, String?>{
+        for (final String side in _sideLabels) side: _validateSide(side),
+      };
+      setState(() {
+        _winNoError = winNoError;
+        _sideErrors
+          ..clear()
+          ..addAll(sideErrors);
+        _heightError = null;
+        _widthError = null;
+        _leftWidthError = null;
+        _archError = null;
+      });
+      return winNoError == null &&
+          sideErrors.values.every((String? error) => error == null);
+    }
+
     final String? heightError = _dimensionErrorForCurrentMode(
       _heightController,
       _heightInchController,
@@ -1825,6 +2009,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   void _resetInputsForNextEntry() {
     setState(() {
       _pieceSizes = const <PieceSize>[];
+      for (final TextEditingController controller in _sideControllers.values) {
+        controller.clear();
+      }
+      _sideErrors.clear();
       _heightController.clear();
       _heightInchController.clear();
       _heightSuterController.clear();
@@ -1922,10 +2110,30 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     final UnitMode storedUnitMode = _unitMode;
     String dimForStorage(String raw) => _normalizeDimensionForStorage(raw);
 
-    final String heightValue = dimForStorage(_heightController.text);
-    final String rightWidthValue = dimForStorage(_widthController.text);
+    // A window measured side by side is stored as its sides, and as the
+    // smaller of each pair: that pair is what its glass and everything inside
+    // its frame is cut to, and what every screen and report after this reads
+    // as the window's size.
+    final SideSizes sideSizes = _currentSideSizes();
+    final String unitForSides = _isCmMode ? 'cm' : 'inches';
+    String? smallestSide(List<String> of) =>
+        sideSizes.smallestRaw(of, unitMode: unitForSides);
+
+    final String heightValue = sideSizes.isEmpty
+        ? dimForStorage(_heightController.text)
+        : (smallestSide(<String>[WindowSide.left, WindowSide.right]) ??
+            dimForStorage(_heightController.text));
+    final String rightWidthValue = sideSizes.isEmpty
+        ? dimForStorage(_widthController.text)
+        : (smallestSide(_usesSplitWidthInputs
+                ? <String>[WindowSide.topRight, WindowSide.bottomRight]
+                : <String>[WindowSide.top, WindowSide.bottom]) ??
+            dimForStorage(_widthController.text));
     final String? leftWidthValue = _usesSplitWidthInputs
-        ? dimForStorage(_leftWidthController.text)
+        ? (sideSizes.isEmpty
+            ? dimForStorage(_leftWidthController.text)
+            : (smallestSide(<String>[WindowSide.topLeft, WindowSide.bottomLeft]) ??
+                dimForStorage(_leftWidthController.text)))
         : null;
     final String? archValue = _usesArchInput
         ? dimForStorage(_archController.text)
@@ -1962,6 +2170,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         material: _material,
         glassColor: _glassColor,
         pieceSizes: pieceSizes,
+        sideSizes: sideSizes,
         clearDescription: description == null,
         clearRightWidthValue: !_usesSplitWidthInputs,
         clearLeftWidthValue: !_usesSplitWidthInputs,
@@ -2010,6 +2219,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           material: _material,
           glassColor: _glassColor,
           pieceSizes: pieceSizes,
+          sideSizes: sideSizes,
         );
       }
     } on ArgumentError catch (_) {
@@ -2159,6 +2369,300 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// screen together. The wheel keeps a row per dimension: a box and a wheel
   /// each, twice over, is four controls across a phone.
   Widget _buildSizeFields(TextStyle? numberInputStyle, TextStyle? hintStyle) {
+    if (_canMeasureSides) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _buildPerSideToggle(),
+          const SizedBox(height: 12),
+          if (_usesSideInput)
+            _buildPerSideFields(numberInputStyle, hintStyle)
+          else
+            _buildPlainSizeFields(numberInputStyle, hintStyle),
+        ],
+      );
+    }
+    return _buildPlainSizeFields(numberInputStyle, hintStyle);
+  }
+
+  /// The switch that turns this one window's sides on and off.
+  Widget _buildPerSideToggle() {
+    final ThemeData theme = Theme.of(context);
+    return Material(
+      color: _usesSideInput
+          ? AppTheme.violet.withValues(alpha: 0.10)
+          : AppTheme.surfaceMuted,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        key: const Key('per_side_toggle'),
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _setPerSide(!_perSide),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+          child: Row(
+            children: <Widget>[
+              Icon(
+                Icons.crop_free_rounded,
+                size: 18,
+                color: _usesSideInput ? AppTheme.violet : AppTheme.slate,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Measure every side',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: _usesSideInput ? AppTheme.violet : AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _perSide,
+                onChanged: _setPerSide,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Turns the sides on or off for this window, carrying across what has
+  /// already been typed so nobody has to type a size twice.
+  void _setPerSide(bool value) {
+    setState(() {
+      if (value) {
+        final List<String> sides = _sideLabels;
+        void seed(String side, String from) {
+          if (!sides.contains(side)) return;
+          if (_sideControllers[side]!.text.trim().isNotEmpty) return;
+          _sideControllers[side]!.text = from.trim();
+        }
+
+        seed(WindowSide.top, _widthController.text);
+        seed(WindowSide.topRight, _widthController.text);
+        seed(WindowSide.topLeft, _leftWidthController.text);
+        seed(WindowSide.left, _heightController.text);
+      } else {
+        // Back to one pair: the smaller of each, which is what the window was
+        // being cut to everywhere except its frame.
+        final String width = _smallestSideText(<String>[
+          WindowSide.top,
+          WindowSide.bottom,
+          WindowSide.topRight,
+          WindowSide.bottomRight,
+        ]);
+        final String height = _smallestSideText(<String>[
+          WindowSide.left,
+          WindowSide.right,
+        ]);
+        if (width.isNotEmpty) _widthController.text = width;
+        if (height.isNotEmpty) _heightController.text = height;
+        if (_usesSplitWidthInputs) {
+          final String left = _smallestSideText(<String>[
+            WindowSide.topLeft,
+            WindowSide.bottomLeft,
+          ]);
+          if (left.isNotEmpty) _leftWidthController.text = left;
+        }
+        if (_usesSplitInput) _syncSplitControllersFromCombined();
+        _sideErrors.clear();
+      }
+      _perSide = value;
+    });
+  }
+
+  /// The smallest of these sides, as it is written in its box.
+  String _smallestSideText(List<String> sides) {
+    String smallest = '';
+    double? held;
+    for (final String side in sides) {
+      final String shown = _sideControllers[side]?.text.trim() ?? '';
+      if (shown.isEmpty) continue;
+      final String stored = _normalizeDimensionForStorage(shown);
+      if (stored.isEmpty) continue;
+      final double? value = WindowMeasurements.readOne(
+        isFabrication: true,
+        unitMode: _isCmMode ? 'cm' : 'inches',
+        value: stored,
+      );
+      if (value == null) continue;
+      if (held == null || value < held) {
+        held = value;
+        smallest = shown;
+      }
+    }
+    return smallest;
+  }
+
+  /// The sides, laid out as they sit on the window: the top above, the two
+  /// jambs either side of it, the bottom below. A corner window has two of
+  /// each end, one per wall, so its tops and bottoms sit in pairs.
+  Widget _buildPerSideFields(TextStyle? numberInputStyle, TextStyle? hintStyle) {
+    final List<String> sides = _sideLabels;
+    Widget box(String side) => _buildSideField(side, numberInputStyle, hintStyle);
+
+    if (sides.contains(WindowSide.topLeft)) {
+      return Column(
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(child: box(WindowSide.topLeft)),
+              const SizedBox(width: 12),
+              Expanded(child: box(WindowSide.topRight)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(child: box(WindowSide.left)),
+              const SizedBox(width: 12),
+              Expanded(child: box(WindowSide.right)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(child: box(WindowSide.bottomLeft)),
+              const SizedBox(width: 12),
+              Expanded(child: box(WindowSide.bottomRight)),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            const Spacer(),
+            Expanded(flex: 3, child: box(WindowSide.top)),
+            const Spacer(),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(child: box(WindowSide.left)),
+            const SizedBox(width: 12),
+            Expanded(child: box(WindowSide.right)),
+          ],
+        ),
+        // A door has no bottom frame, so it has no bottom to measure.
+        if (sides.contains(WindowSide.bottom)) ...<Widget>[
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              const Spacer(),
+              Expanded(flex: 3, child: box(WindowSide.bottom)),
+              const Spacer(),
+            ],
+          ),
+        ] else ...<Widget>[
+          const SizedBox(height: 8),
+          Text(
+            'A door has no bottom frame.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.slate,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// One side's box. Left empty it shows the side it will be taken from, so
+  /// nobody has to remember the rule while they are typing.
+  Widget _buildSideField(
+    String side,
+    TextStyle? numberInputStyle,
+    TextStyle? hintStyle,
+  ) {
+    final TextEditingController controller = _sideControllers[side]!;
+    final String? facing = WindowSide.facing[side];
+    final bool takesFacing = controller.text.trim().isEmpty &&
+        facing != null &&
+        _sideLabels.contains(facing) &&
+        (_sideControllers[facing]?.text.trim().isNotEmpty ?? false);
+
+    return TextField(
+      key: Key('side_field_$side'),
+      controller: controller,
+      style: numberInputStyle,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: <TextInputFormatter>[
+        if (_usesMergedInput)
+          MergedSizeFormatter(isFeet: _mergedIsFeet)
+        else
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+      ],
+      scrollPadding: EdgeInsets.zero,
+      // Every side is redrawn, because a side left empty shows what the side
+      // facing it now says.
+      onChanged: (_) => setState(() {
+        if (_sideErrors[side] != null) {
+          _sideErrors[side] = _validateSide(side);
+        }
+      }),
+      decoration: InputDecoration(
+        labelText: WindowSide.labelOf(side),
+        labelStyle: _dimensionLabelStyle,
+        floatingLabelStyle: _dimensionLabelStyle,
+        hintText: _dimensionHint,
+        hintStyle: hintStyle,
+        // Under the box, not inside it: an empty box shows its own name where
+        // a hint would go, so a hint there is a hint nobody ever sees. This is
+        // the one thing somebody has to know while typing -- that the side
+        // they are leaving empty is not being left out.
+        helperText: takesFacing
+            ? 'same as ${WindowSide.labelOf(facing).toLowerCase()}'
+            : null,
+        helperStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppTheme.violet,
+          fontWeight: FontWeight.w700,
+        ),
+        errorText: _sideErrors[side],
+      ),
+    );
+  }
+
+  /// What is wrong with one side, or null when it is fine. A side left empty
+  /// is fine as long as the side facing it is not.
+  String? _validateSide(String side) {
+    final String typed = _sideControllers[side]!.text.trim();
+    if (typed.isEmpty) {
+      final String? facing = WindowSide.facing[side];
+      final bool facingHasOne = facing != null &&
+          _sideLabels.contains(facing) &&
+          (_sideControllers[facing]?.text.trim().isNotEmpty ?? false);
+      return facingHasOne ? null : 'Required';
+    }
+    return _validateSingleDimension(typed);
+  }
+
+  /// This window's sides, in storage notation, ready to be saved.
+  SideSizes _currentSideSizes() {
+    if (!_usesSideInput) return const SideSizes.empty();
+    final Map<String, String> stored = <String, String>{};
+    for (final String side in _sideLabels) {
+      final String typed = _sideControllers[side]!.text.trim();
+      if (typed.isEmpty) continue;
+      final String value = _normalizeDimensionForStorage(typed);
+      if (value.trim().isEmpty) continue;
+      stored[side] = value;
+    }
+    return SideSizes(stored);
+  }
+
+  Widget _buildPlainSizeFields(
+    TextStyle? numberInputStyle,
+    TextStyle? hintStyle,
+  ) {
     final Widget height = _buildHeightField(numberInputStyle, hintStyle);
     final Widget width = _buildWidthField(numberInputStyle, hintStyle);
     final Widget? leftWidth = _usesSplitWidthInputs

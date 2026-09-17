@@ -30,6 +30,7 @@ class FormulaEditorScreen extends StatefulWidget {
     required this.configSummary,
     required this.book,
     this.measurements = const <String, double>{},
+    this.measurementsFor,
     this.pieceSizes = const <PieceSize>[],
     this.onSaved,
     this.onPieceSizesSaved,
@@ -52,6 +53,15 @@ class FormulaEditorScreen extends StatefulWidget {
   /// formula can be shown working. Empty is fine -- the lengths are simply not
   /// shown, which is what happens before anything has been typed.
   final Map<String, double> measurements;
+
+  /// The measurements one piece is worked out against, where they are not the
+  /// same for every piece.
+  ///
+  /// A window measured side by side cuts its frame to each side and everything
+  /// inside it to the smaller: the head really is working on a different width
+  /// from the sash below it, and a screen showing them both the same number
+  /// would be showing one of them a number it is not cut to.
+  final Map<String, double> Function(EffectiveFormula piece)? measurementsFor;
 
   /// The pieces of this window already cut to a size of their own.
   final List<PieceSize> pieceSizes;
@@ -118,7 +128,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
 
         final PieceSize? own = _standingSizeFor(piece);
         final String size =
-            own == null ? _windowSizeFor(piece.slot) : _sizeText(own.size);
+            own == null ? _windowSizeFor(piece) : _sizeText(own.size);
         _sizeControllers[piece.ref] = TextEditingController(text: size);
         _openedSizes[piece.ref] = size;
       }
@@ -140,10 +150,15 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
 
   static String _sizeText(double value) => CutLength.trimZeros(value, 2);
 
+  /// The measurements this one piece is cut from, before anybody types over
+  /// them: the window's, or its own side of the window.
+  Map<String, double> _measurementsOf(EffectiveFormula piece) =>
+      widget.measurementsFor?.call(piece) ?? widget.measurements;
+
   /// The window's own measurement for this piece, as it first appears in the
   /// formula. Blank when nothing has been measured yet.
-  String _windowSizeFor(FormulaSlot slot) {
-    final double? value = widget.measurements[slot.dimension];
+  String _windowSizeFor(EffectiveFormula piece) {
+    final double? value = _measurementsOf(piece)[piece.slot.dimension];
     if (value == null) return '';
     return _sizeText(value);
   }
@@ -153,7 +168,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   PieceSize? _standingSizeFor(EffectiveFormula piece) {
     final PieceSize? own = PieceSize.find(widget.pieceSizes, piece.ref);
     if (own == null || own.dimension != piece.slot.dimension) return null;
-    final double? window = widget.measurements[piece.slot.dimension];
+    final double? window = _measurementsOf(piece)[piece.slot.dimension];
     if (window == null || !own.standsFor(window)) return null;
     return own;
   }
@@ -171,7 +186,8 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// point, and is caught here rather than at the saw.
   String? _checkSize(EffectiveFormula piece) {
     final FormulaSlot slot = piece.slot;
-    final double? window = widget.measurements[slot.dimension];
+    final Map<String, double> measurements = _measurementsOf(piece);
+    final double? window = measurements[slot.dimension];
     if (window == null) return null;
 
     final String typed = _sizeControllers[piece.ref]?.text.trim() ?? '';
@@ -189,7 +205,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     final FormulaEdit edit = slot.readDisplay(_controllers[piece.ref]?.text ?? '');
     final FormulaSlot formula = edit.isUsable ? slot.withStored(edit.stored!) : slot;
     final FormulaResult result = formula.cutLengthFor(
-      <String, double>{...widget.measurements, slot.dimension: value},
+      <String, double>{...measurements, slot.dimension: value},
     );
     if (!result.isUsable) {
       return 'At $typed $_sizeUnit this piece comes out at nothing. The size '
@@ -201,10 +217,10 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// Whether this piece's box holds a size of its own rather than the
   /// window's measurement.
   bool _hasOwnSize(EffectiveFormula piece) {
-    final double? window = widget.measurements[piece.slot.dimension];
+    final double? window = _measurementsOf(piece)[piece.slot.dimension];
     if (window == null) return false;
     final String typed = _sizeControllers[piece.ref]?.text.trim() ?? '';
-    if (typed == _windowSizeFor(piece.slot)) return false;
+    if (typed == _windowSizeFor(piece)) return false;
     final double? value = double.tryParse(typed);
     if (value == null) return typed.isNotEmpty;
     return (value - window).abs() > 0.0005;
@@ -231,7 +247,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
           ref: piece.ref,
           label: piece.slot.label,
           dimension: piece.slot.dimension,
-          base: widget.measurements[piece.slot.dimension]!,
+          base: _measurementsOf(piece)[piece.slot.dimension]!,
           size: size,
         ));
       }
@@ -373,7 +389,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     final EffectiveFormula? piece = _pieceFor(ref);
     if (piece == null) return;
     setState(() {
-      _sizeControllers[ref]!.text = _windowSizeFor(piece.slot);
+      _sizeControllers[ref]!.text = _windowSizeFor(piece);
       _sizeProblems.remove(ref);
     });
   }
@@ -391,7 +407,9 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     // A size that cannot be cut to has already said why, under its box; a
     // second, vaguer message about the same number would only be noise.
     if (_sizeProblems.containsKey(ref)) return null;
-    final Map<String, double> measurements = _measurementsFor(ref, slot);
+    final EffectiveFormula? piece = _pieceFor(ref);
+    if (piece == null) return null;
+    final Map<String, double> measurements = _measurementsFor(piece);
     if (measurements[slot.dimension] == null) return null;
 
     final String typed = _controllers[ref]?.text ?? slot.display;
@@ -419,11 +437,12 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// into this formula's inner box -- then that stands, for this piece and no
   /// other. Saved, it is what this piece of this window is cut to; it reaches
   /// no other piece and no other window.
-  Map<String, double> _measurementsFor(FormulaPieceRef ref, FormulaSlot slot) {
-    final String typed = _sizeControllers[ref]?.text.trim() ?? '';
+  Map<String, double> _measurementsFor(EffectiveFormula piece) {
+    final Map<String, double> measurements = _measurementsOf(piece);
+    final String typed = _sizeControllers[piece.ref]?.text.trim() ?? '';
     final double? asked = typed.isEmpty ? null : double.tryParse(typed);
-    if (asked == null) return widget.measurements;
-    return <String, double>{...widget.measurements, slot.dimension: asked};
+    if (asked == null) return measurements;
+    return <String, double>{...measurements, piece.slot.dimension: asked};
   }
 
   /// Whether this piece has a measurement to stand in its formula.
@@ -465,7 +484,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
       for (final EffectiveSection section in refreshed) {
         for (final EffectiveFormula piece in section.pieces) {
           _controllers[piece.ref]!.text = piece.slot.display;
-          _sizeControllers[piece.ref]!.text = _windowSizeFor(piece.slot);
+          _sizeControllers[piece.ref]!.text = _windowSizeFor(piece);
         }
       }
     });
@@ -703,7 +722,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
                         problemFor: (FormulaPieceRef ref) => _problems[ref],
                         sizeProblemFor: (FormulaPieceRef ref) => _sizeProblems[ref],
                         ownSizeFor: (EffectiveFormula piece) => _hasOwnSize(piece)
-                            ? '${_windowSizeFor(piece.slot)} $_sizeUnit'
+                            ? '${_windowSizeFor(piece)} $_sizeUnit'
                             : null,
                         previewFor: _preview,
                         isEdited: (FormulaPieceRef ref) =>

@@ -11,6 +11,7 @@ import '../../tutorial/tutorial_target.dart';
 import '../data/project_repository.dart';
 import '../data/window_catalog.dart';
 import '../models/window_material.dart';
+import '../../formulas/model/window_sides.dart';
 import '../models/window_review_item.dart';
 import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
@@ -57,6 +58,20 @@ class ReviewListScreen extends StatelessWidget {
       value,
       isFeet: !session.isFabrication && item.unitMode == UnitMode.feet,
     );
+  }
+
+  /// Two facing sides as one reading: "44.5/46" where they differ, and the
+  /// single size where they do not. A side left empty is the one facing it,
+  /// which is what it will be cut to.
+  String _sidePairText(WindowReviewItem item, List<String> sides) {
+    final List<String> shown = <String>[];
+    for (final String side in sides) {
+      final String raw = item.sideSizes.effective(side);
+      if (raw.isEmpty) continue;
+      final String text = _sizeText(item, raw);
+      if (text.isNotEmpty && !shown.contains(text)) shown.add(text);
+    }
+    return shown.join('/');
   }
 
   String _unitLabel(WindowReviewItem item) {
@@ -296,6 +311,20 @@ class ReviewListScreen extends StatelessWidget {
       GlassColorChip(color: item.glassColor),
     ];
 
+    // Measured side by side rather than as one width and one height. Worth a
+    // chip of its own: the sizes above already read "44.5/46", and this says
+    // why rather than leaving it to be worked out.
+    if (item.sideSizes.isNotEmpty) {
+      chips.add(
+        _buildMetaChip(
+          context,
+          icon: Icons.crop_free_rounded,
+          label: 'Every side',
+          accentColor: AppTheme.violet,
+        ),
+      );
+    }
+
     // Pieces set to a size of their own on the formula screen. Named here
     // because this list is where a job is checked before it is cut, and a
     // piece that will not come out at the window's size is exactly the thing
@@ -430,24 +459,45 @@ class ReviewListScreen extends StatelessWidget {
     // to the screen it was typed on is a row that gets misread.
     final List<InlineSpan> spans = <InlineSpan>[];
 
+    // A window measured side by side reads out as both of each pair where
+    // they differ -- 44.5/46 -- because the wider edge is a real size that a
+    // real piece is cut to, and a row showing only one of them would have the
+    // frame and the list disagreeing.
+    final bool bySide = item.sideSizes.isNotEmpty;
+
     if (item.leftWidthValue != null || item.rightWidthValue != null) {
       spans.addAll(<InlineSpan>[
         TextSpan(text: 'Right Width = ', style: widthLabelStyle),
         TextSpan(
-          text: _sizeText(item, item.rightWidthValue ?? item.widthValue),
+          text: bySide
+              ? _sidePairText(
+                  item,
+                  <String>[WindowSide.topRight, WindowSide.bottomRight],
+                )
+              : _sizeText(item, item.rightWidthValue ?? item.widthValue),
           style: widthValueStyle,
         ),
         const TextSpan(text: '   '),
         TextSpan(text: 'Left Width = ', style: widthLabelStyle),
         TextSpan(
-          text: _sizeText(item, item.leftWidthValue ?? item.widthValue),
+          text: bySide
+              ? _sidePairText(
+                  item,
+                  <String>[WindowSide.topLeft, WindowSide.bottomLeft],
+                )
+              : _sizeText(item, item.leftWidthValue ?? item.widthValue),
           style: widthValueStyle,
         ),
       ]);
     } else {
       spans.addAll(<InlineSpan>[
         TextSpan(text: 'Width = ', style: widthLabelStyle),
-        TextSpan(text: _sizeText(item, item.widthValue), style: widthValueStyle),
+        TextSpan(
+          text: bySide
+              ? _sidePairText(item, <String>[WindowSide.top, WindowSide.bottom])
+              : _sizeText(item, item.widthValue),
+          style: widthValueStyle,
+        ),
       ]);
     }
 
@@ -455,7 +505,9 @@ class ReviewListScreen extends StatelessWidget {
       const TextSpan(text: '   '),
       TextSpan(text: 'Height = ', style: heightLabelStyle),
       TextSpan(
-        text: _sizeText(item, item.heightValue),
+        text: bySide
+            ? _sidePairText(item, <String>[WindowSide.left, WindowSide.right])
+            : _sizeText(item, item.heightValue),
         style: heightValueStyle,
       ),
     ]);
