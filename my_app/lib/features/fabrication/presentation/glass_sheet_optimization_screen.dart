@@ -7,6 +7,8 @@ import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../estimation/models/glass_color.dart';
+import '../../estimation/widgets/glass_color_picker.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/bottom_action_bar.dart';
@@ -290,6 +292,9 @@ class _GlassSheetOptimizationScreenState
                 DataColumn(label: Text('Label')),
                 DataColumn(label: Text('Rub')),
                 DataColumn(label: Text('Qty')),
+                // Which glass each piece is, so the list the sheets are about
+                // to be packed from can be checked colour by colour first.
+                DataColumn(label: Text('Glass Color')),
                 DataColumn(label: Text('Glass Size')),
               ],
               rows: widget.glassReport.rows
@@ -300,6 +305,23 @@ class _GlassSheetOptimizationScreenState
                         DataCell(Text(row.windowName)),
                         DataCell(Text(row.rubberType)),
                         DataCell(Text('${row.quantity}')),
+                        DataCell(
+                          row.glassColor.isEmpty
+                              ? const Text('--')
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    GlassSwatch(
+                                      color: row.glassColor,
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      GlassColors.shortLabelFor(row.glassColor),
+                                    ),
+                                  ],
+                                ),
+                        ),
                         DataCell(Text(_glassSizeForRow(row))),
                       ],
                     );
@@ -396,13 +418,16 @@ class _GlassSheetOptimizationScreenState
       ),
       MetricCard(
         label: 'Used',
-        value: formatArea(result.summary.usedArea),
+        value: formatAreaLines(result.summary.usedArea),
         icon: Icons.crop_square_rounded,
         accent: AppTheme.success,
       ),
+      // The waste as glass, not only as a percentage. "18%" does not tell a
+      // shop how much glass it paid for and threw away; the footage does.
       MetricCard(
-        label: 'Wastage',
-        value: formatPercent(result.summary.wastagePercentage),
+        label:
+            'Waste  ·  ${formatPercent(result.summary.wastagePercentage)}',
+        value: formatAreaLines(result.summary.wasteArea),
         icon: Icons.pie_chart_rounded,
         accent: AppTheme.amberAccent,
       ),
@@ -433,12 +458,7 @@ class _GlassSheetOptimizationScreenState
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space5),
       child: SectionSurfaceCard(
-        // The glass is part of the sheet's name, not a detail inside it. The
-        // cutter picks a sheet off the rack before reading anything else on
-        // the drawing, and picking the wrong colour wastes the whole sheet.
-        title: sheet.glassColor.isEmpty
-            ? 'Sheet ${sheet.sheetNo}'
-            : 'Sheet ${sheet.sheetNo}  ·  ${sheet.glassColor}',
+        title: 'Sheet ${sheet.sheetNo}',
         trailing: _MetaChip(
           label: 'Waste',
           value: formatPercent(sheet.wastagePercentage),
@@ -446,6 +466,17 @@ class _GlassSheetOptimizationScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            // The glass comes first, before the size or the drawing. The
+            // cutter fetches a sheet off the rack before reading anything else
+            // here, and the wrong colour wastes the whole sheet -- so it is
+            // said in words and shown as the glass itself.
+            if (sheet.glassColor.isNotEmpty) ...<Widget>[
+              _SheetGlassBanner(
+                key: Key('sheet_glass_${sheet.sheetNo}'),
+                color: sheet.glassColor,
+              ),
+              const SizedBox(height: AppTheme.space4),
+            ],
             Wrap(
               spacing: AppTheme.space3,
               runSpacing: AppTheme.space3,
@@ -626,6 +657,65 @@ class _ExtraMarginWarning extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Which glass a sheet is cut from: the swatch and the full name, on a band
+/// tinted in that glass.
+///
+/// The full name rather than the short one the lists use. There is room here,
+/// and "Green Mer." on the drawing a cutter works from is one more thing to
+/// decode standing at the rack.
+class _SheetGlassBanner extends StatelessWidget {
+  final String color;
+
+  const _SheetGlassBanner({super.key, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final String name = GlassColors.displayName(color);
+    final Color tint = GlassColors.swatchFor(name);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.space4,
+        vertical: AppTheme.space3,
+      ),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: tint.withValues(alpha: 0.55), width: 1.2),
+      ),
+      child: Row(
+        children: <Widget>[
+          GlassSwatch(color: name, size: 28),
+          const SizedBox(width: AppTheme.space4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'GLASS COLOR',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  name,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],

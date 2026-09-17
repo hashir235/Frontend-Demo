@@ -6,6 +6,7 @@ import '../models/window_review_item.dart';
 import '../models/glass_color.dart';
 import '../models/window_material.dart';
 import '../../settings/state/numbering_mode.dart';
+import 'last_glass_color.dart';
 
 /// Which kind of job a session belongs to.
 ///
@@ -216,6 +217,14 @@ class EstimateSessionStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The glass the next window opens on.
+  ///
+  /// Whatever this shop picked last, in this job or any other. It used to be
+  /// the last window of this job, which put every new job back on clear -- a
+  /// shop that glazes in one colour re-picked it at the start of each one. It
+  /// moves only when somebody picks something else; see [LastGlassColor].
+  String get glassColorForNextWindow => LastGlassColor.instance.value;
+
   /// What the next window should start on: whatever the last one was entered
   /// in.
   ///
@@ -223,16 +232,6 @@ class EstimateSessionStore extends ChangeNotifier {
   /// The exceptions -- the one door in a different colour -- are the windows
   /// where the fabricator is already thinking about it and will change it
   /// himself. Falls back to the opening default on the first window of a job.
-  /// The glass the next window opens on.
-  ///
-  /// Whatever the last one was glazed in, because most jobs are mostly one
-  /// glass and a shop should not re-pick it twenty times. It moves only when
-  /// somebody moves it.
-  String get glassColorForNextWindow {
-    if (_items.isEmpty) return GlassColors.initial;
-    return GlassColors.normalize(_items.last.glassColor);
-  }
-
   WindowMaterial get materialForNextWindow {
     if (_items.isEmpty) return WindowMaterial.initial;
     // The one entered last, not the lowest-numbered: that is the one whose

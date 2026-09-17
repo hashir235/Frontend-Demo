@@ -50,7 +50,7 @@ class GlassColorPicker extends StatelessWidget {
                 child: Row(
                   children: <Widget>[
                     Text(
-                      'Glass',
+                      'Glass Color',
                       style: Theme.of(sheetContext).textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),
@@ -100,7 +100,7 @@ class GlassColorPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          'GLASS',
+          'GLASS COLOR',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             fontWeight: FontWeight.w800,
             letterSpacing: 0.8,

@@ -3,9 +3,11 @@ import 'package:my_app/features/estimation/models/glass_color.dart';
 import 'package:my_app/features/estimation/models/optimization_request.dart';
 import 'package:my_app/features/estimation/models/window_review_item.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
+import 'package:my_app/features/estimation/state/last_glass_color.dart';
 import 'package:my_app/features/fabrication/models/glass_report.dart';
 import 'package:my_app/features/fabrication/models/glass_sheet_optimization.dart';
 import 'package:my_app/features/settings/models/bill_defaults.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Glass belongs to the window, not to the job.
 ///
@@ -53,6 +55,13 @@ void main() {
       );
       expect(GlassColors.isMercury('Green Mercury'), isTrue);
       expect(GlassColors.isMercury('Green Simple'), isFalse);
+    });
+
+    test('a glass read back from a layout keeps its own name', () {
+      // Unlike a window being entered, a sheet already laid out must never be
+      // called clear when it is something else.
+      expect(GlassColors.displayName('green  mercury'), 'Green Mercury');
+      expect(GlassColors.displayName('Bronze Something'), 'Bronze Something');
     });
 
     test('an unknown or missing glass reads as clear', () {
@@ -149,28 +158,27 @@ void main() {
       projectLocation: 'Test Location',
     );
 
-    test('starts on clear when the job is empty', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      LastGlassColor.instance.resetForTest();
+    });
+
+    tearDown(LastGlassColor.instance.resetForTest);
+
+    test('starts on clear when nothing has ever been picked', () {
       expect(session().glassColorForNextWindow, 'Clear Glass');
     });
 
-    test('inherits whatever the last one was glazed in', () {
-      // Most jobs are mostly one glass. A shop should pick it once.
-      final EstimateSessionStore store = session();
-      store.addItem(
-        winNo: 1,
-        windowLabel: 'Sliding Window',
-        windowCode: 'S_win',
-        windowIndex: 1,
-        collarIndex: 1,
-        unitMode: UnitMode.inches,
-        heightValue: '60.0',
-        widthValue: '48.0',
-        glassColor: 'Ocean Blue',
-      );
-      expect(store.glassColorForNextWindow, 'Ocean Blue');
+    test('opens on the last glass picked, in a brand new job too', () async {
+      // A shop that glazes in one colour should pick it once -- not once per
+      // job, which is what taking it from the job's own last window meant.
+      await LastGlassColor.instance.remember('Ocean Blue');
 
-      final WindowReviewItem next = store.addItem(
-        winNo: 2,
+      final EstimateSessionStore newJob = session();
+      expect(newJob.glassColorForNextWindow, 'Ocean Blue');
+
+      final WindowReviewItem first = newJob.addItem(
+        winNo: 1,
         windowLabel: 'Sliding Window',
         windowCode: 'S_win',
         windowIndex: 1,
@@ -180,10 +188,35 @@ void main() {
         widthValue: '48.0',
       );
       expect(
-        next.glassColor,
+        first.glassColor,
         'Ocean Blue',
-        reason: 'it carries over until somebody moves it',
+        reason: 'it carries over until somebody picks something else',
       );
+    });
+
+    test('opening an old job does not move it', () async {
+      // Looking at a window glazed in something else is not choosing it.
+      await LastGlassColor.instance.remember('Green Mercury');
+      final EstimateSessionStore oldJob = session()
+        ..replaceItems(<WindowReviewItem>[window(1, glass: 'Gray Simple')]);
+      expect(oldJob.glassColorForNextWindow, 'Green Mercury');
+    });
+
+    test('is still there after the app is closed and opened', () async {
+      await LastGlassColor.instance.remember('Brown Mercury');
+      LastGlassColor.instance.resetForTest();
+      expect(LastGlassColor.instance.value, 'Clear Glass');
+
+      await LastGlassColor.instance.load();
+      expect(LastGlassColor.instance.value, 'Brown Mercury');
+    });
+
+    test('a glass since dropped from the rate list opens on clear', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'quick_al.last_glass_color': 'Bronze Something',
+      });
+      await LastGlassColor.instance.load();
+      expect(LastGlassColor.instance.value, 'Clear Glass');
     });
 
     test('one window changing it does not move the others', () {

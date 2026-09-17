@@ -30,6 +30,16 @@ class GlassColors {
     return GlassTypes.match(v) ?? initial;
   }
 
+  /// The name to print for a glass that came back from somewhere else -- a
+  /// saved list, a sheet layout.
+  ///
+  /// Unlike [normalize] this never turns an unrecognised name into clear. On a
+  /// window being entered, clear is a safe start; on a sheet already laid out,
+  /// saying clear about glass that is something else would send the cutter to
+  /// the wrong rack.
+  static String displayName(String value) =>
+      GlassTypes.match(value) ?? value.trim();
+
   /// Roughly what the glass looks like held up to the light.
   ///
   /// For the eye only, and that is the point: a fitter who cannot read English

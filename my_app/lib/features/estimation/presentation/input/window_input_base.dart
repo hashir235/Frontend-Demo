@@ -10,6 +10,7 @@ import '../../data/project_repository.dart';
 import '../../models/window_review_item.dart';
 import '../../models/window_type.dart';
 import '../../state/estimate_session_store.dart';
+import '../../state/last_glass_color.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../flow_nav/models/flow_step.dart';
 import '../../../flow_nav/presentation/flow_progress_bar.dart';
@@ -2991,6 +2992,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             value: _glassColor,
                             onChanged: (String next) {
                               setState(() => _glassColor = next);
+                              // Every window and glass row after this opens
+                              // on it too, in this job and the next, until
+                              // somebody picks again.
+                              unawaited(LastGlassColor.instance.remember(next));
                             },
                           ),
                         ),

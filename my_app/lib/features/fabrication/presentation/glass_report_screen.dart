@@ -7,6 +7,7 @@ import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../estimation/models/glass_color.dart';
+import '../../estimation/state/last_glass_color.dart';
 import '../../estimation/widgets/glass_color_picker.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
@@ -183,11 +184,10 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
     await GlassRowEditorSheet.show(
       context,
       suggestedWindowNo: _nextWindowNo,
-      // A run of glass is usually one colour: open on whatever the last row
-      // was rather than making the shop re-pick it for every piece.
-      suggestedGlassColor: _rows.isEmpty
-          ? GlassColors.initial
-          : GlassColors.normalize(_rows.last.glassColor),
+      // Whatever glass was picked last, here or on a window, in this job or
+      // another. Taking it from this list's last row put every new glass job
+      // back on clear, so the shop re-picked its usual glass every time.
+      suggestedGlassColor: LastGlassColor.instance.value,
       onRowSaved: (GlassReportRow row) {
         setState(() {
           _rows.add(row);
@@ -777,7 +777,7 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
               // Which glass, right beside the size. Two rows of the same size
               // in different glass are two different pieces, and the cutter
               // has to be able to tell them apart at a glance.
-              DataColumn(label: Text('Glass')),
+              DataColumn(label: Text('Glass Color')),
               DataColumn(label: Text('Rub')),
               DataColumn(label: Text('WinNo')),
               DataColumn(label: Text('Label')),

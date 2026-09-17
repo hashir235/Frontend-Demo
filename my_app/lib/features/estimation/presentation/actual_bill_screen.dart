@@ -537,7 +537,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
           const SizedBox(height: AppTheme.space5),
           _buildDetailCard(
             context,
-            title: 'Glass by Colour',
+            title: 'Glass by Color',
             entries: <MapEntry<String, String>>[
               for (final BillGlassSummary row in _namedGlass(snapshot))
                 MapEntry<String, String>(

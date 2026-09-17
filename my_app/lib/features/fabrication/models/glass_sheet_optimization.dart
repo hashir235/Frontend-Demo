@@ -304,7 +304,20 @@ class GlassSheetWasteRect {
   }
 }
 
-String formatArea(double value) => '${_trim(value, 1)} sq in';
+/// An area of glass in both units a shop uses for it.
+///
+/// Cut by the inch, bought and priced by the foot. Square inches alone left
+/// the fabricator dividing by 144 to tell a customer how much glass a job
+/// used, or how much of what he paid for went in the bin.
+String formatArea(double value) =>
+    '${_trim(value, 1)} sq in  ·  ${formatSqFt(value)} sq ft';
+
+/// The same area on two lines, for a tile too narrow to hold it on one.
+String formatAreaLines(double value) =>
+    '${_trim(value, 1)} sq in\n${formatSqFt(value)} sq ft';
+
+/// Square inches as square feet, the number alone.
+String formatSqFt(double squareInches) => _trim(squareInches / 144, 2);
 
 String formatPercent(double value) => '${_trim(value, 1)}%';
 
