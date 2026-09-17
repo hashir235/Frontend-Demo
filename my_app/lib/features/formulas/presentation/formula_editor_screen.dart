@@ -12,6 +12,7 @@ import '../model/formula_overrides.dart';
 import '../model/formula_expression.dart';
 import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';
+import '../model/piece_size.dart';
 import 'formula_field.dart';
 
 /// Reads and edits the formulas for one window configuration.
@@ -29,7 +30,9 @@ class FormulaEditorScreen extends StatefulWidget {
     required this.configSummary,
     required this.book,
     this.measurements = const <String, double>{},
+    this.pieceSizes = const <PieceSize>[],
     this.onSaved,
+    this.onPieceSizesSaved,
   });
 
   /// Which window's formulas these are.
@@ -50,8 +53,16 @@ class FormulaEditorScreen extends StatefulWidget {
   /// shown, which is what happens before anything has been typed.
   final Map<String, double> measurements;
 
+  /// The pieces of this window already cut to a size of their own.
+  final List<PieceSize> pieceSizes;
+
   /// Handed the changed formulas when the workshop saves.
   final Future<void> Function(FormulaOverrides overrides)? onSaved;
+
+  /// Handed this window's piece sizes when they were changed and saved: the
+  /// whole set, so an empty list means every piece is back on the window's
+  /// own measurement.
+  final void Function(List<PieceSize> sizes)? onPieceSizesSaved;
 
   @override
   State<FormulaEditorScreen> createState() => _FormulaEditorScreenState();
@@ -75,12 +86,19 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
 
   /// The measurement standing inside each formula, as it currently reads.
   ///
-  /// Starts at the window's own, and a fabricator may type over it to ask what
-  /// the piece would come to at another size. That question belongs to one
-  /// piece on one screen: it is never saved, never sent, and gone when the
-  /// screen closes. The formula is the thing that is kept.
+  /// Starts at the window's own, or at the size this piece was already given.
+  /// Typing a different number cuts this one piece, in this window only, as
+  /// though the window measured that -- kept with the window when saved. The
+  /// formula beside it is the other thing that can change, and that one is
+  /// kept for every window like this.
   final Map<FormulaPieceRef, TextEditingController> _sizeControllers =
       <FormulaPieceRef, TextEditingController>{};
+
+  /// What each size box held when the screen opened.
+  final Map<FormulaPieceRef, String> _openedSizes = <FormulaPieceRef, String>{};
+
+  /// What is wrong with a size typed into a box, per piece.
+  final Map<FormulaPieceRef, String> _sizeProblems = <FormulaPieceRef, String>{};
 
   /// Which formulas are being changed as text rather than tried as numbers.
   final Set<FormulaPieceRef> _editingFormula = <FormulaPieceRef>{};
@@ -91,29 +109,150 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   void initState() {
     super.initState();
     _draft = widget.book.copy();
-    _sections = <EffectiveSection>[
-      ...?_draft.sectionsFor(widget.windowKey),
-      // The glass after the aluminium, because that is the order a window is
-      // made in: the frame is cut, then the panes that go in it.
-      ..._draft.glassFor(widget.windowKey),
-    ];
+    _sections = _sectionsOf(_draft);
     for (final EffectiveSection section in _sections) {
       for (final EffectiveFormula piece in section.pieces) {
         final String shown = piece.slot.display;
         _controllers[piece.ref] = TextEditingController(text: shown);
         _opened[piece.ref] = shown;
-        _sizeControllers[piece.ref] =
-            TextEditingController(text: _windowSizeFor(piece.slot));
+
+        final PieceSize? own = _standingSizeFor(piece);
+        final String size =
+            own == null ? _windowSizeFor(piece.slot) : _sizeText(own.size);
+        _sizeControllers[piece.ref] = TextEditingController(text: size);
+        _openedSizes[piece.ref] = size;
       }
     }
   }
+
+  /// Every section this window's formulas cover.
+  ///
+  /// The glass after the aluminium, because that is the order a window is made
+  /// in: the frame is cut, then the panes that go in it. Built in one place so
+  /// putting everything back cannot drop the panes off the screen, which is
+  /// what rebuilding from the aluminium alone used to do.
+  List<EffectiveSection> _sectionsOf(FormulaBook book) {
+    return <EffectiveSection>[
+      ...?book.sectionsFor(widget.windowKey),
+      ...book.glassFor(widget.windowKey),
+    ];
+  }
+
+  static String _sizeText(double value) => CutLength.trimZeros(value, 2);
 
   /// The window's own measurement for this piece, as it first appears in the
   /// formula. Blank when nothing has been measured yet.
   String _windowSizeFor(FormulaSlot slot) {
     final double? value = widget.measurements[slot.dimension];
     if (value == null) return '';
-    return CutLength.trimZeros(value, 2);
+    return _sizeText(value);
+  }
+
+  /// The size this piece was already given, if it still applies to the window
+  /// as it now measures.
+  PieceSize? _standingSizeFor(EffectiveFormula piece) {
+    final PieceSize? own = PieceSize.find(widget.pieceSizes, piece.ref);
+    if (own == null || own.dimension != piece.slot.dimension) return null;
+    final double? window = widget.measurements[piece.slot.dimension];
+    if (window == null || !own.standsFor(window)) return null;
+    return own;
+  }
+
+  /// The unit a size box is in, said the way the legend says it.
+  String get _sizeUnit =>
+      widget.windowKey.context == 'fabrication' ? 'cm' : 'ft';
+
+  /// Why the size in a piece's box cannot be cut to, or null if it can.
+  ///
+  /// The size stands in for the window's measurement inside the formula, so
+  /// it has to be one: more than nothing, and more than the formula takes off
+  /// -- otherwise the piece itself comes out at nothing or less. More than
+  /// twice the window's own measurement is almost always a slipped decimal
+  /// point, and is caught here rather than at the saw.
+  String? _checkSize(EffectiveFormula piece) {
+    final FormulaSlot slot = piece.slot;
+    final double? window = widget.measurements[slot.dimension];
+    if (window == null) return null;
+
+    final String typed = _sizeControllers[piece.ref]?.text.trim() ?? '';
+    if (typed.isEmpty) {
+      return 'Type a size, or tap the window size to put it back.';
+    }
+    final double? value = double.tryParse(typed);
+    if (value == null) return '"$typed" is not a size.';
+    if (value <= 0) return 'A size has to be more than 0.';
+    if (value > window * 2) {
+      return '$typed $_sizeUnit is more than double this window '
+          '(${_sizeText(window)} $_sizeUnit). Check the number.';
+    }
+
+    final FormulaEdit edit = slot.readDisplay(_controllers[piece.ref]?.text ?? '');
+    final FormulaSlot formula = edit.isUsable ? slot.withStored(edit.stored!) : slot;
+    final FormulaResult result = formula.cutLengthFor(
+      <String, double>{...widget.measurements, slot.dimension: value},
+    );
+    if (!result.isUsable) {
+      return 'At $typed $_sizeUnit this piece comes out at nothing. The size '
+          'has to be bigger than the formula takes off.';
+    }
+    return null;
+  }
+
+  /// Whether this piece's box holds a size of its own rather than the
+  /// window's measurement.
+  bool _hasOwnSize(EffectiveFormula piece) {
+    final double? window = widget.measurements[piece.slot.dimension];
+    if (window == null) return false;
+    final String typed = _sizeControllers[piece.ref]?.text.trim() ?? '';
+    if (typed == _windowSizeFor(piece.slot)) return false;
+    final double? value = double.tryParse(typed);
+    if (value == null) return typed.isNotEmpty;
+    return (value - window).abs() > 0.0005;
+  }
+
+  /// This window's piece sizes, as the boxes now stand.
+  List<PieceSize> _collectPieceSizes() {
+    final List<PieceSize> sizes = <PieceSize>[];
+    for (final EffectiveSection section in _sections) {
+      for (final EffectiveFormula piece in section.pieces) {
+        if (!_hasOwnSize(piece)) continue;
+        final String typed = _sizeControllers[piece.ref]!.text.trim();
+        final double? value = double.tryParse(typed);
+        if (value == null) continue;
+
+        // A size the box was opened on keeps its exact value. The box shows
+        // two decimals, and saving what it shows would nudge a size set to
+        // more precision than that every time the screen was opened.
+        final PieceSize? standing = _standingSizeFor(piece);
+        final double size =
+            standing != null && typed == _sizeText(standing.size) ? standing.size : value;
+
+        sizes.add(PieceSize(
+          ref: piece.ref,
+          label: piece.slot.label,
+          dimension: piece.slot.dimension,
+          base: widget.measurements[piece.slot.dimension]!,
+          size: size,
+        ));
+      }
+    }
+    return sizes;
+  }
+
+  /// The piece sizes this screen opened with.
+  List<PieceSize> _standingSizes() {
+    return <PieceSize>[
+      for (final EffectiveSection section in _sections)
+        for (final EffectiveFormula piece in section.pieces)
+          ?_standingSizeFor(piece),
+    ];
+  }
+
+  bool get _sizesChanged {
+    final List<PieceSize> now = _collectPieceSizes();
+    final List<PieceSize> before = _standingSizes();
+    if (now.length != before.length) return true;
+    return !now.every(before.contains);
   }
 
   @override
@@ -127,14 +266,26 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     super.dispose();
   }
 
-  bool get _hasEdits {
+  bool get _hasFormulaEdits {
     for (final MapEntry<FormulaPieceRef, TextEditingController> entry in _controllers.entries) {
       if (entry.value.text.trim() != _opened[entry.key]) return true;
     }
     return false;
   }
 
-  bool get _hasProblems => _problems.isNotEmpty;
+  /// Anything typed that would be lost by leaving -- a formula or a size.
+  bool get _hasEdits {
+    if (_hasFormulaEdits) return true;
+    for (final MapEntry<FormulaPieceRef, TextEditingController> entry
+        in _sizeControllers.entries) {
+      if (entry.value.text.trim() != _openedSizes[entry.key]) return true;
+    }
+    return false;
+  }
+
+  bool get _hasProblems => _problems.isNotEmpty || _sizeProblems.isNotEmpty;
+
+  int get _problemCount => _problems.length + _sizeProblems.length;
 
   /// What Quick AL puts around every formula on this screen, and what that
   /// means for the sizes shown under them.
@@ -196,6 +347,34 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
       } else {
         _problems[ref] = edit.problem ?? 'This formula cannot be used.';
       }
+      // A new formula can take off more than the size in the box allows for,
+      // so the size is checked again against it.
+      _recheckSize(piece);
+    });
+  }
+
+  void _onSizeTyped(FormulaPieceRef ref) {
+    final EffectiveFormula? piece = _pieceFor(ref);
+    if (piece == null) return;
+    setState(() => _recheckSize(piece));
+  }
+
+  void _recheckSize(EffectiveFormula piece) {
+    final String? problem = _checkSize(piece);
+    if (problem == null) {
+      _sizeProblems.remove(piece.ref);
+    } else {
+      _sizeProblems[piece.ref] = problem;
+    }
+  }
+
+  /// Puts one piece back on the window's own measurement.
+  void _resetSize(FormulaPieceRef ref) {
+    final EffectiveFormula? piece = _pieceFor(ref);
+    if (piece == null) return;
+    setState(() {
+      _sizeControllers[ref]!.text = _windowSizeFor(piece.slot);
+      _sizeProblems.remove(ref);
     });
   }
 
@@ -209,6 +388,9 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// workshop that measures in suter should not have to work out in its head
   /// what taking 2mm off a formula does to the cut.
   _Preview? _preview(FormulaPieceRef ref, FormulaSlot slot) {
+    // A size that cannot be cut to has already said why, under its box; a
+    // second, vaguer message about the same number would only be noise.
+    if (_sizeProblems.containsKey(ref)) return null;
     final Map<String, double> measurements = _measurementsFor(ref, slot);
     if (measurements[slot.dimension] == null) return null;
 
@@ -235,8 +417,8 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   ///
   /// The window's own, except where a fabricator has typed a different size
   /// into this formula's inner box -- then that stands, for this piece and no
-  /// other. It is a question being asked, not a measurement being changed, so
-  /// it reaches no other piece and is never saved.
+  /// other. Saved, it is what this piece of this window is cut to; it reaches
+  /// no other piece and no other window.
   Map<String, double> _measurementsFor(FormulaPieceRef ref, FormulaSlot slot) {
     final String typed = _sizeControllers[ref]?.text.trim() ?? '';
     final double? asked = typed.isEmpty ? null : double.tryParse(typed);
@@ -258,27 +440,32 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     setState(() {
       _controllers[ref]!.text = original.display;
       _problems.remove(ref);
+      // Checked against the formula just put back, which is what the box
+      // above now holds.
+      _recheckSize(piece);
     });
   }
 
   Future<void> _resetEverything() async {
     final bool confirmed = await _confirm(
-      title: 'Put every formula back?',
-      body: 'Every sum on this screen goes back to the one Quick AL ships. '
-          'Formulas you have changed for other collar types are left alone.',
+      title: 'Put everything back?',
+      body: 'Every sum on this screen goes back to the one Quick AL ships, and '
+          'every piece goes back to this window\'s own size. Formulas you have '
+          'changed for other collar types are left alone.',
       confirmLabel: 'Put back',
     );
     if (!confirmed || !mounted) return;
 
     _draft.resetConfiguration(widget.windowKey);
-    final List<EffectiveSection> refreshed =
-        _draft.sectionsFor(widget.windowKey) ?? <EffectiveSection>[];
+    final List<EffectiveSection> refreshed = _sectionsOf(_draft);
     setState(() {
       _sections = refreshed;
       _problems.clear();
+      _sizeProblems.clear();
       for (final EffectiveSection section in refreshed) {
         for (final EffectiveFormula piece in section.pieces) {
           _controllers[piece.ref]!.text = piece.slot.display;
+          _sizeControllers[piece.ref]!.text = _windowSizeFor(piece.slot);
         }
       }
     });
@@ -304,16 +491,24 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
         ));
       }
     }
-    if (pending.isEmpty) return;
 
-    final int widestReach =
-        pending.fold(0, (int most, _PendingEdit edit) => edit.reach > most ? edit.reach : most);
+    // The sizes are this window's alone, so they need no question about how
+    // far to reach -- only the formulas do.
+    final bool sizesChanged = _sizesChanged;
+    final List<PieceSize> sizes = _collectPieceSizes();
+    if (pending.isEmpty && !sizesChanged) return;
 
     FormulaEditScope scope = FormulaEditScope.thisConfiguration;
-    if (widestReach > 1) {
-      final FormulaEditScope? chosen = await _askScope(pending, widestReach);
-      if (chosen == null || !mounted) return;
-      scope = chosen;
+    if (pending.isNotEmpty) {
+      final int widestReach = pending.fold(
+        0,
+        (int most, _PendingEdit edit) => edit.reach > most ? edit.reach : most,
+      );
+      if (widestReach > 1) {
+        final FormulaEditScope? chosen = await _askScope(pending, widestReach);
+        if (chosen == null || !mounted) return;
+        scope = chosen;
+      }
     }
 
     setState(() => _saving = true);
@@ -333,16 +528,32 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     final NavigatorState navigator = Navigator.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
 
-    await widget.onSaved?.call(_draft.overrides);
+    if (pending.isNotEmpty) {
+      await widget.onSaved?.call(_draft.overrides);
+    }
+    if (sizesChanged) {
+      widget.onPieceSizesSaved?.call(sizes);
+    }
     if (!mounted) return;
     setState(() => _saving = false);
     navigator.pop(true);
 
-    final String what = pending.length == 1 ? 'formula' : '${pending.length} formulas';
-    final String where = changed > pending.length
-        ? ' in ${changed ~/ pending.length} configurations'
-        : '';
-    messenger.showSnackBar(SnackBar(content: Text('Saved $what$where.')));
+    final List<String> said = <String>[];
+    if (pending.isNotEmpty) {
+      final String what = pending.length == 1 ? '1 formula' : '${pending.length} formulas';
+      final String where = changed > pending.length
+          ? ' in ${changed ~/ pending.length} configurations'
+          : '';
+      said.add('Saved $what$where.');
+    }
+    if (sizesChanged) {
+      said.add(sizes.isEmpty
+          ? 'Every piece of this window is back on the window\'s measurements.'
+          : sizes.length == 1
+              ? '1 piece of this window will be cut to its own size.'
+              : '${sizes.length} pieces of this window will be cut to their own size.');
+    }
+    messenger.showSnackBar(SnackBar(content: Text(said.join(' '))));
   }
 
   Future<FormulaEditScope?> _askScope(List<_PendingEdit> pending, int reach) {
@@ -462,7 +673,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
               child: HelpVideoButton(videoKey: TutorialVideos.settingsFormulas),
             ),
             IconButton(
-              tooltip: 'Put every formula back',
+              tooltip: 'Put everything back',
               onPressed: _saving ? null : _resetEverything,
               icon: const Icon(Icons.settings_backup_restore_rounded),
             ),
@@ -478,30 +689,35 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
                     _Introduction(
                       isFabrication: widget.windowKey.context == 'fabrication',
                       applied: _appliedAutomatically,
+                      hasMeasurements: widget.measurements.isNotEmpty,
                     ),
                     const SizedBox(height: 16),
                     for (final EffectiveSection section in _sections) ...<Widget>[
                       _SectionBlock(
                         section: section,
-
                         controllerFor: (FormulaPieceRef ref) => _controllers[ref]!,
                         sizeControllerFor: (FormulaPieceRef ref) =>
                             _sizeControllers[ref]!,
                         editingFormulaFor: _editingFormula.contains,
                         hasSizeFor: _hasSize,
                         problemFor: (FormulaPieceRef ref) => _problems[ref],
+                        sizeProblemFor: (FormulaPieceRef ref) => _sizeProblems[ref],
+                        ownSizeFor: (EffectiveFormula piece) => _hasOwnSize(piece)
+                            ? '${_windowSizeFor(piece.slot)} $_sizeUnit'
+                            : null,
                         previewFor: _preview,
                         isEdited: (FormulaPieceRef ref) =>
                             _controllers[ref]!.text.trim() != _opened[ref],
                         onTyped: _onTyped,
                         onSizeTyped: (FormulaPieceRef ref, String _) =>
-                            setState(() {}),
+                            _onSizeTyped(ref),
                         onToggleEditing: (FormulaPieceRef ref) => setState(() {
                           if (!_editingFormula.remove(ref)) {
                             _editingFormula.add(ref);
                           }
                         }),
                         onReset: _resetPiece,
+                        onResetSize: _resetSize,
                       ),
                       const SizedBox(height: 18),
                     ],
@@ -509,10 +725,9 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
                 ),
         ),
         bottomNavigationBar: _SaveBar(
-
-          canSave: _hasEdits && !_hasProblems && !_saving,
+          canSave: (_hasFormulaEdits || _sizesChanged) && !_hasProblems && !_saving,
           saving: _saving,
-          problemCount: _problems.length,
+          problemCount: _problemCount,
           onSave: _save,
         ),
       ),
@@ -544,12 +759,20 @@ class _PendingEdit {
 /// measures in inches would wonder why the numbers are in centimetres, and one
 /// that knows its blade takes 2mm would wonder where that went.
 class _Introduction extends StatelessWidget {
-  const _Introduction({required this.isFabrication, required this.applied});
+  const _Introduction({
+    required this.isFabrication,
+    required this.applied,
+    required this.hasMeasurements,
+  });
 
   final bool isFabrication;
 
   /// What Quick AL adds after the workshop's own arithmetic, if anything.
   final String? applied;
+
+  /// Whether the window has been measured, and so has sizes in the boxes to
+  /// say something about.
+  final bool hasMeasurements;
 
   @override
   Widget build(BuildContext context) {
@@ -591,6 +814,18 @@ class _Introduction extends StatelessWidget {
             text: 'Write in $unit. If you measured this window in inches, '
                 'Quick AL converts it before the formula runs.',
           ),
+          // The two things on this screen that can change reach different
+          // distances, and mixing them up cuts the wrong windows: said once,
+          // plainly, before either is touched.
+          if (hasMeasurements) ...<Widget>[
+            const SizedBox(height: 9),
+            const _Note(
+              icon: Icons.crop_free_rounded,
+              text: 'The number in each box is this window\'s size. Change it '
+                  'to cut that one piece to another size, in this window only. '
+                  'A changed formula is used for every window like this one.',
+            ),
+          ],
           if (applied != null) ...<Widget>[
             const SizedBox(height: 9),
             _Note(icon: Icons.auto_awesome_rounded, text: applied!),
@@ -639,12 +874,15 @@ class _SectionBlock extends StatelessWidget {
     required this.editingFormulaFor,
     required this.hasSizeFor,
     required this.problemFor,
+    required this.sizeProblemFor,
+    required this.ownSizeFor,
     required this.previewFor,
     required this.isEdited,
     required this.onTyped,
     required this.onSizeTyped,
     required this.onToggleEditing,
     required this.onReset,
+    required this.onResetSize,
   });
 
   final EffectiveSection section;
@@ -653,12 +891,18 @@ class _SectionBlock extends StatelessWidget {
   final bool Function(FormulaPieceRef) editingFormulaFor;
   final bool Function(FormulaPieceRef) hasSizeFor;
   final String? Function(FormulaPieceRef) problemFor;
+  final String? Function(FormulaPieceRef) sizeProblemFor;
+
+  /// The window's own size, said with its unit, for a piece set to a size of
+  /// its own -- null for a piece on the window's measurement.
+  final String? Function(EffectiveFormula) ownSizeFor;
   final _Preview? Function(FormulaPieceRef, FormulaSlot) previewFor;
   final bool Function(FormulaPieceRef) isEdited;
   final void Function(FormulaPieceRef, String) onTyped;
   final void Function(FormulaPieceRef, String) onSizeTyped;
   final void Function(FormulaPieceRef) onToggleEditing;
   final Future<void> Function(FormulaPieceRef) onReset;
+  final void Function(FormulaPieceRef) onResetSize;
 
   @override
   Widget build(BuildContext context) {
@@ -725,18 +969,20 @@ class _SectionBlock extends StatelessWidget {
                 _PieceRow(
                   piece: section.pieces[i],
                   ordinal: _ordinalWithin(section, i),
-
                   controller: controllerFor(section.pieces[i].ref),
                   sizeController: sizeControllerFor(section.pieces[i].ref),
                   editingFormula: editingFormulaFor(section.pieces[i].ref),
                   hasSize: hasSizeFor(section.pieces[i].ref),
                   problem: problemFor(section.pieces[i].ref),
+                  sizeProblem: sizeProblemFor(section.pieces[i].ref),
+                  windowSizeWhenOwn: ownSizeFor(section.pieces[i]),
                   preview: previewFor(section.pieces[i].ref, section.pieces[i].slot),
                   edited: isEdited(section.pieces[i].ref),
                   onTyped: (String text) => onTyped(section.pieces[i].ref, text),
                   onSizeTyped: (String text) => onSizeTyped(section.pieces[i].ref, text),
                   onToggleEditing: () => onToggleEditing(section.pieces[i].ref),
                   onReset: () => onReset(section.pieces[i].ref),
+                  onResetSize: () => onResetSize(section.pieces[i].ref),
                 ),
               ],
             ],
@@ -772,12 +1018,15 @@ class _PieceRow extends StatelessWidget {
     required this.editingFormula,
     required this.hasSize,
     required this.problem,
+    required this.sizeProblem,
+    required this.windowSizeWhenOwn,
     required this.preview,
     required this.edited,
     required this.onTyped,
     required this.onSizeTyped,
     required this.onToggleEditing,
     required this.onReset,
+    required this.onResetSize,
   });
 
   final EffectiveFormula piece;
@@ -787,12 +1036,17 @@ class _PieceRow extends StatelessWidget {
   final bool editingFormula;
   final bool hasSize;
   final String? problem;
+  final String? sizeProblem;
+
+  /// The window's own size, when this piece is set to a different one.
+  final String? windowSizeWhenOwn;
   final _Preview? preview;
   final bool edited;
   final ValueChanged<String> onTyped;
   final ValueChanged<String> onSizeTyped;
   final VoidCallback onToggleEditing;
   final VoidCallback onReset;
+  final VoidCallback onResetSize;
 
   @override
   Widget build(BuildContext context) {
@@ -861,13 +1115,19 @@ class _PieceRow extends StatelessWidget {
             formulaController: controller,
             editingFormula: editingFormula,
             hasSize: hasSize,
+            ownSize: windowSizeWhenOwn != null,
             problem: problem,
+            sizeProblem: sizeProblem,
             onFormulaChanged: onTyped,
             onSizeChanged: onSizeTyped,
             onToggleEditing: onToggleEditing,
           ),
           const SizedBox(height: 8),
           _Legend(slot: piece.slot),
+          if (windowSizeWhenOwn != null) ...<Widget>[
+            const SizedBox(height: 10),
+            _OwnSizeNote(windowSize: windowSizeWhenOwn!, onPutBack: onResetSize),
+          ],
           if (preview != null) ...<Widget>[
             const SizedBox(height: 10),
             _PreviewBlock(preview: preview!),
@@ -989,6 +1249,58 @@ class _PreviewBlock extends StatelessWidget {
   }
 }
 
+/// Says that this piece is cut to a size of its own, and offers the window's
+/// back.
+///
+/// Amber, like a changed formula, because it is the same kind of thing: a
+/// decision the workshop made that the cutting list will follow. It names the
+/// window's own size so the difference can be seen without doing the sum.
+class _OwnSizeNote extends StatelessWidget {
+  const _OwnSizeNote({required this.windowSize, required this.onPutBack});
+
+  final String windowSize;
+  final VoidCallback onPutBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(11, 6, 4, 6),
+      decoration: BoxDecoration(
+        color: AppTheme.amberAccent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: AppTheme.amberAccent.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.content_cut_rounded, size: 15, color: AppTheme.amberAccent),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Own size, this window only. The window is $windowSize.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppTheme.textPrimary,
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: onPutBack,
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              foregroundColor: AppTheme.amberAccent,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+            icon: const Icon(Icons.undo_rounded, size: 16),
+            label: const Text('Window size'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// What each name in the formula above stands for.
 class _Legend extends StatelessWidget {
   const _Legend({required this.slot});
@@ -1089,8 +1401,8 @@ class _SaveBar extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 problemCount == 1
-                    ? 'One formula cannot be used yet.'
-                    : '$problemCount formulas cannot be used yet.',
+                    ? 'One formula or size cannot be used yet.'
+                    : '$problemCount formulas or sizes cannot be used yet.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.error,
                   fontWeight: FontWeight.w700,
@@ -1108,7 +1420,7 @@ class _SaveBar extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.check_rounded),
-              label: Text(saving ? 'Saving...' : 'Save formulas'),
+              label: Text(saving ? 'Saving...' : 'Save changes'),
             ),
           ),
         ],

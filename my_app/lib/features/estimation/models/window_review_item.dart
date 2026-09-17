@@ -1,3 +1,4 @@
+import '../../formulas/model/piece_size.dart';
 import 'glass_color.dart';
 import 'window_material.dart';
 
@@ -126,6 +127,11 @@ class WindowReviewItem {
   /// for everything.
   final String glassColor;
 
+  /// Pieces of this window cut to a size of their own, set on the formula
+  /// screen. Empty for nearly every window: normally each piece is cut from
+  /// the window's own measurement.
+  final List<PieceSize> pieceSizes;
+
   const WindowReviewItem({
     required this.winNo,
     required this.windowLabel,
@@ -147,6 +153,7 @@ class WindowReviewItem {
     this.description,
     this.material = WindowMaterial.initial,
     this.glassColor = GlassColors.initial,
+    this.pieceSizes = const <PieceSize>[],
   });
 
   WindowReviewItem copyWith({
@@ -170,6 +177,7 @@ class WindowReviewItem {
     String? description,
     WindowMaterial? material,
     String? glassColor,
+    List<PieceSize>? pieceSizes,
     bool clearDescription = false,
     bool clearRightWidthValue = false,
     bool clearLeftWidthValue = false,
@@ -202,6 +210,7 @@ class WindowReviewItem {
       description: clearDescription ? null : (description ?? this.description),
       material: material ?? this.material,
       glassColor: glassColor ?? this.glassColor,
+      pieceSizes: pieceSizes ?? this.pieceSizes,
     );
   }
 
@@ -240,6 +249,7 @@ class WindowReviewItem {
       // and clear is what those jobs were quoted at. There is no per-job glass
       // to recover it from the way there is for stock.
       glassColor: GlassColors.normalize(json['glassColor'] as String?),
+      pieceSizes: PieceSize.listFromJson(json['pieceSizes']),
     );
   }
 
@@ -270,6 +280,11 @@ class WindowReviewItem {
       // The bill groups glazing area by this, so it has to reach the engine
       // with the window rather than being asked for once at billing time.
       'glassColor': glassColor,
+      // Saved with the window, so a reopened job still cuts these pieces to
+      // the sizes that were set for them.
+      'pieceSizes': <Map<String, Object?>>[
+        for (final PieceSize size in pieceSizes) size.toJson(),
+      ],
     };
   }
 

@@ -8,6 +8,7 @@ import 'package:my_app/features/formulas/data/formula_book.dart';
 import 'package:my_app/features/formulas/data/formula_catalogue.dart';
 import 'package:my_app/features/formulas/model/formula_overrides.dart';
 import 'package:my_app/features/formulas/model/formula_window_key.dart';
+import 'package:my_app/features/formulas/model/piece_size.dart';
 import 'package:my_app/features/formulas/presentation/formula_editor_screen.dart';
 
 /// The formula screen as a fabricator sees it, so the look can be judged
@@ -114,9 +115,17 @@ void main() {
       rubberType: 'F',
     )!;
 
-    // One piece already changed, so the screen shows both states at once.
+    // One formula already changed and one piece already cut to a size of its
+    // own, so the screen shows every state a piece can be in at once.
     final FormulaOverrides overrides = FormulaOverrides.empty()
       ..set(FormulaPieceRef.of(key, 'DC30C', 2), '(w + 1.5 + cm) / feet');
+    final PieceSize ownSize = PieceSize(
+      ref: FormulaPieceRef.of(key, 'D29', 0),
+      label: 'HL',
+      dimension: 'h',
+      base: 220.6,
+      size: 210,
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -132,6 +141,7 @@ void main() {
             'cm': 0.5,
             'feet': 30.48,
           },
+          pieceSizes: <PieceSize>[ownSize],
         ),
       ),
     );

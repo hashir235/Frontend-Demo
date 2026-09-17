@@ -89,7 +89,13 @@ class OptimizationRepository {
       );
     }
 
-    final bool customised = !book.overrides.isEmpty;
+    // A piece cut to a size of its own is this workshop's own decision as much
+    // as a changed formula is. The engine knows nothing of it, so a job with
+    // one must never be handed back to the engine to work out.
+    final bool customised = !book.overrides.isEmpty ||
+        request.windows.any(
+          (OptimizationWindowRequest window) => window.pieceSizes.isNotEmpty,
+        );
     final WindowCutCalculator calculator = WindowCutCalculator(book);
     final List<OptimizationWindowRequest> windows = <OptimizationWindowRequest>[];
 
@@ -111,6 +117,7 @@ class OptimizationRepository {
           addTee: window.addTee,
           addNet: window.addNet,
           backCollarCm: window.backCollarCm,
+          pieceSizes: window.pieceSizes,
         ),
         margins: margins,
       );

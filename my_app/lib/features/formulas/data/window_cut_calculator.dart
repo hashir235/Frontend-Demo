@@ -4,6 +4,7 @@ library;
 import '../model/formula_expression.dart';
 import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';
+import '../model/piece_size.dart';
 import '../model/window_measurements.dart';
 import 'formula_book.dart';
 
@@ -79,6 +80,7 @@ class WindowCutRequest {
     this.addTee = false,
     this.addNet = false,
     this.backCollarCm = 1.7,
+    this.pieceSizes = const <PieceSize>[],
   });
 
   final bool isFabrication;
@@ -96,6 +98,9 @@ class WindowCutRequest {
   final bool addTee;
   final bool addNet;
   final double backCollarCm;
+
+  /// Pieces of this window a fabricator set to a size of their own.
+  final List<PieceSize> pieceSizes;
 
   String get context => isFabrication ? 'fabrication' : 'estimation';
 }
@@ -193,7 +198,14 @@ class WindowCutCalculator {
           variables[margin] = 0;
         }
 
-        final FormulaResult result = slot.lengthFor(variables);
+        final ({Map<String, double>? variables, String? problem}) own =
+            _variablesFor(piece, variables, request.pieceSizes);
+        if (own.problem != null) {
+          problems.add(own.problem!);
+          continue;
+        }
+
+        final FormulaResult result = slot.lengthFor(own.variables!);
         if (!result.isUsable) {
           problems.add(result.problem!);
           continue;
@@ -211,8 +223,19 @@ class WindowCutCalculator {
     final List<GlassPiece> glass = <GlassPiece>[];
     for (final EffectiveSection pane in book.glassFor(key)) {
       if (pane.pieces.length != 2) continue;
-      final FormulaResult height = pane.pieces[0].slot.lengthFor(variables);
-      final FormulaResult width = pane.pieces[1].slot.lengthFor(variables);
+      final ({Map<String, double>? variables, String? problem}) ownHeight =
+          _variablesFor(pane.pieces[0], variables, request.pieceSizes);
+      final ({Map<String, double>? variables, String? problem}) ownWidth =
+          _variablesFor(pane.pieces[1], variables, request.pieceSizes);
+      final String? stale = ownHeight.problem ?? ownWidth.problem;
+      if (stale != null) {
+        problems.add(stale);
+        continue;
+      }
+      final FormulaResult height =
+          pane.pieces[0].slot.lengthFor(ownHeight.variables!);
+      final FormulaResult width =
+          pane.pieces[1].slot.lengthFor(ownWidth.variables!);
 
       // A pane that comes out at nothing is one the engine does not cut
       // either -- it refuses anything that is not positive. Saying so is the
@@ -227,6 +250,39 @@ class WindowCutCalculator {
     }
 
     return WindowCutList._(pieces, problems, glass: glass);
+  }
+
+  /// The measurements one piece is cut from: the window's own, with this
+  /// piece's size of its own standing in where the fabricator set one.
+  ///
+  /// A size set against a measurement the window no longer has is refused
+  /// rather than applied or ignored. Applying it would cut to a number chosen
+  /// for a different window; ignoring it would quietly cut to the window's
+  /// size when somebody asked for another. Either is a wrong piece nobody was
+  /// told about, so the job stops and says which piece and why.
+  static ({Map<String, double>? variables, String? problem}) _variablesFor(
+    EffectiveFormula piece,
+    Map<String, double> variables,
+    List<PieceSize> sizes,
+  ) {
+    if (sizes.isEmpty) return (variables: variables, problem: null);
+    final PieceSize? own = PieceSize.find(sizes, piece.ref);
+    if (own == null) return (variables: variables, problem: null);
+
+    final String dimension = piece.slot.dimension;
+    final double? current = variables[dimension];
+    if (own.dimension != dimension || current == null || !own.standsFor(current)) {
+      return (
+        variables: null,
+        problem: '${piece.slot.section} ${piece.slot.label} has a size of its '
+            'own that was set before this window\'s measurements changed. '
+            'Open the window and set it again on the formula screen.',
+      );
+    }
+    return (
+      variables: <String, double>{...variables, dimension: own.size},
+      problem: null,
+    );
   }
 
   /// The engine's name for a window, so its configuration dimensions can be

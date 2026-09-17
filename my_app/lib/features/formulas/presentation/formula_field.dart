@@ -18,9 +18,9 @@ import '../../../core/theme/app_theme.dart';
 ///
 /// The boxed number is the measurement and the rest is the formula. They are
 /// two different things and are edited two different ways on purpose. Changing
-/// the number asks "what would this piece be at that size" -- one piece, this
-/// screen, gone when it closes. Changing the formula changes how every window
-/// like this one is cut from here on, and is only kept when saved.
+/// the number cuts this one piece, in this one window, as though the window
+/// measured that. Changing the formula changes how every window like this one
+/// is cut from here on. Both are only kept when saved.
 ///
 /// Mixing those up is the one mistake this widget exists to prevent.
 class FormulaField extends StatelessWidget {
@@ -35,7 +35,9 @@ class FormulaField extends StatelessWidget {
     required this.onFormulaChanged,
     required this.onSizeChanged,
     required this.onToggleEditing,
+    this.ownSize = false,
     this.problem,
+    this.sizeProblem,
   });
 
   /// The formula in display form -- the piece's own label, no margin, no feet.
@@ -62,8 +64,15 @@ class FormulaField extends StatelessWidget {
   final ValueChanged<String> onSizeChanged;
   final VoidCallback onToggleEditing;
 
+  /// Whether the box holds a size of this piece's own rather than the
+  /// window's measurement.
+  final bool ownSize;
+
   /// What is wrong with the formula, if anything.
   final String? problem;
+
+  /// What is wrong with the size in the box, if anything.
+  final String? sizeProblem;
 
   @override
   Widget build(BuildContext context) {
@@ -82,8 +91,11 @@ class FormulaField extends StatelessWidget {
                   label: label,
                   controller: sizeController,
                   hasSize: hasSize,
+                  ownSize: ownSize,
                   onChanged: onSizeChanged,
-                  problem: problem,
+                  // The formula's own problem first: a size cannot be judged
+                  // against a formula that does not read.
+                  problem: problem ?? sizeProblem,
                 ),
         ),
         const SizedBox(width: 6),
@@ -148,6 +160,7 @@ class _WithTheSizeInIt extends StatelessWidget {
     required this.label,
     required this.controller,
     required this.hasSize,
+    required this.ownSize,
     required this.onChanged,
     required this.problem,
   });
@@ -156,6 +169,7 @@ class _WithTheSizeInIt extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final bool hasSize;
+  final bool ownSize;
   final ValueChanged<String> onChanged;
   final String? problem;
 
@@ -206,6 +220,7 @@ class _WithTheSizeInIt extends StatelessWidget {
                   controller: controller,
                   label: label,
                   hasSize: hasSize,
+                  ownSize: ownSize,
                   onChanged: onChanged,
                 ),
                 if (parts.$2.isNotEmpty) Text(parts.$2, style: body),
@@ -232,18 +247,21 @@ class _WithTheSizeInIt extends StatelessWidget {
 ///
 /// Its own outline and its own colour, because a fabricator has to be able to
 /// tell at a glance which number is the window and which numbers are the
-/// formula -- one is theirs to try, the other is theirs to keep.
+/// formula. A size of the piece's own turns amber, the colour of every other
+/// decision on this screen the cutting list will follow.
 class _SizeBox extends StatelessWidget {
   const _SizeBox({
     required this.controller,
     required this.label,
     required this.hasSize,
+    required this.ownSize,
     required this.onChanged,
   });
 
   final TextEditingController controller;
   final String label;
   final bool hasSize;
+  final bool ownSize;
   final ValueChanged<String> onChanged;
 
   @override
@@ -271,13 +289,14 @@ class _SizeBox extends StatelessWidget {
       );
     }
 
+    final Color accent = ownSize ? AppTheme.amberAccent : AppTheme.tealAccent;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 2),
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
-        color: AppTheme.tealAccent.withValues(alpha: 0.10),
+        color: accent.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: AppTheme.tealAccent.withValues(alpha: 0.45)),
+        border: Border.all(color: accent.withValues(alpha: ownSize ? 0.8 : 0.45)),
       ),
       child: IntrinsicWidth(
         child: TextField(
@@ -288,14 +307,17 @@ class _SizeBox extends StatelessWidget {
           autocorrect: false,
           enableSuggestions: false,
           inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+            // Digits and one decimal point, at most two places after it: a
+            // size is a measurement, and "152..4" or "152.4567" is a slip,
+            // not a finer one.
+            FilteringTextInputFormatter.allow(RegExp(r'^\d{0,4}(\.\d{0,2})?')),
           ],
           style: TextStyle(
             fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
             fontSize: 16,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.3,
-            color: AppTheme.tealAccent,
+            color: accent,
           ),
           decoration: const InputDecoration(
             isDense: true,

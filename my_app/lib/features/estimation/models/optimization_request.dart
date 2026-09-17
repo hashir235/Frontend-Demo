@@ -1,3 +1,4 @@
+import '../../formulas/model/piece_size.dart';
 import 'window_review_item.dart';
 
 class OptimizationWindowRequest {
@@ -59,6 +60,7 @@ class OptimizationWindowRequest {
     required this.glassColor,
     this.computedPieces,
     this.computedGlass,
+    this.pieceSizes = const <PieceSize>[],
   });
 
   factory OptimizationWindowRequest.fromReviewItem(
@@ -98,8 +100,15 @@ class OptimizationWindowRequest {
       gauge: item.material.gauge,
       color: item.material.color,
       glassColor: item.glassColor,
+      pieceSizes: item.pieceSizes,
     );
   }
+
+  /// Pieces of this window cut to a size of their own.
+  ///
+  /// Used here, where the lengths are worked out, and never sent: the engine
+  /// receives the finished lengths, which already carry these sizes.
+  final List<PieceSize> pieceSizes;
 
   /// The lengths the app worked out for this window, when it did.
   ///
@@ -139,6 +148,7 @@ class OptimizationWindowRequest {
       glassColor: glassColor,
       computedPieces: pieces,
       computedGlass: glass,
+      pieceSizes: pieceSizes,
     );
   }
 

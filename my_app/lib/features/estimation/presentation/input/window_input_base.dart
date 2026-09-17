@@ -39,6 +39,7 @@ import '../../../formulas/data/formula_catalogue_asset.dart';
 import '../../../formulas/data/formula_overrides_store.dart';
 import '../../../formulas/model/formula_overrides.dart';
 import '../../../formulas/model/formula_window_key.dart';
+import '../../../formulas/model/piece_size.dart';
 import '../../../formulas/presentation/formula_editor_screen.dart';
 
 class WindowInputScreen extends StatefulWidget {
@@ -113,6 +114,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// usually mostly one stock with a few exceptions.
   late WindowMaterial _material;
   late String _glassColor;
+
+  /// Pieces of this window set to a size of their own on the formula screen.
+  ///
+  /// Held here until the window is saved, because that is when it becomes a
+  /// window they can belong to. Cleared with the sizes for the next window:
+  /// they are about this opening and would cut the next one wrong.
+  List<PieceSize> _pieceSizes = const <PieceSize>[];
 
   final GlobalKey _winNoFieldKey = GlobalKey(debugLabel: 'winNoField');
   final GlobalKey _heightFieldKey = GlobalKey(debugLabel: 'heightField');
@@ -485,6 +493,58 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
   }
 
+  /// This window's piece sizes that still fit the window as it now stands.
+  ///
+  /// A size is set against one measurement of one window set up one way. If
+  /// the height it was set against has since been re-typed, or the collar or
+  /// lock changed so the piece is cut from a different set of formulas, the
+  /// size was chosen for a window that no longer exists -- so it is taken off
+  /// here, and the fabricator told which pieces, rather than cutting to a
+  /// number chosen for something else or stopping the whole job later at
+  /// optimization.
+  Future<List<PieceSize>> _pieceSizesStillStanding() async {
+    if (_pieceSizes.isEmpty) return const <PieceSize>[];
+
+    FormulaWindowKey? key;
+    try {
+      key = _formulaKeyFor(await FormulaCatalogueAsset.load());
+    } catch (_) {
+      key = null;
+    }
+    final Map<String, double> measured = _formulaMeasurements();
+
+    final List<PieceSize> kept = <PieceSize>[];
+    final List<String> dropped = <String>[];
+    for (final PieceSize size in _pieceSizes) {
+      final double? current = measured[size.dimension];
+      final bool sameWindow = key != null &&
+          size.ref.windowKey == key.windowKey &&
+          size.ref.configKey == key.configKey;
+      if (sameWindow && current != null && size.standsFor(current)) {
+        kept.add(size);
+      } else {
+        dropped.add(size.label.isEmpty ? size.ref.section : size.label);
+      }
+    }
+
+    if (dropped.isNotEmpty && mounted) {
+      final String which = dropped.join(', ');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 6),
+          content: Text(
+            dropped.length == 1
+                ? '$which is back on the window\'s own size: the size it was '
+                    'given was set before this window changed.'
+                : '$which are back on the window\'s own size: their sizes '
+                    'were set before this window changed.',
+          ),
+        ),
+      );
+    }
+    return kept;
+  }
+
   Future<void> _openFormulaEditor() async {
     final NavigatorState navigator = Navigator.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
@@ -526,7 +586,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           configSummary: _formulaConfigSummary,
           book: FormulaBook(catalogue, overrides),
           measurements: <String, double>{..._formulaMeasurements(), ...margins},
+          pieceSizes: _pieceSizes,
           onSaved: _saveFormulas,
+          // Kept on this screen until the window is saved -- they belong to
+          // the window, and there is no window yet to put them on.
+          onPieceSizesSaved: (List<PieceSize> sizes) {
+            if (mounted) setState(() => _pieceSizes = sizes);
+          },
         ),
       ),
     );
@@ -779,6 +845,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _glassColor = GlassColors.normalize(
       widget.editingItem?.glassColor ?? widget.session.glassColorForNextWindow,
     );
+    _pieceSizes = widget.editingItem?.pieceSizes ?? const <PieceSize>[];
     _unitMode =
         widget.editingItem?.unitMode ??
         (_isFabricationFlow ? UnitMode.feet : UnitMode.inches);
@@ -1757,6 +1824,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
 
   void _resetInputsForNextEntry() {
     setState(() {
+      _pieceSizes = const <PieceSize>[];
       _heightController.clear();
       _heightInchController.clear();
       _heightSuterController.clear();
@@ -1841,6 +1909,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       return;
     }
 
+    // Checked against the window as it is about to be saved, after every size
+    // box has been folded into its final value.
+    final List<PieceSize> pieceSizes = await _pieceSizesStillStanding();
+    if (!mounted) return;
+
     final String? description = _normalizedDescription();
     // Every unit (including estimation cm) is stored exactly as entered so
     // the review list and editing always show the user's own numbers. The
@@ -1888,6 +1961,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         description: description,
         material: _material,
         glassColor: _glassColor,
+        pieceSizes: pieceSizes,
         clearDescription: description == null,
         clearRightWidthValue: !_usesSplitWidthInputs,
         clearLeftWidthValue: !_usesSplitWidthInputs,
@@ -1935,6 +2009,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           description: description,
           material: _material,
           glassColor: _glassColor,
+          pieceSizes: pieceSizes,
         );
       }
     } on ArgumentError catch (_) {
@@ -3004,6 +3079,19 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           id: 'input.sizes',
                           child: _buildSizeFields(numberInputStyle, hintStyle),
                         ),
+                        // Right under the sizes, because it changes what they
+                        // mean for these pieces: set on the formula screen,
+                        // it would otherwise be invisible from here.
+                        if (_pieceSizes.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          _PieceSizesNotice(
+                            sizes: _pieceSizes,
+                            unit: _isFabricationFlow ? 'cm' : 'ft',
+                            onClear: () => setState(
+                              () => _pieceSizes = const <PieceSize>[],
+                            ),
+                          ),
+                        ],
                         // Quantity sits above the description: it belongs with
                         // the measurement, and a description is the last thing
                         // anyone types — when they type one at all.
@@ -3160,6 +3248,85 @@ class _ArchPainter extends CustomPainter {
 /// screen, which the rows do not, and what it opens is the one place in Quick
 /// AL where a workshop can change what the saw is told. That deserves to look
 /// like a door rather than another switch.
+/// Which pieces of the window on screen are cut to a size of their own.
+///
+/// Amber, the colour the formula screen gives the same decision, so the two
+/// read as one thing seen from two places.
+class _PieceSizesNotice extends StatelessWidget {
+  const _PieceSizesNotice({
+    required this.sizes,
+    required this.unit,
+    required this.onClear,
+  });
+
+  final List<PieceSize> sizes;
+  final String unit;
+  final VoidCallback onClear;
+
+  static String _number(double value) {
+    String text = value.toStringAsFixed(2);
+    while (text.contains('.') && (text.endsWith('0') || text.endsWith('.'))) {
+      text = text.substring(0, text.length - 1);
+    }
+    return text;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String which = sizes
+        .map((PieceSize size) => '${size.label} ${_number(size.size)} $unit')
+        .join('  ·  ');
+    return Container(
+      key: const Key('piece_sizes_notice'),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: AppTheme.amberAccent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.amberAccent.withValues(alpha: 0.40)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.content_cut_rounded, size: 18, color: AppTheme.amberAccent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  sizes.length == 1
+                      ? '1 piece cut to its own size'
+                      : '${sizes.length} pieces cut to their own size',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  which,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppTheme.slate,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onClear,
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.amberAccent,
+              visualDensity: VisualDensity.compact,
+            ),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _FormulaEditorButton extends StatelessWidget {
   const _FormulaEditorButton({required this.onTap});
 

@@ -296,6 +296,21 @@ class ReviewListScreen extends StatelessWidget {
       GlassColorChip(color: item.glassColor),
     ];
 
+    // Pieces set to a size of their own on the formula screen. Named here
+    // because this list is where a job is checked before it is cut, and a
+    // piece that will not come out at the window's size is exactly the thing
+    // somebody checking needs to see.
+    if (item.pieceSizes.isNotEmpty) {
+      chips.add(
+        _buildMetaChip(
+          context,
+          icon: Icons.content_cut_rounded,
+          label: 'Own size: ${item.pieceSizes.map((size) => size.label).join(', ')}',
+          accentColor: AppTheme.amberAccent,
+        ),
+      );
+    }
+
     if (item.lockType != null) {
       chips.add(
         _buildMetaChip(

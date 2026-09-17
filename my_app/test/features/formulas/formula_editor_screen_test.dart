@@ -5,6 +5,7 @@ import 'package:my_app/features/formulas/data/formula_book.dart';
 import 'package:my_app/features/formulas/data/formula_catalogue.dart';
 import 'package:my_app/features/formulas/model/formula_overrides.dart';
 import 'package:my_app/features/formulas/model/formula_window_key.dart';
+import 'package:my_app/features/formulas/model/piece_size.dart';
 import 'package:my_app/features/formulas/presentation/formula_editor_screen.dart';
 import 'package:my_app/features/help_videos/help_video_button.dart';
 
@@ -205,7 +206,7 @@ void main() {
     await pump(tester);
 
     final Finder video = find.byKey(const Key('help_video_settings.formulas'));
-    final Finder resetAll = find.byTooltip('Put every formula back');
+    final Finder resetAll = find.byTooltip('Put everything back');
     expect(video, findsOneWidget);
     expect(resetAll, findsOneWidget);
 
@@ -228,10 +229,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('never closed'), findsOneWidget);
-    expect(find.text('One formula cannot be used yet.'), findsOneWidget);
+    expect(find.text('One formula or size cannot be used yet.'), findsOneWidget);
 
     final FilledButton save = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Save formulas'),
+      find.widgetWithText(FilledButton, 'Save changes'),
     );
     expect(save.onPressed, isNull, reason: 'a broken formula must not be savable');
   });
@@ -273,7 +274,7 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'HL + 12');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Save formulas'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Save changes'));
     await tester.pumpAndSettle();
 
     // DC30C HL is cut the same way in both collar types, so the question is
@@ -317,7 +318,7 @@ void main() {
     await editFirstFormula(tester);
     await tester.enterText(find.byType(TextField).first, 'HL + 12');
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Save formulas'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Save changes'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Everywhere it matches'));
     await tester.pumpAndSettle();
@@ -356,38 +357,215 @@ void main() {
     expect(find.text('220.6'), findsWidgets);
   });
 
-  testWidgets('a size typed into a formula changes that piece and no other',
-      (WidgetTester tester) async {
-    await pump(tester, measurements: <String, double>{
+  group('a size of a piece\'s own', () {
+    const Map<String, double> window = <String, double>{
       'h': 220.6,
       'w': 182.5,
       'cm': 0.5,
       'feet': 30.48,
+    };
+
+    /// The screen on a measured window, for the checks that only look at it.
+    Future<void> pumpSizes(
+      WidgetTester tester, {
+      List<PieceSize> starting = const <PieceSize>[],
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: FormulaEditorScreen(
+            windowKey: keyForCollar(2),
+            windowTitle: 'Sliding Window',
+            configSummary: 'Collar 2 · Latch',
+            book: FormulaBook(
+              FormulaCatalogue.fromJson(catalogueJson()),
+              FormulaOverrides.empty(),
+            ),
+            measurements: window,
+            pieceSizes: starting,
+            onSaved: (FormulaOverrides overrides) async {},
+            onPieceSizesSaved: (List<PieceSize> saved) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    FilledButton saveButton(WidgetTester tester) => tester.widget<FilledButton>(
+          find.widgetWithText(FilledButton, 'Save changes'),
+        );
+
+    PieceSize hlAt(double size) => PieceSize(
+          ref: FormulaPieceRef.of(keyForCollar(2), 'DC30C', 0),
+          label: 'HL',
+          dimension: 'h',
+          base: 220.6,
+          size: size,
+        );
+
+    testWidgets('changes that piece and no other, and is kept for this window',
+        (WidgetTester tester) async {
+      List<PieceSize>? sizes;
+      FormulaOverrides? formulas;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: FormulaEditorScreen(
+            windowKey: keyForCollar(2),
+            windowTitle: 'Sliding Window',
+            configSummary: 'Collar 2 · Latch',
+            book: FormulaBook(
+              FormulaCatalogue.fromJson(catalogueJson()),
+              FormulaOverrides.empty(),
+            ),
+            measurements: window,
+            onSaved: (FormulaOverrides overrides) async => formulas = overrides,
+            onPieceSizesSaved: (List<PieceSize> saved) => sizes = saved,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Both uprights start at the window's height.
+      expect(find.text('220.6'), findsNWidgets(4));
+
+      await tester.enterText(find.byType(TextField).first, '210');
+      await tester.pumpAndSettle();
+
+      // Said on the piece, with the window's own size beside it.
+      expect(find.textContaining('Own size, this window only'), findsOneWidget);
+      expect(find.textContaining('The window is 220.6 cm'), findsOneWidget);
+      // The other upright is untouched: its own box and its own cut size.
+      expect(find.text('220.6'), findsWidgets);
+
+      expect(saveButton(tester).onPressed, isNotNull,
+          reason: 'a size is a change worth keeping now');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save changes'));
+      await tester.pumpAndSettle();
+
+      // No formula changed, so nothing was asked about how far to reach and
+      // nothing was written to the formulas.
+      expect(find.text('Where should this apply?'), findsNothing);
+      expect(formulas, isNull);
+      expect(sizes, <PieceSize>[hlAt(210)]);
     });
 
-    // Both uprights start at the window's height.
-    expect(find.text('220.6'), findsNWidgets(4));
+    testWidgets('a size of 0 is refused', (WidgetTester tester) async {
+      await pumpSizes(tester);
+      await tester.enterText(find.byType(TextField).first, '0');
+      await tester.pumpAndSettle();
 
-    // Asking what the first would come to at 300 is a question, not a change:
-    // it belongs to this one piece and is never saved.
-    await tester.enterText(find.byType(TextField).first, '300');
-    await tester.pumpAndSettle();
+      expect(find.text('A size has to be more than 0.'), findsOneWidget);
+      expect(find.text('One formula or size cannot be used yet.'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNull);
+    });
 
-    expect(find.text('300'), findsWidgets, reason: 'the piece asked about');
-    // The other upright is untouched: its own box and its own cut size.
-    expect(find.text('220.6'), findsWidgets);
+    testWidgets('a size smaller than the formula takes off is refused',
+        (WidgetTester tester) async {
+      await pumpSizes(tester);
+      // M23 H is h - 4.2: at 3cm the piece would come out below nothing. The
+      // list builds lazily, so its box only exists once scrolled to.
+      await tester.scrollUntilVisible(
+        find.text('1 of 2'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      final double labelTop = tester.getTopLeft(find.text('1 of 2')).dy;
+      final Finder fields = find.byType(TextField);
+      Finder? m23;
+      double nearest = double.infinity;
+      for (int i = 0; i < fields.evaluate().length; i++) {
+        final double top = tester.getTopLeft(fields.at(i)).dy;
+        if (top > labelTop && top < nearest) {
+          nearest = top;
+          m23 = fields.at(i);
+        }
+      }
+      await tester.enterText(m23!, '3');
+      await tester.pumpAndSettle();
 
-    // Nothing to save -- no formula was changed.
-    final FilledButton save = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Save formulas'),
-    );
-    expect(save.onPressed, isNull);
+      expect(find.textContaining('comes out at nothing'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNull);
+    });
+
+    testWidgets('a size more than double the window is taken for a slip',
+        (WidgetTester tester) async {
+      await pumpSizes(tester);
+      await tester.enterText(find.byType(TextField).first, '2206');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('more than double this window'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNull);
+    });
+
+    testWidgets('an empty box is not a size', (WidgetTester tester) async {
+      await pumpSizes(tester);
+      await tester.enterText(find.byType(TextField).first, '');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Type a size'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNull);
+    });
+
+    testWidgets('opens on the size already set, and can be put back',
+        (WidgetTester tester) async {
+      List<PieceSize>? sizes;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: FormulaEditorScreen(
+            windowKey: keyForCollar(2),
+            windowTitle: 'Sliding Window',
+            configSummary: 'Collar 2 · Latch',
+            book: FormulaBook(
+              FormulaCatalogue.fromJson(catalogueJson()),
+              FormulaOverrides.empty(),
+            ),
+            measurements: window,
+            pieceSizes: <PieceSize>[hlAt(205.5)],
+            onPieceSizesSaved: (List<PieceSize> saved) => sizes = saved,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('205.5'), findsWidgets);
+      expect(find.textContaining('Own size, this window only'), findsOneWidget);
+      // Opened on what was saved, nothing has changed yet.
+      expect(saveButton(tester).onPressed, isNull);
+
+      await tester.ensureVisible(find.widgetWithText(TextButton, 'Window size'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Window size'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Own size, this window only'), findsNothing);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save changes'));
+      await tester.pumpAndSettle();
+      expect(sizes, isEmpty, reason: 'every piece back on the window');
+    });
+
+    testWidgets('a size set for a window measured differently is not shown',
+        (WidgetTester tester) async {
+      // Set against 230cm; this window is 220.6cm. It no longer stands.
+      final PieceSize stale = PieceSize(
+        ref: FormulaPieceRef.of(keyForCollar(2), 'DC30C', 0),
+        label: 'HL',
+        dimension: 'h',
+        base: 230,
+        size: 205.5,
+      );
+      await pumpSizes(tester, starting: <PieceSize>[stale]);
+      expect(find.text('205.5'), findsNothing);
+      expect(find.text('220.6'), findsNWidgets(4));
+    });
   });
 
   testWidgets('nothing is saved unless something changed', (WidgetTester tester) async {
     await pump(tester);
     final FilledButton save = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Save formulas'),
+      find.widgetWithText(FilledButton, 'Save changes'),
     );
     expect(save.onPressed, isNull);
   });
