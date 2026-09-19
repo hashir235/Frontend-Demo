@@ -629,7 +629,13 @@ void main() {
 
       await tester.pageBack();
       await tester.pumpAndSettle();
-      expect(find.text('winNo: 3'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('current_win_no_label')),
+          matching: find.text('3'),
+        ),
+        findsOneWidget,
+      );
     },
   );
 }

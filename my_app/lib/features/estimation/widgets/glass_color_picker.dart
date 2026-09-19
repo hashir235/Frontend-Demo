@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../models/glass_color.dart';
+import 'swatch_choice_grid.dart';
 
 /// Picks the glass for the window being entered.
 ///
@@ -13,12 +14,11 @@ import '../models/glass_color.dart';
 /// The choice stays where it was put. Most jobs are mostly one glass, so it
 /// carries to the next window and only moves when somebody moves it.
 ///
-/// Names are the short ones -- "Green Mer." beside "Green" -- the same wording
-/// the cutting list column uses. A glass called one thing here and another on
-/// the list it is cut from is a glass somebody has to stop and match up; the
-/// pair still reads apart, and the swatch carries the rest. The full names
-/// stay on the printed list and the sheet drawings, where there is room and
-/// the reader may be the customer.
+/// Every glass is a box to tap, as with the aluminium finish, and the chosen
+/// one is named in full above them -- there is a whole line for it now, so
+/// "Green Mercury" rather than the "Green Mer." a crowded list column needs.
+/// Mercury boxes carry a sheen, which is what tells them from the plain glass
+/// of the same colour without a word.
 class GlassColorPicker extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
@@ -29,120 +29,17 @@ class GlassColorPicker extends StatelessWidget {
     required this.onChanged,
   });
 
-  Future<void> _pick(BuildContext context) async {
-    final String current = GlassColors.normalize(value);
-    final String? picked = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (BuildContext sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppTheme.space5,
-                  0,
-                  AppTheme.space5,
-                  AppTheme.space3,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Text(
-                      'Glass Color',
-                      style: Theme.of(sheetContext).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-              ),
-              // Ten types is more than fits on a short phone, so the list
-              // scrolls rather than the last few being unreachable.
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: <Widget>[
-                    for (final String option in GlassColors.all)
-                      ListTile(
-                        leading: GlassSwatch(color: option, size: 30),
-                        title: Text(
-                          GlassColors.shortLabelFor(option),
-                          style: TextStyle(
-                            fontWeight: option == current
-                                ? FontWeight.w800
-                                : FontWeight.w600,
-                          ),
-                        ),
-                        trailing: option == current
-                            ? const Icon(Icons.check_rounded)
-                            : null,
-                        onTap: () => Navigator.of(sheetContext).pop(option),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppTheme.space3),
-            ],
-          ),
-        );
-      },
-    );
-    if (picked != null && picked != current) {
-      onChanged(picked);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final String current = GlassColors.normalize(value);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'GLASS COLOR',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.8,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        const SizedBox(height: AppTheme.space3),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            key: const Key('glass_color_button'),
-            onTap: () => _pick(context),
-            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            child: Ink(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.space4,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                border: Border.all(color: AppTheme.line),
-              ),
-              child: Row(
-                children: <Widget>[
-                  GlassSwatch(color: current, size: 26),
-                  const SizedBox(width: AppTheme.space4),
-                  Expanded(
-                    child: Text(
-                      GlassColors.shortLabelFor(current),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.expand_more_rounded, size: 20),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+    return SwatchChoiceGrid(
+      title: 'GLASS COLOR',
+      options: GlassColors.all,
+      selected: GlassColors.normalize(value),
+      nameFor: GlassColors.displayName,
+      swatchBuilder: (String color, double size) =>
+          GlassSwatch(color: color, size: size),
+      keyPrefix: 'glass_color',
+      onSelected: onChanged,
     );
   }
 }

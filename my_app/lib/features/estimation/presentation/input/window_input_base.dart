@@ -148,6 +148,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   final GlobalKey _widthFieldKey = GlobalKey(debugLabel: 'widthField');
   final GlobalKey _leftWidthFieldKey = GlobalKey(debugLabel: 'leftWidthField');
   final GlobalKey _archFieldKey = GlobalKey(debugLabel: 'archField');
+  final GlobalKey _quantityFieldKey = GlobalKey(debugLabel: 'quantityField');
   final GlobalKey _descriptionFieldKey = GlobalKey(
     debugLabel: 'descriptionField',
   );
@@ -1129,14 +1130,17 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (_usesArchInput) {
       targets.add((node: _archFocusNode, key: _archFieldKey));
     }
-    // Quantity before description: it is part of the measurement, and a
-    // description is the last thing anyone types — if they type one at all.
+    // Quantity after the sizes, although it sits above them beside the window
+    // number. It is optional and usually left alone; the sizes are typed for
+    // every window. The chain starts on width, and saving returns the cursor
+    // there -- if it went to quantity instead, a width typed out of habit would
+    // become a quantity of forty-four windows.
     //
     // Only when it is on screen. Editing one saved window has no quantity
     // field, and a chain that steps onto a box that is not there loses the
     // cursor entirely.
     if (!widget.isEditMode) {
-      targets.add((node: _quantityFocusNode, key: _descriptionFieldKey));
+      targets.add((node: _quantityFocusNode, key: _quantityFieldKey));
     }
     targets.add((node: _descriptionFocusNode, key: _descriptionFieldKey));
 
@@ -2363,6 +2367,91 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
 
   /// The height, width and arch boxes.
   ///
+  /// The window's number and how many of it, on one line straight under the
+  /// collar and above the sizes.
+  ///
+  /// These are what identifies the window being typed, so they sit where the
+  /// eye lands after choosing the collar -- the number used to float alone at
+  /// the top of the page, above the collar, where nobody looked at it while
+  /// measuring. In manual numbering the number is a box to type in; otherwise
+  /// it is shown, not typed. Quantity is not there when one saved window is
+  /// being edited, and the number then has the line to itself.
+  Widget _buildWinNoAndQuantityRow(TextStyle? hintStyle) {
+    final Widget winNo = _numberingMode == NumberingMode.manual
+        ? TextField(
+            key: _winNoFieldKey,
+            controller: _winNoController,
+            focusNode: _winNoFocusNode,
+            enabled: !widget.isEditMode,
+            keyboardType: const TextInputType.numberWithOptions(signed: false),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            textInputAction: _textInputActionForField(_winNoFocusNode),
+            onSubmitted: (_) => _submitFromField(_winNoFocusNode),
+            onChanged: (_) {
+              if (_winNoError != null) {
+                setState(() {
+                  _winNoError = _validateWinNo(_winNoController.text);
+                });
+              }
+            },
+            decoration: InputDecoration(
+              labelText: 'Window Number',
+              errorText: _winNoError,
+              prefixIcon: const Icon(Icons.tag_rounded),
+            ),
+          )
+        : InputDecorator(
+            key: const Key('current_win_no_label'),
+            decoration: const InputDecoration(
+              labelText: 'Window No.',
+              prefixIcon: Icon(Icons.tag_rounded),
+            ),
+            child: Text(
+              '$_visibleWinNo',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppTheme.deepTeal,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(
+          child: TutorialTarget(id: 'input.winNo', child: winNo),
+        ),
+        if (!widget.isEditMode) ...[
+          const SizedBox(width: 12),
+          Expanded(
+            child: TutorialTarget(
+              id: 'input.quantity',
+              child: TextField(
+                key: _quantityFieldKey,
+                controller: _quantityController,
+                focusNode: _quantityFocusNode,
+                keyboardType: const TextInputType.numberWithOptions(
+                  signed: false,
+                ),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                textInputAction: _textInputActionForField(_quantityFocusNode),
+                onSubmitted: (_) => _submitFromField(_quantityFocusNode),
+                // "Quantity (Optional)" does not fit half a line; the hint
+                // says it once the box is tapped.
+                decoration: InputDecoration(
+                  labelText: 'Quantity',
+                  hintText: '1 if empty',
+                  hintStyle: hintStyle,
+                  prefixIcon: const Icon(Icons.copy_all_rounded),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   /// Width comes first and sits beside height wherever each dimension is a
   /// single box. That is the order a size is read off a tape and called out,
   /// and one line instead of two leaves the collar cards and the sizes on
@@ -3382,29 +3471,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TutorialTarget(
-                          id: 'input.winNo',
-                          child: Container(
-                            key: const Key('current_win_no_label'),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.deepTeal,
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Text(
-                              'winNo: ${_numberingMode == NumberingMode.manual ? (_winNoController.text.trim().isEmpty ? '--' : _winNoController.text.trim()) : _visibleWinNo}',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TutorialTarget(
                           id: 'input.collarCards',
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -3478,41 +3544,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (_numberingMode == NumberingMode.manual) ...[
-                          TextField(
-                            key: _winNoFieldKey,
-                            controller: _winNoController,
-                            focusNode: _winNoFocusNode,
-                            enabled: !widget.isEditMode,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              signed: false,
-                            ),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            textInputAction: _textInputActionForField(
-                              _winNoFocusNode,
-                            ),
-                            onSubmitted: (_) =>
-                                _submitFromField(_winNoFocusNode),
-                            onChanged: (_) {
-                              if (_winNoError != null) {
-                                setState(() {
-                                  _winNoError = _validateWinNo(
-                                    _winNoController.text,
-                                  );
-                                });
-                              } else {
-                                setState(() {}); // refresh winNo badge display
-                              }
-                            },
-                            decoration: InputDecoration(
-                              labelText: 'Window Number',
-                              errorText: _winNoError,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                        ],
+                        _buildWinNoAndQuantityRow(hintStyle),
+                        const SizedBox(height: 14),
                         Row(
                           children: [
                             Text(
@@ -3538,13 +3571,31 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           id: 'input.unit',
                           child: _buildQuickControls(context),
                         ),
-                        // Which aluminium this one is made from, before the
-                        // sizes are typed. The stock is settled first -- it is
-                        // decided for the job, or carried over from the last
-                        // window -- and the measuring is the part that needs
-                        // attention, so it sits closest to the save button
-                        // with only the optional description after it.
                         const SizedBox(height: 12),
+                        TutorialTarget(
+                          id: 'input.sizes',
+                          child: _buildSizeFields(numberInputStyle, hintStyle),
+                        ),
+                        // Right under the sizes, because it changes what they
+                        // mean for these pieces: set on the formula screen,
+                        // it would otherwise be invisible from here.
+                        if (_pieceSizes.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          _PieceSizesNotice(
+                            sizes: _pieceSizes,
+                            unit: _isFabricationFlow ? 'cm' : 'ft',
+                            onClear: () => setState(
+                              () => _pieceSizes = const <PieceSize>[],
+                            ),
+                          ),
+                        ],
+                        // The aluminium and the glass come after the sizes. Both
+                        // are settled for most of a job -- the finish carries
+                        // over from the last window, the glass is remembered
+                        // until somebody picks another -- so the part that
+                        // changes with every window, the number and the sizes,
+                        // sits straight under the collar.
+                        const SizedBox(height: 16),
                         TutorialTarget(
                           id: 'input.material',
                           child: WindowMaterialPicker(
@@ -3564,7 +3615,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         // optimizer keeps each colour on its own sheets -- two
                         // colours packed onto one sheet is a sheet that cannot
                         // be cut.
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         TutorialTarget(
                           id: 'input.glass',
                           child: GlassColorPicker(
@@ -3578,56 +3629,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             },
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        TutorialTarget(
-                          id: 'input.sizes',
-                          child: _buildSizeFields(numberInputStyle, hintStyle),
-                        ),
-                        // Right under the sizes, because it changes what they
-                        // mean for these pieces: set on the formula screen,
-                        // it would otherwise be invisible from here.
-                        if (_pieceSizes.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          _PieceSizesNotice(
-                            sizes: _pieceSizes,
-                            unit: _isFabricationFlow ? 'cm' : 'ft',
-                            onClear: () => setState(
-                              () => _pieceSizes = const <PieceSize>[],
-                            ),
-                          ),
-                        ],
-                        // Quantity sits above the description: it belongs with
-                        // the measurement, and a description is the last thing
-                        // anyone types — when they type one at all.
-                        if (!widget.isEditMode) ...[
-                          const SizedBox(height: 12),
-                          TutorialTarget(
-                            id: 'input.quantity',
-                            child: TextField(
-                              controller: _quantityController,
-                              focusNode: _quantityFocusNode,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    signed: false,
-                                  ),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              textInputAction: _textInputActionForField(
-                                _quantityFocusNode,
-                              ),
-                              onSubmitted: (_) =>
-                                  _submitFromField(_quantityFocusNode),
-                              decoration: InputDecoration(
-                                labelText: 'Quantity (Optional)',
-                                hintText: 'e.g. 6  (default: 1)',
-                                hintStyle: hintStyle,
-                                prefixIcon: const Icon(Icons.copy_all_rounded),
-                              ),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         TutorialTarget(
                           id: 'input.description',
                           child: TextField(

@@ -72,6 +72,18 @@ const List<TutorialStep> estimationTutorialSteps = <TutorialStep>[
   ),
 
   // --------------------------------------------------------- Window input
+  // In the order they sit on the screen: collar, then the window's number and
+  // quantity on one line, then unit and sizes, then the rest.
+  TutorialStep(
+    screen: TutorialScreen.windowInput,
+    targetId: 'input.collarCards',
+    title: 'کالر کی قسم',
+    body:
+        'یہ کارڈ آپ کی ونڈو کی شکل دکھاتا ہے۔ انگلی سے دائیں بائیں سرکائیں — '
+        'دو کالر، تین کالر، چار کالر — اور جو آپ کی ونڈو ہے وہی سامنے رکھیں۔ '
+        'جو کارڈ سامنے ہو گا، حساب اسی حساب سے لگے گا۔',
+    tapHint: 'کارڈ کو دائیں سرکا کر دیکھیں',
+  ),
   TutorialStep(
     screen: TutorialScreen.windowInput,
     targetId: 'input.winNo',
@@ -83,13 +95,13 @@ const List<TutorialStep> estimationTutorialSteps = <TutorialStep>[
   ),
   TutorialStep(
     screen: TutorialScreen.windowInput,
-    targetId: 'input.collarCards',
-    title: 'کالر کی قسم',
+    targetId: 'input.quantity',
+    title: 'کتنی ونڈوز',
     body:
-        'یہ کارڈ آپ کی ونڈو کی شکل دکھاتا ہے۔ انگلی سے دائیں بائیں سرکائیں — '
-        'دو کالر، تین کالر، چار کالر — اور جو آپ کی ونڈو ہے وہی سامنے رکھیں۔ '
-        'جو کارڈ سامنے ہو گا، حساب اسی حساب سے لگے گا۔',
-    tapHint: 'کارڈ کو دائیں سرکا کر دیکھیں',
+        'اگر بالکل اسی ناپ کی ایک سے زیادہ ونڈوز ہیں تو یہاں تعداد لکھ دیں — '
+        'مثلاً 6۔ ایک ہی ناپ چھ بار لکھنے کی ضرورت نہیں، ایپ خود چھ ونڈوز بنا '
+        'دے گی۔ خالی چھوڑیں تو ایک ہی ونڈو بنے گی۔ ابھی کوئی تعداد لکھ کر دیکھیں۔',
+    tapHint: 'تعداد لکھیں',
   ),
   TutorialStep(
     screen: TutorialScreen.windowInput,
@@ -137,16 +149,6 @@ const List<TutorialStep> estimationTutorialSteps = <TutorialStep>[
         'یہ خانہ اختیاری ہے۔ یہاں ونڈو کی پہچان لکھیں — جیسے "باتھ روم" یا '
         '"سامنے والا کمرہ"۔ یہی تفصیل بعد میں کٹنگ لسٹ اور بل میں چھپتی ہے، '
         'جس سے کاریگر کو فوراً پتہ چل جاتا ہے کہ یہ ونڈو کہاں لگنی ہے۔',
-  ),
-  TutorialStep(
-    screen: TutorialScreen.windowInput,
-    targetId: 'input.quantity',
-    title: 'کتنی ونڈوز',
-    body:
-        'اگر بالکل اسی ناپ کی ایک سے زیادہ ونڈوز ہیں تو یہاں تعداد لکھ دیں — '
-        'مثلاً 6۔ ایک ہی ناپ چھ بار لکھنے کی ضرورت نہیں، ایپ خود چھ ونڈوز بنا '
-        'دے گی۔ خالی چھوڑیں تو ایک ہی ونڈو بنے گی۔ ابھی کوئی تعداد لکھ کر دیکھیں۔',
-    tapHint: 'تعداد لکھیں',
   ),
   TutorialStep(
     screen: TutorialScreen.windowInput,

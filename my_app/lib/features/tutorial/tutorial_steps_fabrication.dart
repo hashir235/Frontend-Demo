@@ -57,6 +57,18 @@ const List<TutorialStep> fabricationTutorialSteps = <TutorialStep>[
   ),
 
   // --------------------------------------------------------- Window input
+  // In the order they sit on the screen: collar, then the window's number and
+  // quantity on one line, then unit and sizes, then the rest.
+  TutorialStep(
+    screen: TutorialScreen.windowInput,
+    targetId: 'input.collarCards',
+    title: 'کالر کی قسم',
+    body:
+        'انگلی سے دائیں بائیں سرکا کر وہی کالر سامنے لائیں جو آپ کی ونڈو کا '
+        'ہے — دو، تین یا چار۔ کٹنگ کے ناپ اسی سے بدلتے ہیں، اس لیے یہاں غلطی '
+        'مہنگی پڑتی ہے۔',
+    tapHint: 'کارڈ کو دائیں سرکا کر دیکھیں',
+  ),
   TutorialStep(
     screen: TutorialScreen.windowInput,
     targetId: 'input.winNo',
@@ -68,13 +80,12 @@ const List<TutorialStep> fabricationTutorialSteps = <TutorialStep>[
   ),
   TutorialStep(
     screen: TutorialScreen.windowInput,
-    targetId: 'input.collarCards',
-    title: 'کالر کی قسم',
+    targetId: 'input.quantity',
+    title: 'کتنی ونڈوز',
     body:
-        'انگلی سے دائیں بائیں سرکا کر وہی کالر سامنے لائیں جو آپ کی ونڈو کا '
-        'ہے — دو، تین یا چار۔ کٹنگ کے ناپ اسی سے بدلتے ہیں، اس لیے یہاں غلطی '
-        'مہنگی پڑتی ہے۔',
-    tapHint: 'کارڈ کو دائیں سرکا کر دیکھیں',
+        'اسی ناپ کی ایک سے زیادہ ونڈوز ہیں تو تعداد لکھ دیں۔ ایپ خود اتنی '
+        'ونڈوز بنا دے گی اور کٹنگ بھی اسی حساب سے نکالے گی۔',
+    tapHint: 'تعداد لکھیں',
   ),
   TutorialStep(
     screen: TutorialScreen.windowInput,
@@ -119,15 +130,6 @@ const List<TutorialStep> fabricationTutorialSteps = <TutorialStep>[
     body:
         'یہاں لکھیں کہ یہ ونڈو کہاں لگنی ہے — جیسے "باتھ روم"۔ یہی تفصیل کٹنگ '
         'لسٹ پر چھپتی ہے، اور شاپ فلور پر ٹکڑے آپس میں نہیں گڈمڈ ہوتے۔',
-  ),
-  TutorialStep(
-    screen: TutorialScreen.windowInput,
-    targetId: 'input.quantity',
-    title: 'کتنی ونڈوز',
-    body:
-        'اسی ناپ کی ایک سے زیادہ ونڈوز ہیں تو تعداد لکھ دیں۔ ایپ خود اتنی '
-        'ونڈوز بنا دے گی اور کٹنگ بھی اسی حساب سے نکالے گی۔',
-    tapHint: 'تعداد لکھیں',
   ),
   TutorialStep(
     screen: TutorialScreen.windowInput,

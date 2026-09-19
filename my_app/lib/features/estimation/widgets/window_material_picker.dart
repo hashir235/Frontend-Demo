@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/option_switch.dart';
 import '../models/window_material.dart';
+import 'swatch_choice_grid.dart';
 
 /// Picks the gauge and colour for the window being entered.
 ///
@@ -22,59 +25,6 @@ class WindowMaterialPicker extends StatelessWidget {
     required this.value,
     required this.onChanged,
   });
-
-  Future<void> _pickColor(BuildContext context) async {
-    final String? picked = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (BuildContext sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppTheme.space5,
-                  0,
-                  AppTheme.space5,
-                  AppTheme.space3,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Text(
-                      'Colour',
-                      style: Theme.of(sheetContext).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-              ),
-              for (final String option in AluminiumColors.all)
-                ListTile(
-                  leading: _Swatch(color: option, size: 30),
-                  title: Text(
-                    AluminiumColors.labelFor(option),
-                    style: TextStyle(
-                      fontWeight: option == value.color
-                          ? FontWeight.w800
-                          : FontWeight.w600,
-                    ),
-                  ),
-                  trailing: option == value.color
-                      ? const Icon(Icons.check_rounded)
-                      : null,
-                  onTap: () => Navigator.of(sheetContext).pop(option),
-                ),
-              const SizedBox(height: AppTheme.space3),
-            ],
-          ),
-        );
-      },
-    );
-    if (picked != null && picked != value.color) {
-      onChanged(value.copyWith(color: picked));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,91 +48,84 @@ class WindowMaterialPicker extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppTheme.space5),
-        Text(
-          'COLOUR',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.8,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        const SizedBox(height: AppTheme.space3),
-        _ColorButton(
-          color: value.color,
-          onTap: () => _pickColor(context),
+        // The finishes as boxes to tap, the chosen one named above them. A
+        // shop picks a finish by eye; the list of names it used to open made
+        // them read "SAHARA/ BROWN" and "BLACK/ MULTI" every time.
+        SwatchChoiceGrid(
+          title: 'ALUMINIUM COLOR',
+          options: AluminiumColors.all,
+          selected: value.color,
+          nameFor: AluminiumColors.labelFor,
+          swatchBuilder: (String color, double size) =>
+              AluminiumSwatch(color: color, size: size),
+          keyPrefix: 'aluminium_color',
+          onSelected: (String color) {
+            onChanged(value.copyWith(color: color));
+          },
         ),
       ],
     );
   }
 }
 
-/// The colour row: a swatch of the finish, its name, and a hint that it opens.
-///
-/// The swatch carries the meaning. A shop picks colour by eye, and five grey
-/// rows reading "SAHARA/ BROWN" and "BLACK/ MULTI" make them read every time.
-class _ColorButton extends StatelessWidget {
-  final String color;
-  final VoidCallback onTap;
-
-  const _ColorButton({required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppTheme.space4,
-            vertical: 10,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            border: Border.all(color: AppTheme.line),
-          ),
-          child: Row(
-            children: <Widget>[
-              _Swatch(color: color, size: 26),
-              const SizedBox(width: AppTheme.space4),
-              Expanded(
-                child: Text(
-                  AluminiumColors.labelFor(color),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-              ),
-              const Icon(Icons.expand_more_rounded, size: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// A rounded chip of the finish itself.
-class _Swatch extends StatelessWidget {
+///
+/// Wood coat is drawn with a grain. Its brown sits close to Sahara's, and with
+/// the names gone from the boxes the grain is what tells the two apart.
+class AluminiumSwatch extends StatelessWidget {
   final String color;
   final double size;
 
-  const _Swatch({required this.color, required this.size});
+  const AluminiumSwatch({super.key, required this.color, required this.size});
 
   @override
   Widget build(BuildContext context) {
+    final BorderRadius radius = BorderRadius.circular(size / 3.2);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         color: AluminiumColors.swatchFor(color),
-        borderRadius: BorderRadius.circular(size / 3.2),
+        borderRadius: radius,
         border: Border.all(color: Colors.black.withValues(alpha: 0.15)),
       ),
+      child: color == AluminiumColors.wood
+          ? ClipRRect(
+              borderRadius: radius,
+              child: CustomPaint(painter: _WoodGrainPainter()),
+            )
+          : null,
     );
   }
+}
+
+/// A few wavy lines of a lighter brown across the swatch.
+class _WoodGrainPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint grain = Paint()
+      ..color = const Color(0xFFA9774A).withValues(alpha: 0.75)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1, size.height / 22);
+    const int lines = 4;
+    for (int i = 1; i <= lines; i += 1) {
+      final double y = size.height * i / (lines + 1);
+      final double wave = size.height / 14;
+      final Path path = Path()..moveTo(0, y);
+      path.cubicTo(
+        size.width * 0.3,
+        y - wave,
+        size.width * 0.6,
+        y + wave,
+        size.width,
+        y - wave / 2,
+      );
+      canvas.drawPath(path, grain);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WoodGrainPainter oldDelegate) => false;
 }
 
 /// The gauge and colour a window is made in, as a small badge.

@@ -15,6 +15,12 @@ Finder _textFieldByLabel(String label) {
   );
 }
 
+/// The window number shown beside the quantity, above the sizes.
+Finder _winNoShows(String number) => find.descendant(
+  of: find.byKey(const Key('current_win_no_label')),
+  matching: find.text(number),
+);
+
 /// The two-box chain, which is what the "Typing box" setting gives: a size is
 /// an inch box plus a suter box -- hence the unit in the label -- and next
 /// goes width, its suter, height, its suter, quantity, description. Leaving
@@ -77,7 +83,7 @@ void main() {
     final Finder heightField = _textFieldByLabel(_heightLabel);
     final Finder widthField = _textFieldByLabel(_widthLabel);
     final Finder suterField = _textFieldByLabel('Suter');
-    final Finder quantityField = _textFieldByLabel('Quantity (Optional)');
+    final Finder quantityField = _textFieldByLabel('Quantity');
     final Finder descriptionField = _textFieldByLabel('Description (Optional)');
 
     // The size fields sit under the pinned Save bar on a short screen, so a
@@ -110,7 +116,8 @@ void main() {
       isTrue,
     );
 
-    // Quantity comes before the description: it belongs with the measurement.
+    // Quantity after the sizes. It sits up beside the window number, but it is
+    // optional, so the chain reaches it only once the sizes are in.
     await tester.testTextInput.receiveAction(TextInputAction.next);
     await tester.pump();
     expect(
@@ -141,7 +148,7 @@ void main() {
       isFalse,
     );
     expect(tester.widget<TextField>(widthField).focusNode?.hasFocus, isTrue);
-    expect(find.text('winNo: 2'), findsOneWidget);
+    expect(_winNoShows('2'), findsOneWidget);
   });
 
   testWidgets(
@@ -185,7 +192,7 @@ void main() {
 
       // Back to the first box, which is width.
       expect(tester.widget<TextField>(widthField).focusNode?.hasFocus, isTrue);
-      expect(find.text('winNo: 2'), findsOneWidget);
+      expect(_winNoShows('2'), findsOneWidget);
     },
   );
 

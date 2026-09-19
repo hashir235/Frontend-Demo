@@ -132,20 +132,26 @@ void main() {
       final List<GlassReportRow> saved = <GlassReportRow>[];
       await openSheet(tester, onRowSaved: saved.add);
 
-      await tester.ensureVisible(find.byKey(const Key('glass_color_button')));
-      await tester.tap(find.byKey(const Key('glass_color_button')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Green Mer.').last);
+      // The glass is picked by tapping its box; there is no list to open.
+      const Key greenMercury = Key('glass_color_option_Green Mercury');
+      await tester.ensureVisible(find.byKey(greenMercury));
+      await tester.tap(find.byKey(greenMercury));
       await tester.pumpAndSettle();
 
       expect(LastGlassColor.instance.value, 'Green Mercury');
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('quick_al.last_glass_color'), 'Green Mercury');
 
-      // A fresh sheet, as the next job would open it.
+      // A fresh sheet, as the next job would open it: named above the boxes.
       await tester.pumpWidget(const SizedBox.shrink());
       await openSheet(tester, onRowSaved: saved.add);
-      expect(find.text('Green Mer.'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('glass_color_selected')),
+          matching: find.text('Green Mercury'),
+        ),
+        findsOneWidget,
+      );
     });
   });
 }
