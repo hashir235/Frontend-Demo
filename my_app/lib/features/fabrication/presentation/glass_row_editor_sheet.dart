@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/format/suter_half.dart';
 import '../../../shared/widgets/suter_wheel.dart';
 import '../../settings/state/app_settings.dart';
 import '../../settings/state/size_input_mode.dart';
@@ -622,13 +623,14 @@ class _DimensionFieldState extends State<_DimensionField> {
   /// cleared before a number can be typed — on a screen where a run of glass
   /// is entered piece after piece, that is one deletion per piece. Blank means
   /// zero anyway, which is what [_parseSutter] does with it.
+  ///
+  /// A half shows as ½, as it does when typed.
   static String _formatSutter(double value) {
     if (value == 0) return '';
-    if (value == value.roundToDouble()) return value.toInt().toString();
-    return value.toString();
+    return SuterHalf.format(value);
   }
 
-  static double _parseSutter(String text) => double.tryParse(text.trim()) ?? 0;
+  static double _parseSutter(String text) => SuterHalf.parse(text) ?? 0;
 
   void _onSutterTyped(String text) {
     final double parsed = _parseSutter(text);
@@ -638,7 +640,7 @@ class _DimensionFieldState extends State<_DimensionField> {
     widget.onSutterChanged(SuterWheel.snap(clamped));
   }
 
-  /// `34'' 4.5'''` -- the inch, the suter, and the tape marks the box shows.
+  /// `34'' 4½'''` -- the inch, the suter, and the tape marks the box shows.
   /// Read through the shared notation so glass and windows agree on what a
   /// typed size means, marks and all. Null when it is not a size at all.
   static ({String inch, double suter})? _splitMerged(String raw) {
@@ -711,13 +713,13 @@ class _DimensionFieldState extends State<_DimensionField> {
         onFieldSubmitted: (_) => widget.onRowComplete?.call(),
         inputFormatters: <TextInputFormatter>[
           // Filters and marks in one pass, exactly as the window screens do
-          // it: 34'' 4.5''' appearing as it is typed.
+          // it: 34'' 4½''' appearing as it is typed, the point giving the ½.
           const MergedSizeFormatter(),
         ],
         onChanged: _onMergedTyped,
         validator: _validateMerged,
         decoration: const InputDecoration(
-          hintText: "34'' 4.5'''",
+          hintText: "34'' 4½'''",
           border: OutlineInputBorder(),
           isDense: true,
           // Half a sheet wide now; a message that does not fit wraps rather
@@ -786,13 +788,14 @@ class _DimensionFieldState extends State<_DimensionField> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.next,
             onFieldSubmitted: (_) => widget.onRowComplete?.call(),
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d?')),
+            // The point is the half, and shows as ½ as it is pressed.
+            inputFormatters: const <TextInputFormatter>[
+              SuterBoxFormatter(),
             ],
             onChanged: _onSutterTyped,
             decoration: const InputDecoration(
               labelText: 'Sutter',
-              hintText: '0-7.5',
+              hintText: '0-7½',
               border: OutlineInputBorder(),
               isDense: true,
             ),

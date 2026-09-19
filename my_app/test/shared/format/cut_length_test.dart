@@ -9,11 +9,11 @@ void main() {
   group('the three readings of one bar', () {
     test('a real sliding window upright', () {
       // 216.4 cm is 85.1968... inches: 85 whole, and 0.1968 x 8 = 1.57 suter,
-      // which is 1.5 on a tape.
+      // which is 1½ on a tape.
       final CutLength length = CutLength.fromCm(216.4);
       expect(length.inCm, '216.4');
-      expect(length.inInchSuter, "85'' 1.5'''");
-      expect(length.inFeetInchSuter, "7' 1'' 1.5'''");
+      expect(length.inInchSuter, "85'' 1½'''");
+      expect(length.inFeetInchSuter, "7' 1'' 1½'''");
     });
 
     test('feet and inches are two readings of the same bar, not one', () {
@@ -24,10 +24,10 @@ void main() {
       final CutLength length = CutLength.fromCm(216.4);
       expect(length.inInchSuter, isNot(equals(length.inFeetInchSuter)));
       // The inch reading never mentions feet, and counts every inch there is.
-      expect(length.inInchSuter, "85'' 1.5'''");
+      expect(length.inInchSuter, "85'' 1½'''");
       expect(length.inInchSuter, isNot(contains("'''85")));
       // The feet reading splits the same 85 inches into 7 feet and 1 inch.
-      expect(length.inFeetInchSuter, "7' 1'' 1.5'''");
+      expect(length.inFeetInchSuter, "7' 1'' 1½'''");
     });
 
     test('a short piece, where feet reads as zero', () {
@@ -52,9 +52,9 @@ void main() {
     });
 
     test('suter snaps to the half, which is the finest mark there is', () {
-      // 0.3 of an inch is 2.4 suter, which reads as 2.5.
+      // 0.3 of an inch is 2.4 suter, which reads as 2½.
       final CutLength length = CutLength.fromFeet(5.3 / 12);
-      expect(length.inInchSuter, "5'' 2.5'''");
+      expect(length.inInchSuter, "5'' 2½'''");
     });
 
     test('a whole number of suter has no needless decimal', () {

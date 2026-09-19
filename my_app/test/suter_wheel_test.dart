@@ -14,11 +14,11 @@ void main() {
   });
 
   group('SuterWheel.format', () {
-    test('whole values drop the decimal, halves keep one digit', () {
+    test('whole values drop the decimal, halves show as ½', () {
       expect(SuterWheel.format(0), '0');
       expect(SuterWheel.format(3), '3');
-      expect(SuterWheel.format(3.5), '3.5');
-      expect(SuterWheel.format(7.5), '7.5');
+      expect(SuterWheel.format(3.5), '3½');
+      expect(SuterWheel.format(7.5), '7½');
     });
   });
 

@@ -65,8 +65,9 @@ void main() {
       ('34', "34''", 'still the inch'),
       ('34 ', "34'' ", 'space pressed, nothing typed after it yet'),
       ('34 4', "34'' 4'''", 'the suter in'),
-      ('34 4.5', "34'' 4.5'''", 'half a suter'),
-      ('34 4.', "34'' 4.", 'mid-typing: no marks over an unfinished decimal'),
+      ('34 4.5', "34'' 4½'''", 'half a suter, shown as ½'),
+      ('34 4.', "34'' 4½'''", 'the point is the half the moment it goes in'),
+      ('34 .', "34'' ½'''", 'a point on its own is half a suter'),
       ('', '', 'an empty box stays empty'),
     ]) {
       test('"$bare" shows as "$shown" -- $why', () {
@@ -104,7 +105,7 @@ void main() {
     });
 
     test('a stored size opens wearing its marks', () {
-      expect(SizeNotation.storedToMerged('34.45', isFeet: false), "34'' 4.5'''");
+      expect(SizeNotation.storedToMerged('34.45', isFeet: false), "34'' 4½'''");
       expect(SizeNotation.storedToMerged('23.0', isFeet: false), "23''");
       // Feet wear one quote, and the inch after them two.
       expect(SizeNotation.storedToMerged('13.7', isFeet: true), "13' 7''");
@@ -152,8 +153,9 @@ void main() {
       v = type(v, '4');
       expect(v.text, "34'' 4'''");
       v = type(v, '.');
+      expect(v.text, "34'' 4½'''", reason: 'the point is the half, at once');
       v = type(v, '5');
-      expect(v.text, "34'' 4.5'''");
+      expect(v.text, "34'' 4½'''", reason: 'nothing follows a half');
       expect(SizeNotation.mergedToStored(v.text, isFeet: false), '34.45');
     });
 
@@ -341,7 +343,7 @@ void main() {
       await tester.enterText(fieldByLabel('Width'), '44 5.5');
       await tester.pumpAndSettle();
 
-      expect(find.text("44'' 5.5'''"), findsOneWidget);
+      expect(find.text("44'' 5½'''"), findsOneWidget);
     });
   });
 }

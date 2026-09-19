@@ -7,6 +7,7 @@ import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/format/suter_half.dart';
 import '../../estimation/models/glass_color.dart';
 import '../../estimation/widgets/glass_color_picker.dart';
 import '../../../shared/widgets/app_hero_header.dart';
@@ -204,7 +205,7 @@ class _GlassSheetOptimizationScreenState
   }
 
   String _glassSizeForRow(GlassReportRow row) {
-    return '${row.widthDisplay} x ${row.heightDisplay}';
+    return SuterHalf.inText('${row.widthDisplay} x ${row.heightDisplay}');
   }
 
   @override
@@ -483,7 +484,9 @@ class _GlassSheetOptimizationScreenState
               children: <Widget>[
                 _MetaChip(
                   label: 'Size',
-                  value: '${sheet.widthDisplay} x ${sheet.heightDisplay}',
+                  value: SuterHalf.inText(
+                    '${sheet.widthDisplay} x ${sheet.heightDisplay}',
+                  ),
                 ),
                 _MetaChip(label: 'Used', value: '${sheet.placements.length}'),
                 _MetaChip(label: 'Waste', value: '${sheet.wasteRects.length}'),
@@ -538,7 +541,7 @@ class _GlassSheetOptimizationScreenState
                     : index + 1;
                 return _NumberedPanelRow(
                   badge: '$number',
-                  text: piece.glassSizeDisplay,
+                  text: SuterHalf.inText(piece.glassSizeDisplay),
                   helper: formatArea(piece.width * piece.height),
                   color: _GlassSheetPainter.colorForIndex(index),
                 );
@@ -554,7 +557,7 @@ class _GlassSheetOptimizationScreenState
                 final int number = waste.wasteNo > 0 ? waste.wasteNo : 0;
                 return _NumberedPanelRow(
                   badge: number > 0 ? 'W$number' : waste.id,
-                  text: waste.sizeDisplay,
+                  text: SuterHalf.inText(waste.sizeDisplay),
                   helper: formatArea(waste.area),
                   color: AppTheme.slate,
                 );
@@ -620,8 +623,9 @@ class _ExtraMarginWarning extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<String> over = <String>[
       if (sheet.marginOverHeight > 0)
-        'height by ${sheet.marginOverHeightDisplay}',
-      if (sheet.marginOverWidth > 0) 'width by ${sheet.marginOverWidthDisplay}',
+        'height by ${SuterHalf.inText(sheet.marginOverHeightDisplay)}',
+      if (sheet.marginOverWidth > 0)
+        'width by ${SuterHalf.inText(sheet.marginOverWidthDisplay)}',
     ];
 
     return Container(
@@ -878,7 +882,7 @@ class _GlassSheetPainter extends CustomPainter {
         _paintBadge(canvas, rect, '$pieceNo');
       }
 
-      final String pieceText = piece.glassSizeDisplay.trim();
+      final String pieceText = SuterHalf.inText(piece.glassSizeDisplay.trim());
       if (pieceText.isEmpty || rect.width < 42 || rect.height < 30) {
         continue;
       }

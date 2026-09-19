@@ -1803,7 +1803,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: Text('Merged typing box (default)'),
               subtitle: Text(
                 'One box for the whole size, like cm: the inch, a space, then '
-                'the suter — 23 4, or 44 5.5 for a half.',
+                'the suter — 23 4, or 44 5½ for a half (press the point).',
               ),
             ),
             Divider(height: 1),

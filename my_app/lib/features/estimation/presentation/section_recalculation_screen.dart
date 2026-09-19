@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/format/suter_half.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -607,7 +608,7 @@ class _SectionRecalculationScreenState
           ),
           const SizedBox(height: 4),
           Text(
-            'Wastage: ${group.wastageDisplay}',
+            'Wastage: ${SuterHalf.inText(group.wastageDisplay)}',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: AppTheme.deepTeal,
               fontWeight: FontWeight.w700,
@@ -642,7 +643,7 @@ class _SectionRecalculationScreenState
                         DataCell(Text(cut.windowName)),
                         DataCell(Text(cut.windowNo.toString())),
                         DataCell(Text(_pieceSymbolForCut(cut))),
-                        DataCell(Text(cut.lengthDisplay)),
+                        DataCell(Text(SuterHalf.inText(cut.lengthDisplay))),
                       ],
                     );
                   })

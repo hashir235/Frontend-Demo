@@ -16,6 +16,7 @@ import '../../../shared/widgets/next_step_action.dart';
 import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../../../shared/format/cut_length.dart';
+import '../../../shared/format/suter_half.dart';
 import '../../../shared/widgets/state_message_card.dart';
 import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
@@ -700,7 +701,8 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     CuttingReportGroup group,
   ) {
     final String wastageText =
-        'Wastage: ${group.wastageDisplay}${group.offcut ? ' | Offcut' : ''}';
+        'Wastage: ${SuterHalf.inText(group.wastageDisplay)}'
+        '${group.offcut ? ' | Offcut' : ''}';
     // Only the first group carries tour targets -- an id can point at one
     // widget, and the first card is the one the user is looking at.
     final bool isTourExample = groupIndex == 0;
@@ -786,8 +788,12 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                       // in the file for that reason: a cell list that drifts
                       // from its headers puts every number under the wrong
                       // name, and on a cutting sheet that gets metal cut wrong.
+                      // The engine writes a half suter as .5; shown as ½.
                       DataCell(
-                        _buildCutCell(cut.lengthDisplay, isMarked: isMarked),
+                        _buildCutCell(
+                          SuterHalf.inText(cut.lengthDisplay),
+                          isMarked: isMarked,
+                        ),
                       ),
                       DataCell(
                         _buildCutCell(

@@ -18,6 +18,7 @@ import '../../../tutorial/tutorial_controller.dart';
 import '../../../tutorial/tutorial_overlay.dart';
 import '../../../tutorial/tutorial_step.dart';
 import '../../../tutorial/tutorial_target.dart';
+import '../../../../shared/format/suter_half.dart';
 import '../../../../shared/widgets/option_switch.dart';
 import '../../../../shared/widgets/suter_wheel.dart';
 import '../../../settings/data/estimation_settings_repository.dart';
@@ -1314,7 +1315,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (parts.suter.isEmpty || parts.suter == '0') {
       return parts.inch;
     }
-    return '${parts.inch} ${parts.suter}';
+    // The half as the box shows it when typed: 44 5½, not 44 5.5.
+    return '${parts.inch} ${SuterHalf.fromDecimal(parts.suter)}';
   }
 
   /// Mode-aware combine of the split controllers back into stored notation.
@@ -1353,16 +1355,17 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     final ({String inch, String suter}) width = _splitStoredForSplit(
       _widthController.text,
     );
+    // A half suter reads ½ in its box, as it does when typed there.
     _heightInchController.text = height.inch;
-    _heightSuterController.text = height.suter;
+    _heightSuterController.text = SuterHalf.fromDecimal(height.suter);
     _widthInchController.text = width.inch;
-    _widthSuterController.text = width.suter;
+    _widthSuterController.text = SuterHalf.fromDecimal(width.suter);
     if (_usesSplitWidthInputs) {
       final ({String inch, String suter}) left = _splitStoredForSplit(
         _leftWidthController.text,
       );
       _leftWidthInchController.text = left.inch;
-      _leftWidthSuterController.text = left.suter;
+      _leftWidthSuterController.text = SuterHalf.fromDecimal(left.suter);
     }
   }
 
@@ -1501,20 +1504,20 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                 '4     →  4 feet\n\n'
                 '12 inches make the next foot, so the inch runs 0 to 11.'
           : 'Inches mode — one box:\n'
-                'Type the inch, a space, then the suter. Add .5 to the suter '
-                'for a half.\n\n'
+                'Type the inch, a space, then the suter. For a half, press '
+                'the point after the suter — it turns into ½.\n\n'
                 '23 4     →  23 inch 4 suter\n'
-                '44 5.5   →  44 inch 5½ suter\n'
-                '32 0.5   →  32 inch ½ suter\n'
+                '44 5.    →  44 inch 5½ suter\n'
+                '32 .     →  32 inch ½ suter\n'
                 '23       →  23 inch\n\n'
-                'Eight suter make the next inch, so the suter runs 0 to 7.5.';
+                'Eight suter make the next inch, so the suter runs 0 to 7½.';
     } else if (_usesInchSuterSplit) {
       instructionText =
           'Inches mode:\n'
           'Type the inch (a whole number, e.g. 45) and pick the suter by '
           'scrolling the tape wheel.\n'
-          'Suter runs 0 to 7.5 in half-suter steps — pick half or full, '
-          'whatever you need.';
+          'Suter runs 0 to 7½ in half-suter steps — pick half or full, '
+          'whatever you need. In the typing box, the point gives the ½.';
     } else if (_usesFeetInchSplit) {
       instructionText =
           'Feet mode:\n'
@@ -2980,7 +2983,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: <TextInputFormatter>[
         if (_usesMergedInput)
-          // Filters and marks in one pass: 34'' 4.5''' as it is typed.
+          // Filters and marks in one pass: 34'' 4½''' as it is typed.
           MergedSizeFormatter(isFeet: _mergedIsFeet)
         else
           FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
@@ -3022,7 +3025,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     bool isTourWheelExample = false,
   }) {
     final bool feetMode = _usesFeetInchSplit;
-    final double wheelValue = double.tryParse(wheelController.text.trim()) ?? 0;
+    final double wheelValue = SuterHalf.parse(wheelController.text) ?? 0;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -3130,13 +3133,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         if (feetMode)
           FilteringTextInputFormatter.digitsOnly
         else
-          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d?')),
+          // The point is the half, and shows as ½ the moment it is pressed.
+          const SuterBoxFormatter(),
       ],
       scrollPadding: EdgeInsets.zero,
       onChanged: (_) => onChanged(),
       decoration: InputDecoration(
         labelText: feetMode ? 'Inch' : 'Suter',
-        hintText: feetMode ? '0-11' : '0-7.5',
+        hintText: feetMode ? '0-11' : '0-7½',
       ),
     );
   }

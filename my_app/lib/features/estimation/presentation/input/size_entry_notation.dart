@@ -4,6 +4,9 @@
 /// 4 suter -- and the app carries it as a single string, `23.4`, with the half
 /// suter as a second digit: `44.55` is 44 inches and five and a half suter.
 ///
+/// The half is shown and typed as ½ -- `44'' 5½'''` -- the way a tape marks
+/// it; see [SuterHalf]. Stored sizes keep the decimal.
+///
 /// These conversions used to live inside the input screen's state, which meant
 /// the one part of the app where a misread digit becomes a mis-cut bar could
 /// not be tested without building a screen. They are pure string work and
@@ -11,18 +14,20 @@
 library;
 
 import 'package:flutter/services.dart';
+import 'package:my_app/shared/format/suter_half.dart';
 import 'package:my_app/shared/widgets/suter_wheel.dart';
 
 class SizeNotation {
   const SizeNotation._();
 
-  /// `('23', '4')` becomes `23.4`; `('44', '5.5')` becomes `44.55`.
+  /// `('23', '4')` becomes `23.4`; `('44', '5.5')` and `('44', '5½')` both
+  /// become `44.55`.
   ///
   /// The suter's half goes in as a second digit rather than a second dot,
   /// because the whole size has to survive as one number.
   static String combineInchSuter(String rawInch, String rawSuter) {
     final String inchValue = rawInch.trim();
-    final String suterValue = rawSuter.trim();
+    final String suterValue = SuterHalf.toDecimal(rawSuter);
     if (suterValue.isEmpty) {
       return '$inchValue.0';
     }
@@ -92,7 +97,7 @@ class SizeNotation {
   /// it leaves the dot free to mean the half suter it already means. More than
   /// two parts is a typo rather than a size, and says so by coming back null.
   static ({String whole, String sub})? splitMergedEntry(String rawValue) {
-    // The box shows the tape marks -- 34'' 4.5''' -- and they are decoration.
+    // The box shows the tape marks -- 34'' 4½''' -- and they are decoration.
     // Stripped here, at the one place every reader of a merged box comes
     // through, so nothing downstream can mistake a quote for a digit.
     final String value = stripMarks(rawValue).trim();
@@ -111,6 +116,9 @@ class SizeNotation {
   /// Also what filters a merged box -- anything that is not part of a size is
   /// dropped here rather than by a second formatter, so there is no ordering
   /// between the two to get wrong.
+  ///
+  /// A ½ goes back to the decimal every reader of a size expects: `5½` is
+  /// `5.5`, and a ½ on its own is `0.5`.
   static String stripMarks(String text) {
     final StringBuffer out = StringBuffer();
     bool spaced = false;
@@ -124,6 +132,13 @@ class SizeNotation {
         }
         continue;
       }
+      if (ch == SuterHalf.mark) {
+        final String so = out.toString();
+        final bool afterDigit =
+            so.isNotEmpty && RegExp(r'\d$').hasMatch(so);
+        out.write(afterDigit ? '.5' : '0.5');
+        continue;
+      }
       final bool isDigit = ch.compareTo('0') >= 0 && ch.compareTo('9') <= 0;
       if (isDigit || ch == '.') out.write(ch);
     }
@@ -135,7 +150,11 @@ class SizeNotation {
   /// Inches:            Feet:
   ///     34''               13'
   ///     34'' 4'''          13' 7''
-  ///     34'' 4.5'''
+  ///     34'' 4½'''
+  ///
+  /// In inches, a point in the suter is the half: it becomes ½ the moment it
+  /// is typed -- `34 4.` shows `34'' 4½'''` -- because a suter has no other
+  /// fraction, and anything typed after the ½ is not kept.
   ///
   /// The mark goes on from the first digit, not once the next part is started.
   /// Waiting until space was pressed left a number sitting bare on screen with
@@ -157,9 +176,22 @@ class SizeNotation {
       return _marked(raw, marks[0]);
     }
     final String first = raw.substring(0, space);
-    final String second = raw.substring(space + 1);
+    final String second = isFeet
+        ? raw.substring(space + 1)
+        : _halfSuter(raw.substring(space + 1));
     if (first.isEmpty) return raw;
     return '${_marked(first, marks[0])} ${_marked(second, marks[1])}';
+  }
+
+  /// The suter part with its half as ½: `4.` and `4.5` are `4½`, `.` and
+  /// `0.5` are `½`. A suter with no point is left as it is.
+  static String _halfSuter(String suter) {
+    final int dot = suter.indexOf('.');
+    if (dot < 0) return suter;
+    final String whole = suter.substring(0, dot);
+    return (whole.isEmpty || whole == '0')
+        ? SuterHalf.mark
+        : '$whole${SuterHalf.mark}';
   }
 
   /// One part of a size with its mark on it.
@@ -220,15 +252,15 @@ class SizeNotation {
     return null;
   }
 
-  /// The suter half: 0 to 7.5, in halves. Eight suter is the next inch.
+  /// The suter half: 0 to 7½, in halves. Eight suter is the next inch.
   static String? validateSuterPart(String rawValue) {
-    final String value = rawValue.trim();
+    final String value = SuterHalf.toDecimal(rawValue);
     if (value.isEmpty) {
       return null;
     }
     final RegExp pattern = RegExp(r'^\d(?:\.\d)?$');
     if (!pattern.hasMatch(value)) {
-      return 'Use 0..7.9 (one decimal)';
+      return 'Suter runs 0 to 7½';
     }
     final double? parsed = double.tryParse(value);
     if (parsed == null || parsed < 0 || parsed >= 8) {
@@ -278,10 +310,17 @@ class MergedSizeFormatter extends TextInputFormatter {
       newValue.text,
       isFeet: isFeet,
     );
+    // A digit typed after the ½ is dropped, so the caret can be counted past
+    // the end of what is left; it stays right after the ½ rather than jumping
+    // over the suter mark.
+    final int shownBare = SizeNotation.stripMarks(shown).length;
     return TextEditingValue(
       text: shown,
       selection: TextSelection.collapsed(
-        offset: _offsetAfterBareChars(shown, bareCaret),
+        offset: _offsetAfterBareChars(
+          shown,
+          bareCaret < shownBare ? bareCaret : shownBare,
+        ),
       ),
     );
   }

@@ -1,6 +1,8 @@
 /// One length, said the three ways a workshop reads it.
 library;
 
+import 'suter_half.dart';
+
 /// Centimetres in a foot.
 const double _cmPerFoot = 30.48;
 
@@ -24,7 +26,7 @@ class CutReading {
 /// and it is the same 2mm either way.
 ///
 /// Feet and inches are two different readings, not one. A bar is read off the
-/// tape as `7' 1'' 1.5'''` when a shop works in feet, and as `85'' 1.5'''`
+/// tape as `7' 1'' 1½'''` when a shop works in feet, and as `85'' 1½'''`
 /// when it works in inches -- the same bar, and neither is the other written
 /// differently.
 class CutLength {
@@ -41,14 +43,14 @@ class CutLength {
   /// `216.4` -- centimetres, to the millimetre a tape can show.
   String get inCm => _trim(cm, 1);
 
-  /// `7' 1'' 1.5'''` -- feet, inches and suter, as a shop working in feet
+  /// `7' 1'' 1½'''` -- feet, inches and suter, as a shop working in feet
   /// reads it off the tape.
   String get inFeetInchSuter {
     final _Tape tape = _Tape.of(inches);
     return "${tape.feet}' ${tape.inches}'' ${tape.suter}'''";
   }
 
-  /// `85'' 1.5'''` -- whole inches and suter, as a shop working in inches
+  /// `85'' 1½'''` -- whole inches and suter, as a shop working in inches
   /// reads it. The same bar as [inFeetInchSuter], counted without ever
   /// reaching for feet.
   String get inInchSuter {
@@ -115,9 +117,7 @@ class _Tape {
       whole += 1;
     }
 
-    final String text = suter == suter.roundToDouble()
-        ? suter.toInt().toString()
-        : suter.toStringAsFixed(1);
-    return _Tape(whole, text);
+    // The half as the tape marks it: 1½, not 1.5.
+    return _Tape(whole, SuterHalf.format(suter));
   }
 }

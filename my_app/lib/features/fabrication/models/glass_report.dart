@@ -180,7 +180,11 @@ class GlassDimension {
   /// Length in centimetres (what the optimizer/PDF keep as a numeric backup).
   double get cm => decimalInches * 2.54;
 
-  /// Shop display string, e.g. `45'' 3'''` or `45'' 0'''`.
+  /// Shop display string, e.g. `45'' 3'''` or `45'' 3.5'''`.
+  ///
+  /// Kept with the decimal half: this is what goes to the server as the row's
+  /// size, and the server works the glass out from it. Screens show it through
+  /// `SuterHalf.inText`, which turns the .5 into ½.
   String get display {
     final String sutterStr = sutter == sutter.roundToDouble()
         ? sutter.toInt().toString()
@@ -197,7 +201,14 @@ class GlassDimension {
     required String display,
     required double cm,
   }) {
-    final String trimmed = display.trim();
+    // A size shown with a ½ reads the same as one written with .5.
+    final String trimmed = display
+        .trim()
+        .replaceAllMapped(
+          RegExp(r'(\d)½'),
+          (Match m) => '${m.group(1)}.5',
+        )
+        .replaceAll('½', '0.5');
     if (trimmed.isNotEmpty) {
       final Iterable<Match> matches = RegExp(
         r'-?\d+(?:\.\d+)?',

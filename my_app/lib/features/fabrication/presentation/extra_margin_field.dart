@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/format/suter_half.dart';
 
 /// A size expressed the way the shop says it: whole inches plus suter eighths.
 class ShopLength {
@@ -17,9 +18,7 @@ class ShopLength {
 
   String get display {
     if (isZero) return '0';
-    final String s = suter == suter.roundToDouble()
-        ? suter.toInt().toString()
-        : suter.toString();
+    final String s = SuterHalf.format(suter);
     if (inches == 0) return "$s'''";
     if (suter == 0) return "$inches''";
     return "$inches'' $s'''";
@@ -149,11 +148,8 @@ class _MarginInputState extends State<_MarginInput> {
     text: widget.value.inches == 0 ? '' : widget.value.inches.toString(),
   );
   late final TextEditingController _suter = TextEditingController(
-    text: widget.value.suter == 0 ? '' : _trim(widget.value.suter),
+    text: widget.value.suter == 0 ? '' : SuterHalf.format(widget.value.suter),
   );
-
-  static String _trim(double v) =>
-      v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 
   @override
   void dispose() {
@@ -166,10 +162,7 @@ class _MarginInputState extends State<_MarginInput> {
     final int inches = int.tryParse(_inch.text.trim()) ?? 0;
     // Held to the same 0..7.5 the rest of the app uses for suter, so a typo
     // cannot quietly authorise a margin of half a sheet.
-    final double suter = (double.tryParse(_suter.text.trim()) ?? 0).clamp(
-      0,
-      7.5,
-    );
+    final double suter = (SuterHalf.parse(_suter.text) ?? 0).clamp(0, 7.5);
     widget.onChanged(
       ShopLength(inches: inches < 0 ? 0 : inches, suter: suter),
     );
@@ -216,13 +209,14 @@ class _MarginInputState extends State<_MarginInput> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d?')),
+                // The point is the half, and shows as ½ as it is pressed.
+                inputFormatters: const <TextInputFormatter>[
+                  SuterBoxFormatter(),
                 ],
                 onChanged: (_) => _emit(),
                 decoration: const InputDecoration(
                   labelText: 'Suter',
-                  hintText: '0-7.5',
+                  hintText: '0-7½',
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),

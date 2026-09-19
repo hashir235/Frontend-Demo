@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../format/suter_half.dart';
 
 /// Immutable configuration that turns the generic [_TapeWheel] into a specific
 /// unit picker. [SuterWheel] and [InchWheel] are thin wrappers over the same
@@ -83,12 +84,11 @@ class SuterWheel extends StatelessWidget {
     return snapped.clamp(min, max);
   }
 
-  /// `3` for whole values, `3.5` for halves — the shop's own notation.
-  static String format(double value) {
-    return value == value.roundToDouble()
-        ? value.toInt().toString()
-        : value.toStringAsFixed(1);
-  }
+  /// `3` for whole values, `3½` for halves — the tape's own notation.
+  ///
+  /// This is also what the wheel writes into its text box, so whatever reads
+  /// the box back reads it with [SuterHalf.parse].
+  static String format(double value) => SuterHalf.format(value);
 
   @override
   Widget build(BuildContext context) {
