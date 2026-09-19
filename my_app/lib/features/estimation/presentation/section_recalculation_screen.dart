@@ -297,7 +297,7 @@ class _SectionRecalculationScreenState
                         child: _buildSummaryCard(context, resultSection),
                       ),
                       const SizedBox(height: 12),
-                      ...resultSection.groups.map(
+                      ...resultSection.groupsLongestFirst.map(
                         (CuttingReportGroup group) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _buildGroupCard(context, group),
@@ -545,7 +545,7 @@ class _SectionRecalculationScreenState
     final CuttingReportSummary? summary = section.summary;
     final String usedLengths = summary == null || summary.usedLengths.isEmpty
         ? '--'
-        : summary.usedLengths.map(_stockDisplayInFeet).join(', ');
+        : summary.usedLengthsLongestFirst.map(_stockDisplayInFeet).join(', ');
     final double totalLength = summary?.totalLength ?? 0;
 
     return Container(

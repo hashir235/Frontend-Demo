@@ -645,7 +645,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             _buildSummaryCard(context, section.summary!),
           ],
           const SizedBox(height: AppTheme.space5),
-          ...section.groups.asMap().entries.map(
+          ...section.groupsLongestFirst.asMap().entries.map(
             (MapEntry<int, CuttingReportGroup> entry) => Padding(
               padding: const EdgeInsets.only(bottom: AppTheme.space5),
               child: _buildGroupCard(
@@ -664,7 +664,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
   Widget _buildSummaryCard(BuildContext context, CuttingReportSummary summary) {
     final String usedLengths = summary.usedLengths.isEmpty
         ? '--'
-        : summary.usedLengths.map(_lengthDisplay).join(', ');
+        : summary.usedLengthsLongestFirst.map(_lengthDisplay).join(', ');
     return SectionSurfaceCard(
       title: 'Section Summary',
       child: Row(

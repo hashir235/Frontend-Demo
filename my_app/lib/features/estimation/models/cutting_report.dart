@@ -69,6 +69,26 @@ class CuttingReportSection {
     return bits.join(' · ');
   }
 
+  /// The bars in the order they are cut from: longest first.
+  ///
+  /// A cutter works through the 19-foot bars, then the shorter ones, so the
+  /// list is laid out that way rather than in the order the optimizer
+  /// happened to fill them. Bars of the same length keep their order among
+  /// themselves. The report itself is left as it came, so anything that sends
+  /// it on sends exactly what the server wrote.
+  List<CuttingReportGroup> get groupsLongestFirst {
+    final List<({int index, CuttingReportGroup group})> indexed =
+        <({int index, CuttingReportGroup group})>[
+          for (int i = 0; i < groups.length; i += 1)
+            (index: i, group: groups[i]),
+        ];
+    indexed.sort((a, b) {
+      final int byLength = b.group.stockLenFt.compareTo(a.group.stockLenFt);
+      return byLength != 0 ? byLength : a.index.compareTo(b.index);
+    });
+    return <CuttingReportGroup>[for (final entry in indexed) entry.group];
+  }
+
   factory CuttingReportSection.fromJson(Map<String, dynamic> json) {
     return CuttingReportSection(
       name: (json['name'] as String?) ?? '',
@@ -99,6 +119,10 @@ class CuttingReportSection {
 class CuttingReportSummary {
   final List<double> usedLengths;
   final List<String> usedLengthsDisplay;
+
+  /// [usedLengths], longest first -- the order the bars are listed in below.
+  List<double> get usedLengthsLongestFirst =>
+      <double>[...usedLengths]..sort((double a, double b) => b.compareTo(a));
   final double totalLength;
   final String totalLengthDisplay;
 
