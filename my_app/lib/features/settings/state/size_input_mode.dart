@@ -13,8 +13,9 @@ enum SizeInputMode {
   /// the suter in another.
   keypad,
 
-  /// One box for the whole size, the way cm is entered: the inch, a space,
-  /// then the suter -- `23 4`, or `44 5.5` when it lands on a half.
+  /// One box for the whole size, the way cm is entered: the inch, the point
+  /// or a space, then the suter -- `23 4`, or `44 5½` when it lands on a half
+  /// (the point or a space again after the suter).
   ///
   /// The default. Two boxes per dimension means two taps to move between them
   /// and four fields on screen for a height and a width; a fitter reading a

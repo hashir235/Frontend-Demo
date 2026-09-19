@@ -1299,25 +1299,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         : _combineInchSuterForStorage(whole, sub);
   }
 
-  /// Stored notation as the merged box shows it: `23.4` reads back as `23 4`,
-  /// and a size that lands on a whole inch shows just the inch.
-  String _mergedDisplayFromStorage(String stored) {
-    final String value = stored.trim();
-    if (value.isEmpty) {
-      return '';
-    }
-    final ({String inch, String suter}) parts = _mergedIsFeet
-        ? _splitStoredDimensionForFeet(value)
-        : _splitStoredDimensionForInches(value);
-    if (parts.inch.isEmpty) {
-      return '';
-    }
-    if (parts.suter.isEmpty || parts.suter == '0') {
-      return parts.inch;
-    }
-    // The half as the box shows it when typed: 44 5½, not 44 5.5.
-    return '${parts.inch} ${SuterHalf.fromDecimal(parts.suter)}';
-  }
+  /// Stored notation as the merged box shows it, marks and all, exactly as if
+  /// it had just been typed: `23.4` reads back as `23'' 4'''`, `44.55` as
+  /// `44'' 5½'''`, and a size that lands on a whole inch shows just the inch.
+  String _mergedDisplayFromStorage(String stored) =>
+      SizeNotation.storedToMerged(stored, isFeet: _mergedIsFeet);
 
   /// Mode-aware combine of the split controllers back into stored notation.
   String _combineSplitForStorage(String whole, String wheel) {
@@ -1504,12 +1490,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                 '4     →  4 feet\n\n'
                 '12 inches make the next foot, so the inch runs 0 to 11.'
           : 'Inches mode — one box:\n'
-                'Type the inch, a space, then the suter. For a half, press '
-                'the point after the suter — it turns into ½.\n\n'
-                '23 4     →  23 inch 4 suter\n'
-                '44 5.    →  44 inch 5½ suter\n'
-                '32 .     →  32 inch ½ suter\n'
-                '23       →  23 inch\n\n'
+                'Type the inch, then press the point or the space to move on '
+                'to the suter. After the suter, the point or the space again '
+                'gives the half — it turns into ½.\n\n'
+                '23 . 4      →  23 inch 4 suter\n'
+                '44 . 5 .    →  44 inch 5½ suter\n'
+                '32 . 0 .    →  32 inch ½ suter\n'
+                '23          →  23 inch\n\n'
+                'The point and the space do the same thing.\n'
                 'Eight suter make the next inch, so the suter runs 0 to 7½.';
     } else if (_usesInchSuterSplit) {
       instructionText =
@@ -1517,7 +1505,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           'Type the inch (a whole number, e.g. 45) and pick the suter by '
           'scrolling the tape wheel.\n'
           'Suter runs 0 to 7½ in half-suter steps — pick half or full, '
-          'whatever you need. In the typing box, the point gives the ½.';
+          'whatever you need. With typing boxes, the point or the space moves '
+          'from the inch to the suter, and after the suter gives the ½.';
     } else if (_usesFeetInchSplit) {
       instructionText =
           'Feet mode:\n'
@@ -3026,6 +3015,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }) {
     final bool feetMode = _usesFeetInchSplit;
     final double wheelValue = SuterHalf.parse(wheelController.text) ?? 0;
+    // The point or the space after the inch moves on to the suter box, the
+    // way it moves a one-box size on to its suter.
+    final FocusNode? suterBox =
+        !feetMode && _usesKeypadSizeInput ? subFocusNode : null;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -3036,8 +3029,19 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             focusNode: wholeFocusNode,
             textInputAction: _textInputActionForField(wholeFocusNode),
             style: numberInputStyle,
-            keyboardType: const TextInputType.numberWithOptions(signed: false),
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            keyboardType: TextInputType.numberWithOptions(
+              signed: false,
+              decimal: suterBox != null,
+            ),
+            inputFormatters: [
+              if (suterBox != null)
+                InchBoxFormatter(
+                  onNext: () {
+                    if (mounted) suterBox.requestFocus();
+                  },
+                ),
+              FilteringTextInputFormatter.digitsOnly,
+            ],
             onSubmitted: (_) => _submitFromField(wholeFocusNode),
             scrollPadding: EdgeInsets.zero,
             onChanged: (_) => onChanged(),
@@ -3133,7 +3137,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         if (feetMode)
           FilteringTextInputFormatter.digitsOnly
         else
-          // The point is the half, and shows as ½ the moment it is pressed.
+          // The point or the space after the suter is the half, and shows as
+          // ½ the moment it is pressed.
           const SuterBoxFormatter(),
       ],
       scrollPadding: EdgeInsets.zero,

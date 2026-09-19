@@ -54,17 +54,71 @@ void main() {
         )
         .text;
 
-    test('the point turns into ½ the moment it is pressed', () {
+    test('the point or the space turns into ½ the moment it is pressed', () {
       expect(type('5.'), '5½');
-      expect(type('.'), '½');
+      expect(type('5 '), '5½');
+      expect(type('5,'), '5½', reason: 'the comma some keyboards have instead');
       expect(type('0.'), '½');
       expect(type('5'), '5');
       expect(type(''), '');
     });
 
+    test('with no suter in front, the key does nothing', () {
+      // A second press straight after the inch box moved on here must not
+      // become a half nobody asked for.
+      expect(type('.'), '');
+      expect(type(' '), '');
+      // A ½ already in the box is the half it says.
+      expect(type('½'), '½');
+    });
+
     test('nothing after the ½ is kept -- there is no other fraction', () {
       expect(type('5½7'), '5½');
       expect(type('5.5'), '5½');
+    });
+  });
+
+  group('the inch box of two boxes', () {
+    test('the point or the space moves on to the suter box and is not kept',
+        () async {
+      for (final String key in <String>['.', ' ', ',']) {
+        int movedOn = 0;
+        final InchBoxFormatter formatter = InchBoxFormatter(
+          onNext: () => movedOn++,
+        );
+        final TextEditingValue out = formatter.formatEditUpdate(
+          const TextEditingValue(
+            text: '42',
+            selection: TextSelection.collapsed(offset: 2),
+          ),
+          TextEditingValue(
+            text: '42$key',
+            selection: const TextSelection.collapsed(offset: 3),
+          ),
+        );
+        expect(out.text, '42', reason: 'key "$key"');
+        await Future<void>.delayed(Duration.zero);
+        expect(movedOn, 1, reason: 'key "$key"');
+      }
+    });
+
+    test('digits go in, and an empty box does not move on', () async {
+      int movedOn = 0;
+      final InchBoxFormatter formatter = InchBoxFormatter(
+        onNext: () => movedOn++,
+      );
+      final TextEditingValue digits = formatter.formatEditUpdate(
+        const TextEditingValue(text: '4'),
+        const TextEditingValue(text: '42'),
+      );
+      expect(digits.text, '42');
+      final TextEditingValue empty = formatter.formatEditUpdate(
+        TextEditingValue.empty,
+        const TextEditingValue(text: '.'),
+      );
+      expect(empty.text, '');
+      await Future<void>.delayed(Duration.zero);
+      expect(movedOn, 0);
     });
   });
 
@@ -91,9 +145,12 @@ void main() {
       expect(out.selection.baseOffset, "34'' 4½".length);
     });
 
-    test('a point straight after the space is half a suter on its own', () {
+    test('a point straight after the space, with no suter yet, does nothing',
+        () {
+      // Two presses after the inch are a slip, not half a suter.
       final TextEditingValue out = typeInto("34'' ", 5, '.');
-      expect(out.text, "34'' ½'''");
+      expect(out.text, "34'' ");
+      expect(out.selection.baseOffset, 5);
     });
 
     test('a digit typed after the ½ is dropped and the cursor stays put', () {
@@ -132,6 +189,154 @@ void main() {
       expect(SizeNotation.validateMergedInches("44'' 9½'''"), isNotNull);
       expect(SizeNotation.combineInchSuter('44', '5½'), '44.55');
       expect(SizeNotation.combineInchSuter('44', '½'), '44.05');
+    });
+  });
+
+  group('typed key by key, the point and the space are one key', () {
+    const MergedSizeFormatter formatter = MergedSizeFormatter();
+
+    // One key at the cursor, the way a keyboard sends it.
+    TextEditingValue press(TextEditingValue v, String key) {
+      final int at = v.selection.isValid ? v.selection.end : v.text.length;
+      return formatter.formatEditUpdate(
+        v,
+        TextEditingValue(
+          text: v.text.substring(0, at) + key + v.text.substring(at),
+          selection: TextSelection.collapsed(offset: at + key.length),
+        ),
+      );
+    }
+
+    TextEditingValue backspace(TextEditingValue v) {
+      final int at = v.selection.end;
+      return formatter.formatEditUpdate(
+        v,
+        TextEditingValue(
+          text: v.text.substring(0, at - 1) + v.text.substring(at),
+          selection: TextSelection.collapsed(offset: at - 1),
+        ),
+      );
+    }
+
+    TextEditingValue typeKeys(List<String> keys, [TextEditingValue? from]) {
+      TextEditingValue v = from ?? TextEditingValue.empty;
+      for (final String key in keys) {
+        v = press(v, key);
+      }
+      return v;
+    }
+
+    TextEditingValue at(String text, int caret) => TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: caret),
+    );
+
+    test("42'' 4½''' -- inch, point or space, suter, point or space", () {
+      for (final List<String> keys in <List<String>>[
+        <String>['4', '2', '.', '4', '.'],
+        <String>['4', '2', ' ', '4', ' '],
+        <String>['4', '2', '.', '4', ' '],
+        <String>['4', '2', ' ', '4', '.'],
+        <String>['4', '2', ',', '4', ','],
+      ]) {
+        final TextEditingValue v = typeKeys(keys);
+        expect(v.text, "42'' 4½'''", reason: keys.join());
+        expect(v.text.contains('.'), isFalse,
+            reason: 'no point between the suter and its half');
+        expect(v.selection.baseOffset, "42'' 4½".length,
+            reason: 'the cursor sits after the ½');
+        expect(SizeNotation.mergedToStored(v.text, isFeet: false), '42.45',
+            reason: 'stored exactly as before');
+      }
+    });
+
+    test('the point after the inch moves the cursor on to the suter', () {
+      final TextEditingValue v = typeKeys(<String>['4', '2', '.']);
+      expect(v.text, "42'' ");
+      expect(v.selection.baseOffset, 5);
+      final TextEditingValue suter = press(v, '4');
+      expect(suter.text, "42'' 4'''");
+      expect(SizeNotation.mergedToStored(suter.text, isFeet: false), '42.4');
+    });
+
+    test('half a suter on its own is 0 and then the point', () {
+      final TextEditingValue v = typeKeys(<String>['4', '2', '.', '0', '.']);
+      expect(v.text, "42'' ½'''");
+      expect(SizeNotation.mergedToStored(v.text, isFeet: false), '42.05');
+    });
+
+    test('a second press straight after the inch is a slip, not a half', () {
+      expect(typeKeys(<String>['4', '2', '.', '.']).text, "42'' ");
+      expect(typeKeys(<String>['4', '2', ' ', '.']).text, "42'' ");
+      expect(typeKeys(<String>['4', '2', '.', '.', '4']).text, "42'' 4'''");
+    });
+
+    test('nothing is kept after the half', () {
+      expect(
+        typeKeys(<String>['4', '2', '.', '4', '.', '5', '.', ' ']).text,
+        "42'' 4½'''",
+      );
+    });
+
+    test('letters never reach the box', () {
+      expect(typeKeys(<String>['4', 'a', '2', '-']).text, "42''");
+    });
+
+    test('a point in the middle of the inch changes nothing', () {
+      final TextEditingValue v = press(at("42'' 4'''", 1), '.');
+      expect(v.text, "42'' 4'''");
+      expect(v.selection.baseOffset, 1);
+    });
+
+    test('a point at the end of the inch, with the suter begun, moves on to it',
+        () {
+      final TextEditingValue v = press(at("42'' 4'''", 2), '.');
+      expect(v.text, "42'' 4'''", reason: 'the size is left as it was');
+      expect(v.selection.baseOffset, "42'' 4".length);
+      expect(press(v, '.').text, "42'' 4½'''");
+    });
+
+    test('a digit typed into the inch goes into the inch', () {
+      final TextEditingValue v = press(at("42'' 4½'''", 1), '3');
+      expect(v.text, "432'' 4½'''");
+      expect(v.selection.baseOffset, 2);
+    });
+
+    test('backspace over the space never runs the suter into the inch', () {
+      // 42 4 must not become 424, a size that looks right and is not: the
+      // cursor steps back over the space instead.
+      final TextEditingValue v = backspace(at("42'' 4'''", 5));
+      expect(v.text, "42'' 4'''");
+      expect(v.selection.baseOffset, 2);
+      expect(backspace(v).text, "4'' 4'''");
+    });
+
+    test('backspace from the end takes the size apart one key at a time', () {
+      TextEditingValue v = typeKeys(<String>['4', '2', '.', '4', '.']);
+      v = backspace(v);
+      expect(v.text, "42'' 4'''");
+      v = backspace(v);
+      expect(v.text, "42'' ");
+      v = backspace(v);
+      expect(v.text, "42''");
+      v = backspace(v);
+      expect(v.text, "4''");
+      v = backspace(v);
+      expect(v.text, '');
+    });
+
+    test('a stored size opens as it would be typed, and reads back the same',
+        () {
+      for (final (String stored, String shown) in <(String, String)>[
+        ('42.45', "42'' 4½'''"),
+        ('42.05', "42'' ½'''"),
+        ('42.4', "42'' 4'''"),
+        ('42.0', "42''"),
+      ]) {
+        final String opened = SizeNotation.storedToMerged(stored, isFeet: false);
+        expect(opened, shown);
+        expect(SizeNotation.mergedToStored(opened, isFeet: false), stored);
+      }
     });
   });
 

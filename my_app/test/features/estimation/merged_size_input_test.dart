@@ -67,7 +67,12 @@ void main() {
       ('34 4', "34'' 4'''", 'the suter in'),
       ('34 4.5', "34'' 4½'''", 'half a suter, shown as ½'),
       ('34 4.', "34'' 4½'''", 'the point is the half the moment it goes in'),
-      ('34 .', "34'' ½'''", 'a point on its own is half a suter'),
+      ('34 4 ', "34'' 4½'''", 'and so is the space'),
+      ('34.', "34'' ", 'the point after the inch moves on, as the space does'),
+      ('34.4', "34'' 4'''", 'point, then the suter'),
+      ('34.4.', "34'' 4½'''", 'point, suter, point'),
+      ('34 .', "34'' ", 'a second press with no suter in front is ignored'),
+      ('34 0.', "34'' ½'''", 'half a suter on its own is 0 and the point'),
       ('', '', 'an empty box stays empty'),
     ]) {
       test('"$bare" shows as "$shown" -- $why', () {
@@ -344,6 +349,64 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text("44'' 5½'''"), findsOneWidget);
+    });
+
+    testWidgets('the point does what the space does, on the screen too', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WindowInputScreen(
+            node: node,
+            session: EstimateSessionStore(
+              projectName: 'Test Project',
+              projectLocation: 'Test Location',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // A keyboard with no space key types the whole size with the point.
+      await tester.enterText(fieldByLabel('Width'), '42.4.');
+      await tester.pumpAndSettle();
+
+      expect(find.text("42'' 4½'''"), findsOneWidget);
+    });
+
+    testWidgets('in two boxes, the point after the inch moves on to the suter', (
+      WidgetTester tester,
+    ) async {
+      AppSettings.instance.setSizeInputMode(SizeInputMode.keypad);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WindowInputScreen(
+            node: node,
+            session: EstimateSessionStore(
+              projectName: 'Test Project',
+              projectLocation: 'Test Location',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final Finder inch = fieldByLabel('Width (Inch)');
+      await tester.enterText(inch, '42');
+      await tester.pump();
+      await tester.enterText(inch, '42.');
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<TextField>(inch).controller!.text,
+        '42',
+        reason: 'the point is not kept in the inch',
+      );
+      // What is typed next lands in the width's suter box, and the point
+      // after it gives the half.
+      tester.testTextInput.enterText('4.');
+      await tester.pumpAndSettle();
+      expect(find.text('4½'), findsOneWidget);
     });
   });
 }

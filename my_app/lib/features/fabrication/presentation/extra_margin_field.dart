@@ -151,10 +151,14 @@ class _MarginInputState extends State<_MarginInput> {
     text: widget.value.suter == 0 ? '' : SuterHalf.format(widget.value.suter),
   );
 
+  /// Where the point or the space after the inch moves the cursor.
+  final FocusNode _suterFocus = FocusNode();
+
   @override
   void dispose() {
     _inch.dispose();
     _suter.dispose();
+    _suterFocus.dispose();
     super.dispose();
   }
 
@@ -187,8 +191,16 @@ class _MarginInputState extends State<_MarginInput> {
               child: TextField(
                 controller: _inch,
                 enabled: widget.enabled,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 inputFormatters: <TextInputFormatter>[
+                  // The point or the space moves on to the suter box.
+                  InchBoxFormatter(
+                    onNext: () {
+                      if (mounted) _suterFocus.requestFocus();
+                    },
+                  ),
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(2),
                 ],
@@ -205,11 +217,13 @@ class _MarginInputState extends State<_MarginInput> {
             Expanded(
               child: TextField(
                 controller: _suter,
+                focusNode: _suterFocus,
                 enabled: widget.enabled,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                // The point is the half, and shows as ½ as it is pressed.
+                // The point or the space after the suter is the half, and
+                // shows as ½ as it is pressed.
                 inputFormatters: const <TextInputFormatter>[
                   SuterBoxFormatter(),
                 ],

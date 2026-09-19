@@ -713,7 +713,8 @@ class _DimensionFieldState extends State<_DimensionField> {
         onFieldSubmitted: (_) => widget.onRowComplete?.call(),
         inputFormatters: <TextInputFormatter>[
           // Filters and marks in one pass, exactly as the window screens do
-          // it: 34'' 4½''' appearing as it is typed, the point giving the ½.
+          // it: 34'' 4½''' appearing as it is typed, the point or the space
+          // moving on to the suter and then giving the ½.
           const MergedSizeFormatter(),
         ],
         onChanged: _onMergedTyped,
@@ -732,21 +733,32 @@ class _DimensionFieldState extends State<_DimensionField> {
     // Anything that is not the wheel is typed.
     final bool usesKeypad = mode != SizeInputMode.wheel;
 
+    // The point or the space after the inch moves on to the sutter box, the
+    // way it moves a one-box size on to its sutter.
+    final FocusNode? sutterBox = usesKeypad ? widget.sutterFocusNode : null;
     final Widget inchBox = TextFormField(
       controller: widget.inchController,
       focusNode: widget.inchFocusNode,
-      keyboardType: TextInputType.number,
+      keyboardType: sutterBox != null
+          ? const TextInputType.numberWithOptions(decimal: true)
+          : TextInputType.number,
       textInputAction: TextInputAction.next,
       onFieldSubmitted: (_) {
         // With the wheel showing there is no sutter box to move into, so this
         // box hands straight on to the next size.
-        if (usesKeypad && widget.sutterFocusNode != null) {
-          FocusScope.of(context).requestFocus(widget.sutterFocusNode);
+        if (sutterBox != null) {
+          FocusScope.of(context).requestFocus(sutterBox);
         } else {
           widget.onRowComplete?.call();
         }
       },
       inputFormatters: <TextInputFormatter>[
+        if (sutterBox != null)
+          InchBoxFormatter(
+            onNext: () {
+              if (mounted) FocusScope.of(context).requestFocus(sutterBox);
+            },
+          ),
         FilteringTextInputFormatter.digitsOnly,
         LengthLimitingTextInputFormatter(3),
       ],
@@ -788,7 +800,8 @@ class _DimensionFieldState extends State<_DimensionField> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.next,
             onFieldSubmitted: (_) => widget.onRowComplete?.call(),
-            // The point is the half, and shows as ½ as it is pressed.
+            // The point or the space after the sutter is the half, and shows
+            // as ½ as it is pressed.
             inputFormatters: const <TextInputFormatter>[
               SuterBoxFormatter(),
             ],

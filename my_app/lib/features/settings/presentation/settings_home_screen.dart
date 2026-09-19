@@ -1802,8 +1802,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: SizeInputMode.mergedKeypad,
               title: Text('Merged typing box (default)'),
               subtitle: Text(
-                'One box for the whole size, like cm: the inch, a space, then '
-                'the suter — 23 4, or 44 5½ for a half (press the point).',
+                'One box for the whole size, like cm: the inch, the point or a '
+                'space, then the suter — 23 4. The point or a space after the '
+                'suter gives the half: 44 5½.',
               ),
             ),
             Divider(height: 1),

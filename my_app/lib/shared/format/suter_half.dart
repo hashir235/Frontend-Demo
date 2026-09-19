@@ -12,6 +12,8 @@
 /// and back into .5 on its way in.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 
 class SuterHalf {
@@ -65,11 +67,17 @@ class SuterHalf {
   );
 }
 
+/// The keys that move a size on: the point, the space, and the comma some
+/// keyboards put where the point should be.
+bool _isNextKey(String ch) => ch == '.' || ch == ' ' || ch == ',';
+
 /// A box that takes a suter: digits, and the half as ½.
 ///
-/// Pressing the point is how a half is asked for, and it turns into ½ on the
-/// spot -- there is no other fraction of a suter, so nothing after it is kept.
-/// Backspace takes the ½ off in one go.
+/// The point or the space after the suter is how a half is asked for, and it
+/// turns into ½ on the spot, straight after the suter with no point between
+/// -- there is no other fraction of a suter, so nothing after it is kept.
+/// Pressed with no suter in front of it, the key is ignored: half a suter on
+/// its own is `0` and then the point. Backspace takes the ½ off in one go.
 class SuterBoxFormatter extends TextInputFormatter {
   const SuterBoxFormatter();
 
@@ -82,7 +90,9 @@ class SuterBoxFormatter extends TextInputFormatter {
     bool half = false;
     for (final int unit in newValue.text.codeUnits) {
       final String ch = String.fromCharCode(unit);
-      if (ch == '.' || ch == SuterHalf.mark) {
+      // A ½ already in the box is the half it says; a key only makes one
+      // when there is a suter for it to follow.
+      if (ch == SuterHalf.mark || (_isNextKey(ch) && digits.isNotEmpty)) {
         half = true;
         break;
       }
@@ -95,5 +105,34 @@ class SuterBoxFormatter extends TextInputFormatter {
       text: shown,
       selection: TextSelection.collapsed(offset: shown.length),
     );
+  }
+}
+
+/// The inch box of a size typed in two boxes.
+///
+/// The point or the space moves on to the suter box -- the same keys that
+/// move a one-box size on from its inch to its suter -- and is not kept. With
+/// nothing typed yet the key does nothing. Put it ahead of the digits-only
+/// filter, which would otherwise swallow the key before it is seen.
+class InchBoxFormatter extends TextInputFormatter {
+  const InchBoxFormatter({required this.onNext});
+
+  /// Moves the cursor on to the suter box.
+  final void Function() onNext;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.length <= oldValue.text.length ||
+        !newValue.text.split('').any(_isNextKey)) {
+      return newValue;
+    }
+    if (oldValue.text.trim().isNotEmpty) {
+      // After this edit has settled, not in the middle of it.
+      scheduleMicrotask(onNext);
+    }
+    return oldValue;
   }
 }
