@@ -87,6 +87,9 @@ void main() {
       ('13', "13'", 'feet, from the first digit'),
       ('13 ', "13' ", 'space pressed'),
       ('13 7', "13' 7''", 'feet and inch'),
+      ('13.', "13' ", 'the point moves on to the inch, as the space does'),
+      ('13.7', "13' 7''", 'point, then the inch'),
+      ('13.7.', "13' 7''", 'an inch in feet has no half, so the key does nothing'),
     ]) {
       test('in feet, "$bare" shows as "$shown" -- $why', () {
         expect(SizeNotation.displayMerged(bare, isFeet: true), shown);
@@ -225,6 +228,81 @@ void main() {
       );
       expect(v.text, "13' 7''");
       expect(SizeNotation.mergedToStored(v.text, isFeet: true), '13.7');
+    });
+  });
+
+  group('typed key by key, in feet', () {
+    const MergedSizeFormatter feet = MergedSizeFormatter(isFeet: true);
+
+    TextEditingValue press(TextEditingValue v, String key) {
+      final int at = v.selection.isValid ? v.selection.end : v.text.length;
+      return feet.formatEditUpdate(
+        v,
+        TextEditingValue(
+          text: v.text.substring(0, at) + key + v.text.substring(at),
+          selection: TextSelection.collapsed(offset: at + key.length),
+        ),
+      );
+    }
+
+    TextEditingValue typeKeys(List<String> keys) {
+      TextEditingValue v = TextEditingValue.empty;
+      for (final String key in keys) {
+        v = press(v, key);
+      }
+      return v;
+    }
+
+    test('the point moves on to the inch, exactly as the space does', () {
+      for (final List<String> keys in <List<String>>[
+        <String>['4', '.', '9'],
+        <String>['4', ' ', '9'],
+        <String>['4', ',', '9'],
+      ]) {
+        final TextEditingValue v = typeKeys(keys);
+        expect(v.text, "4' 9''", reason: keys.join());
+        expect(v.selection.baseOffset, "4' 9".length);
+        expect(SizeNotation.mergedToStored(v.text, isFeet: true), '4.9');
+      }
+    });
+
+    test('the cursor waits in the inch after the key', () {
+      final TextEditingValue v = typeKeys(<String>['4', '.']);
+      expect(v.text, "4' ");
+      expect(v.selection.baseOffset, 3);
+      expect(typeKeys(<String>['4', '.', '.']).text, "4' ");
+    });
+
+    test('an inch has no half, so the key after it does nothing', () {
+      expect(typeKeys(<String>['1', '3', '.', '7', '.']).text, "13' 7''");
+      expect(typeKeys(<String>['1', '3', '.', '7', ' ', '5']).text, "13' 75''");
+    });
+
+    test('backspace over the space never runs the inch into the feet', () {
+      final TextEditingValue v = feet.formatEditUpdate(
+        const TextEditingValue(
+          text: "13' 7''",
+          selection: TextSelection.collapsed(offset: 4),
+        ),
+        const TextEditingValue(
+          text: "13'7''",
+          selection: TextSelection.collapsed(offset: 3),
+        ),
+      );
+      expect(v.text, "13' 7''");
+      expect(v.selection.baseOffset, 2);
+    });
+
+    test('a stored feet size opens as it would be typed', () {
+      for (final (String stored, String shown) in <(String, String)>[
+        ('4.9', "4' 9''"),
+        ('13.7', "13' 7''"),
+        ('4.0', "4'"),
+      ]) {
+        final String opened = SizeNotation.storedToMerged(stored, isFeet: true);
+        expect(opened, shown);
+        expect(SizeNotation.mergedToStored(opened, isFeet: true), stored);
+      }
     });
   });
 

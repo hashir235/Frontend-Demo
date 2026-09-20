@@ -1485,9 +1485,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     } else if (_usesMergedInput) {
       instructionText = _mergedIsFeet
           ? 'Feet mode — one box:\n'
-                'Type the feet, a space, then the inch.\n\n'
-                '4 9   →  4 feet 9 inch\n'
-                '4     →  4 feet\n\n'
+                'Type the feet, then press the point or the space to move on '
+                'to the inch.\n\n'
+                '4 . 9    →  4 feet 9 inch\n'
+                '4        →  4 feet\n\n'
+                'The point and the space do the same thing.\n'
                 '12 inches make the next foot, so the inch runs 0 to 11.'
           : 'Inches mode — one box:\n'
                 'Type the inch, then press the point or the space to move on '
@@ -1512,7 +1514,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           'Feet mode:\n'
           'Type the feet (a whole number, e.g. 4) and pick the inch by '
           'scrolling the tape wheel.\n'
-          '12 inches make the next foot, so the inch wheel runs 0 to 11.';
+          '12 inches make the next foot, so the inch wheel runs 0 to 11.\n'
+          'With typing boxes, the point or the space moves from the feet to '
+          'the inch.';
     } else {
       instructionText =
           'eg. inch.suter => 45.7\n'
@@ -3015,10 +3019,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }) {
     final bool feetMode = _usesFeetInchSplit;
     final double wheelValue = SuterHalf.parse(wheelController.text) ?? 0;
-    // The point or the space after the inch moves on to the suter box, the
-    // way it moves a one-box size on to its suter.
-    final FocusNode? suterBox =
-        !feetMode && _usesKeypadSizeInput ? subFocusNode : null;
+    // The point or the space after the first part moves on to the second's
+    // box -- feet to inch, inch to suter -- the way it moves a one-box size
+    // on to its second part.
+    final FocusNode? subBox = _usesKeypadSizeInput ? subFocusNode : null;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -3031,13 +3035,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             style: numberInputStyle,
             keyboardType: TextInputType.numberWithOptions(
               signed: false,
-              decimal: suterBox != null,
+              decimal: subBox != null,
             ),
             inputFormatters: [
-              if (suterBox != null)
+              if (subBox != null)
                 InchBoxFormatter(
                   onNext: () {
-                    if (mounted) suterBox.requestFocus();
+                    if (mounted) subBox.requestFocus();
                   },
                 ),
               FilteringTextInputFormatter.digitsOnly,

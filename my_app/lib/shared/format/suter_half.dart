@@ -108,12 +108,13 @@ class SuterBoxFormatter extends TextInputFormatter {
   }
 }
 
-/// The inch box of a size typed in two boxes.
+/// The first box of a size typed in two boxes: the inch, or the feet.
 ///
-/// The point or the space moves on to the suter box -- the same keys that
-/// move a one-box size on from its inch to its suter -- and is not kept. With
-/// nothing typed yet the key does nothing. Put it ahead of the digits-only
-/// filter, which would otherwise swallow the key before it is seen.
+/// The point or the space moves on to the second box -- the same keys that
+/// move a one-box size on from its inch to its suter, or its feet to its inch
+/// -- and is not kept. With nothing typed yet the key does nothing. Put it
+/// ahead of the digits-only filter, which would otherwise swallow the key
+/// before it is seen.
 class InchBoxFormatter extends TextInputFormatter {
   const InchBoxFormatter({required this.onNext});
 

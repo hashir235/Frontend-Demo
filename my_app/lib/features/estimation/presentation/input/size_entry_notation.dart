@@ -156,11 +156,13 @@ class SizeNotation {
   ///     34'' 4'''          13' 7''
   ///     34'' 4½'''
   ///
-  /// In inches the point and the space are one key with one meaning: "on to
-  /// the next part". After the inch they move on to the suter; after the suter
-  /// they give the half, which shows as ½ straight after it with no point in
-  /// between -- `34.4.` and `34 4 ` are both `34'' 4½'''`. A suter has no other
-  /// fraction, so anything typed after the ½ is not kept. See [readInches].
+  /// The point and the space are one key with one meaning: "on to the next
+  /// part". After the first part they move on to the second -- feet to inch,
+  /// inch to suter. In inches, after the suter they give the half, which shows
+  /// as ½ straight after it with no point in between: `34.4.` and `34 4 ` are
+  /// both `34'' 4½'''`. A suter has no other fraction, so anything typed after
+  /// the ½ is not kept, and an inch in feet mode has no half at all.
+  /// See [readEntry].
   ///
   /// The mark goes on from the first digit, not once the next part is started.
   /// Waiting until space was pressed left a number sitting bare on screen with
@@ -170,21 +172,8 @@ class SizeNotation {
   /// One quote is feet, two inches, three suter. That is what he already reads
   /// off a tape, so which mark belongs to which part depends only on the unit
   /// the screen is in.
-  static String displayMerged(String bare, {bool isFeet = false}) {
-    if (!isFeet) return _showInches(readInches(bare));
-    final String raw = stripMarks(bare);
-    if (raw.isEmpty) return '';
-    const List<String> marks = <String>["'", "''"];
-
-    final int space = raw.indexOf(' ');
-    if (space < 0) {
-      return _marked(raw, marks[0]);
-    }
-    final String first = raw.substring(0, space);
-    final String second = raw.substring(space + 1);
-    if (first.isEmpty) return raw;
-    return '${_marked(first, marks[0])} ${_marked(second, marks[1])}';
-  }
+  static String displayMerged(String bare, {bool isFeet = false}) =>
+      showEntry(readEntry(bare, isFeet: isFeet), isFeet: isFeet);
 
   /// Whether [ch] is the key that moves a size on: the point, the space, or
   /// the comma some keyboards put where the point should be.
@@ -193,13 +182,15 @@ class SizeNotation {
   static bool _isDigit(String ch) =>
       ch.compareTo('0') >= 0 && ch.compareTo('9') <= 0;
 
-  /// An inch size read the way it is typed, one key at a time.
+  /// A size read the way it is typed, one key at a time.
   ///
-  /// - digits go into the inch;
-  /// - the point or the space after the inch moves on to the suter;
-  /// - digits then go into the suter;
-  /// - the point or the space after the suter is the half;
-  /// - nothing after the half is kept.
+  /// - digits go into the first part (the inch, or the feet);
+  /// - the point or the space after it moves on to the second part (the
+  ///   suter, or the inch);
+  /// - digits then go into that part;
+  /// - in inches, the point or the space after the suter is the half, and
+  ///   nothing after the half is kept. Feet mode has no half: an inch is a
+  ///   whole number, and the key does nothing there.
   ///
   /// A point or space with nothing in front of it is ignored rather than
   /// guessed at: a second press of the key straight after the inch would
@@ -207,57 +198,50 @@ class SizeNotation {
   /// as `0` and then the point, and shows as `½`. A ½ already in the text (a
   /// size the box is showing) is read as the half it is. Tape marks and
   /// anything else that is not part of a size are skipped.
-  static InchEntry readInches(String text) {
-    final StringBuffer inch = StringBuffer();
-    final StringBuffer suter = StringBuffer();
+  static SizeEntry readEntry(String text, {bool isFeet = false}) {
+    final StringBuffer whole = StringBuffer();
+    final StringBuffer sub = StringBuffer();
     bool moved = false;
     bool half = false;
     for (final int unit in text.codeUnits) {
       final String ch = String.fromCharCode(unit);
       if (!moved) {
         if (_isDigit(ch)) {
-          inch.write(ch);
-        } else if (_isNextKey(ch) && inch.isNotEmpty) {
+          whole.write(ch);
+        } else if (_isNextKey(ch) && whole.isNotEmpty) {
           moved = true;
         }
         continue;
       }
       if (half) continue;
       if (_isDigit(ch)) {
-        suter.write(ch);
-      } else if (ch == SuterHalf.mark) {
+        sub.write(ch);
+      } else if (!isFeet && ch == SuterHalf.mark) {
         half = true;
-      } else if (_isNextKey(ch) && suter.isNotEmpty) {
+      } else if (!isFeet && _isNextKey(ch) && sub.isNotEmpty) {
         half = true;
       }
     }
-    final String suterText = suter.toString();
-    return InchEntry(
-      inch: inch.toString(),
+    final String subText = sub.toString();
+    return SizeEntry(
+      whole: whole.toString(),
       moved: moved,
       // "0½" is shown, and kept, as the ½ it is.
-      suter: half && suterText == '0' ? '' : suterText,
+      sub: half && subText == '0' ? '' : subText,
       half: half,
     );
   }
 
-  /// [entry] as the box shows it: `34''`, `34'' `, `34'' 4'''`, `34'' 4½'''`.
-  static String _showInches(InchEntry entry) {
-    if (entry.inch.isEmpty) return '';
-    if (!entry.moved) return "${entry.inch}''";
-    final String suter = '${entry.suter}${entry.half ? SuterHalf.mark : ''}';
-    if (suter.isEmpty) return "${entry.inch}'' ";
-    return "${entry.inch}'' $suter'''";
-  }
-
-  /// One part of a size with its mark on it.
-  ///
-  /// A part still ending in its decimal point is mid-typing; marking there
-  /// would wedge the quotes between the dot and the digit still to come.
-  static String _marked(String part, String mark) {
-    if (part.isEmpty) return '';
-    if (part.endsWith('.')) return part;
-    return '$part$mark';
+  /// [entry] as the box shows it: `34''`, `34'' `, `34'' 4'''`, `34'' 4½'''`,
+  /// and in feet `13'`, `13' `, `13' 7''`.
+  static String showEntry(SizeEntry entry, {bool isFeet = false}) {
+    if (entry.whole.isEmpty) return '';
+    final String first = isFeet ? "'" : "''";
+    final String second = isFeet ? "''" : "'''";
+    if (!entry.moved) return '${entry.whole}$first';
+    final String sub = '${entry.sub}${entry.half ? SuterHalf.mark : ''}';
+    if (sub.isEmpty) return '${entry.whole}$first ';
+    return '${entry.whole}$first $sub$second';
   }
 
   /// What was typed into the merged box, as the notation everything else
@@ -338,32 +322,32 @@ class SizeNotation {
   }
 }
 
-/// An inch size in the parts it is typed in. See [SizeNotation.readInches].
-class InchEntry {
-  const InchEntry({
-    required this.inch,
+/// A size in the parts it is typed in. See [SizeNotation.readEntry].
+class SizeEntry {
+  const SizeEntry({
+    required this.whole,
     required this.moved,
-    required this.suter,
+    required this.sub,
     required this.half,
   });
 
-  /// The whole inches.
-  final String inch;
+  /// The first part: the whole inches, or the feet.
+  final String whole;
 
-  /// Whether the size has moved on from the inch to the suter.
+  /// Whether the size has moved on to its second part.
   final bool moved;
 
-  /// The suter's digits, without its half.
-  final String suter;
+  /// The second part's digits -- the suter, or the inch -- without its half.
+  final String sub;
 
-  /// Whether the suter carries a half.
+  /// Whether the suter carries a half. Never set in feet mode.
   final bool half;
 
   /// The size as the keys that make it, marks left out: `34 4½`. One
   /// character per thing typed, which is what the cursor is counted in.
   String get bare => moved
-      ? '$inch $suter${half ? SuterHalf.mark : ''}'
-      : inch;
+      ? '$whole $sub${half ? SuterHalf.mark : ''}'
+      : whole;
 }
 
 /// Puts the tape marks into a merged size box as the size is typed.
@@ -371,9 +355,9 @@ class InchEntry {
 /// Filtering and marking in one pass: what a key means is decided here, and
 /// [SizeNotation.displayMerged] decides how the result reads.
 ///
-/// In inches the point and the space both move the size on -- from the inch
-/// to the suter, then from the suter to its ½ -- and each key is read where it
-/// landed: pressed at the end of the inch it moves on, at the end of the suter
+/// The point and the space both move the size on -- feet to inch, inch to
+/// suter, and then the suter to its ½ -- and each key is read where it landed:
+/// pressed at the end of the first part it moves on, at the end of the suter
 /// it gives the half, and anywhere else it does nothing. A point pressed in
 /// the middle of a size can never quietly turn it into a different one.
 ///
@@ -391,18 +375,9 @@ class MergedSizeFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    return isFeet
-        ? _formatFeet(oldValue, newValue)
-        : _formatInches(oldValue, newValue);
-  }
-
-  TextEditingValue _formatInches(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
     final String before = oldValue.text;
     final String after = newValue.text;
-    final InchEntry was = SizeNotation.readInches(before);
+    final SizeEntry was = SizeNotation.readEntry(before, isFeet: isFeet);
     final TextSelection selection = oldValue.selection;
     final int caret = selection.isValid
         ? selection.end.clamp(0, before.length)
@@ -415,63 +390,67 @@ class MergedSizeFormatter extends TextInputFormatter {
             before.substring(0, caret) +
                 after[caret] +
                 before.substring(caret)) {
-      return _keyPressed(was, _bareLength(before.substring(0, caret)), after[caret]);
+      return _keyPressed(
+        was,
+        _bareLength(before.substring(0, caret)),
+        after[caret],
+      );
     }
 
-    // Backspace over the space between a size's two parts would run the suter
-    // into the inch -- 34 4 into 344, a size that looks right and is not. The
+    // Backspace over the space between a size's two parts would run the second
+    // into the first -- 34 4 into 344, a size that looks right and is not. The
     // cursor steps back over the space instead, and nothing is deleted.
-    if (after.length == before.length - 1 && was.moved &&
-        (was.suter.isNotEmpty || was.half)) {
+    if (after.length == before.length - 1 &&
+        was.moved &&
+        (was.sub.isNotEmpty || was.half)) {
       int at = 0;
       while (at < after.length && before[at] == after[at]) {
         at++;
       }
       if (before[at] == ' ' &&
           before.substring(0, at) + before.substring(at + 1) == after) {
-        return _shown(was, was.inch.length);
+        return _shown(was, was.whole.length);
       }
     }
 
     // Anything else -- a deletion, a paste, a whole size entered at once -- is
     // read afresh, key by key.
-    final InchEntry now = SizeNotation.readInches(after);
+    final SizeEntry now = SizeNotation.readEntry(after, isFeet: isFeet);
     final int newCaret = newValue.selection.isValid
         ? newValue.selection.end.clamp(0, after.length)
         : after.length;
     return _shown(now, _bareLength(after.substring(0, newCaret)));
   }
 
-  static TextEditingValue _keyPressed(InchEntry was, int at, String key) {
+  TextEditingValue _keyPressed(SizeEntry was, int at, String key) {
     final String bare = was.bare;
     final int k = at.clamp(0, bare.length);
 
     if (SizeNotation._isDigit(key)) {
-      final InchEntry now = SizeNotation.readInches(
-        bare.substring(0, k) + key + bare.substring(k),
-      );
+      final SizeEntry now = _read(bare.substring(0, k) + key + bare.substring(k));
       // A digit after the ½ is not kept, and the cursor stays where it was.
       return _shown(now, now.bare.length > bare.length ? k + 1 : k);
     }
 
     if (SizeNotation._isNextKey(key)) {
       if (!was.moved) {
-        // At the end of the inch: on to the suter.
-        if (was.inch.isNotEmpty && k == was.inch.length) {
-          final InchEntry now = SizeNotation.readInches('$bare ');
+        // At the end of the first part: on to the second.
+        if (was.whole.isNotEmpty && k == was.whole.length) {
+          final SizeEntry now = _read('$bare ');
           return _shown(now, now.bare.length);
         }
         return _shown(was, k);
       }
-      if (k == was.inch.length) {
-        // Back at the end of the inch with the suter already begun: the key
-        // just moves on to it again.
+      if (k == was.whole.length) {
+        // Back at the end of the first part with the second already begun:
+        // the key just moves on to it again.
         return _shown(was, bare.length);
       }
-      // At the end of the suter: the half.
-      if (k == bare.length && !was.half && was.suter.isNotEmpty) {
+      // At the end of the suter: the half. Feet have no half, so there the
+      // key does nothing.
+      if (!isFeet && k == bare.length && !was.half && was.sub.isNotEmpty) {
         // Read back through the same rules, so 0 and its half show as ½.
-        final InchEntry now = SizeNotation.readInches('$bare${SuterHalf.mark}');
+        final SizeEntry now = _read('$bare${SuterHalf.mark}');
         return _shown(now, now.bare.length);
       }
       return _shown(was, k);
@@ -481,14 +460,16 @@ class MergedSizeFormatter extends TextInputFormatter {
     return _shown(was, k);
   }
 
+  SizeEntry _read(String text) =>
+      SizeNotation.readEntry(text, isFeet: isFeet);
+
   /// How many keys' worth of size [text] holds -- where the cursor is, in
   /// the terms the size is edited in.
-  static int _bareLength(String text) =>
-      SizeNotation.readInches(text).bare.length;
+  int _bareLength(String text) => _read(text).bare.length;
 
   /// [entry] with its marks on, and the cursor after [bareCaret] of its keys.
-  static TextEditingValue _shown(InchEntry entry, int bareCaret) {
-    final String shown = SizeNotation._showInches(entry);
+  TextEditingValue _shown(SizeEntry entry, int bareCaret) {
+    final String shown = SizeNotation.showEntry(entry, isFeet: isFeet);
     final int count = bareCaret.clamp(0, entry.bare.length);
     int offset = 0;
     if (count > 0) {
@@ -508,40 +489,4 @@ class MergedSizeFormatter extends TextInputFormatter {
     );
   }
 
-  TextEditingValue _formatFeet(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final int caret = newValue.selection.end.clamp(0, newValue.text.length);
-    final int bareCaret = SizeNotation.stripMarks(
-      newValue.text.substring(0, caret),
-    ).length;
-
-    final String shown = SizeNotation.displayMerged(
-      newValue.text,
-      isFeet: true,
-    );
-    // Anything dropped leaves the caret counted past the end of what is left;
-    // it stays at the end rather than jumping over the marks.
-    final int shownBare = SizeNotation.stripMarks(shown).length;
-    return TextEditingValue(
-      text: shown,
-      selection: TextSelection.collapsed(
-        offset: _offsetAfterBareChars(
-          shown,
-          bareCaret < shownBare ? bareCaret : shownBare,
-        ),
-      ),
-    );
-  }
-
-  static int _offsetAfterBareChars(String shown, int count) {
-    if (count <= 0) return 0;
-    for (int i = 1; i <= shown.length; i++) {
-      if (SizeNotation.stripMarks(shown.substring(0, i)).length >= count) {
-        return i;
-      }
-    }
-    return shown.length;
-  }
 }
