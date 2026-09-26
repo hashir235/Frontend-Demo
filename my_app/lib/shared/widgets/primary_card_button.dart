@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../features/help_videos/help_video_button.dart';
 
 class PrimaryCardButton extends StatelessWidget {
   final IconData icon;
@@ -9,6 +10,10 @@ class PrimaryCardButton extends StatelessWidget {
   final VoidCallback onTap;
   final Color? accent;
 
+  /// A key from `TutorialVideos`. When set, the red "Watch" button sits above
+  /// the title, and tapping it opens the video rather than the card.
+  final String? videoKey;
+
   const PrimaryCardButton({
     super.key,
     required this.icon,
@@ -16,6 +21,7 @@ class PrimaryCardButton extends StatelessWidget {
     this.subtitle,
     required this.onTap,
     this.accent,
+    this.videoKey,
   });
 
   @override
@@ -60,6 +66,10 @@ class PrimaryCardButton extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
+                      if (videoKey != null) ...<Widget>[
+                        HelpVideoButton(videoKey: videoKey!),
+                        const SizedBox(height: AppTheme.space2),
+                      ],
                       Text(
                         title,
                         style: Theme.of(context).textTheme.headlineSmall

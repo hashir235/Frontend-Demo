@@ -17,6 +17,15 @@ class TutorialVideos {
 
   static const String home = 'home';
 
+  // --- The whole module, start to finish ------------------------------
+  //
+  // One long video per Home card, for someone who wants to watch the lot
+  // before starting rather than a step at a time.
+  static const String homeEstimation = 'home.estimation';
+  static const String homeFabrication = 'home.fabrication';
+  static const String homeGlass = 'home.glass';
+  static const String homeSettings = 'home.settings';
+
   static const String estimationMenu = 'estimation.menu';
   static const String estimationLibrary = 'estimation.library';
   static const String estimationLengthOptimization = 'estimation.lengths';

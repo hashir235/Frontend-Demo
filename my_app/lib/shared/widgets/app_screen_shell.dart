@@ -6,6 +6,11 @@ class AppScreenShell extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
 
+  /// A colour laid over the whole background, e.g. Home's plan shade. Faded
+  /// in and out rather than switched, as it usually arrives a moment after
+  /// the screen does.
+  final Color? tint;
+
   const AppScreenShell({
     super.key,
     required this.child,
@@ -15,6 +20,7 @@ class AppScreenShell extends StatelessWidget {
       AppTheme.space5,
       AppTheme.space7,
     ),
+    this.tint,
   });
 
   @override
@@ -23,6 +29,13 @@ class AppScreenShell extends StatelessWidget {
       decoration: AppTheme.pageDecoration(),
       child: Stack(
         children: <Widget>[
+          Positioned.fill(
+            child: AnimatedContainer(
+              key: const Key('screen_shell_tint'),
+              duration: const Duration(milliseconds: 400),
+              color: tint ?? Colors.transparent,
+            ),
+          ),
           const _GlowOrb(
             alignment: Alignment(-1.15, -1.05),
             size: 240,
