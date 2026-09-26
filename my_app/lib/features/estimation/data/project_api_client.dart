@@ -91,6 +91,33 @@ class ProjectApiClient {
     return SavedProjectDetail.fromJson(payload);
   }
 
+  /// Takes a project off the shop's lists.
+  ///
+  /// A project the server no longer has is as good as deleted -- a second tap,
+  /// or a phone that deleted it first -- so that is not an error. Anything
+  /// else that is not a clear yes is, including a server too old to delete,
+  /// which answers without our JSON: the project must not seem to go and
+  /// then come back.
+  Future<void> deleteProject(String projectId) async {
+    late final http.Response response;
+    try {
+      response = await _httpClient.delete(
+        Uri.parse('$_baseUrl/api/projects/$projectId'),
+      );
+    } on Exception catch (error) {
+      throw ProjectApiException(
+        'Unable to reach local project service.',
+        detail: error,
+      );
+    }
+    final Map<String, dynamic>? payload = _decodeObject(response.body);
+    if (response.statusCode == 404 &&
+        payload?['error'] == 'project not found') {
+      return;
+    }
+    _decodeResponse(response, 'Project delete failed.');
+  }
+
   Future<Map<String, dynamic>> _getJson(
     Uri uri, {
     required String unreachableMessage,

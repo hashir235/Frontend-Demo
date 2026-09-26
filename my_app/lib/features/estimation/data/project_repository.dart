@@ -34,6 +34,10 @@ class ProjectRepository {
     return _apiClient.fetchProject(projectId);
   }
 
+  Future<void> deleteProject(String projectId) {
+    return _apiClient.deleteProject(projectId);
+  }
+
   /// Saves the session's windows into its project -- waiting for the project
   /// first when it is new and still being written, so a window saved in the
   /// first seconds after Create is not lost.

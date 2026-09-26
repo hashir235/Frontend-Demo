@@ -23,11 +23,15 @@ class RecentProjectsScreen extends StatefulWidget {
   final void Function(BuildContext context, SavedProjectSummary project)?
   onProjectSelected;
 
+  /// Injected in tests.
+  final ProjectRepository? repository;
+
   const RecentProjectsScreen({
     super.key,
     required this.flow,
     required this.moduleTitle,
     this.onProjectSelected,
+    this.repository,
   });
 
   @override
@@ -38,9 +42,14 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
   /// Set by [_openProject] when the caller supplied its own handler.
   bool get _hasCustomHandler => widget.onProjectSelected != null;
 
-  final ProjectRepository _projectRepository = ProjectRepository();
+  late final ProjectRepository _projectRepository =
+      widget.repository ?? ProjectRepository();
   late Future<List<SavedProjectSummary>> _projectsFuture;
   String? _openingProjectId;
+
+  /// Deleted here: dropped from the list at once, without reloading it.
+  final Set<String> _deletedIds = <String>{};
+  String? _deletingProjectId;
 
   @override
   void initState() {
@@ -50,6 +59,20 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
 
   Future<List<SavedProjectSummary>> _loadProjects() {
     return _projectRepository.fetchRecentProjects(flow: widget.flow);
+  }
+
+  Future<void> _deleteProject(SavedProjectSummary project) async {
+    final bool deleted = await deleteProjectWithConfirm(
+      context,
+      _projectRepository,
+      project,
+      onStarted: () => setState(() => _deletingProjectId = project.id),
+    );
+    if (!mounted) return;
+    setState(() {
+      _deletingProjectId = null;
+      if (deleted) _deletedIds.add(project.id);
+    });
   }
 
   void _reload() {
@@ -186,6 +209,18 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
                   ),
                 ),
                 const SizedBox(width: AppTheme.space4),
+                // Not while picking a project for something else: there the
+                // list is a question, not the shop's library.
+                if (!_hasCustomHandler) ...<Widget>[
+                  _DeleteProjectButton(
+                    project: project,
+                    deleting: _deletingProjectId == project.id,
+                    onPressed: isOpening || _deletingProjectId != null
+                        ? null
+                        : () => _deleteProject(project),
+                  ),
+                  const SizedBox(width: AppTheme.space2),
+                ],
                 isOpening
                     ? const SizedBox(
                         width: 24,
@@ -250,7 +285,12 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
                 }
 
                 final List<SavedProjectSummary> projects =
-                    snapshot.data ?? <SavedProjectSummary>[];
+                    (snapshot.data ?? <SavedProjectSummary>[])
+                        .where(
+                          (SavedProjectSummary project) =>
+                              !_deletedIds.contains(project.id),
+                        )
+                        .toList(growable: false);
                 if (projects.isEmpty) {
                   return const Center(
                     child: StateMessageCard(
@@ -308,11 +348,15 @@ class RecentProjectsListSection extends StatefulWidget {
   /// button made it. They are listed together, each row saying which it is.
   final List<EstimateFlow> alsoInclude;
 
+  /// Injected in tests.
+  final ProjectRepository? repository;
+
   const RecentProjectsListSection({
     super.key,
     required this.flow,
     required this.moduleTitle,
     this.alsoInclude = const <EstimateFlow>[],
+    this.repository,
   });
 
   @override
@@ -321,14 +365,34 @@ class RecentProjectsListSection extends StatefulWidget {
 }
 
 class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
-  final ProjectRepository _projectRepository = ProjectRepository();
+  late final ProjectRepository _projectRepository =
+      widget.repository ?? ProjectRepository();
   late Future<List<SavedProjectSummary>> _projectsFuture;
   String? _openingProjectId;
+
+  /// Deleted here: dropped from the list at once, and the next project moves
+  /// up into the four shown, without reloading.
+  final Set<String> _deletedIds = <String>{};
+  String? _deletingProjectId;
 
   @override
   void initState() {
     super.initState();
     _projectsFuture = _fetchProjects();
+  }
+
+  Future<void> _deleteProject(SavedProjectSummary project) async {
+    final bool deleted = await deleteProjectWithConfirm(
+      context,
+      _projectRepository,
+      project,
+      onStarted: () => setState(() => _deletingProjectId = project.id),
+    );
+    if (!mounted) return;
+    setState(() {
+      _deletingProjectId = null;
+      if (deleted) _deletedIds.add(project.id);
+    });
   }
 
   /// Fetches every kind this section shows and merges them newest-first.
@@ -382,7 +446,9 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
           ),
         );
         if (mounted) {
-          setState(() => _projectsFuture = _fetchProjects());
+          setState(() {
+            _projectsFuture = _fetchProjects();
+          });
         }
         return;
       }
@@ -415,7 +481,9 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
         ),
       );
       if (mounted) {
-        setState(() => _projectsFuture = _fetchProjects());
+        setState(() {
+          _projectsFuture = _fetchProjects();
+        });
       }
     } catch (error) {
       if (!mounted) {
@@ -462,7 +530,12 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
             }
 
             final List<SavedProjectSummary> projects =
-                snapshot.data ?? <SavedProjectSummary>[];
+                (snapshot.data ?? <SavedProjectSummary>[])
+                    .where(
+                      (SavedProjectSummary project) =>
+                          !_deletedIds.contains(project.id),
+                    )
+                    .toList(growable: false);
             if (projects.isEmpty) {
               return SectionSurfaceCard(
                 title: 'Recent Projects',
@@ -477,15 +550,22 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
               title: 'Recent Projects',
               subtitle: 'Reopen the latest saved projects directly from here.',
               trailing: TextButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
+                onPressed: () async {
+                  await Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => RecentProjectsScreen(
                         flow: widget.flow,
                         moduleTitle: widget.moduleTitle,
+                        repository: widget.repository,
                       ),
                     ),
                   );
+                  // Projects deleted in the full list must not linger here.
+                  if (mounted) {
+                    setState(() {
+                      _projectsFuture = _fetchProjects();
+                    });
+                  }
                 },
                 icon: const Icon(Icons.history_rounded),
                 label: const Text('View all'),
@@ -554,6 +634,14 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
                                       ],
                                     ),
                                   ),
+                                  _DeleteProjectButton(
+                                    project: project,
+                                    deleting: _deletingProjectId == project.id,
+                                    onPressed:
+                                        isOpening || _deletingProjectId != null
+                                        ? null
+                                        : () => _deleteProject(project),
+                                  ),
                                   if (isOpening)
                                     const SizedBox(
                                       width: 22,
@@ -575,6 +663,106 @@ class _RecentProjectsListSectionState extends State<RecentProjectsListSection> {
               ),
             );
           },
+    );
+  }
+}
+
+/// Asks before a project is deleted. Deleting is one tap from the list, next
+/// to the tap that opens the project, so it is never done on a single touch.
+Future<bool> confirmProjectDelete(
+  BuildContext context,
+  SavedProjectSummary project,
+) async {
+  final bool? sure = await showDialog<bool>(
+    context: context,
+    builder: (BuildContext context) => AlertDialog(
+      key: const Key('delete_project_dialog'),
+      icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger),
+      title: const Text('Delete project?'),
+      content: Text(
+        '"${project.projectName}" (${project.projectLocation}) will be removed '
+        'from your projects, with everything in it.',
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: const Key('confirm_delete_project'),
+          style: FilledButton.styleFrom(backgroundColor: AppTheme.danger),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+  return sure ?? false;
+}
+
+/// Deletes [project] once the shop says yes, and tells them how it went.
+///
+/// True once it is gone, so the list can drop it straight away rather than
+/// reloading.
+Future<bool> deleteProjectWithConfirm(
+  BuildContext context,
+  ProjectRepository repository,
+  SavedProjectSummary project, {
+  required VoidCallback onStarted,
+}) async {
+  if (!await confirmProjectDelete(context, project)) return false;
+  if (!context.mounted) return false;
+  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+  onStarted();
+  try {
+    await repository.deleteProject(project.id);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(content: Text('"${project.projectName}" deleted.')),
+    );
+    return true;
+  } catch (error) {
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(content: Text('Could not delete the project. $error')),
+    );
+    return false;
+  }
+}
+
+/// The bin beside each project, or a spinner while it is being deleted.
+class _DeleteProjectButton extends StatelessWidget {
+  final SavedProjectSummary project;
+  final bool deleting;
+  final VoidCallback? onPressed;
+
+  const _DeleteProjectButton({
+    required this.project,
+    required this.deleting,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (deleting) {
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.2,
+            color: AppTheme.danger,
+          ),
+        ),
+      );
+    }
+    return IconButton(
+      key: Key('delete_project_${project.id}'),
+      tooltip: 'Delete project',
+      onPressed: onPressed,
+      icon: const Icon(Icons.delete_outline_rounded),
+      color: AppTheme.danger,
     );
   }
 }
