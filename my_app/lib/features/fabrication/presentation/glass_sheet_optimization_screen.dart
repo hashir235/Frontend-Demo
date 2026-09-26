@@ -418,10 +418,18 @@ class _GlassSheetOptimizationScreenState
         accent: AppTheme.tealAccent,
       ),
       MetricCard(
-        label: 'Used',
+        label: 'Used · Math Standard',
         value: formatAreaLines(result.summary.usedArea),
         icon: Icons.crop_square_rounded,
         accent: AppTheme.success,
+      ),
+      // What the shop charges for: every piece's sides taken up to the
+      // market step. The tape's own total is beside it, so both can be read.
+      MetricCard(
+        label: 'Used · Market Standard',
+        value: formatAreaLines(result.marketUsedArea),
+        icon: Icons.storefront_rounded,
+        accent: AppTheme.royalBlue,
       ),
       // The waste as glass, not only as a percentage. "18%" does not tell a
       // shop how much glass it paid for and threw away; the footage does.
@@ -512,7 +520,11 @@ class _GlassSheetOptimizationScreenState
               runSpacing: AppTheme.space3,
               children: <Widget>[
                 _MetaChip(label: 'Pieces', value: '${sheet.placements.length}'),
-                _MetaChip(label: 'Used', value: formatArea(sheet.usedArea)),
+                _MetaChip(label: 'Math', value: formatArea(sheet.usedArea)),
+                _MetaChip(
+                  label: 'Market',
+                  value: formatArea(sheet.marketUsedArea),
+                ),
                 _MetaChip(label: 'Waste', value: formatArea(sheet.wasteArea)),
               ],
             ),
@@ -542,7 +554,11 @@ class _GlassSheetOptimizationScreenState
                 return _NumberedPanelRow(
                   badge: '$number',
                   text: SuterHalf.inText(piece.glassSizeDisplay),
-                  helper: formatArea(piece.width * piece.height),
+                  helper: 'Math: ${formatArea(piece.mathArea)}',
+                  market:
+                      'Market: ${formatMarketSide(piece.marketWidth)} x '
+                      '${formatMarketSide(piece.marketHeight)} = '
+                      '${formatArea(piece.marketArea)}',
                   color: _GlassSheetPainter.colorForIndex(index),
                 );
               })
@@ -1037,12 +1053,17 @@ class _NumberedPanelRow extends StatelessWidget {
   final String badge;
   final String text;
   final String helper;
+
+  /// A second line, for a used piece: its size and area at the market
+  /// standard, under the tape's own.
+  final String market;
   final Color color;
 
   const _NumberedPanelRow({
     required this.badge,
     required this.text,
     required this.helper,
+    this.market = '',
     required this.color,
   });
 
@@ -1095,6 +1116,16 @@ class _NumberedPanelRow extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (market.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 2),
+                  Text(
+                    market,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppTheme.royalBlue,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

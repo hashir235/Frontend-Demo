@@ -52,6 +52,13 @@ class GlassSheetOptimizationResult {
           .toList(growable: false),
     );
   }
+
+  /// Every placed piece at the market standard -- what the shop charges its
+  /// customer for, beside the tape's own total in [GlassSheetSummary.usedArea].
+  double get marketUsedArea => sheets.fold<double>(
+    0,
+    (double sum, GlassSheetLayout sheet) => sum + sheet.marketUsedArea,
+  );
 }
 
 class GlassSheetSpec {
@@ -173,6 +180,12 @@ class GlassSheetLayout {
     this.marginOverHeightDisplay = '',
   });
 
+  /// This sheet's pieces at the market standard.
+  double get marketUsedArea => placements.fold<double>(
+    0,
+    (double sum, GlassSheetPlacement piece) => sum + piece.marketArea,
+  );
+
   factory GlassSheetLayout.fromJson(Map<String, dynamic> json) {
     return GlassSheetLayout(
       sheetNo: _toInt(json['sheetNo']),
@@ -254,6 +267,20 @@ class GlassSheetPlacement {
     required this.rotated,
   });
 
+  /// The piece's own width and height, in the order its size is written,
+  /// whichever way round it was laid on the sheet.
+  double get pieceWidth => rotated ? height : width;
+  double get pieceHeight => rotated ? width : height;
+
+  /// The piece as the tape measures it: its real width times its height.
+  double get mathArea => width * height;
+
+  /// The piece as a glass shop charges for it: each side taken up to the
+  /// market step (see [marketSideInches]), then multiplied.
+  double get marketWidth => marketSideInches(pieceWidth);
+  double get marketHeight => marketSideInches(pieceHeight);
+  double get marketArea => marketWidth * marketHeight;
+
   factory GlassSheetPlacement.fromJson(Map<String, dynamic> json) {
     return GlassSheetPlacement(
       id: (json['id'] as String?) ?? '',
@@ -303,6 +330,30 @@ class GlassSheetWasteRect {
     );
   }
 }
+
+/// One side of a glass piece as the market charges for it, in inches.
+///
+/// Glass is bought by the tape's size but sold by the market's: each side is
+/// taken up to the next 3 inches -- 3, 6, 9 ... 24 -- and past 24 inches to
+/// the next 6 -- 30, 36, 42, 48 ... A side exactly on a step stays where it
+/// is (15 is 15); anything over it, even half a suter, takes the next step
+/// (15 and a half suter is 18). Kept in step with `market_side` in the
+/// server's GlassSheetOptimizationPDF.py, so the page and the screen agree.
+double marketSideInches(double inches) {
+  if (!inches.isFinite || inches <= 0) return 0;
+  // A hair's allowance -- a millionth of an inch, far under half a suter --
+  // so a side that is exactly on a step but arrived through a cm conversion
+  // (15.000000000000002) stays on it.
+  const double hair = 1e-6;
+  if (inches <= 24 + hair) {
+    final double steps = ((inches - hair) / 3).ceilToDouble();
+    return (steps < 1 ? 1 : steps) * 3;
+  }
+  return 24 + ((inches - 24 - hair) / 6).ceilToDouble() * 6;
+}
+
+/// A market side as it is written: 15'' rather than 15.0.
+String formatMarketSide(double inches) => "${_trim(inches, 1)}''";
 
 /// An area of glass in both units a shop uses for it.
 ///
