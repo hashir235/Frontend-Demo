@@ -1,10 +1,5 @@
-import 'dart:convert';
-
-import 'package:my_app/core/config/api_config.dart';
-import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_hero_header.dart';
@@ -12,11 +7,11 @@ import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/metric_card.dart';
 import '../../../shared/widgets/primary_card_button.dart';
 import '../../../shared/widgets/section_surface_card.dart';
+import '../../estimation/data/new_project_session.dart';
 import '../../estimation/data/project_repository.dart';
 import '../../estimation/presentation/recent_projects_screen.dart';
 import '../../estimation/presentation/window_navigation_screen.dart';
 import '../../estimation/state/estimate_session_store.dart';
-import '../../settings/state/app_settings.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../tutorial/tutorial_controller.dart';
@@ -26,7 +21,10 @@ import '../../tutorial/tutorial_target.dart';
 import '../../help_videos/tutorial_videos.dart';
 
 class FabricationMenuScreen extends StatelessWidget {
-  const FabricationMenuScreen({super.key});
+  const FabricationMenuScreen({super.key, this.projectRepository});
+
+  /// Where new projects are written. Left out, the real server.
+  final ProjectRepository? projectRepository;
 
   Future<_ProjectDraft?> _showProjectDialog(BuildContext context) async {
     return showDialog<_ProjectDraft>(
@@ -36,82 +34,18 @@ class FabricationMenuScreen extends StatelessWidget {
     );
   }
 
-  /// Asks for the project details and creates it, returning what was made.
-  ///
-  /// Shared by both create buttons: the dialog, the backend session reset and
-  /// the error handling are identical, and only where the user lands afterwards
-  /// differs.
-  Future<_NewProject?> _createProject(
-    BuildContext context, {
-    required EstimateFlow flow,
-  }) async {
-    final _ProjectDraft? draft = await _showProjectDialog(context);
-    if (draft == null || !context.mounted) {
-      return null;
-    }
-
-    String? resetWarning;
-    try {
-      final http.Response response = await AuthHttpClient()
-          .post(
-            ApiConfig.buildUri('/api/estimation/reset-session'),
-            headers: const <String, String>{'Content-Type': 'application/json'},
-            body: jsonEncode(const <String, Object?>{}),
-          )
-          .timeout(const Duration(seconds: 5));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        resetWarning = 'Backend reset failed. Continuing with new project.';
-      }
-    } on Exception {
-      resetWarning = 'Reset service unreachable. Continuing with new project.';
-    }
-
-    if (!context.mounted) {
-      return null;
-    }
-
-    final ProjectRepository projectRepository = ProjectRepository();
-    String? projectId;
-    String? projectError;
-    try {
-      final project = await projectRepository.createProject(
-        flow: flow,
-        projectName: draft.projectName,
-        projectLocation: draft.projectLocation,
-      );
-      projectId = project.id;
-    } on Exception catch (error) {
-      projectError = error.toString();
-    }
-
-    if (!context.mounted) {
-      return null;
-    }
-
-    if (projectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(projectError ?? 'Project create failed.')),
-      );
-      return null;
-    }
-
-    return _NewProject(id: projectId, draft: draft, resetWarning: resetWarning);
-  }
-
-  /// Aluminium: straight into the window catalogue, as before.
+  /// Aluminium: straight into the window catalogue. The library opens the
+  /// moment Create is pressed; the project is written to the server behind it.
   Future<void> _handleCreateAluminiumProject(BuildContext context) async {
-    final _NewProject? created = await _createProject(
-      context,
-      flow: EstimateFlow.fabrication,
-    );
-    if (created == null || !context.mounted) return;
+    final _ProjectDraft? draft = await _showProjectDialog(context);
+    if (draft == null || !context.mounted) return;
 
-    final EstimateSessionStore session = EstimateSessionStore(
-      projectId: created.id,
-      projectName: created.draft.projectName,
-      projectLocation: created.draft.projectLocation,
+    final EstimateSessionStore session = startNewProjectSession(
       flow: EstimateFlow.fabrication,
-      numberingMode: AppSettings.instance.numberingMode,
+      projectName: draft.projectName,
+      projectLocation: draft.projectLocation,
+      messenger: ScaffoldMessenger.of(context),
+      repository: projectRepository,
     );
 
     await Navigator.of(context).push(
@@ -123,17 +57,6 @@ class FabricationMenuScreen extends StatelessWidget {
         ),
       ),
     );
-
-    if (context.mounted) {
-      _showResetWarning(context, created.resetWarning);
-    }
-  }
-
-  void _showResetWarning(BuildContext context, String? warning) {
-    if (warning == null || !context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(warning)));
   }
 
   @override
@@ -221,19 +144,6 @@ class FabricationMenuScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-/// A project that was just created, and anything worth telling the user about
-/// how it went.
-class _NewProject {
-  final String id;
-  final _ProjectDraft draft;
-
-  /// Shown after the user has landed, not before -- a backend session reset
-  /// that failed is worth knowing about but must not block the work.
-  final String? resetWarning;
-
-  const _NewProject({required this.id, required this.draft, this.resetWarning});
 }
 
 class _ProjectDraft {

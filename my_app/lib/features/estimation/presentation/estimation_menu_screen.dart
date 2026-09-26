@@ -1,10 +1,5 @@
-import 'dart:convert';
-
-import 'package:my_app/core/config/api_config.dart';
-import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
 import '../../flow_nav/models/flow_step.dart';
@@ -18,7 +13,7 @@ import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/metric_card.dart';
 import '../../../shared/widgets/primary_card_button.dart';
 import '../../../shared/widgets/section_surface_card.dart';
-import '../../settings/state/app_settings.dart';
+import '../data/new_project_session.dart';
 import '../data/project_repository.dart';
 import '../state/estimate_session_store.dart';
 import 'recent_projects_screen.dart';
@@ -26,7 +21,10 @@ import 'window_navigation_screen.dart';
 import '../../help_videos/tutorial_videos.dart';
 
 class EstimationMenuScreen extends StatelessWidget {
-  const EstimationMenuScreen({super.key});
+  const EstimationMenuScreen({super.key, this.projectRepository});
+
+  /// Where new projects are written. Left out, the real server.
+  final ProjectRepository? projectRepository;
 
   Future<_ProjectDraft?> _showProjectDialog(BuildContext context) async {
     return showDialog<_ProjectDraft>(
@@ -42,56 +40,13 @@ class EstimationMenuScreen extends StatelessWidget {
       return;
     }
 
-    String? resetWarning;
-    try {
-      final http.Response response = await AuthHttpClient()
-          .post(
-            ApiConfig.buildUri('/api/estimation/reset-session'),
-            headers: const <String, String>{'Content-Type': 'application/json'},
-            body: jsonEncode(const <String, Object?>{}),
-          )
-          .timeout(const Duration(seconds: 5));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        resetWarning = 'Backend reset failed. Continuing with new project.';
-      }
-    } on Exception {
-      resetWarning = 'Reset service unreachable. Continuing with new project.';
-    }
-
-    if (!context.mounted) {
-      return;
-    }
-
-    final ProjectRepository projectRepository = ProjectRepository();
-    String? projectId;
-    String? projectError;
-    try {
-      final project = await projectRepository.createProject(
-        flow: EstimateFlow.estimation,
-        projectName: draft.projectName,
-        projectLocation: draft.projectLocation,
-      );
-      projectId = project.id;
-    } on Exception catch (error) {
-      projectError = error.toString();
-    }
-
-    if (!context.mounted) {
-      return;
-    }
-
-    if (projectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(projectError ?? 'Project create failed.')),
-      );
-      return;
-    }
-
-    final EstimateSessionStore session = EstimateSessionStore(
-      projectId: projectId,
+    // The library opens now; the project is written to the server behind it.
+    final EstimateSessionStore session = startNewProjectSession(
+      flow: EstimateFlow.estimation,
       projectName: draft.projectName,
       projectLocation: draft.projectLocation,
-      numberingMode: AppSettings.instance.numberingMode,
+      messenger: ScaffoldMessenger.of(context),
+      repository: projectRepository,
     );
 
     await Navigator.of(context).push(
@@ -100,12 +55,6 @@ class EstimationMenuScreen extends StatelessWidget {
         builder: (_) => WindowNavigationScreen.root(session: session),
       ),
     );
-
-    if (resetWarning != null && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(resetWarning)));
-    }
   }
 
   @override

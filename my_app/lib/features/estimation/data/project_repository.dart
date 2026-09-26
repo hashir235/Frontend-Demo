@@ -34,8 +34,11 @@ class ProjectRepository {
     return _apiClient.fetchProject(projectId);
   }
 
+  /// Saves the session's windows into its project -- waiting for the project
+  /// first when it is new and still being written, so a window saved in the
+  /// first seconds after Create is not lost.
   Future<void> syncSession(EstimateSessionStore session) async {
-    final String? projectId = session.projectId;
+    final String? projectId = session.projectId ?? await session.ensureProject();
     if (projectId == null || projectId.isEmpty) {
       return;
     }

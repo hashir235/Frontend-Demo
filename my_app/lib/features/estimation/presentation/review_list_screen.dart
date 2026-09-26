@@ -142,6 +142,34 @@ class ReviewListScreen extends StatelessWidget {
       return;
     }
 
+    // A new project is written to the server behind the window library, so
+    // on a fast hand it can still be on its way here. Everything from here on
+    // is saved into it, so it has to exist first.
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    if (session.savesToProject && session.projectId == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Saving the project first…')),
+      );
+    }
+    final String? projectId = await session.ensureProject();
+    if (!context.mounted) {
+      return;
+    }
+    if (session.savesToProject && projectId == null) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'This project could not be saved to your account — check your '
+              'internet and press again. Your windows are kept.',
+            ),
+          ),
+        );
+      return;
+    }
+    messenger.hideCurrentSnackBar();
+
     if (session.isFabrication) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -149,7 +177,7 @@ class ReviewListScreen extends StatelessWidget {
           builder: (_) => LengthOptimizationScreen(
             session: session,
             items: items,
-            projectId: session.projectId,
+            projectId: projectId,
             projectName: session.projectName,
             projectLocation: session.projectLocation,
             requestContext: 'fabrication',
@@ -190,7 +218,7 @@ class ReviewListScreen extends StatelessWidget {
         builder: (_) => LengthOptimizationScreen(
           session: session,
           items: items,
-          projectId: session.projectId,
+          projectId: projectId,
           projectName: session.projectName,
           projectLocation: session.projectLocation,
           requestContext: 'estimation',

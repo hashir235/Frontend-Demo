@@ -19,7 +19,6 @@ import 'last_glass_color.dart';
 enum EstimateFlow { estimation, fabrication, glass }
 
 class EstimateSessionStore extends ChangeNotifier {
-  final String? projectId;
   final String projectName;
   final String projectLocation;
   final EstimateFlow flow;
@@ -30,13 +29,79 @@ class EstimateSessionStore extends ChangeNotifier {
   List<RateOverrideInput> _rateOverrides = const <RateOverrideInput>[];
   EstimateBillDraft? _billDraft;
 
+  String? _projectId;
+  Future<String?> Function()? _createProject;
+  Future<String?>? _creating;
+
   EstimateSessionStore({
-    this.projectId,
+    String? projectId,
     required this.projectName,
     required this.projectLocation,
     this.flow = EstimateFlow.estimation,
     NumberingMode numberingMode = NumberingMode.auto,
-  }) : _numberingMode = numberingMode;
+  }) : _projectId = projectId,
+       _numberingMode = numberingMode;
+
+  /// The project on the server this session saves into.
+  ///
+  /// Null while a new project is still being written there: the window
+  /// library opens the moment Create is pressed, and the project catches up
+  /// behind it. Waiting for the server first -- a new project and a session
+  /// reset, one after the other, over a phone connection to a database that
+  /// may have to wake up -- is what left people staring at the menu for
+  /// seconds. Anything that needs the id asks [ensureProject] rather than
+  /// reading this.
+  String? get projectId => _projectId;
+
+  /// Whether this session belongs to a project on the server -- one it has,
+  /// or one it is making.
+  bool get savesToProject => _projectId != null || _createProject != null;
+
+  /// Starts writing this session's project on the server, and does not wait.
+  void startCreatingProject(Future<String?> Function() create) {
+    _createProject = create;
+    _creating = _attemptCreate();
+  }
+
+  Future<String?> _attemptCreate() async {
+    final Future<String?> Function()? create = _createProject;
+    if (create == null) return null;
+    try {
+      final String? id = await create();
+      if (id != null && id.isNotEmpty) {
+        _projectId = id;
+        notifyListeners();
+        return id;
+      }
+    } on Object {
+      // No signal, or the server said no. The next [ensureProject] tries
+      // again, so a project that could not be made at the start is made the
+      // moment it can be.
+    }
+    return null;
+  }
+
+  /// The project id, waiting for it while it is still being written.
+  ///
+  /// If the last attempt failed, it is tried once more here. Only one new
+  /// attempt runs however many callers are waiting -- two saves landing
+  /// together must not make two projects. Null when there is no project and
+  /// it still cannot be made.
+  Future<String?> ensureProject() async {
+    while (true) {
+      if (_projectId != null) return _projectId;
+      final Future<String?>? pending = _creating;
+      if (pending == null) return null;
+      final String? id = await pending;
+      if (id != null) return id;
+      if (identical(_creating, pending)) {
+        _creating = _attemptCreate();
+        return _creating;
+      }
+      // Somebody else started a new attempt while this one waited: wait for
+      // theirs rather than starting a second.
+    }
+  }
 
   /// Aluminium fabrication. Deliberately false for [EstimateFlow.glass]: glass
   /// never runs the window pipeline, so anything gated on this stays off there.
