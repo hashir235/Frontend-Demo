@@ -71,8 +71,10 @@ class SuterHalf {
 /// keyboards put where the point should be.
 bool _isNextKey(String ch) => ch == '.' || ch == ' ' || ch == ',';
 
-/// A box that takes a suter: digits, and the half as ½.
+/// A box that takes a suter: one digit, 0 to 7, and the half as ½.
 ///
+/// An 8 or a 9 is not a suter -- eight suter is the next inch -- and there is
+/// no two-digit suter, so a key that would make either is not typed at all.
 /// The point or the space after the suter is how a half is asked for, and it
 /// turns into ½ on the spot, straight after the suter with no point between
 /// -- there is no other fraction of a suter, so nothing after it is kept.
@@ -98,7 +100,11 @@ class SuterBoxFormatter extends TextInputFormatter {
       }
       if (ch.compareTo('0') >= 0 && ch.compareTo('9') <= 0) digits.write(ch);
     }
-    String whole = digits.toString();
+    final String typed = digits.toString();
+    if (typed.length > 1 || (typed.isNotEmpty && typed.compareTo('7') > 0)) {
+      return oldValue;
+    }
+    String whole = typed;
     if (half && whole == '0') whole = '';
     final String shown = half ? '$whole${SuterHalf.mark}' : whole;
     return TextEditingValue(

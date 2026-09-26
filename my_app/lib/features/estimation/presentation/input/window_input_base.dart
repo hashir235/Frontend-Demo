@@ -1808,7 +1808,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   double _maxEnteredFeet() {
     double maxFeet = 0;
     void consider(String raw) {
-      final String v = raw.trim();
+      // Read through storage notation, not the box: a one-box size shows
+      // 48' 6'' with its marks, which is no number at all, and the warning
+      // this feeds never came up for anyone typing that way.
+      final String v = _normalizeDimensionForStorage(raw).trim();
       if (v.isEmpty) return;
       final double? feet = double.tryParse(v.split('.').first);
       if (feet != null && feet > maxFeet) {
@@ -1977,10 +1980,12 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             _leftWidthSuterController,
           )
         : null;
+    // The arch box is drawn like the width and height ones -- in one-box
+    // entry it holds 34'' 4''' with its marks -- so it is judged by the same
+    // rules. Checking it by the old `45.7` rule refused every arch typed that
+    // way, and a round arch window could not be saved at all.
     final String? archError = _usesArchInput
-        ? (_isCmMode
-              ? _validateCmDimension(_archController.text)
-              : _validateDimension(_archController.text))
+        ? _validateSingleDimension(_archController.text)
         : null;
 
     setState(() {
@@ -2347,6 +2352,16 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         );
       });
 
+  /// How a plain typed size box reads its number, and so which numbers it
+  /// will take: cm (one digit after the point), inch.suter (0 to 7 after it)
+  /// or feet.inch (0 to 11 after it). Fabrication's "feet" slot is cm.
+  TypedSizeUnit get _typedSizeUnit {
+    if (_isCmMode) return TypedSizeUnit.cm;
+    return _unitMode == UnitMode.feet
+        ? TypedSizeUnit.feetInch
+        : TypedSizeUnit.inchSuter;
+  }
+
   /// What the empty box suggests typing.
   String get _dimensionHint {
     if (_isCmMode) {
@@ -2684,7 +2699,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         if (_usesMergedInput)
           MergedSizeFormatter(isFeet: _mergedIsFeet)
         else
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+          TypedSizeFormatter(_typedSizeUnit),
       ],
       scrollPadding: EdgeInsets.zero,
       // Every side is redrawn, because a side left empty shows what the side
@@ -2979,7 +2994,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           // Filters and marks in one pass: 34'' 4½''' as it is typed.
           MergedSizeFormatter(isFeet: _mergedIsFeet)
         else
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+          // cm, or the old `45.7` / `4.9` point notation: a number that is not
+          // a size in that unit is not typed at all.
+          TypedSizeFormatter(_typedSizeUnit),
       ],
       onSubmitted: (_) => _submitFromField(focusNode),
       scrollPadding: EdgeInsets.zero,
@@ -3139,7 +3156,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       },
       inputFormatters: <TextInputFormatter>[
         if (feetMode)
-          FilteringTextInputFormatter.digitsOnly
+          // 0 to 11: twelve inches are the next foot.
+          const FootInchBoxFormatter()
         else
           // The point or the space after the suter is the half, and shows as
           // ½ the moment it is pressed.

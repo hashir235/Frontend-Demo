@@ -182,12 +182,29 @@ class SizeNotation {
   static bool _isDigit(String ch) =>
       ch.compareTo('0') >= 0 && ch.compareTo('9') <= 0;
 
+  /// Whether [ch] can go on the end of a size's second part and leave it a
+  /// real one.
+  ///
+  /// A suter is one digit, 0 to 7: eight suter is the next inch, and there is
+  /// no such thing as a two-digit suter -- the half comes after the digit, as
+  /// ½. An inch of a foot runs 0 to 11: one digit, or 10 and 11. Anything
+  /// else is not a size, and a digit that would make it one is not typed.
+  static bool subAccepts(String sub, String ch, {required bool isFeet}) {
+    if (!_isDigit(ch)) return false;
+    final String next = '$sub$ch';
+    if (isFeet) {
+      return next.length == 1 || next == '10' || next == '11';
+    }
+    return next.length == 1 && ch.compareTo('7') <= 0;
+  }
+
   /// A size read the way it is typed, one key at a time.
   ///
   /// - digits go into the first part (the inch, or the feet);
   /// - the point or the space after it moves on to the second part (the
   ///   suter, or the inch);
-  /// - digits then go into that part;
+  /// - digits then go into that part, as long as it stays a real one (see
+  ///   [subAccepts]) -- an 8 or 9 in a suter, or a 12 in an inch, is dropped;
   /// - in inches, the point or the space after the suter is the half, and
   ///   nothing after the half is kept. Feet mode has no half: an inch is a
   ///   whole number, and the key does nothing there.
@@ -215,7 +232,7 @@ class SizeNotation {
       }
       if (half) continue;
       if (_isDigit(ch)) {
-        sub.write(ch);
+        if (subAccepts(sub.toString(), ch, isFeet: isFeet)) sub.write(ch);
       } else if (!isFeet && ch == SuterHalf.mark) {
         half = true;
       } else if (!isFeet && _isNextKey(ch) && sub.isNotEmpty) {
@@ -428,8 +445,13 @@ class MergedSizeFormatter extends TextInputFormatter {
 
     if (SizeNotation._isDigit(key)) {
       final SizeEntry now = _read(bare.substring(0, k) + key + bare.substring(k));
-      // A digit after the ½ is not kept, and the cursor stays where it was.
-      return _shown(now, now.bare.length > bare.length ? k + 1 : k);
+      // A digit that does not fit -- an 8 or 9 in a suter, a second suter
+      // digit, a 12 in an inch, anything after the ½ -- is not typed at all,
+      // and the size stays exactly as it was. Showing what was read instead
+      // could keep the new digit and drop the one after it, which is a
+      // different size from the one on the tape.
+      if (now.bare.length <= bare.length) return _shown(was, k);
+      return _shown(now, k + 1);
     }
 
     if (SizeNotation._isNextKey(key)) {
@@ -488,5 +510,65 @@ class MergedSizeFormatter extends TextInputFormatter {
       selection: TextSelection.collapsed(offset: offset),
     );
   }
+}
 
+/// How a size is written in a plain typed box -- one number with a point.
+enum TypedSizeUnit {
+  /// Centimetres: the point is the millimetre, so one digit after it.
+  /// 34.9 is a size; 34.10 is not -- ten millimetres are the next centimetre.
+  cm,
+
+  /// Inch and suter, the old way: 45.7 is 45 inches 7 suter, so the one digit
+  /// after the point runs 0 to 7.
+  inchSuter,
+
+  /// Feet and inch: 4.9 is 4 feet 9 inches, and the inch runs 0 to 11, so
+  /// after the point comes one digit, or 10, or 11.
+  feetInch,
+}
+
+/// A typed size box that will not take a number that is not a size.
+///
+/// The key that would make one -- an 8 after the point in inches, a second
+/// digit after the point in cm, a 12 after the point in feet, a second point
+/// -- is simply not typed, so the box never holds something that only fails
+/// once Save is pressed.
+class TypedSizeFormatter extends TextInputFormatter {
+  const TypedSizeFormatter(this.unit);
+
+  final TypedSizeUnit unit;
+
+  static final RegExp _cm = RegExp(r'^\d*(\.\d?)?$');
+  static final RegExp _inchSuter = RegExp(r'^\d*(\.[0-7]?)?$');
+  static final RegExp _feetInch = RegExp(r'^\d*(\.(1[01]?|[02-9])?)?$');
+
+  RegExp get _pattern => switch (unit) {
+    TypedSizeUnit.cm => _cm,
+    TypedSizeUnit.inchSuter => _inchSuter,
+    TypedSizeUnit.feetInch => _feetInch,
+  };
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return _pattern.hasMatch(newValue.text) ? newValue : oldValue;
+  }
+}
+
+/// The inch box beside a feet box: 0 to 11, because twelve inches are the
+/// next foot. One digit, or 10 or 11; nothing else is typed.
+class FootInchBoxFormatter extends TextInputFormatter {
+  const FootInchBoxFormatter();
+
+  static final RegExp _inch = RegExp(r'^(1[01]?|[02-9])?$');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return _inch.hasMatch(newValue.text) ? newValue : oldValue;
+  }
 }

@@ -76,6 +76,86 @@ void main() {
       expect(type('5½7'), '5½');
       expect(type('5.5'), '5½');
     });
+
+    TextEditingValue add(String before, String key) =>
+        const SuterBoxFormatter().formatEditUpdate(
+          TextEditingValue(
+            text: before,
+            selection: TextSelection.collapsed(offset: before.length),
+          ),
+          TextEditingValue(
+            text: '$before$key',
+            selection: TextSelection.collapsed(offset: before.length + 1),
+          ),
+        );
+
+    test('an 8 or a 9 is not a suter and is never typed', () {
+      expect(add('', '8').text, '');
+      expect(add('', '9').text, '');
+      expect(add('', '7').text, '7');
+      expect(add('', '0').text, '0');
+    });
+
+    test('a suter is one digit -- a second one is not typed', () {
+      expect(add('5', '3').text, '5');
+      expect(add('0', '5').text, '0');
+      expect(add('5', '.').text, '5½');
+    });
+  });
+
+  group('the boxes that take a plain number', () {
+    TextEditingValue add(TextInputFormatter formatter, String before, String key) =>
+        formatter.formatEditUpdate(
+          TextEditingValue(
+            text: before,
+            selection: TextSelection.collapsed(offset: before.length),
+          ),
+          TextEditingValue(
+            text: '$before$key',
+            selection: TextSelection.collapsed(offset: before.length + 1),
+          ),
+        );
+
+    test('cm: one digit after the point -- 34.9, never 34.10', () {
+      const TypedSizeFormatter cm = TypedSizeFormatter(TypedSizeUnit.cm);
+      expect(add(cm, '34', '.').text, '34.');
+      expect(add(cm, '34.', '9').text, '34.9');
+      expect(add(cm, '34.1', '0').text, '34.1',
+          reason: 'ten millimetres are the next centimetre');
+      expect(add(cm, '34.', '.').text, '34.', reason: 'one point only');
+      expect(add(cm, '3', '4').text, '34');
+    });
+
+    test('inch.suter: 0 to 7 after the point, and one digit', () {
+      const TypedSizeFormatter inches =
+          TypedSizeFormatter(TypedSizeUnit.inchSuter);
+      expect(add(inches, '45.', '7').text, '45.7');
+      expect(add(inches, '45.', '8').text, '45.');
+      expect(add(inches, '45.', '9').text, '45.');
+      expect(add(inches, '45.7', '5').text, '45.7');
+    });
+
+    test('feet.inch: 0 to 11 after the point', () {
+      const TypedSizeFormatter feet =
+          TypedSizeFormatter(TypedSizeUnit.feetInch);
+      expect(add(feet, '4.', '9').text, '4.9');
+      expect(add(feet, '4.1', '0').text, '4.10');
+      expect(add(feet, '4.1', '1').text, '4.11');
+      expect(add(feet, '4.1', '2').text, '4.1', reason: 'twelve inches make a foot');
+      expect(add(feet, '4.0', '5').text, '4.0');
+      expect(add(feet, '4.9', '1').text, '4.9');
+    });
+
+    test('the inch box beside a feet box: 0 to 11', () {
+      const FootInchBoxFormatter inch = FootInchBoxFormatter();
+      expect(add(inch, '', '0').text, '0');
+      expect(add(inch, '', '9').text, '9');
+      expect(add(inch, '1', '1').text, '11');
+      expect(add(inch, '1', '0').text, '10');
+      expect(add(inch, '1', '2').text, '1');
+      expect(add(inch, '0', '5').text, '0');
+      expect(add(inch, '', '.').text, '');
+    });
   });
 
   group('the inch box of two boxes', () {
@@ -269,6 +349,39 @@ void main() {
       expect(typeKeys(<String>['4', '2', '.', '.']).text, "42'' ");
       expect(typeKeys(<String>['4', '2', ' ', '.']).text, "42'' ");
       expect(typeKeys(<String>['4', '2', '.', '.', '4']).text, "42'' 4'''");
+    });
+
+    test('a suter is one digit, 0 to 7 -- an 8 or 9 is never typed', () {
+      expect(typeKeys(<String>['3', '4', '.', '8']).text, "34'' ");
+      expect(typeKeys(<String>['3', '4', '.', '9']).text, "34'' ");
+      expect(typeKeys(<String>['3', '4', '.', '7']).text, "34'' 7'''");
+      expect(typeKeys(<String>['3', '4', '.', '0']).text, "34'' 0'''");
+    });
+
+    test('a second suter digit is not typed', () {
+      final TextEditingValue v = typeKeys(<String>['3', '4', '.', '4', '5']);
+      expect(v.text, "34'' 4'''");
+      expect(v.selection.baseOffset, "34'' 4".length);
+      expect(typeKeys(<String>['3', '4', '.', '0', '5']).text, "34'' 0'''");
+    });
+
+    test('a digit that does not fit leaves the size exactly as it was', () {
+      // The cursor in front of the suter: a second digit there would push the
+      // 4 out, and 34'' 7''' is not what was on the tape.
+      final TextEditingValue v = press(at("34'' 4'''", 5), '7');
+      expect(v.text, "34'' 4'''");
+      expect(v.selection.baseOffset, 5);
+    });
+
+    test('a pasted size keeps only what is a size', () {
+      final TextEditingValue v = const MergedSizeFormatter().formatEditUpdate(
+        TextEditingValue.empty,
+        const TextEditingValue(
+          text: '34 89',
+          selection: TextSelection.collapsed(offset: 5),
+        ),
+      );
+      expect(v.text, "34'' ");
     });
 
     test('nothing is kept after the half', () {

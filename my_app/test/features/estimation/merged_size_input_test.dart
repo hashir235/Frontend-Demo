@@ -275,7 +275,18 @@ void main() {
 
     test('an inch has no half, so the key after it does nothing', () {
       expect(typeKeys(<String>['1', '3', '.', '7', '.']).text, "13' 7''");
-      expect(typeKeys(<String>['1', '3', '.', '7', ' ', '5']).text, "13' 75''");
+    });
+
+    test('the inch runs 0 to 11, and nothing past it is typed', () {
+      expect(typeKeys(<String>['1', '3', '.', '1', '1']).text, "13' 11''");
+      expect(typeKeys(<String>['1', '3', '.', '1', '0']).text, "13' 10''");
+      expect(typeKeys(<String>['1', '3', '.', '1', '2']).text, "13' 1''",
+          reason: 'twelve inches are the next foot');
+      expect(typeKeys(<String>['1', '3', '.', '7', '5']).text, "13' 7''",
+          reason: 'there is no 75th inch');
+      expect(typeKeys(<String>['1', '3', '.', '2', '0']).text, "13' 2''");
+      expect(typeKeys(<String>['1', '3', '.', '0', '5']).text, "13' 0''",
+          reason: 'no leading nought on an inch');
     });
 
     test('backspace over the space never runs the inch into the feet', () {
@@ -450,6 +461,37 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text("42'' 4½'''"), findsOneWidget);
+    });
+
+    testWidgets('in feet, a size too big for feet asks whether it was inches', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: WindowInputScreen(
+            node: node,
+            session: EstimateSessionStore(
+              projectName: 'Test Project',
+              projectLocation: 'Test Location',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final Finder feet = find.byKey(const Key('unit_feet_radio'));
+      await tester.ensureVisible(feet);
+      await tester.tap(feet);
+      await tester.pumpAndSettle();
+
+      // 48 and 40 are inches typed while the screen was on feet.
+      await tester.enterText(fieldByLabel('Width'), '48 6');
+      await tester.enterText(fieldByLabel('Height'), '40 2');
+      final Finder save = find.byKey(const Key('input_save_button'));
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Check the unit'), findsOneWidget);
     });
 
     testWidgets('in two boxes, the point after the inch moves on to the suter', (
