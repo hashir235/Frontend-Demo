@@ -1114,15 +1114,19 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     // The sub-part joins the chain only when it is a typing box of its own: on
     // the wheel there is nothing to focus, and the merged box has no second
     // half to move to.
-    targets.add((node: _widthFocusNode, key: _widthFieldKey));
-    if (_usesKeypadSizeInput) {
-      targets.add((node: _widthSubFocusNode, key: _widthFieldKey));
-    }
+    //
+    // A corner window has two widths, laid out the way the window stands --
+    // left width on the left, right width on the right -- so "Next" reads
+    // them in that order too, and then goes straight to height.
     if (_usesSplitWidthInputs) {
       targets.add((node: _leftWidthFocusNode, key: _leftWidthFieldKey));
       if (_usesKeypadSizeInput) {
         targets.add((node: _leftWidthSubFocusNode, key: _leftWidthFieldKey));
       }
+    }
+    targets.add((node: _widthFocusNode, key: _widthFieldKey));
+    if (_usesKeypadSizeInput) {
+      targets.add((node: _widthSubFocusNode, key: _widthFieldKey));
     }
     targets.add((node: _heightFocusNode, key: _heightFieldKey));
     if (_usesKeypadSizeInput) {
@@ -2769,15 +2773,19 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         ? _buildLeftWidthField(numberInputStyle, hintStyle)
         : null;
 
+    // A corner window's two widths sit the way the window stands: the left
+    // width on the left, the right width on the right, and the height
+    // straight after them. The right width had been on the left, which is
+    // where a fitter reading the screen put the left measurement.
     final List<Widget> rows = <Widget>[];
     if (_usesSplitInput) {
-      rows.add(width);
       if (leftWidth != null) {
         rows.add(leftWidth);
       }
+      rows.add(width);
       rows.add(height);
     } else if (leftWidth != null) {
-      rows.add(_buildSideBySide(width, leftWidth));
+      rows.add(_buildSideBySide(leftWidth, width));
       rows.add(height);
     } else {
       rows.add(_buildSideBySide(width, height));
