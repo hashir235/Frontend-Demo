@@ -12,6 +12,11 @@ class FabricationSettingsModel {
   final double redZoneEven;
   final double redZoneOdd;
 
+  /// Cut M23 and M28 two bars at a time: every bar of theirs gets a twin with
+  /// exactly the same cuts, so two lengths can be clamped and sawn together.
+  /// Off unless the workshop turns it on.
+  final bool pairCutting;
+
   const FabricationSettingsModel({
     required this.cuttingMarginCm,
     this.sectionLengths = const <String, List<int>>{},
@@ -19,6 +24,7 @@ class FabricationSettingsModel {
     this.enforceMaxExtraPieces = false,
     this.redZoneEven = 12.0,
     this.redZoneOdd = 13.0,
+    this.pairCutting = false,
   });
 
   const FabricationSettingsModel.defaults()
@@ -27,7 +33,8 @@ class FabricationSettingsModel {
       maxExtraPieces = 1,
       enforceMaxExtraPieces = false,
       redZoneEven = 12.0,
-      redZoneOdd = 13.0;
+      redZoneOdd = 13.0,
+      pairCutting = false;
 
   factory FabricationSettingsModel.fromJson(Map<String, dynamic> json) {
     final Object? rawValue = json['cuttingMarginCm'];
@@ -65,6 +72,8 @@ class FabricationSettingsModel {
           (json['redZoneOdd'] as num?)?.toDouble() ??
           (json['redZone2'] as num?)?.toDouble() ??
           13.0,
+      // Absent from a server that predates pair cutting: off.
+      pairCutting: json['pairCutting'] == true,
     );
   }
 
@@ -78,6 +87,7 @@ class FabricationSettingsModel {
       'enforceMaxExtraPieces': enforceMaxExtraPieces,
       'redZoneEven': redZoneEven,
       'redZoneOdd': redZoneOdd,
+      'pairCutting': pairCutting,
     };
   }
 }

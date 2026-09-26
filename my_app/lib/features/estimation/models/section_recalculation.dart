@@ -22,6 +22,13 @@ class SectionRecalculationRequest {
   final String context;
   final String displayUnit;
   final String sectionName;
+
+  /// Which pile of [sectionName]: a job can hold M23 in two gauges or two
+  /// colours, and only this one may be replaced. Empty on a report made
+  /// before per-window stock.
+  final String sectionGauge;
+  final String sectionColor;
+
   final List<CuttingReportCut> sourceCuts;
   final List<SectionStockAvailability> stockOptions;
 
@@ -30,6 +37,8 @@ class SectionRecalculationRequest {
     required this.context,
     required this.displayUnit,
     required this.sectionName,
+    this.sectionGauge = '',
+    this.sectionColor = '',
     required this.sourceCuts,
     required this.stockOptions,
   });
@@ -40,6 +49,8 @@ class SectionRecalculationRequest {
       'context': context,
       'displayUnit': displayUnit,
       'sectionName': sectionName,
+      'sectionGauge': sectionGauge,
+      'sectionColor': sectionColor,
       'sourceCuts': sourceCuts
           .map((CuttingReportCut cut) => cut.toJson())
           .toList(growable: false),

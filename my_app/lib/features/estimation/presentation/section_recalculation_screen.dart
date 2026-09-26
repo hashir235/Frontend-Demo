@@ -109,6 +109,14 @@ class _SectionRecalculationScreenState
     if (report == null || report.sections.isEmpty) {
       return null;
     }
+    // The same pile, not just the same profile: a job can hold M23 in two
+    // gauges. A server that predates this sends no stock back, and then the
+    // name is all there is to go on.
+    for (final CuttingReportSection section in report.sections) {
+      if (section.key == widget.section.key) {
+        return section;
+      }
+    }
     for (final CuttingReportSection section in report.sections) {
       if (section.name == widget.section.name) {
         return section;
@@ -169,6 +177,8 @@ class _SectionRecalculationScreenState
           context: widget.requestContext,
           displayUnit: widget.displayUnit,
           sectionName: widget.section.name,
+          sectionGauge: widget.section.gauge,
+          sectionColor: widget.section.color,
           sourceCuts: _flattenSourceCuts(),
           stockOptions: stockOptions,
         ),
@@ -298,10 +308,14 @@ class _SectionRecalculationScreenState
                         child: _buildSummaryCard(context, resultSection),
                       ),
                       const SizedBox(height: 12),
-                      ...resultSection.groupsLongestFirst.map(
-                        (CuttingReportGroup group) => Padding(
+                      ...resultSection.barBlocksLongestFirst.map(
+                        (CuttingReportBarBlock block) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildGroupCard(context, group),
+                          child: _buildGroupCard(
+                            context,
+                            block.bar,
+                            twin: block.twin,
+                          ),
                         ),
                       ),
                     ],
@@ -580,7 +594,21 @@ class _SectionRecalculationScreenState
     );
   }
 
-  Widget _buildGroupCard(BuildContext context, CuttingReportGroup group) {
+  /// One bar, or with pair cutting a bar and its [twin] as one card: two
+  /// lengths with the same cuts, cut together.
+  Widget _buildGroupCard(
+    BuildContext context,
+    CuttingReportGroup group, {
+    CuttingReportGroup? twin,
+  }) {
+    String both(String first, String? second) =>
+        second == null || second.isEmpty || second == first
+        ? first
+        : '$first / $second';
+    CuttingReportCut? twinCutAt(int position) =>
+        twin == null || position >= twin.cuts.length
+        ? null
+        : twin.cuts[position];
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -600,9 +628,11 @@ class _SectionRecalculationScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}',
+            twin == null
+                ? 'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}'
+                : 'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}  x 2 — cut together',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.deepTeal,
+              color: twin == null ? AppTheme.deepTeal : AppTheme.violet,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -636,14 +666,31 @@ class _SectionRecalculationScreenState
                 DataColumn(label: Text('Cuts')),
               ],
               rows: group.cuts
-                  .map((CuttingReportCut cut) {
+                  .asMap()
+                  .entries
+                  .map((MapEntry<int, CuttingReportCut> entry) {
+                    final CuttingReportCut cut = entry.value;
+                    final CuttingReportCut? other = twinCutAt(entry.key);
                     return DataRow(
                       cells: <DataCell>[
-                        DataCell(Text(cut.dimension)),
-                        DataCell(Text(cut.windowName)),
-                        DataCell(Text(cut.windowNo.toString())),
+                        DataCell(Text(both(cut.dimension, other?.dimension))),
+                        DataCell(Text(both(cut.windowName, other?.windowName))),
+                        DataCell(
+                          Text(
+                            both(
+                              cut.windowNo.toString(),
+                              other?.windowNo.toString(),
+                            ),
+                          ),
+                        ),
                         DataCell(Text(_pieceSymbolForCut(cut))),
-                        DataCell(Text(SuterHalf.inText(cut.lengthDisplay))),
+                        DataCell(
+                          Text(
+                            twin == null
+                                ? SuterHalf.inText(cut.lengthDisplay)
+                                : '${SuterHalf.inText(cut.lengthDisplay)}  x 2',
+                          ),
+                        ),
                       ],
                     );
                   })

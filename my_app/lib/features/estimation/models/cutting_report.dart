@@ -89,6 +89,36 @@ class CuttingReportSection {
     return <CuttingReportGroup>[for (final entry in indexed) entry.group];
   }
 
+  /// [groupsLongestFirst] as the cutter handles them: each bar on its own, or
+  /// -- with pair cutting -- a bar and its twin together, as one block.
+  ///
+  /// The twins of a pair are written one after the other with the same
+  /// length, so they stay side by side in [groupsLongestFirst]. [index] is the
+  /// first bar's place in that list; a report with no pairs gives one block
+  /// per bar at exactly the index it always had.
+  List<CuttingReportBarBlock> get barBlocksLongestFirst {
+    final List<CuttingReportGroup> bars = groupsLongestFirst;
+    final List<CuttingReportBarBlock> blocks = <CuttingReportBarBlock>[];
+    int i = 0;
+    while (i < bars.length) {
+      final CuttingReportGroup bar = bars[i];
+      final bool pairsWithNext =
+          bar.pairId > 0 && i + 1 < bars.length && bars[i + 1].pairId == bar.pairId;
+      blocks.add(
+        CuttingReportBarBlock(
+          index: i,
+          bar: bar,
+          twin: pairsWithNext ? bars[i + 1] : null,
+        ),
+      );
+      i += pairsWithNext ? 2 : 1;
+    }
+    return blocks;
+  }
+
+  /// Whether any bar here is pair cut.
+  bool get hasPairs => groups.any((CuttingReportGroup group) => group.pairId > 0);
+
   factory CuttingReportSection.fromJson(Map<String, dynamic> json) {
     return CuttingReportSection(
       name: (json['name'] as String?) ?? '',
@@ -155,6 +185,11 @@ class CuttingReportGroup {
   final double wastageFt;
   final String wastageDisplay;
   final bool offcut;
+
+  /// Pair cutting: two bars with the same non-zero pairId are twins -- same
+  /// length, same cuts, sawn together. Zero for an ordinary bar.
+  final int pairId;
+
   final List<CuttingReportCut> cuts;
 
   const CuttingReportGroup({
@@ -163,6 +198,7 @@ class CuttingReportGroup {
     required this.wastageFt,
     required this.wastageDisplay,
     required this.offcut,
+    this.pairId = 0,
     required this.cuts,
   });
 
@@ -173,11 +209,35 @@ class CuttingReportGroup {
       wastageFt: _toDouble(json['wastageFt']),
       wastageDisplay: (json['wastageDisplay'] as String?) ?? '',
       offcut: json['offcut'] == true,
+      pairId: _toInt(json['pairId']),
       cuts: ((json['cuts'] as List<dynamic>?) ?? const <dynamic>[])
           .whereType<Map<String, dynamic>>()
           .map(CuttingReportCut.fromJson)
           .toList(growable: false),
     );
+  }
+}
+
+/// One bar, or a bar and its twin cut together. See
+/// [CuttingReportSection.barBlocksLongestFirst].
+class CuttingReportBarBlock {
+  final int index;
+  final CuttingReportGroup bar;
+  final CuttingReportGroup? twin;
+
+  const CuttingReportBarBlock({
+    required this.index,
+    required this.bar,
+    this.twin,
+  });
+
+  bool get isPair => twin != null;
+
+  /// The twin's cut at the same place on the bar, or null.
+  CuttingReportCut? twinCutAt(int position) {
+    final List<CuttingReportCut>? cuts = twin?.cuts;
+    if (cuts == null || position >= cuts.length) return null;
+    return cuts[position];
   }
 }
 

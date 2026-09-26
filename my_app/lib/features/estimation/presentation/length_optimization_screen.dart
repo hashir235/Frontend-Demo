@@ -646,14 +646,19 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
             _buildSummaryCard(context, section.summary!),
           ],
           const SizedBox(height: AppTheme.space5),
-          ...section.groupsLongestFirst.asMap().entries.map(
-            (MapEntry<int, CuttingReportGroup> entry) => Padding(
+          if (section.hasPairs) ...<Widget>[
+            _buildPairCuttingNote(context),
+            const SizedBox(height: AppTheme.space5),
+          ],
+          ...section.barBlocksLongestFirst.map(
+            (CuttingReportBarBlock block) => Padding(
               padding: const EdgeInsets.only(bottom: AppTheme.space5),
               child: _buildGroupCard(
                 context,
                 section.name,
-                entry.key,
-                entry.value,
+                block.index,
+                block.bar,
+                block: block,
               ),
             ),
           ),
@@ -694,12 +699,51 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     );
   }
 
+  /// Says what the x 2 cards are, once, above them.
+  Widget _buildPairCuttingNote(BuildContext context) {
+    return Container(
+      key: const Key('pair_cutting_note'),
+      padding: const EdgeInsets.all(AppTheme.space4),
+      decoration: BoxDecoration(
+        color: AppTheme.violet.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.violet.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.content_copy_rounded, color: AppTheme.violet, size: 20),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: Text(
+              'Pair cutting: each "x 2" card is two bars with the same cuts. '
+              'Clamp both lengths together and cut them at once.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// One value when the twins agree, both when they do not.
+  static String _both(String first, String? second) {
+    if (second == null || second.isEmpty || second == first) return first;
+    return '$first / $second';
+  }
+
   Widget _buildGroupCard(
     BuildContext context,
     String sectionName,
     int groupIndex,
-    CuttingReportGroup group,
-  ) {
+    CuttingReportGroup group, {
+    CuttingReportBarBlock? block,
+  }) {
+    // Pair cutting: one card for the bar and its twin, which are cut together
+    // from two lengths clamped side by side. The cuts are the same; only the
+    // window a piece goes to can differ, and then both are named.
+    final bool isPair = block?.isPair ?? false;
     final String wastageText =
         'Wastage: ${SuterHalf.inText(group.wastageDisplay)}'
         '${group.offcut ? ' | Offcut' : ''}';
@@ -707,7 +751,9 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     // widget, and the first card is the one the user is looking at.
     final bool isTourExample = groupIndex == 0;
     return SectionSurfaceCard(
-      title: 'Lengths: ${_lengthDisplay(group.stockLenFt)}',
+      title: isPair
+          ? 'Lengths: ${_lengthDisplay(group.stockLenFt)}  x 2 — cut together'
+          : 'Lengths: ${_lengthDisplay(group.stockLenFt)}',
       trailing: _maybeTourTarget(
         id: 'lo.wastage',
         enabled: isTourExample,
@@ -737,8 +783,13 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
               MapEntry<int, CuttingReportCut> entry,
             ) {
               final CuttingReportCut cut = entry.value;
+              final CuttingReportCut? twinCut = block?.twinCutAt(entry.key);
+              final String windowNo = twinCut == null ||
+                      twinCut.windowNo == cut.windowNo
+                  ? '${cut.windowNo}'
+                  : '${cut.windowNo}+${twinCut.windowNo}';
               return CutLayoutSegment(
-                label: '${cut.windowNo}/${_pieceSymbolForCut(cut)}',
+                label: '$windowNo/${_pieceSymbolForCut(cut)}',
                 lengthFt: cut.lengthFt,
                 isCut: _markedCutRowKeys.contains(
                   _cutRowKey(sectionName, groupIndex, entry.key, cut),
@@ -773,6 +824,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                 .map((MapEntry<int, CuttingReportCut> entry) {
                   final int cutIndex = entry.key;
                   final CuttingReportCut cut = entry.value;
+                  final CuttingReportCut? twinCut = block?.twinCutAt(cutIndex);
                   final String rowKey = _cutRowKey(
                     sectionName,
                     groupIndex,
@@ -791,7 +843,9 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                       // The engine writes a half suter as .5; shown as ½.
                       DataCell(
                         _buildCutCell(
-                          SuterHalf.inText(cut.lengthDisplay),
+                          isPair
+                              ? '${SuterHalf.inText(cut.lengthDisplay)}  x 2'
+                              : SuterHalf.inText(cut.lengthDisplay),
                           isMarked: isMarked,
                         ),
                       ),
@@ -803,15 +857,27 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                       ),
                       DataCell(
                         _buildCutCell(
-                          cut.windowNo.toString(),
+                          _both(
+                            cut.windowNo.toString(),
+                            twinCut?.windowNo.toString(),
+                          ),
                           isMarked: isMarked,
                         ),
                       ),
                       DataCell(
-                        _buildCutCell(cut.windowName, isMarked: isMarked),
+                        _buildCutCell(
+                          _both(cut.windowName, twinCut?.windowName),
+                          isMarked: isMarked,
+                        ),
                       ),
                       DataCell(
-                        _buildCutCell(_winSizeForCut(cut), isMarked: isMarked),
+                        _buildCutCell(
+                          _both(
+                            _winSizeForCut(cut),
+                            twinCut == null ? null : _winSizeForCut(twinCut),
+                          ),
+                          isMarked: isMarked,
+                        ),
                       ),
                     ],
                   );
