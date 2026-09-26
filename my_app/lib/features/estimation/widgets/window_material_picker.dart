@@ -31,39 +31,75 @@ class WindowMaterialPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        OptionSwitchRow(
-          label: 'Gauge',
-          options: <Widget>[
-            for (final String gauge in WindowGauges.all)
-              OptionSwitch(
-                label: gauge,
-                selected: gauge == value.gauge,
-                expand: true,
-                onTap: () {
-                  if (gauge != value.gauge) {
-                    onChanged(value.copyWith(gauge: gauge));
-                  }
-                },
-              ),
-          ],
-        ),
+        WindowGaugePicker(value: value, onChanged: onChanged),
         const SizedBox(height: AppTheme.space5),
-        // The finishes as boxes to tap, the chosen one named above them. A
-        // shop picks a finish by eye; the list of names it used to open made
-        // them read "SAHARA/ BROWN" and "BLACK/ MULTI" every time.
-        SwatchChoiceGrid(
-          title: 'ALUMINIUM COLOR',
-          options: AluminiumColors.all,
-          selected: value.color,
-          nameFor: AluminiumColors.labelFor,
-          swatchBuilder: (String color, double size) =>
-              AluminiumSwatch(color: color, size: size),
-          keyPrefix: 'aluminium_color',
-          onSelected: (String color) {
-            onChanged(value.copyWith(color: color));
-          },
-        ),
+        AluminiumColorPicker(value: value, onChanged: onChanged),
       ],
+    );
+  }
+}
+
+/// The gauge half of [WindowMaterialPicker], on its own so the input screen
+/// can place it apart from the colour.
+class WindowGaugePicker extends StatelessWidget {
+  final WindowMaterial value;
+  final ValueChanged<WindowMaterial> onChanged;
+
+  const WindowGaugePicker({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OptionSwitchRow(
+      label: 'Gauge',
+      options: <Widget>[
+        for (final String gauge in WindowGauges.all)
+          OptionSwitch(
+            label: gauge,
+            selected: gauge == value.gauge,
+            expand: true,
+            onTap: () {
+              if (gauge != value.gauge) {
+                onChanged(value.copyWith(gauge: gauge));
+              }
+            },
+          ),
+      ],
+    );
+  }
+}
+
+/// The colour half of [WindowMaterialPicker].
+///
+/// The finishes as boxes to tap, the chosen one named above them. A shop
+/// picks a finish by eye; the list of names it used to open made them read
+/// "SAHARA/ BROWN" and "BLACK/ MULTI" every time.
+class AluminiumColorPicker extends StatelessWidget {
+  final WindowMaterial value;
+  final ValueChanged<WindowMaterial> onChanged;
+
+  const AluminiumColorPicker({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SwatchChoiceGrid(
+      title: 'ALUMINIUM COLOR',
+      options: AluminiumColors.all,
+      selected: value.color,
+      nameFor: AluminiumColors.labelFor,
+      swatchBuilder: (String color, double size) =>
+          AluminiumSwatch(color: color, size: size),
+      keyPrefix: 'aluminium_color',
+      onSelected: (String color) {
+        onChanged(value.copyWith(color: color));
+      },
     );
   }
 }

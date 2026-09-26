@@ -19,6 +19,7 @@ import '../../../tutorial/tutorial_overlay.dart';
 import '../../../tutorial/tutorial_step.dart';
 import '../../../tutorial/tutorial_target.dart';
 import '../../../../shared/format/suter_half.dart';
+import '../../../../shared/widgets/arrangeable_column.dart';
 import '../../../../shared/widgets/option_switch.dart';
 import '../../../../shared/widgets/suter_wheel.dart';
 import '../../../settings/data/estimation_settings_repository.dart';
@@ -29,6 +30,7 @@ import '../../../formulas/model/window_measurements.dart';
 import '../../../settings/state/numbering_mode.dart';
 import '../../../settings/state/size_input_mode.dart';
 import '../review_list_screen.dart';
+import 'input_block_order.dart';
 import 'size_entry_notation.dart';
 import '../../models/glass_color.dart';
 import '../../models/window_material.dart';
@@ -1570,63 +1572,58 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// now, small enough to stay out of the way. Anything that is set once per
   /// window -- sections, D46/D52, back collar, net -- stays in the Sections
   /// panel.
-  Widget _buildQuickControls(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        _buildInlineUnitSelector(context),
-        if (_showsLockTypeSelector) ...<Widget>[
-          const SizedBox(height: 8),
-          _buildInlineChipRow(
-            context,
-            label: 'Lock',
-            chips: <Widget>[
-              _buildInlineChip(
-                chipKey: const Key('lock_latch_option'),
-                label: 'Latch',
-                selected: _lockType == _LockType.latch,
-                onTap: () => _onLockTypeChanged(_LockType.latch),
-              ),
-              _buildInlineChip(
-                chipKey: const Key('lock_self_option'),
-                label: 'Self',
-                selected: _lockType == _LockType.self,
-                onTap: () => _onLockTypeChanged(_LockType.self),
-              ),
-              if (_allowsHandalLockType)
-                _buildInlineChip(
-                  chipKey: const Key('lock_handal_option'),
-                  label: 'Handal',
-                  selected: _lockType == _LockType.handal,
-                  onTap: () => _onLockTypeChanged(_LockType.handal),
-                ),
-            ],
+  // Unit, lock and rubber used to live behind the sidebar, so people typed a
+  // size without being sure which unit was set. They sit with the size fields
+  // now -- each its own row, so each can be moved on its own.
+
+  Widget _buildLockRow(BuildContext context) {
+    return _buildInlineChipRow(
+      context,
+      label: 'Lock',
+      chips: <Widget>[
+        _buildInlineChip(
+          chipKey: const Key('lock_latch_option'),
+          label: 'Latch',
+          selected: _lockType == _LockType.latch,
+          onTap: () => _onLockTypeChanged(_LockType.latch),
+        ),
+        _buildInlineChip(
+          chipKey: const Key('lock_self_option'),
+          label: 'Self',
+          selected: _lockType == _LockType.self,
+          onTap: () => _onLockTypeChanged(_LockType.self),
+        ),
+        if (_allowsHandalLockType)
+          _buildInlineChip(
+            chipKey: const Key('lock_handal_option'),
+            label: 'Handal',
+            selected: _lockType == _LockType.handal,
+            onTap: () => _onLockTypeChanged(_LockType.handal),
           ),
-        ],
-        if (_isFabricationFlow) ...<Widget>[
-          const SizedBox(height: 8),
-          _buildInlineChipRow(
-            context,
-            label: 'Rubber',
-            chips: <Widget>[
-              _buildInlineChip(
-                chipKey: const Key('rubber_fix_option'),
-                label: 'Fix',
-                selected: _rubberType == _RubberType.fix,
-                onTap: () => _onRubberTypeChanged(_RubberType.fix),
-              ),
-              // Some windows only ever take Fix, so U is not offered there
-              // rather than offered and silently ignored.
-              if (!_isFixOnlyRubberWindow)
-                _buildInlineChip(
-                  chipKey: const Key('rubber_u_option'),
-                  label: 'U',
-                  selected: _rubberType == _RubberType.u,
-                  onTap: () => _onRubberTypeChanged(_RubberType.u),
-                ),
-            ],
+      ],
+    );
+  }
+
+  Widget _buildRubberRow(BuildContext context) {
+    return _buildInlineChipRow(
+      context,
+      label: 'Rubber',
+      chips: <Widget>[
+        _buildInlineChip(
+          chipKey: const Key('rubber_fix_option'),
+          label: 'Fix',
+          selected: _rubberType == _RubberType.fix,
+          onTap: () => _onRubberTypeChanged(_RubberType.fix),
+        ),
+        // Some windows only ever take Fix, so U is not offered there
+        // rather than offered and silently ignored.
+        if (!_isFixOnlyRubberWindow)
+          _buildInlineChip(
+            chipKey: const Key('rubber_u_option'),
+            label: 'U',
+            selected: _rubberType == _RubberType.u,
+            onTap: () => _onRubberTypeChanged(_RubberType.u),
           ),
-        ],
       ],
     );
   }
@@ -2472,19 +2469,12 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// and one line instead of two leaves the collar cards and the sizes on
   /// screen together. The wheel keeps a row per dimension: a box and a wheel
   /// each, twice over, is four controls across a phone.
+  ///
+  /// The "Measure every side" switch is not part of this: it is a part of the
+  /// screen of its own, so it can be moved on its own.
   Widget _buildSizeFields(TextStyle? numberInputStyle, TextStyle? hintStyle) {
-    if (_canMeasureSides) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _buildPerSideToggle(),
-          const SizedBox(height: 12),
-          if (_usesSideInput)
-            _buildPerSideFields(numberInputStyle, hintStyle)
-          else
-            _buildPlainSizeFields(numberInputStyle, hintStyle),
-        ],
-      );
+    if (_usesSideInput) {
+      return _buildPerSideFields(numberInputStyle, hintStyle);
     }
     return _buildPlainSizeFields(numberInputStyle, hintStyle);
   }
@@ -3180,6 +3170,102 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     );
   }
 
+  /// This window's parts, in the order the shop left them.
+  List<ArrangeableBlock> _inArrangedOrder(Map<String, ArrangeableBlock> parts) {
+    final List<String> order =
+        AppSettings.instance.inputBlockOrder ?? InputBlockOrder.defaults;
+    return <ArrangeableBlock>[
+      for (final String id in InputBlockOrder.arrange(order, parts.keys.toSet()))
+        parts[id]!,
+    ];
+  }
+
+  /// Keeps where a part was dropped. The parts this window does not have keep
+  /// their places, for the windows that do.
+  void _onPartsReordered(List<String> moved) {
+    final List<String> order =
+        AppSettings.instance.inputBlockOrder ?? InputBlockOrder.defaults;
+    setState(() {});
+    unawaited(
+      AppSettings.instance.setInputBlockOrder(
+        InputBlockOrder.merge(order, moved),
+      ),
+    );
+  }
+
+  bool get _hasOwnPartsLayout {
+    final List<String>? order = AppSettings.instance.inputBlockOrder;
+    return order != null && !InputBlockOrder.isDefault(order);
+  }
+
+  void _resetPartsLayout() {
+    setState(() {});
+    unawaited(AppSettings.instance.setInputBlockOrder(null));
+  }
+
+  /// Tells the shop the parts can be moved, and puts them back.
+  Widget _buildPartsLayoutOption(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'Screen Layout',
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: AppTheme.deepTeal,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Hold any part of this screen for a moment, then drag it up or '
+          'down to move it.',
+          style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.slate),
+        ),
+        const SizedBox(height: 8),
+        // Drawn like the other sidebar options; greyed out while the screen
+        // is still as it came, as there is nothing to put back.
+        Opacity(
+          opacity: _hasOwnPartsLayout ? 1 : 0.45,
+          child: Material(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              key: const Key('reset_input_layout_button'),
+              borderRadius: BorderRadius.circular(10),
+              onTap: _hasOwnPartsLayout ? _resetPartsLayout : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Icon(
+                      Icons.restart_alt_rounded,
+                      size: 18,
+                      color: AppTheme.deepTeal,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Reset layout',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: AppTheme.deepTeal,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final TextStyle? hintStyle = Theme.of(context).textTheme.bodyMedium
@@ -3235,6 +3321,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                   // formula only means anything alongside the collar and lock
                   // it is cut with.
                   _FormulaEditorButton(onTap: _openFormulaEditor),
+                  const SizedBox(height: 8),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  _buildPartsLayoutOption(context),
                   const SizedBox(height: 8),
                   const Divider(),
                   const SizedBox(height: 8),
@@ -3506,10 +3596,15 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                       18,
                       math.max(24, keyboardInset + 140),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TutorialTarget(
+                    // Every part below can be held and dragged up or down; the
+                    // order is this phone's own and is kept.
+                    child: ArrangeableColumn(
+                      key: const Key('input_parts'),
+                      onReorder: _onPartsReordered,
+                      blocks: _inArrangedOrder(<String, ArrangeableBlock>{
+                        InputBlockOrder.collar: ArrangeableBlock(
+                          id: InputBlockOrder.collar,
+                          child: TutorialTarget(
                           id: 'input.collarCards',
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -3582,114 +3677,159 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        _buildWinNoAndQuantityRow(hintStyle),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Text(
-                              'Dimensions',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: AppTheme.deepTeal,
-                                    fontWeight: FontWeight.w700,
+                        ),
+                        InputBlockOrder.windowNo: ArrangeableBlock(
+                          id: InputBlockOrder.windowNo,
+                          child: _buildWinNoAndQuantityRow(hintStyle),
+                        ),
+                        InputBlockOrder.dimensions: ArrangeableBlock(
+                          id: InputBlockOrder.dimensions,
+                          // The heading's own height is its spacing.
+                          tight: true,
+                          child: Row(
+                            children: [
+                              Text(
+                                'Dimensions',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      color: AppTheme.deepTeal,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                onPressed: _showDimensionInfo,
+                                icon: const Icon(Icons.info_outline_rounded),
+                                color: AppTheme.deepTeal,
+                              ),
+                            ],
+                          ),
+                        ),
+                        InputBlockOrder.unit: ArrangeableBlock(
+                          id: InputBlockOrder.unit,
+                          compact: true,
+                          child: TutorialTarget(
+                            id: 'input.unit',
+                            child: _buildInlineUnitSelector(context),
+                          ),
+                        ),
+                        if (_showsLockTypeSelector)
+                          InputBlockOrder.lock: ArrangeableBlock(
+                            id: InputBlockOrder.lock,
+                            compact: true,
+                            child: _buildLockRow(context),
+                          ),
+                        if (_isFabricationFlow)
+                          InputBlockOrder.rubber: ArrangeableBlock(
+                            id: InputBlockOrder.rubber,
+                            compact: true,
+                            child: _buildRubberRow(context),
+                          ),
+                        if (_canMeasureSides)
+                          InputBlockOrder.perSide: ArrangeableBlock(
+                            id: InputBlockOrder.perSide,
+                            child: _buildPerSideToggle(),
+                          ),
+                        InputBlockOrder.sizes: ArrangeableBlock(
+                          id: InputBlockOrder.sizes,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              TutorialTarget(
+                                id: 'input.sizes',
+                                child: _buildSizeFields(
+                                  numberInputStyle,
+                                  hintStyle,
+                                ),
+                              ),
+                              // Right under the sizes, because it changes what
+                              // they mean for these pieces: set on the formula
+                              // screen, it would otherwise be invisible from
+                              // here. It moves with them.
+                              if (_pieceSizes.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                _PieceSizesNotice(
+                                  sizes: _pieceSizes,
+                                  unit: _isFabricationFlow ? 'cm' : 'ft',
+                                  onClear: () => setState(
+                                    () => _pieceSizes = const <PieceSize>[],
                                   ),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              onPressed: _showDimensionInfo,
-                              icon: const Icon(Icons.info_outline_rounded),
-                              color: AppTheme.deepTeal,
-                            ),
-                          ],
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
-                        // Unit, lock and rubber used to live behind the sidebar,
-                        // so people typed a size without being sure which unit
-                        // was set. They sit with the size fields now.
-                        TutorialTarget(
-                          id: 'input.unit',
-                          child: _buildQuickControls(context),
-                        ),
-                        const SizedBox(height: 12),
-                        TutorialTarget(
-                          id: 'input.sizes',
-                          child: _buildSizeFields(numberInputStyle, hintStyle),
-                        ),
-                        // Right under the sizes, because it changes what they
-                        // mean for these pieces: set on the formula screen,
-                        // it would otherwise be invisible from here.
-                        if (_pieceSizes.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          _PieceSizesNotice(
-                            sizes: _pieceSizes,
-                            unit: _isFabricationFlow ? 'cm' : 'ft',
-                            onClear: () => setState(
-                              () => _pieceSizes = const <PieceSize>[],
+                        InputBlockOrder.gauge: ArrangeableBlock(
+                          id: InputBlockOrder.gauge,
+                          child: TutorialTarget(
+                            id: 'input.material',
+                            child: WindowGaugePicker(
+                              value: _material,
+                              onChanged: (WindowMaterial next) {
+                                setState(() => _material = next);
+                              },
                             ),
                           ),
-                        ],
-                        // The aluminium and the glass come after the sizes. Both
-                        // are settled for most of a job -- the finish carries
-                        // over from the last window, the glass is remembered
-                        // until somebody picks another -- so the part that
-                        // changes with every window, the number and the sizes,
-                        // sits straight under the collar.
-                        const SizedBox(height: 16),
-                        TutorialTarget(
-                          id: 'input.material',
-                          child: WindowMaterialPicker(
+                        ),
+                        InputBlockOrder.aluminiumColor: ArrangeableBlock(
+                          id: InputBlockOrder.aluminiumColor,
+                          child: AluminiumColorPicker(
                             value: _material,
                             onChanged: (WindowMaterial next) {
                               setState(() => _material = next);
                             },
                           ),
                         ),
-                        // Glass sits under the aluminium because it is the same
-                        // kind of decision about the same opening.
-                        //
-                        // Both flows need it, for different reasons. Estimation
-                        // prices each glass separately, so this decides what a
-                        // window's glazing is charged at. Fabrication cuts it:
-                        // the glass list carries the colour, and the sheet
-                        // optimizer keeps each colour on its own sheets -- two
-                        // colours packed onto one sheet is a sheet that cannot
-                        // be cut.
-                        const SizedBox(height: 16),
-                        TutorialTarget(
-                          id: 'input.glass',
-                          child: GlassColorPicker(
-                            value: _glassColor,
-                            onChanged: (String next) {
-                              setState(() => _glassColor = next);
-                              // Every window and glass row after this opens
-                              // on it too, in this job and the next, until
-                              // somebody picks again.
-                              unawaited(LastGlassColor.instance.remember(next));
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TutorialTarget(
-                          id: 'input.description',
-                          child: TextField(
-                            key: _descriptionFieldKey,
-                            controller: _descriptionController,
-                            focusNode: _descriptionFocusNode,
-                            textInputAction: _textInputActionForField(
-                              _descriptionFocusNode,
-                            ),
-                            maxLength: _maxDescriptionLength,
-                            maxLines: 2,
-                            onSubmitted: (_) =>
-                                _submitFromField(_descriptionFocusNode),
-                            decoration: InputDecoration(
-                              labelText: 'Description (Optional)',
-                              hintText: 'e.g. bath room window',
-                              hintStyle: hintStyle,
+                        // Both flows need the glass, for different reasons.
+                        // Estimation prices each glass separately, so this
+                        // decides what a window's glazing is charged at.
+                        // Fabrication cuts it: the glass list carries the
+                        // colour, and the sheet optimizer keeps each colour on
+                        // its own sheets -- two colours packed onto one sheet
+                        // is a sheet that cannot be cut.
+                        InputBlockOrder.glassColor: ArrangeableBlock(
+                          id: InputBlockOrder.glassColor,
+                          child: TutorialTarget(
+                            id: 'input.glass',
+                            child: GlassColorPicker(
+                              value: _glassColor,
+                              onChanged: (String next) {
+                                setState(() => _glassColor = next);
+                                // Every window and glass row after this opens
+                                // on it too, in this job and the next, until
+                                // somebody picks again.
+                                unawaited(
+                                  LastGlassColor.instance.remember(next),
+                                );
+                              },
                             ),
                           ),
                         ),
-                      ],
+                        InputBlockOrder.description: ArrangeableBlock(
+                          id: InputBlockOrder.description,
+                          child: TutorialTarget(
+                            id: 'input.description',
+                            child: TextField(
+                              key: _descriptionFieldKey,
+                              controller: _descriptionController,
+                              focusNode: _descriptionFocusNode,
+                              textInputAction: _textInputActionForField(
+                                _descriptionFocusNode,
+                              ),
+                              maxLength: _maxDescriptionLength,
+                              maxLines: 2,
+                              onSubmitted: (_) =>
+                                  _submitFromField(_descriptionFocusNode),
+                              decoration: InputDecoration(
+                                labelText: 'Description (Optional)',
+                                hintText: 'e.g. bath room window',
+                                hintStyle: hintStyle,
+                              ),
+                            ),
+                          ),
+                        ),
+                      }),
                     ),
                   ),
                 ),

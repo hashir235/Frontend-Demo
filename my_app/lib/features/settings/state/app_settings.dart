@@ -29,11 +29,37 @@ class AppSettings extends ChangeNotifier {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       _perSideSizes = prefs.getBool(_perSideKey) ?? false;
+      _inputBlockOrder = prefs.getStringList(_inputBlockOrderKey);
     } catch (_) {
       // A phone that cannot read preferences still gets the usual boxes.
       _perSideSizes = false;
+      _inputBlockOrder = null;
     }
     notifyListeners();
+  }
+
+  static const String _inputBlockOrderKey = 'quick_al.input_block_order';
+
+  /// The order this phone's shop moved the input screen's parts into, or
+  /// null for the screen as it came. The ids are `InputBlockOrder`'s.
+  List<String>? _inputBlockOrder;
+
+  List<String>? get inputBlockOrder => _inputBlockOrder;
+
+  /// Keeps a new order, or with null goes back to the screen as it came.
+  Future<void> setInputBlockOrder(List<String>? order) async {
+    _inputBlockOrder = order == null ? null : List<String>.unmodifiable(order);
+    notifyListeners();
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      if (order == null) {
+        await prefs.remove(_inputBlockOrderKey);
+      } else {
+        await prefs.setStringList(_inputBlockOrderKey, order);
+      }
+    } catch (_) {
+      // The layout still holds for this run even if it could not be saved.
+    }
   }
 
   Future<void> setPerSideSizes(bool value) async {
@@ -49,7 +75,10 @@ class AppSettings extends ChangeNotifier {
   }
 
   @visibleForTesting
-  void resetForTest() => _perSideSizes = false;
+  void resetForTest() {
+    _perSideSizes = false;
+    _inputBlockOrder = null;
+  }
 
   NumberingMode _numberingMode = NumberingMode.auto;
 
