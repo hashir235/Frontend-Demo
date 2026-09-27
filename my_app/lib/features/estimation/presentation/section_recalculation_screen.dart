@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/format/cut_length.dart';
 import '../../../shared/format/suter_half.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
@@ -10,12 +11,44 @@ import '../../tutorial/tutorial_target.dart';
 import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
 import '../models/section_recalculation.dart';
+import 'input/feet_inch_suter_notation.dart';
+import 'input/size_entry_notation.dart';
 
 /// Aluminium stock comes in bars, not in arbitrary lengths. Anything outside
 /// this range is almost certainly a unit mix-up -- someone typing inches or
 /// centimetres into a field that counts feet.
 const int kMinStockLengthFt = 4;
 const int kMaxStockLengthFt = 30;
+
+/// The unit an extra length is typed in. The buttons over the box say which,
+/// so nobody has to guess what the number means.
+enum ExtraLengthUnit {
+  /// Centimetres, one digit after the point: `320.5`.
+  cm,
+
+  /// Inch and suter, as the size boxes type them: `127'' 4½'''`.
+  inch,
+
+  /// Feet, inch and suter: `10' 7'' 4½'''`.
+  feet,
+}
+
+/// [text] as typed in [unit], in feet; null when it is not a length.
+double? extraLengthInFeet(String text, ExtraLengthUnit unit) {
+  switch (unit) {
+    case ExtraLengthUnit.cm:
+      final double? cm = double.tryParse(text.trim());
+      return cm == null ? null : cm / 30.48;
+    case ExtraLengthUnit.inch:
+      final SizeEntry entry = SizeNotation.readEntry(text);
+      final int? inches = int.tryParse(entry.whole);
+      if (inches == null) return null;
+      final double suter = (int.tryParse(entry.sub) ?? 0) + (entry.half ? 0.5 : 0);
+      return (inches + suter / 8) / 12;
+    case ExtraLengthUnit.feet:
+      return FeetInchSuterEntry.read(text).inFeet;
+  }
+}
 
 class SectionRecalculationScreen extends StatefulWidget {
   final CuttingReportSection section;
@@ -47,6 +80,9 @@ class _SectionRecalculationScreenState
   final TextEditingController _extraLengthController = TextEditingController();
   final TextEditingController _extraQuantityController =
       TextEditingController();
+
+  /// Feet by default: the stock lengths above are all in feet.
+  ExtraLengthUnit _extraUnit = ExtraLengthUnit.feet;
 
   bool _isSubmitting = false;
   String? _errorMessage;
@@ -87,7 +123,13 @@ class _SectionRecalculationScreenState
     return fallback;
   }
 
+  /// A bar's length: whole feet as `16 ft`, anything else -- an extra length
+  /// typed as `10' 7'' 4'''` or in cm -- the way the tape reads it, rather
+  /// than as a decimal nobody typed.
   String _stockDisplayInFeet(double stockLenFt) {
+    if ((stockLenFt - stockLenFt.roundToDouble()).abs() > 1e-6) {
+      return CutLength.fromFeet(stockLenFt).inFeetInchSuter;
+    }
     final String fixed = stockLenFt.toStringAsFixed(2);
     final String compact = fixed
         .replaceFirst(RegExp(r'0+$'), '')
@@ -157,7 +199,7 @@ class _SectionRecalculationScreenState
     if (extraLengthText.isNotEmpty) {
       stockOptions.add(
         SectionStockAvailability(
-          lengthFt: double.parse(extraLengthText),
+          lengthFt: extraLengthInFeet(extraLengthText, _extraUnit)!,
           quantity: extraQuantityText.isEmpty
               ? null
               : int.parse(extraQuantityText),
@@ -485,56 +527,143 @@ class _SectionRecalculationScreenState
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.sky.withValues(alpha: 0.82)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Expanded(
-            child: TextFormField(
-              controller: _extraLengthController,
-              keyboardType: TextInputType.number,
-              inputFormatters: <TextInputFormatter>[
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(3),
-              ],
-              decoration: const InputDecoration(
-                labelText: 'Extra Length',
-                hintText: 'Optional',
-                suffixText: 'ft',
+          Row(
+            children: <Widget>[
+              const Expanded(
+                child: Text(
+                  'Length in',
+                  style: TextStyle(
+                    color: AppTheme.deepTeal,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
               ),
-              validator: (String? value) {
-                final String lengthText = value?.trim() ?? '';
-                final String quantityText = _extraQuantityController.text
-                    .trim();
-                if (lengthText.isEmpty) {
-                  if (quantityText.isNotEmpty) {
-                    return 'Add a length first';
-                  }
-                  return null;
-                }
-                final int? parsed = int.tryParse(lengthText);
-                if (parsed == null || parsed <= 0) {
-                  return 'Enter a valid ft length';
-                }
-                // A user typed 238 here once, reading the field as inches.
-                // Nothing rejected it, and the optimizer then failed with a
-                // message that gave no hint where the trouble was.
-                if (parsed < kMinStockLengthFt || parsed > kMaxStockLengthFt) {
-                  return 'Lengths are in feet '
-                      '($kMinStockLengthFt-$kMaxStockLengthFt). '
-                      'Did you mean inches?';
-                }
-                return null;
-              },
-            ),
+              _buildExtraUnitButtons(),
+            ],
           ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 120,
-            child: _buildQuantityField(controller: _extraQuantityController),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: TextFormField(
+                  key: const Key('extra_length_field'),
+                  controller: _extraLengthController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: <TextInputFormatter>[
+                    switch (_extraUnit) {
+                      ExtraLengthUnit.cm => const TypedSizeFormatter(
+                        TypedSizeUnit.cm,
+                      ),
+                      ExtraLengthUnit.inch => const MergedSizeFormatter(),
+                      ExtraLengthUnit.feet => const FeetInchSuterFormatter(),
+                    },
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Extra Length',
+                    hintText: switch (_extraUnit) {
+                      ExtraLengthUnit.cm => 'e.g. 320.5',
+                      ExtraLengthUnit.inch => "e.g. 127'' 4'''",
+                      ExtraLengthUnit.feet => "e.g. 10' 7'' 4'''",
+                    },
+                    suffixText: _extraUnit == ExtraLengthUnit.cm ? 'cm' : null,
+                    errorMaxLines: 2,
+                  ),
+                  validator: _validateExtraLength,
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 120,
+                child: _buildQuantityField(controller: _extraQuantityController),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  /// cm, inch, feet: the unit the extra length is typed in. Changing it
+  /// empties the box -- a number typed as feet means nothing in cm.
+  Widget _buildExtraUnitButtons() {
+    return SegmentedButton<ExtraLengthUnit>(
+      key: const Key('extra_length_unit'),
+      showSelectedIcon: false,
+      style: SegmentedButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        selectedBackgroundColor: AppTheme.deepTeal,
+        selectedForegroundColor: Colors.white,
+        foregroundColor: AppTheme.deepTeal,
+        // The theme's own label font, only heavier: a bare TextStyle here
+        // would drop the app's font for the platform's.
+        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          fontSize: 13,
+        ),
+      ),
+      segments: const <ButtonSegment<ExtraLengthUnit>>[
+        ButtonSegment<ExtraLengthUnit>(
+          value: ExtraLengthUnit.cm,
+          label: Text('cm', key: Key('extra_unit_cm')),
+        ),
+        ButtonSegment<ExtraLengthUnit>(
+          value: ExtraLengthUnit.inch,
+          label: Text('inch', key: Key('extra_unit_inch')),
+        ),
+        ButtonSegment<ExtraLengthUnit>(
+          value: ExtraLengthUnit.feet,
+          label: Text('feet', key: Key('extra_unit_feet')),
+        ),
+      ],
+      selected: <ExtraLengthUnit>{_extraUnit},
+      onSelectionChanged: (Set<ExtraLengthUnit> picked) {
+        if (picked.first == _extraUnit) return;
+        setState(() {
+          _extraUnit = picked.first;
+          _extraLengthController.clear();
+        });
+      },
+    );
+  }
+
+  String? _validateExtraLength(String? value) {
+    final String lengthText = value?.trim() ?? '';
+    final String quantityText = _extraQuantityController.text.trim();
+    if (lengthText.isEmpty) {
+      if (quantityText.isNotEmpty) {
+        return 'Add a length first';
+      }
+      return null;
+    }
+    final double? feet = extraLengthInFeet(lengthText, _extraUnit);
+    if (feet == null || feet <= 0) {
+      return 'Enter a valid length';
+    }
+    // A user once typed 238 here, reading the box as inches. The unit
+    // buttons now say what the box counts, and a length no bar comes in is
+    // still stopped here rather than failing in the optimizer.
+    const double tolerance = 1e-9;
+    if (feet < kMinStockLengthFt - tolerance ||
+        feet > kMaxStockLengthFt + tolerance) {
+      // Said in the unit being typed: 4 to 30 ft is 122 to 914 cm, and
+      // 48 to 360 inches.
+      return switch (_extraUnit) {
+        ExtraLengthUnit.cm => 'Use 122 to 914 cm',
+        ExtraLengthUnit.inch => "Use 48'' to 360''",
+        ExtraLengthUnit.feet =>
+          "Use $kMinStockLengthFt' to $kMaxStockLengthFt'",
+      };
+    }
+    return null;
   }
 
   Widget _buildErrorBanner(BuildContext context, String message) {

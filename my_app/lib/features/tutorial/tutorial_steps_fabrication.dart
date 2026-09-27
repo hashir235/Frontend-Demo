@@ -306,8 +306,8 @@ const List<TutorialStep> fabricationTutorialSteps = <TutorialStep>[
     targetId: 'recalc.extra',
     title: 'کوئی اور لینتھ',
     body:
-        'کوئی لینتھ فہرست میں نہیں تو یہاں لکھ دیں — لمبائی فٹ میں اور ساتھ '
-        'تعداد۔ خیال رکھیں: یہ خانہ فٹ مانگتا ہے، انچ نہیں۔',
+        'کوئی لینتھ فہرست میں نہیں تو یہاں لکھ دیں اور ساتھ تعداد۔ پہلے اکائی '
+        'چنیں — cm، inch یا feet — پھر لمبائی اسی میں لکھیں۔',
   ),
   TutorialStep(
     screen: TutorialScreen.sectionRecalculation,

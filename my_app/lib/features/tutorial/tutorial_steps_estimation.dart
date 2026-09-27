@@ -331,8 +331,8 @@ const List<TutorialStep> estimationTutorialSteps = <TutorialStep>[
     title: 'کوئی اور لینتھ',
     body:
         'اگر آپ کے پاس کوئی ایسی لینتھ ہے جو اوپر کی فہرست میں نہیں، تو یہاں '
-        'لکھ دیں — لمبائی فٹ میں اور ساتھ اس کی تعداد۔ خیال رکھیں: یہ خانہ فٹ '
-        'مانگتا ہے، انچ نہیں۔',
+        'لکھ دیں اور ساتھ اس کی تعداد۔ پہلے اوپر سے اکائی چنیں — cm، inch یا '
+        'feet — پھر لمبائی اسی میں لکھیں۔',
   ),
   TutorialStep(
     screen: TutorialScreen.sectionRecalculation,
