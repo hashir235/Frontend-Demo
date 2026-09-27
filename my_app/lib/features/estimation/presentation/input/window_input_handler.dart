@@ -72,15 +72,24 @@ class DefaultInputHandler extends WindowInputHandler {
   const DefaultInputHandler();
 }
 
-WindowInputHandler handlerForWindow(WindowType node) {
-  final WindowVariant? variant = WindowVariants.of(node.codeName);
+WindowInputHandler handlerForWindow(WindowType node) =>
+    handlerForWindowCode(node.codeName);
+
+/// The input for the window saved as [code] -- which, for a window with a
+/// switchable profile, is the one of its pair the fabricator has chosen.
+WindowInputHandler handlerForWindowCode(String? code) {
+  final WindowVariant? variant = WindowVariants.of(code);
   if (variant != null) {
+    // The second of a switchable pair is its first, switched.
+    final WindowVariant onCard = variant.isAlternate
+        ? WindowVariants.of(variant.alternateCode) ?? variant
+        : variant;
     return VariantInputHandler(
       base: _handlerForCode(variant.baseCode),
-      variant: variant,
-    );
+      variant: onCard,
+    )..alternateOn = variant.isAlternate;
   }
-  return _handlerForCode(node.codeName);
+  return _handlerForCode(code);
 }
 
 WindowInputHandler _handlerForCode(String? code) {

@@ -172,6 +172,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   String? _leftWidthError;
   String? _archError;
   late final WindowInputHandler _handler;
+
+  /// The code this window is saved under. Its library card's, except where
+  /// the window has a profile the fabricator can switch (ET24 or ET24A on the
+  /// M-section Economy windows): then whichever of the pair is chosen.
+  late String _codeInUse;
   Future<void> _pendingProjectSync = Future<void>.value();
 
   int get _visibleWinNo {
@@ -195,7 +200,35 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         windowCode == 'Double_Door';
   }
 
-  String get _windowCode => widget.node.codeName ?? '';
+  String get _windowCode => _codeInUse;
+
+  /// The window's own card in the library, whatever is chosen on it -- what
+  /// its remembered sidebar choices are kept against.
+  String get _libraryCode => widget.node.codeName ?? '';
+
+  /// The profile this window can switch, as (in use, the other), or null.
+  ({String own, String other})? get _switchableProfile =>
+      WindowVariants.alternateProfile(_codeInUse);
+
+  /// Swaps the switchable profile over: the window becomes the other of its
+  /// pair, and the sidebar, the formulas and what is saved follow.
+  void _switchProfile() {
+    final WindowInputHandler handler = _handler;
+    if (handler is! VariantInputHandler || handler.variant.alternateCode == null) {
+      return;
+    }
+    setState(() {
+      final String? selectedBase = _selectedSectionCode == null
+          ? null
+          : handler.current.baseSectionFor(_selectedSectionCode!);
+      handler.alternateOn = !handler.alternateOn;
+      _codeInUse = handler.current.code;
+      _selectedSectionCode = _normalizedSelectedSectionCode(
+        selectedBase == null ? null : handler.current.sectionFor(selectedBase),
+        _selectedCollar,
+      );
+    });
+  }
 
   /// The window this one behaves as: itself, or for a variant window (a
   /// sliding window on the B frame, say) its base. Locks, rubbers and the
@@ -743,13 +776,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     unawaited(
       _preferencesStore.persistUnitMode(widget.session.flow, _unitMode),
     );
-    if (_windowCode.trim().isEmpty) {
+    if (_libraryCode.trim().isEmpty) {
       return;
     }
     unawaited(
       _preferencesStore.persistSidebar(
         flow: widget.session.flow,
-        windowCode: _windowCode,
+        windowCode: _libraryCode,
         preferencesState: _currentSidebarPreferences(),
       ),
     );
@@ -766,7 +799,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     final WindowInputSidebarPreferences? preferencesState =
         await _preferencesStore.restoreSidebar(
           flow: widget.session.flow,
-          windowCode: _windowCode,
+          windowCode: _libraryCode,
         );
 
     if (!mounted) {
@@ -881,11 +914,21 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                 color: selected ? AppTheme.violet : AppTheme.deepTeal,
               ),
               const SizedBox(width: 10),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppTheme.deepTeal,
-                  fontWeight: FontWeight.w700,
+              // The sidebar is narrow on a phone: a long label shrinks to fit
+              // rather than running off the edge or losing its last letters
+              // ("ET24A" read as "ET24" would be the wrong profile).
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -948,7 +991,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   @override
   void initState() {
     super.initState();
-    _handler = handlerForWindow(widget.node);
+    // A saved window opens as whichever of a switchable pair it was saved as.
+    final String libraryCode = widget.node.codeName ?? '';
+    final String? savedCode = widget.editingItem?.windowCode;
+    _codeInUse = savedCode != null &&
+            WindowVariants.of(savedCode)?.alternateCode == libraryCode
+        ? savedCode
+        : libraryCode;
+    _handler = handlerForWindowCode(_codeInUse);
     _restoreHandlerOptionsFromEditingItem(widget.editingItem);
     _rubberType = _rubberTypeFromStored(widget.editingItem?.rubberType);
     if (_isFixOnlyRubberWindow) {
@@ -1995,7 +2045,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
 
     final int? windowIndex = widget.node.displayIndex;
-    final String? windowCode = widget.node.codeName;
+    final String? windowCode = _codeInUse.isEmpty ? null : _codeInUse;
     if (windowIndex == null || windowCode == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Window details are missing for save.')),
@@ -2161,7 +2211,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// collar off or puts it back; the drawing and the number above it follow.
   /// See [CollarSidePicker].
   Widget _buildCollarPicker() {
-    final CollarLayout? layout = CollarLayout.forWindow(widget.node.codeName ?? '');
+    final CollarLayout? layout = CollarLayout.forWindow(_windowCode);
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final double side = math.min(
@@ -3305,6 +3355,30 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                     ),
                     const SizedBox(height: 12),
                   ],
+                  if (_switchableProfile != null) ...[
+                    Text(
+                      '${_switchableProfile!.own} or ${_switchableProfile!.other}',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final String name in <String>[
+                      ...<String>[_switchableProfile!.own, _switchableProfile!.other]
+                        ..sort(),
+                    ]) ...[
+                      _buildSidebarToggleOption(
+                        label: name,
+                        selected: name == _switchableProfile!.own,
+                        onTap: () {
+                          if (name != _switchableProfile!.own) _switchProfile();
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                    const SizedBox(height: 6),
+                  ],
                   if (_showsBackCollarOption) ...[
                     Text(
                       'Back Collar',
@@ -3399,17 +3473,26 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    Text(
-                                      code,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.copyWith(
-                                            color: AppTheme.deepTeal,
-                                            fontWeight: FontWeight.w700,
-                                          ),
+                                    // A long profile name (DC30BA, ET26A)
+                                    // shrinks to fit the narrow sidebar
+                                    // rather than losing its last letter.
+                                    Expanded(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          code,
+                                          maxLines: 1,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                color: AppTheme.deepTeal,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ),
                                     ),
-                                    const Spacer(),
                                     if (isSelected)
                                       Icon(
                                         Icons.check_circle,

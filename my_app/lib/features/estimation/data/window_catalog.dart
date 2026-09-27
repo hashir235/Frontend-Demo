@@ -366,6 +366,172 @@ class WindowCatalog {
     ),
   ];
 
+  /// The Economy line: the first line's windows, M-section ones too, on the
+  /// Economy profiles (EC for the plain windows, ET for the M-section ones).
+  /// Same drawings, collars and formulas. See [WindowVariants].
+  static const List<WindowType> economyWindows = <WindowType>[
+    WindowType(
+      label: 'Eco Sliding Window',
+      subtitle: 'Sliding window on the Economy profiles',
+      graphicKey: 'sliding_basic',
+      children: <WindowType>[],
+      displayIndex: 40,
+      codeName: 'SE_win',
+    ),
+    WindowType(
+      label: 'Eco Sliding Window M_Section',
+      subtitle: 'M-section sliding window on the Economy ET profiles',
+      graphicKey: 'sliding_basic',
+      children: <WindowType>[],
+      displayIndex: 48,
+      codeName: 'MSE_win',
+    ),
+    WindowType(
+      label: 'Eco Panel Windows',
+      subtitle: 'Panel windows on the Economy profiles',
+      graphicKey: 'panel_basic',
+      children: <WindowType>[
+        WindowType(
+          label: 'Eco Center Fix',
+          subtitle: 'Center fix panel, Economy profiles',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 41,
+          codeName: 'PF3E_win',
+        ),
+        WindowType(
+          label: 'Eco Center Slide',
+          subtitle: 'Center slide panel, Economy profiles',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 42,
+          codeName: 'PS4E_win',
+        ),
+        WindowType(
+          label: 'Eco Equal Panel',
+          subtitle: 'Equal panel, Economy profiles',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 43,
+          codeName: 'EF3E_win',
+        ),
+      ],
+      displayIndex: null,
+    ),
+    WindowType(
+      label: 'Eco Panel Windows M_Section',
+      subtitle: 'M-section panel windows on the Economy ET profiles',
+      graphicKey: 'panel_basic',
+      children: <WindowType>[
+        WindowType(
+          label: 'Eco M Center Fix',
+          subtitle: 'M-section center fix, Economy',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 49,
+          codeName: 'MPF3E_win',
+        ),
+        WindowType(
+          label: 'Eco M Center Slide',
+          subtitle: 'M-section center slide, Economy',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 50,
+          codeName: 'MPS4E_win',
+        ),
+        WindowType(
+          label: 'Eco M Equal Panel',
+          subtitle: 'M-section equal panel, Economy',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 51,
+          codeName: 'MEF3E_win',
+        ),
+      ],
+      displayIndex: null,
+    ),
+    WindowType(
+      label: 'Eco Corner Windows',
+      subtitle: 'Sliding corner windows on the Economy profiles',
+      graphicKey: 'corner_basic',
+      children: <WindowType>[
+        WindowType(
+          label: 'Eco Corner Center Fix',
+          subtitle: 'Corner with center fixed panel, Economy',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 44,
+          codeName: 'SCFE_win',
+        ),
+        WindowType(
+          label: 'Eco Corner Center Slide',
+          subtitle: 'Corner with center sliding panel, Economy',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 45,
+          codeName: 'SCSE_win',
+        ),
+        WindowType(
+          label: 'Eco Corner Left Fix',
+          subtitle: 'Corner with left fixed panel, Economy',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 46,
+          codeName: 'SCLE_win',
+        ),
+        WindowType(
+          label: 'Eco Corner Right Fix',
+          subtitle: 'Corner with right fixed panel, Economy',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 47,
+          codeName: 'SCRE_win',
+        ),
+      ],
+      displayIndex: null,
+    ),
+    WindowType(
+      label: 'Eco Corner Windows M_Section',
+      subtitle: 'M-section sliding corners on the Economy ET profiles',
+      graphicKey: 'corner_basic',
+      children: <WindowType>[
+        WindowType(
+          label: 'Eco M Corner Center Fix',
+          subtitle: 'M-section corner, center fixed, Economy',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 52,
+          codeName: 'MSCFE_win',
+        ),
+        WindowType(
+          label: 'Eco M Corner Center Slide',
+          subtitle: 'M-section corner, center sliding, Economy',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 53,
+          codeName: 'MSCSE_win',
+        ),
+        WindowType(
+          label: 'Eco M Corner Left Fix',
+          subtitle: 'M-section corner, left fixed, Economy',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 54,
+          codeName: 'MSCLE_win',
+        ),
+        WindowType(
+          label: 'Eco M Corner Right Fix',
+          subtitle: 'M-section corner, right fixed, Economy',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 55,
+          codeName: 'MSCRE_win',
+        ),
+      ],
+      displayIndex: null,
+    ),
+  ];
+
   /// Windows built as a box: fixed frame all round -- fix, corner fix,
   /// openable, doors and arches.
   static const List<WindowType> boxTypeWindows = <WindowType>[
@@ -448,6 +614,7 @@ class WindowCatalog {
     ...slidingWindows,
     ...primeWindows,
     ...royalWindows,
+    ...economyWindows,
     ...boxTypeWindows,
   ];
 
@@ -465,6 +632,11 @@ class WindowCatalog {
           WindowRow(id: 'sliding_b', nodes: forFlow(primeWindows)),
           WindowRow(id: 'sliding_ba', nodes: forFlow(royalWindows)),
         ],
+      ),
+      WindowGroup(
+        id: 'economy',
+        title: 'Economy Sliding Window',
+        rows: <WindowRow>[WindowRow(id: 'economy', nodes: forFlow(economyWindows))],
       ),
       WindowGroup(
         id: 'box',

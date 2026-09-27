@@ -21,6 +21,8 @@ class WindowVariant {
     required this.frame,
     required this.collars,
     required this.sections,
+    this.alternateCode,
+    this.isAlternate = false,
   });
 
   /// This window's own code, as it is saved: "SB_win".
@@ -33,13 +35,28 @@ class WindowVariant {
   /// The frame it is on, by its profiles' letters: "B", "BA".
   final String frame;
 
-  /// The collar types it comes in, numbered as [baseCode] numbers them.
+  /// The collar types it comes in, numbered as [baseCode] numbers them;
+  /// null for every collar its base comes in.
   ///
   /// The B and BA frames come without a collar on any side -- collar 2 --
   /// as far as is known today. Whether they come in others is not confirmed,
   /// so only that one is offered; a formula for a collar nobody has checked
-  /// would cut a frame nobody asked for.
-  final List<int> collars;
+  /// would cut a frame nobody asked for. The Economy windows come in all of
+  /// their base's.
+  final List<int>? collars;
+
+  /// Whether this window comes in collar [collar].
+  bool offersCollar(int collar) => collars?.contains(collar) ?? true;
+
+  /// The same window with one profile swapped for another, which the
+  /// fabricator chooses in the sidebar: the M-section Economy windows take
+  /// their M24 place as ET24, or as ET24A. The two are saved as two codes,
+  /// so the choice travels with the window like any other part of it.
+  final String? alternateCode;
+
+  /// True for the second of such a pair: it has no card of its own in the
+  /// library, and is reached by switching its [alternateCode] over.
+  final bool isAlternate;
 
   /// The profiles that differ from [baseCode]'s: its name for one, and this
   /// window's. Anything not named here is the same profile in both.
@@ -68,6 +85,84 @@ class WindowVariants {
   const WindowVariants._();
 
   static const List<int> _noCollar = <int>[2];
+
+  /// The Economy frame and profiles, on the plain sliding windows. DC30F is
+  /// kept as DC30F: that is how the Economy list reads.
+  static const Map<String, String> _economy = <String, String>{
+    'DC26F': 'EC26F',
+    'DC30C': 'EC30B',
+    'DC26C': 'EC26B',
+    'M23': 'EC23',
+    'M24': 'EC24',
+    'M28': 'EC28',
+  };
+
+  /// And on the M-section ones: the ET profiles.
+  static const Map<String, String> _economyM = <String, String>{
+    'M30F': 'ET30',
+    'M26F': 'ET26',
+    'M30': 'ET30A',
+    'M26': 'ET26A',
+    'M23': 'ET23',
+    'M24': 'ET24',
+    'M28': 'ET28',
+  };
+
+  /// The M-section Economy windows with ET24A in the M24 place.
+  static const Map<String, String> _economyMAlternate = <String, String>{
+    'M30F': 'ET30',
+    'M26F': 'ET26',
+    'M30': 'ET30A',
+    'M26': 'ET26A',
+    'M23': 'ET23',
+    'M24': 'ET24A',
+    'M28': 'ET28',
+  };
+
+  /// The M-section sliding windows: the Economy line has them too.
+  static const List<String> _slidingMBases = <String>[
+    'MS_win',
+    'MPF3_win',
+    'MPS4_win',
+    'MEF3_win',
+    'MSCF_win',
+    'MSCS_win',
+    'MSCL_win',
+    'MSCR_win',
+  ];
+
+  static String _codeOf(String base, String suffix) =>
+      base.replaceFirst('_win', '${suffix}_win');
+
+  static List<WindowVariant> _economyLine() => <WindowVariant>[
+    for (final String base in _slidingBases)
+      WindowVariant(
+        code: _codeOf(base, 'E'),
+        baseCode: base,
+        frame: 'E',
+        collars: null,
+        sections: _economy,
+      ),
+    for (final String base in _slidingMBases) ...<WindowVariant>[
+      WindowVariant(
+        code: _codeOf(base, 'E'),
+        baseCode: base,
+        frame: 'E',
+        collars: null,
+        sections: _economyM,
+        alternateCode: _codeOf(base, 'EA'),
+      ),
+      WindowVariant(
+        code: _codeOf(base, 'EA'),
+        baseCode: base,
+        frame: 'E',
+        collars: null,
+        sections: _economyMAlternate,
+        alternateCode: _codeOf(base, 'E'),
+        isAlternate: true,
+      ),
+    ],
+  ];
 
   /// The B frame: DC30B at the top and sides, DC26B at the bottom.
   static const Map<String, String> _bFrame = <String, String>{
@@ -98,7 +193,7 @@ class WindowVariants {
       <WindowVariant>[
         for (final String base in _slidingBases)
           WindowVariant(
-            code: base.replaceFirst('_win', '${suffix}_win'),
+            code: _codeOf(base, suffix),
             baseCode: base,
             frame: suffix,
             collars: _noCollar,
@@ -106,9 +201,13 @@ class WindowVariants {
           ),
       ];
 
-  /// Every variant, B frame first.
+  /// Every variant: the B frame, the BA frame, then the Economy line.
   static final List<WindowVariant> all = List<WindowVariant>.unmodifiable(
-    <WindowVariant>[..._frame('B', _bFrame), ..._frame('BA', _baFrame)],
+    <WindowVariant>[
+      ..._frame('B', _bFrame),
+      ..._frame('BA', _baFrame),
+      ..._economyLine(),
+    ],
   );
 
   static final Map<String, WindowVariant> _byCode = <String, WindowVariant>{
@@ -123,4 +222,25 @@ class WindowVariants {
   /// Whatever decides how a window behaves -- which input screen, which lock,
   /// which drawing -- asks this rather than the code as saved.
   static String baseCode(String code) => of(code)?.baseCode ?? code;
+
+  /// The code [code]'s window has in the library: for the second of a
+  /// switched pair (ET24A) the first's, for anything else itself.
+  static String libraryCode(String code) {
+    final WindowVariant? variant = of(code);
+    return variant != null && variant.isAlternate ? variant.alternateCode! : code;
+  }
+
+  /// The profile a switched pair differs in, as each of the pair names it:
+  /// (own: 'ET24', other: 'ET24A') for an M-section Economy window. Null for a
+  /// window with no such choice.
+  static ({String own, String other})? alternateProfile(String code) {
+    final WindowVariant? variant = of(code);
+    final WindowVariant? other = of(variant?.alternateCode);
+    if (variant == null || other == null) return null;
+    for (final MapEntry<String, String> entry in variant.sections.entries) {
+      final String theirs = other.sectionFor(entry.key);
+      if (theirs != entry.value) return (own: entry.value, other: theirs);
+    }
+    return null;
+  }
 }

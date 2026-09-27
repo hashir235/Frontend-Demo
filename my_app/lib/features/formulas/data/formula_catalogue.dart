@@ -125,7 +125,7 @@ class FormulaCatalogue {
             return false;
           }
           final int? collar = int.tryParse(parts['collarType'] ?? '');
-          return collar != null && variant.collars.contains(collar);
+          return collar != null && variant.offersCollar(collar);
         }
 
         final String key = '$context/${variant.code}';

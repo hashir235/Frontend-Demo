@@ -110,7 +110,9 @@ class CollarLayout {
   static CollarLayout? forWindow(String windowCode) {
     final WindowVariant? variant = WindowVariants.of(windowCode);
     if (variant != null) {
-      return forWindow(variant.baseCode)?.offering(variant.collars);
+      final CollarLayout? base = forWindow(variant.baseCode);
+      final List<int>? only = variant.collars;
+      return only == null ? base : base?.offering(only);
     }
     switch (windowCode) {
       // Four sides, fourteen collars: sliding, panel (plain and M-section),

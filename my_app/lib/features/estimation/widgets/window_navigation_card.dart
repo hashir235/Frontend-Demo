@@ -41,13 +41,14 @@ class WindowNavigationCard extends StatelessWidget {
         node.label.contains('M Section') ||
         resolvedCode.startsWith('M');
     // The frame a variant is on, told apart at a glance by the drawing's
-    // backdrop: the B frame warm, the BA frame lavender.
+    // backdrop: the B frame warm, the BA frame lavender, Economy mint.
     final String? frame = WindowVariants.of(
       node.hasChildren ? node.children.first.codeName : node.codeName,
     )?.frame;
     final List<Color> diagramColors = switch (frame) {
       'B' => <Color>[const Color(0xFFFFF8EE), const Color(0xFFFBE8CC)],
       'BA' => <Color>[const Color(0xFFF6F2FF), const Color(0xFFE5DCFB)],
+      'E' => <Color>[const Color(0xFFEDF9F6), const Color(0xFFD3EFE8)],
       _ when isMSectionCard => <Color>[const Color(0xFFEAF8EB), const Color(0xFFD4F0D7)],
       _ => <Color>[const Color(0xFFEFF6FF), const Color(0xFFDCEBFF)],
     };

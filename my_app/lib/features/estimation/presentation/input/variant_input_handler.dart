@@ -8,11 +8,24 @@ part of 'window_input_handler.dart';
 /// wherever a profile is listed, and which collars it offers. The drawing
 /// itself only knows the base's names, so a profile picked in the sidebar is
 /// handed to it under the base's name to light up the right part.
+///
+/// A window with a switchable profile (ET24 or ET24A) is one handler for the
+/// pair: [alternateOn] says which of the two is in use, the way a door's
+/// handler holds its D46 and D52 switches.
 class VariantInputHandler extends WindowInputHandler {
-  const VariantInputHandler({required this.base, required this.variant});
+  VariantInputHandler({required this.base, required this.variant});
 
   final WindowInputHandler base;
+
+  /// The variant on the window's library card.
   final WindowVariant variant;
+
+  /// Whether the other of a switchable pair is in use.
+  bool alternateOn = false;
+
+  /// The variant in use: [variant], or its pair when switched.
+  WindowVariant get current =>
+      alternateOn ? (WindowVariants.of(variant.alternateCode) ?? variant) : variant;
 
   @override
   bool get usesSplitWidthInputs => base.usesSplitWidthInputs;
@@ -28,9 +41,9 @@ class VariantInputHandler extends WindowInputHandler {
   @override
   Map<int, List<String>> get sectionsByCollar => <int, List<String>>{
     for (final MapEntry<int, List<String>> entry in base.sectionsByCollar.entries)
-      if (variant.collars.contains(entry.key))
+      if (variant.offersCollar(entry.key))
         entry.key: <String>[
-          for (final String section in entry.value) variant.sectionFor(section),
+          for (final String section in entry.value) current.sectionFor(section),
         ],
   };
 
@@ -38,10 +51,10 @@ class VariantInputHandler extends WindowInputHandler {
   Map<int, Map<String, String>> get sectionAliasesByCollar => <int, Map<String, String>>{
     for (final MapEntry<int, Map<String, String>> entry
         in base.sectionAliasesByCollar.entries)
-      if (variant.collars.contains(entry.key))
+      if (variant.offersCollar(entry.key))
         entry.key: <String, String>{
           for (final MapEntry<String, String> alias in entry.value.entries)
-            variant.sectionFor(alias.key): variant.sectionFor(alias.value),
+            current.sectionFor(alias.key): current.sectionFor(alias.value),
         },
   };
 
@@ -49,6 +62,6 @@ class VariantInputHandler extends WindowInputHandler {
   Widget? overlayForCollar(int collarIndex, String? selectedSection) =>
       base.overlayForCollar(
         collarIndex,
-        selectedSection == null ? null : variant.baseSectionFor(selectedSection),
+        selectedSection == null ? null : current.baseSectionFor(selectedSection),
       );
 }

@@ -35,7 +35,7 @@ void main() {
       if (base == null) return null;
       return <String, Map<String, dynamic>>{
         for (final MapEntry<String, Map<String, dynamic>> config in base.entries)
-          if (variant.collars.contains(int.parse(
+          if (variant.offersCollar(int.parse(
             config.key.split('|').firstWhere((String p) => p.startsWith('collarType=')).split('=')[1],
           )))
             config.key: <String, dynamic>{
@@ -178,7 +178,8 @@ void main() {
 
   test('the library rows: sliding windows, then box type windows', () {
     final List<WindowGroup> estimation = WindowCatalog.groupsForFlow(isFabrication: false);
-    expect(estimation.map((WindowGroup g) => g.title), <String>['Sliding Windows', 'Box type Windows']);
+    expect(estimation.map((WindowGroup g) => g.title),
+        <String>['Sliding Windows', 'Economy Sliding Window', 'Box type Windows']);
     expect(estimation[0].rows.map((WindowRow r) => r.id),
         <String>['sliding', 'sliding_b', 'sliding_ba']);
     expect(estimation[0].rows[0].nodes.map((WindowType n) => n.label), <String>[
@@ -193,17 +194,21 @@ void main() {
         <String>['Prime Sliding Window', 'Prime Panel Windows', 'Prime Corner Windows']);
     expect(estimation[0].rows[2].nodes.map((WindowType n) => n.label),
         <String>['Royal Sliding Window', 'Royal Panel Windows', 'Royal Corner Windows']);
-    expect(estimation[1].nodes.map((WindowType n) => n.label),
+    expect(estimation[1].rows.single.nodes, WindowCatalog.economyWindows);
+    expect(estimation[2].nodes.map((WindowType n) => n.label),
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door', 'Arch']);
 
     final List<WindowGroup> fabrication = WindowCatalog.groupsForFlow(isFabrication: true);
     expect(fabrication[0].nodes.length, 12);
-    expect(fabrication[1].nodes.map((WindowType n) => n.label),
+    expect(fabrication[1].nodes.length, 6);
+    expect(fabrication[2].nodes.map((WindowType n) => n.label),
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door']);
 
     // Nothing lost or doubled in the split.
     expect(
-      <WindowType>[...estimation[0].nodes, ...estimation[1].nodes],
+      <WindowType>[
+        for (final WindowGroup group in estimation) ...group.nodes,
+      ],
       WindowCatalog.root,
     );
   });

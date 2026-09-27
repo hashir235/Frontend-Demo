@@ -1,8 +1,9 @@
 import '../models/window_type.dart';
+import '../models/window_variant.dart';
 
 /// One section (profile) a window is cut from.
 class UsedSection {
-  const UsedSection(this.code, {this.option});
+  const UsedSection(this.code, {this.option, this.orAs});
 
   /// The section's name, as it is written on the drawings: "DC30F", "D29".
   final String code;
@@ -12,13 +13,20 @@ class UsedSection {
   /// kind is cut from it.
   final String? option;
 
+  /// The profile the fabricator can switch this one for in the sidebar --
+  /// ET24A for ET24 on the M-section Economy windows.
+  final String? orAs;
+
   /// How the library writes it: the name, and when it only comes with an
-  /// option, which one.
-  String get label => switch (option) {
-    null => code,
-    'addNet' => '$code (net)',
-    _ => '$code (optional)',
-  };
+  /// option, which one; a switchable one with its other name.
+  String get label {
+    final String name = orAs == null ? code : '$code / $orAs';
+    return switch (option) {
+      null => name,
+      'addNet' => '$name (net)',
+      _ => '$name (optional)',
+    };
+  }
 }
 
 /// The sections each window is made of, as the library lists them under the
@@ -37,10 +45,14 @@ class WindowSections {
   static const List<String> _order = <String>[
     'DC30F', 'DC30C', 'DC26F', 'DC26C',
     'DC30B', 'DC26B', 'DC30BA', 'DC26BA',
+    'EC30B', 'EC26F', 'EC26B',
     'M30F', 'M30', 'M26F', 'M26',
+    'ET30', 'ET30A', 'ET26', 'ET26A',
     'D54F', 'D54A', 'D51F', 'D51A',
     'D50', 'D50A', 'D41', 'D29', 'D31',
     'M23', 'M24', 'M28',
+    'EC23', 'EC24', 'EC28',
+    'ET23', 'ET24', 'ET24A', 'ET28',
     'D46', 'D52',
   ];
 
@@ -137,9 +149,28 @@ class WindowSections {
   /// The sections window [code] is cut from, in list order; empty for a
   /// window this table does not know.
   static List<UsedSection> of(String code, {required bool isFabrication}) {
-    final List<UsedSection> sections =
-        (isFabrication ? _fabrication[code] : null) ?? _estimation[code] ?? const <UsedSection>[];
-    return _sorted(sections);
+    final List<UsedSection>? listed =
+        (isFabrication ? _fabrication[code] : null) ?? _estimation[code];
+    if (listed != null) return _sorted(listed);
+
+    // A variant in every collar its base comes in is its base's list under
+    // its own names, in its base's order.
+    final WindowVariant? variant = WindowVariants.of(code);
+    if (variant != null && variant.collars == null) {
+      final ({String own, String other})? switchable =
+          WindowVariants.alternateProfile(code);
+      return List<UsedSection>.unmodifiable(<UsedSection>[
+        for (final UsedSection base in of(variant.baseCode, isFabrication: isFabrication))
+          UsedSection(
+            variant.sectionFor(base.code),
+            option: base.option,
+            orAs: switchable != null && variant.sectionFor(base.code) == switchable.own
+                ? switchable.other
+                : null,
+          ),
+      ]);
+    }
+    return const <UsedSection>[];
   }
 
   /// The sections of [node]: its own for a window, and every section of the

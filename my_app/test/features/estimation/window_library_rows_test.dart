@@ -73,25 +73,38 @@ void main() {
     expect(find.text('Windows Library'), findsOneWidget, reason: 'the top title stays');
     expect(find.text('Window Library'), findsNothing, reason: 'the one over the designs is gone');
 
+    // Where a widget sits on the whole page, however far it is scrolled.
+    double onPage(Finder finder) =>
+        tester.getTopLeft(finder).dy +
+        tester.state<ScrollableState>(find.byType(Scrollable).first).position.pixels;
+
     final Finder sliding = find.byKey(const Key('library_group_sliding'));
     expect(tester.widget<Text>(sliding).data, 'Sliding Windows');
     expect(await windowsIn(tester, 'sliding'), 6);
-    final double slidingTop = tester.getTopLeft(sliding).dy;
+    final double slidingAt = onPage(sliding);
 
     // The B and BA lines are sliding windows too: no heading of their own.
     expect(await windowsIn(tester, 'sliding_b'), 3);
+    final double primeAt = onPage(row('sliding_b'));
     expect(await windowsIn(tester, 'sliding_ba'), 3);
+    final double royalAt = onPage(row('sliding_ba'));
     expect(find.byKey(const Key('library_group_sliding_b')), findsNothing);
     expect(find.byKey(const Key('library_group_sliding_ba')), findsNothing);
-    expect(tester.getTopLeft(row('sliding_b')).dy,
-        lessThan(tester.getTopLeft(row('sliding_ba')).dy));
+
+    // The Economy line under its own heading, then box type.
+    final Finder economy = find.byKey(const Key('library_group_economy'));
+    expect(await windowsIn(tester, 'economy'), 6);
+    expect(tester.widget<Text>(economy).data, 'Economy Sliding Window');
+    final double economyAt = onPage(economy);
 
     final Finder box = find.byKey(const Key('library_group_box'));
     expect(await windowsIn(tester, 'box'), 5);
     expect(tester.widget<Text>(box).data, 'Box type Windows');
-    expect(slidingTop, lessThan(tester.getTopLeft(box).dy),
-        reason: 'sliding windows first, box type below');
-    expect(tester.getTopLeft(row('sliding_ba')).dy, lessThan(tester.getTopLeft(box).dy));
+    final double boxAt = onPage(box);
+
+    expect(<double>[slidingAt, primeAt, royalAt, economyAt, boxAt],
+        orderedEquals(<double>[slidingAt, primeAt, royalAt, economyAt, boxAt]..sort()),
+        reason: 'sliding, Prime, Royal, Economy, box type -- top to bottom');
     expect(tester.takeException(), isNull);
   });
 
@@ -145,6 +158,7 @@ void main() {
     expect(await windowsIn(tester, 'sliding'), 6);
     expect(await windowsIn(tester, 'sliding_b'), 3);
     expect(await windowsIn(tester, 'sliding_ba'), 3);
+    expect(await windowsIn(tester, 'economy'), 6);
     expect(await windowsIn(tester, 'box'), 4);
   });
 

@@ -34,11 +34,22 @@ void main() {
   const Map<String, String> bFrame = <String, String>{'DC30C': 'DC30B', 'DC26C': 'DC26B'};
   const Map<String, String> baFrame = <String, String>{'DC30C': 'DC30BA', 'DC26C': 'DC26BA'};
 
-  test('sixteen variants: eight sliding windows on each frame, no M-section', () {
-    expect(WindowVariants.all, hasLength(16));
+  final List<WindowVariant> bAndBa = WindowVariants.all
+      .where((WindowVariant v) => v.frame == 'B' || v.frame == 'BA')
+      .toList();
+  final List<WindowVariant> economy =
+      WindowVariants.all.where((WindowVariant v) => v.frame == 'E').toList();
+
+  test('codes are one per window', () {
     final Set<String> codes = <String>{};
     for (final WindowVariant v in WindowVariants.all) {
       expect(codes.add(v.code), isTrue, reason: 'one ${v.code}');
+    }
+  });
+
+  test('sixteen B and BA variants: eight sliding windows on each frame, no M-section', () {
+    expect(bAndBa, hasLength(16));
+    for (final WindowVariant v in bAndBa) {
       expect(v.baseCode.startsWith('M'), isFalse, reason: 'no M-section base');
       expect(v.collars, <int>[2], reason: 'collar 2 only, as confirmed so far');
       expect(v.sections, v.frame == 'B' ? bFrame : baFrame);
@@ -51,10 +62,66 @@ void main() {
       for (final WindowType n in leaves(WindowCatalog.root)) n.codeName!,
     ];
     for (final WindowVariant v in WindowVariants.all) {
-      expect(inLibrary.where((String c) => c == v.code), hasLength(1));
+      expect(inLibrary.where((String c) => c == v.code),
+          hasLength(v.isAlternate ? 0 : 1), reason: v.code);
       expect(inLibrary, contains(v.baseCode));
     }
     expect(inLibrary.toSet(), hasLength(inLibrary.length), reason: 'no code twice');
+  });
+
+  test('Economy: every sliding window, M-section too, on the profiles as listed', () {
+    const Map<String, String> plain = <String, String>{
+      'DC26F': 'EC26F',
+      'DC30C': 'EC30B',
+      'DC26C': 'EC26B',
+      'M23': 'EC23',
+      'M24': 'EC24',
+      'M28': 'EC28',
+    };
+    const Map<String, String> m = <String, String>{
+      'M30F': 'ET30',
+      'M26F': 'ET26',
+      'M30': 'ET30A',
+      'M26': 'ET26A',
+      'M23': 'ET23',
+      'M24': 'ET24',
+      'M28': 'ET28',
+    };
+    final List<WindowVariant> onCards =
+        economy.where((WindowVariant v) => !v.isAlternate).toList();
+    final List<WindowVariant> switched =
+        economy.where((WindowVariant v) => v.isAlternate).toList();
+    expect(onCards, hasLength(16));
+    expect(switched, hasLength(8), reason: 'an ET24A twin for each M-section one');
+    for (final WindowVariant v in economy) {
+      expect(v.collars, isNull, reason: 'every collar of its base');
+      final bool isM = v.baseCode.startsWith('M');
+      if (!isM) {
+        expect(v.sections, plain);
+        expect(v.sectionFor('DC30F'), 'DC30F', reason: 'kept, as listed');
+        expect(v.alternateCode, isNull);
+        continue;
+      }
+      expect(v.sections, <String, String>{...m, if (v.isAlternate) 'M24': 'ET24A'});
+      final WindowVariant pair = WindowVariants.of(v.alternateCode)!;
+      expect(pair.alternateCode, v.code, reason: 'the pair points both ways');
+      expect(pair.isAlternate, !v.isAlternate);
+      expect(pair.baseCode, v.baseCode);
+      expect(WindowVariants.libraryCode(v.code), v.isAlternate ? pair.code : v.code);
+      expect(WindowVariants.alternateProfile(v.code),
+          v.isAlternate ? (own: 'ET24A', other: 'ET24') : (own: 'ET24', other: 'ET24A'));
+    }
+    final WindowGroup group = WindowCatalog.groupsForFlow(isFabrication: false)
+        .firstWhere((WindowGroup g) => g.id == 'economy');
+    expect(group.title, 'Economy Sliding Window');
+    expect(group.rows.single.nodes.map((WindowType n) => n.label), <String>[
+      'Eco Sliding Window',
+      'Eco Sliding Window M_Section',
+      'Eco Panel Windows',
+      'Eco Panel Windows M_Section',
+      'Eco Corner Windows',
+      'Eco Corner Windows M_Section',
+    ]);
   });
 
   test('names on the bill are all different', () {
@@ -69,7 +136,7 @@ void main() {
 
   for (final WindowVariant variant in WindowVariants.all) {
     for (final String context in <String>['estimation', 'fabrication']) {
-      test('${variant.code} ($context): the base\'s formulas, collar 2, own frame', () {
+      test('${variant.code} ($context): the base\'s formulas, its collars, own profiles', () {
         final Set<String> dims = catalogue.dimensionsFor(
           '$context/${FormulaWindowKey.engineWindowFor(variant.baseCode, context)!.window}',
         );
@@ -94,12 +161,18 @@ void main() {
             lockType: s.lock,
             rubberType: s.rubber,
           );
-          final FormulaWindowKey baseKey = keyFor(variant.baseCode, 2)!;
-          final FormulaWindowKey ownKey = keyFor(variant.code, 2)!;
+          for (int collar = 1; collar <= 14; collar++) {
+          final FormulaWindowKey baseKey = keyFor(variant.baseCode, collar)!;
+          final FormulaWindowKey ownKey = keyFor(variant.code, collar)!;
           expect(ownKey.configKey, baseKey.configKey);
 
           final List<SectionFormulas>? base = catalogue.shippedFor(baseKey);
-          if (base == null) continue; // a lock this window does not take
+          if (base == null) continue; // a lock or collar this window does not take
+          if (!variant.offersCollar(collar)) {
+            expect(catalogue.shippedFor(ownKey), isNull,
+                reason: 'no collar $collar on ${variant.code}');
+            continue;
+          }
           final List<SectionFormulas> own = catalogue.shippedFor(ownKey)!;
 
           final Map<String, SectionFormulas> ownByName = <String, SectionFormulas>{
@@ -115,11 +188,11 @@ void main() {
               reason: '${o.section} is cut exactly as ${b.section}',
             );
           }
-          // The frame is the variant's own, and nothing of the plain or the
-          // collar frame is left in it.
-          expect(ownByName.keys, containsAll(variant.sections.values));
-          for (final String gone in <String>['DC30C', 'DC26C', 'DC30F', 'DC26F']) {
-            expect(ownByName.containsKey(gone), isFalse, reason: '$gone in ${variant.code}');
+          // Nothing it renames is left under the old name.
+          for (final MapEntry<String, String> swap in variant.sections.entries) {
+            if (swap.key == swap.value) continue;
+            expect(ownByName.containsKey(swap.key), isFalse,
+                reason: '${swap.key} in ${variant.code}');
           }
 
           // The glass is the base's.
@@ -128,16 +201,20 @@ void main() {
             <String>[for (final g in catalogue.shippedGlassFor(baseKey)) for (final p in g.pieces) p.stored],
           );
 
-          // And no collar it does not come in.
-          expect(catalogue.shippedFor(keyFor(variant.code, 1)!), isNull);
           compared++;
+          }
         }
         expect(compared, greaterThan(0));
 
+        // Measured side by side, the frame still gets its own sides.
         expect(
           catalogue.frameSectionsFor('$context/${variant.code}'),
-          containsAll(variant.sections.values),
-          reason: 'measured side by side, the frame still gets its own sides',
+          <String>{
+            for (final String section in catalogue.frameSectionsFor(
+              '$context/${FormulaWindowKey.engineWindowFor(variant.baseCode, context)!.window}',
+            ))
+              variant.sectionFor(section),
+          },
         );
       });
     }
@@ -152,15 +229,21 @@ void main() {
     };
 
     for (final WindowVariant variant in WindowVariants.all) {
-      final bool corner = variant.baseCode.startsWith('SC');
-      for (final bool fabrication in <bool>[false, true]) {
-        test('${variant.code} ${fabrication ? 'fabrication' : 'estimation'}: '
-            'the base\'s sizes on its own frame', () {
+      final bool corner = variant.baseCode.contains('SC');
+      for (final ({bool fabrication, int collar}) run in <({bool fabrication, int collar})>[
+        for (final bool fabrication in <bool>[false, true])
+          for (final int collar in <int>[if (variant.collars == null) 1, 2])
+            (fabrication: fabrication, collar: collar),
+      ]) {
+        final bool fabrication = run.fabrication;
+        final int collar = run.collar;
+        test('${variant.code} ${fabrication ? 'fabrication' : 'estimation'} collar $collar: '
+            'the base\'s sizes on its own profiles', () {
           WindowCutList cut(String code) => WindowCutCalculator(book).compute(
             WindowCutRequest(
               isFabrication: fabrication,
               appWindowCode: code,
-              collarIndex: 2,
+              collarIndex: collar,
               unitMode: fabrication ? 'feet' : 'inches',
               heightValue: fabrication ? '120.5' : '48.4',
               widthValue: fabrication ? '150' : '60',
@@ -175,12 +258,14 @@ void main() {
           final WindowCutList own = cut(variant.code);
           expect(base.problems, isEmpty);
           expect(own.problems, isEmpty);
+          // The same pieces, the same sizes. Their order follows the profiles'
+          // names, which the swap changes; the engine piles them by profile.
           expect(
             <String>[for (final p in own.pieces) '${p.section} ${p.label} ${p.lengthFt}'],
-            <String>[
+            unorderedEquals(<String>[
               for (final p in base.pieces)
                 '${variant.sectionFor(p.section)} ${p.label} ${p.lengthFt}',
-            ],
+            ]),
           );
           expect(own.glass.map((GlassPiece g) => g.toString()),
               base.glass.map((GlassPiece g) => g.toString()));
@@ -252,8 +337,8 @@ void main() {
   group('the input screen', () {
     WindowType node(String code) => WindowCatalog.byCodeName(code)!;
 
-    test('collar 2 only, drawn as the base\'s collar 2', () {
-      for (final WindowVariant variant in WindowVariants.all) {
+    test('B and BA: collar 2 only, drawn as the base\'s collar 2', () {
+      for (final WindowVariant variant in bAndBa) {
         final CollarLayout layout = CollarLayout.forWindow(variant.code)!;
         expect(layout.isFixed, isTrue);
         expect(layout.collars, <int>[2]);
@@ -280,6 +365,37 @@ void main() {
       final WindowInputHandler corner = handlerForWindow(node('SCLBA_win'));
       expect(corner.usesSplitWidthInputs, isTrue, reason: 'a corner is still a corner');
       expect(corner.sectionsForCollar(2), containsAll(<String>['DC30BA', 'DC26BA']));
+    });
+
+    test('Economy: every collar of its base', () {
+      for (final WindowVariant variant in economy) {
+        final CollarLayout own = CollarLayout.forWindow(variant.code)!;
+        final CollarLayout base = CollarLayout.forWindow(variant.baseCode)!;
+        expect(own.collars, base.collars);
+        expect(own.isWholeFrame, base.isWholeFrame);
+        expect(own.toggle(1, CollarSide.top), base.toggle(1, CollarSide.top));
+      }
+    });
+
+    test('ET24 or ET24A: one handler for the pair, switched in the sidebar', () {
+      final WindowInputHandler handler = handlerForWindowCode('MPS4E_win');
+      expect(handler, isA<VariantInputHandler>());
+      final VariantInputHandler pair = handler as VariantInputHandler;
+      expect(pair.alternateOn, isFalse);
+      expect(pair.sectionsForCollar(1), contains('ET24'));
+      expect(pair.sectionsForCollar(1), isNot(contains('M24')));
+      pair.alternateOn = true;
+      expect(pair.current.code, 'MPS4EA_win');
+      expect(pair.sectionsForCollar(1), contains('ET24A'));
+      expect(pair.sectionsForCollar(1), isNot(contains('ET24')));
+      // The drawing still lights the M24 place for either.
+      expect((pair.overlayForCollar(1, 'ET24A')! as dynamic).selectedSection, 'M24');
+
+      // A window saved switched opens switched.
+      final VariantInputHandler saved =
+          handlerForWindowCode('MPS4EA_win') as VariantInputHandler;
+      expect(saved.variant.code, 'MPS4E_win');
+      expect(saved.alternateOn, isTrue);
     });
 
     test('each is drawn as the window it is made like', () {
