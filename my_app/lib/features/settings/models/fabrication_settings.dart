@@ -17,6 +17,11 @@ class FabricationSettingsModel {
   /// Off unless the workshop turns it on.
   final bool pairCutting;
 
+  /// The same for D29 -- two equal heights and two equal widths per window.
+  /// Its own switch: a workshop may clamp one pair of profiles and not the
+  /// other.
+  final bool pairCuttingD29;
+
   const FabricationSettingsModel({
     required this.cuttingMarginCm,
     this.sectionLengths = const <String, List<int>>{},
@@ -25,6 +30,7 @@ class FabricationSettingsModel {
     this.redZoneEven = 12.0,
     this.redZoneOdd = 13.0,
     this.pairCutting = false,
+    this.pairCuttingD29 = false,
   });
 
   const FabricationSettingsModel.defaults()
@@ -34,7 +40,8 @@ class FabricationSettingsModel {
       enforceMaxExtraPieces = false,
       redZoneEven = 12.0,
       redZoneOdd = 13.0,
-      pairCutting = false;
+      pairCutting = false,
+      pairCuttingD29 = false;
 
   factory FabricationSettingsModel.fromJson(Map<String, dynamic> json) {
     final Object? rawValue = json['cuttingMarginCm'];
@@ -74,6 +81,7 @@ class FabricationSettingsModel {
           13.0,
       // Absent from a server that predates pair cutting: off.
       pairCutting: json['pairCutting'] == true,
+      pairCuttingD29: json['pairCuttingD29'] == true,
     );
   }
 
@@ -88,6 +96,7 @@ class FabricationSettingsModel {
       'redZoneEven': redZoneEven,
       'redZoneOdd': redZoneOdd,
       'pairCutting': pairCutting,
+      'pairCuttingD29': pairCuttingD29,
     };
   }
 }

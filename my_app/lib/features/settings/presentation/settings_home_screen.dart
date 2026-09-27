@@ -253,6 +253,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// fabrication form.
   bool _fabricationPairCutting = false;
 
+  /// Pair cutting for D29, the same way.
+  bool _fabricationPairCuttingD29 = false;
+
   @override
   void initState() {
     super.initState();
@@ -461,6 +464,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       setState(() {
         _fabricationPairCutting = settings.pairCutting;
+        _fabricationPairCuttingD29 = settings.pairCuttingD29;
         _isLoadingFabricationSettings = false;
       });
     } on Exception catch (error) {
@@ -1381,6 +1385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _fabricationRedZone2Controller.text.trim(),
               ),
               pairCutting: _fabricationPairCutting,
+              pairCuttingD29: _fabricationPairCuttingD29,
             ),
           );
 
@@ -1405,6 +1410,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       setState(() {
         _fabricationPairCutting = saved.pairCutting;
+        _fabricationPairCuttingD29 = saved.pairCuttingD29;
         _isSavingFabricationSettings = false;
       });
 
@@ -2023,25 +2029,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// The leftover-pieces allowance, shared by both modules.
+  /// The switches for cutting a profile two bars at a time.
   ///
-  /// `*` is the default and the setting most people should never have to
-  /// touch: the optimizer already prefers full lengths and only reaches for a
-  /// leftover when nothing else fits, so capping the count mostly just turns
-  /// workable jobs into failures. A number is there for anyone who wants the
-  /// old strict behaviour back.
-  /// The switch for cutting the sash sections two bars at a time.
-  ///
-  /// Explained in both languages, because it changes what the cutting sheet
-  /// tells the man at the saw to do: with it on, every M23 and M28 bar comes
-  /// as a pair with the same cuts, to be clamped together and cut once.
+  /// Explained in both languages, because each changes what the cutting sheet
+  /// tells the man at the saw to do: with one on, every bar of those profiles
+  /// comes as a pair with the same cuts, to be clamped together and cut once.
+  /// M23/M28 and D29 are separate switches -- a workshop may clamp one and not
+  /// the other.
   Widget _buildPairCuttingCluster(BuildContext context) {
     return _buildSettingsCluster(
       context,
-      title: 'Pair Cutting (M23 & M28)',
+      title: 'Pair Cutting',
       subtitle:
-          'Sliding windows use M23 and M28 in twos of the same size. Turn this '
-          'on and every M23 and M28 bar on the cutting sheet comes as a pair of '
+          'Windows use these sections in twos of the same size. Turn one on and '
+          'every bar of that section on the cutting sheet comes as a pair of '
           'two bars with exactly the same cuts, marked x 2 — clamp the two '
           'lengths together and cut both at once to save time. It can take a '
           'little more aluminium than cutting one bar at a time. Other '
@@ -2050,51 +2051,90 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Directionality(
           textDirection: TextDirection.rtl,
           child: Text(
-            'یہ آن کریں تو M23 اور M28 کی ہر لینتھ جوڑے میں بنے گی — دو لینتھیں، '
+            'یہ آن کریں تو اس سیکشن کی ہر لینتھ جوڑے میں بنے گی — دو لینتھیں، '
             'ایک جیسے کٹ۔ دونوں کو ساتھ رکھ کر ایک ساتھ کاٹیں، وقت بچے گا۔',
             style: UrduText.caption(),
           ),
         ),
         const SizedBox(height: 8),
-        Material(
-          color: _fabricationPairCutting
-              ? AppTheme.violet.withValues(alpha: 0.10)
-              : AppTheme.surfaceMuted,
-          borderRadius: BorderRadius.circular(12),
-          child: SwitchListTile(
-            key: const Key('fabrication_pair_cutting_switch'),
-            value: _fabricationPairCutting,
-            onChanged: (bool value) {
-              setState(() => _fabricationPairCutting = value);
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    value
-                        ? 'Pair cutting on. Save to apply it.'
-                        : 'Pair cutting off. Save to apply it.',
-                  ),
-                ),
-              );
-            },
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            title: Text(
-              'Cut M23 & M28 in pairs',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            subtitle: Text(
-              _fabricationPairCutting ? 'On — bars come in pairs' : 'Off',
-            ),
-          ),
+        _buildPairCuttingSwitch(
+          context,
+          switchKey: const Key('fabrication_pair_cutting_switch'),
+          title: 'Cut M23 & M28 in pairs',
+          note: 'Sash sections: two or four of one length per window.',
+          value: _fabricationPairCutting,
+          onChanged: (bool value) {
+            setState(() => _fabricationPairCutting = value);
+          },
+          section: 'M23 & M28',
+        ),
+        const SizedBox(height: 8),
+        _buildPairCuttingSwitch(
+          context,
+          switchKey: const Key('fabrication_pair_cutting_d29_switch'),
+          title: 'Cut D29 in pairs',
+          note:
+              'Two equal heights and two equal widths per window — heights '
+              'pair with heights, widths with widths.',
+          value: _fabricationPairCuttingD29,
+          onChanged: (bool value) {
+            setState(() => _fabricationPairCuttingD29 = value);
+          },
+          section: 'D29',
         ),
       ],
     );
   }
 
+  Widget _buildPairCuttingSwitch(
+    BuildContext context, {
+    required Key switchKey,
+    required String title,
+    required String note,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required String section,
+  }) {
+    return Material(
+      color: value
+          ? AppTheme.violet.withValues(alpha: 0.10)
+          : AppTheme.surfaceMuted,
+      borderRadius: BorderRadius.circular(12),
+      child: SwitchListTile(
+        key: switchKey,
+        value: value,
+        onChanged: (bool next) {
+          onChanged(next);
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                next
+                    ? '$section pair cutting on. Save to apply it.'
+                    : '$section pair cutting off. Save to apply it.',
+              ),
+            ),
+          );
+        },
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(
+          title,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        subtitle: Text(value ? 'On — bars come in pairs. $note' : 'Off. $note'),
+      ),
+    );
+  }
+
+  /// The leftover-pieces allowance, shared by both modules.
+  ///
+  /// `*` is the default and the setting most people should never have to
+  /// touch: the optimizer already prefers full lengths and only reaches for a
+  /// leftover when nothing else fits, so capping the count mostly just turns
+  /// workable jobs into failures. A number is there for anyone who wants the
+  /// old strict behaviour back.
   Widget _buildExtraPiecesCluster(
     BuildContext context, {
     required TextEditingController controller,

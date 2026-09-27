@@ -63,6 +63,20 @@ void main() {
       expect(on.pairCutting, isTrue);
       expect(on.toJson()['pairCutting'], isTrue);
     });
+
+    test('D29 has its own switch, off unless set', () {
+      expect(const FabricationSettingsModel.defaults().pairCuttingD29, isFalse);
+      final FabricationSettingsModel onlyM23 = FabricationSettingsModel.fromJson(
+        <String, dynamic>{'pairCutting': true},
+      );
+      expect(onlyM23.pairCuttingD29, isFalse, reason: 'the M23 switch is not the D29 one');
+      final FabricationSettingsModel d29 = FabricationSettingsModel.fromJson(
+        <String, dynamic>{'pairCuttingD29': true},
+      );
+      expect(d29.pairCuttingD29, isTrue);
+      expect(d29.pairCutting, isFalse);
+      expect(d29.toJson()['pairCuttingD29'], isTrue);
+    });
   });
 
   group('bars as the cutter handles them', () {
