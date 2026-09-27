@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../models/window_type.dart';
+import '../../models/window_variant.dart';
 import '../../widgets/panel_equal_overlay.dart';
 import '../../widgets/panel_center_fix_overlay.dart';
 import '../../widgets/panel_center_slide_overlay.dart';
@@ -31,6 +32,7 @@ part 'door_single_input_handler.dart';
 part 'door_double_input_handler.dart';
 part 'arch_round_input_handler.dart';
 part 'arch_rect_input_handler.dart';
+part 'variant_input_handler.dart';
 
 /// Base class for window-specific input behavior.
 abstract class WindowInputHandler {
@@ -71,7 +73,18 @@ class DefaultInputHandler extends WindowInputHandler {
 }
 
 WindowInputHandler handlerForWindow(WindowType node) {
-  switch (node.codeName) {
+  final WindowVariant? variant = WindowVariants.of(node.codeName);
+  if (variant != null) {
+    return VariantInputHandler(
+      base: _handlerForCode(variant.baseCode),
+      variant: variant,
+    );
+  }
+  return _handlerForCode(node.codeName);
+}
+
+WindowInputHandler _handlerForCode(String? code) {
+  switch (code) {
     case 'S_win':
       return const SlidingWindowInputHandler();
     case 'MS_win':

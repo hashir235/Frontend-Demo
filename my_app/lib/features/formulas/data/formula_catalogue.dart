@@ -1,6 +1,7 @@
 /// The formulas Quick AL ships with, and the ones a workshop has changed.
 library;
 
+import '../../estimation/models/window_variant.dart';
 import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';
 
@@ -43,7 +44,7 @@ class SectionFormulas {
 /// a workshop's own changes are kept separately, so "reset" always has
 /// something true to go back to.
 class FormulaCatalogue {
-  FormulaCatalogue._(this._formulas, this._windows, this._glass);
+  FormulaCatalogue._(this._formulas, this._windows, this._glass, this._variantBases);
 
   /// Every distinct formula, once.
   final List<String> _formulas;
@@ -59,7 +60,17 @@ class FormulaCatalogue {
   /// rail labels name.
   final Map<String, Map<String, List<dynamic>>> _glass;
 
+  /// A variant window's key -> its base window's key and the variant.
+  final Map<String, ({String baseKey, WindowVariant variant})> _variantBases;
+
   /// Reads a catalogue from its JSON.
+  ///
+  /// The variant windows (see [WindowVariants]) are not in the JSON: each is
+  /// written in here from its base window -- the base's configurations for
+  /// the collars the variant comes in, with its own profiles' names in place
+  /// of the base's. The formulas are the base's own, not copies of them, so
+  /// there is nothing to keep in step; and a workshop's changes to a variant
+  /// are kept against the variant, apart from its base's.
   ///
   /// Where that JSON comes from is somebody else's business -- the app reads
   /// it from its assets, the parity harness from a file on disk, a test from a
@@ -94,7 +105,50 @@ class FormulaCatalogue {
       }
     });
 
-    return FormulaCatalogue._(formulas, windows, glass);
+    final Map<String, ({String baseKey, WindowVariant variant})> variantBases =
+        <String, ({String baseKey, WindowVariant variant})>{};
+    for (final WindowVariant variant in WindowVariants.all) {
+      for (final String context in <String>['estimation', 'fabrication']) {
+        final ({String window, String? dimension, String? value})? base =
+            FormulaWindowKey.engineWindowFor(variant.baseCode, context);
+        if (base == null) continue;
+        final String baseKey = '$context/${base.window}';
+        final Map<String, Map<String, List<dynamic>>>? baseConfigs = windows[baseKey];
+        if (baseConfigs == null) continue;
+
+        bool isVariants(String configKey) {
+          final Map<String, String> parts = <String, String>{
+            for (final String part in configKey.split('|'))
+              part.split('=').first: part.split('=').last,
+          };
+          if (base.dimension != null && parts[base.dimension] != base.value) {
+            return false;
+          }
+          final int? collar = int.tryParse(parts['collarType'] ?? '');
+          return collar != null && variant.collars.contains(collar);
+        }
+
+        final String key = '$context/${variant.code}';
+        windows[key] = <String, Map<String, List<dynamic>>>{
+          for (final MapEntry<String, Map<String, List<dynamic>>> config in baseConfigs.entries)
+            if (isVariants(config.key))
+              config.key: <String, List<dynamic>>{
+                for (final MapEntry<String, List<dynamic>> section in config.value.entries)
+                  variant.sectionFor(section.key): section.value,
+              },
+        };
+        final Map<String, List<dynamic>>? baseGlass = glass[baseKey];
+        if (baseGlass != null) {
+          glass[key] = <String, List<dynamic>>{
+            for (final MapEntry<String, List<dynamic>> config in baseGlass.entries)
+              if (isVariants(config.key)) config.key: config.value,
+          };
+        }
+        variantBases[key] = (baseKey: baseKey, variant: variant);
+      }
+    }
+
+    return FormulaCatalogue._(formulas, windows, glass, variantBases);
   }
 
   /// What a window's configuration is made of -- collarType, lockType and the
@@ -282,6 +336,16 @@ class FormulaCatalogue {
   Set<String> frameSectionsFor(String windowKey) {
     final Set<String>? cached = _frameSections[windowKey];
     if (cached != null) return cached;
+
+    // A variant with one collar has nothing to hold its collars against; its
+    // frame is its base window's, under its own names.
+    final ({String baseKey, WindowVariant variant})? variantBase = _variantBases[windowKey];
+    if (variantBase != null) {
+      return _frameSections[windowKey] = Set<String>.unmodifiable(<String>{
+        for (final String section in frameSectionsFor(variantBase.baseKey))
+          variantBase.variant.sectionFor(section),
+      });
+    }
 
     final Map<String, Map<String, List<dynamic>>>? configs = _windows[windowKey];
     if (configs == null) return const <String>{};

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/window_type.dart';
+import '../../models/window_variant.dart';
 import '../../state/estimate_session_store.dart';
 import '../../models/window_review_item.dart';
 import 'window_input_base.dart';
@@ -23,7 +24,10 @@ Widget buildInputScreen({
   required EstimateSessionStore session,
   WindowReviewItem? editingItem,
 }) {
-  final String? code = node.codeName;
+  // A variant window gets its base window's screen; the screen itself asks
+  // the node what it is.
+  final String? code =
+      node.codeName == null ? null : WindowVariants.baseCode(node.codeName!);
   switch (code) {
     case 'S_win':
       return SlidingWindowInputScreen(

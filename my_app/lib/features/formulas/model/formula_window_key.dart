@@ -8,6 +8,8 @@
 /// disagree about which window is on the bench.
 library;
 
+import '../../estimation/models/window_variant.dart';
+
 /// The engine window behind one of the app's window types, and the setting
 /// that picks it out.
 class _EngineWindow {
@@ -104,7 +106,31 @@ class FormulaWindowKey {
   }
 
   /// Whether the app knows this window at all.
-  static bool knows(String appWindowCode) => _byAppCode.containsKey(appWindowCode);
+  static bool knows(String appWindowCode) =>
+      _byAppCode.containsKey(WindowVariants.baseCode(appWindowCode));
+
+  /// The engine window behind [appWindowCode] in [context], and the setting
+  /// that picks it out there -- its name as that side spells it.
+  ///
+  /// For a variant this is its base window's, which is what the catalogue's
+  /// own entry for the variant is made from.
+  static ({String window, String? dimension, String? value})? engineWindowFor(
+    String appWindowCode,
+    String context,
+  ) {
+    final _EngineWindow? engine = _byAppCode[WindowVariants.baseCode(appWindowCode)];
+    if (engine == null) return null;
+    return (
+      window: engine.window,
+      dimension: engine.dimension == null ? null : _dimensionName(engine, context),
+      value: engine.value,
+    );
+  }
+
+  static String? _dimensionName(_EngineWindow engine, String context) =>
+      context == 'estimation'
+          ? (_estimationDimensionNames[engine.window] ?? engine.dimension)
+          : engine.dimension;
 
   /// Works out which formulas cut this window.
   ///
@@ -125,7 +151,11 @@ class FormulaWindowKey {
     bool addNet = false,
     double backCollarCm = 1.7,
   }) {
-    final _EngineWindow? engine = _byAppCode[appWindowCode];
+    // A variant is its base window with other profiles, so it is keyed the
+    // way its base is -- the same settings, the same values -- under a window
+    // of its own, which the catalogue builds from the base's formulas.
+    final WindowVariant? variant = WindowVariants.of(appWindowCode);
+    final _EngineWindow? engine = _byAppCode[variant?.baseCode ?? appWindowCode];
     if (engine == null) return null;
 
     final Map<String, String> config = <String, String>{};
@@ -147,7 +177,7 @@ class FormulaWindowKey {
       config[dimension] = value;
     }
 
-    return FormulaWindowKey._(context, engine.window, config);
+    return FormulaWindowKey._(context, variant?.code ?? engine.window, config);
   }
 
   static String? _valueFor({
@@ -164,9 +194,7 @@ class FormulaWindowKey {
   }) {
     // The dimension the app's window choice fixes, whatever the two sides
     // happen to call it.
-    final String? ownName = context == 'estimation'
-        ? (_estimationDimensionNames[engine.window] ?? engine.dimension)
-        : engine.dimension;
+    final String? ownName = _dimensionName(engine, context);
     if (engine.dimension != null && dimension == ownName) {
       return engine.value;
     }

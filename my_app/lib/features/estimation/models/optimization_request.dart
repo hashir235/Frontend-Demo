@@ -1,6 +1,7 @@
 import '../../formulas/model/piece_size.dart';
 import '../../formulas/model/window_sides.dart';
 import 'window_review_item.dart';
+import 'window_variant.dart';
 
 class OptimizationWindowRequest {
   final int winNo;
@@ -199,7 +200,12 @@ class OptimizationWindowRequest {
       if (computedPieces != null) 'computedPieces': computedPieces,
       if (computedGlass != null) 'computedGlass': computedGlass,
       'winNo': winNo,
-      'windowCode': windowCode,
+      // The engine knows a variant window (a sliding window on the B frame,
+      // say) only as its base: it works out the base's area, glass and cut
+      // names, and cuts the pieces sent with it -- which already carry the
+      // variant's own profiles. The window keeps its own code everywhere else,
+      // and its own name on the bill through windowLabel.
+      'windowCode': WindowVariants.baseCode(windowCode),
       'windowLabel': windowLabel,
       'collarIndex': collarIndex,
       'unitMode': unitMode,

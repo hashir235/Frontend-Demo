@@ -12,6 +12,8 @@
 /// They also match the collar drawings side for side.
 library;
 
+import 'window_variant.dart';
+
 /// A side of a window's frame that can carry a collar.
 enum CollarSide { top, bottom, left, right }
 
@@ -31,6 +33,37 @@ class CollarLayout {
 
   /// How many collar types there are.
   int get collarCount => _collars.length;
+
+  /// The collar types, by number.
+  Iterable<int> get collars => _collars.keys;
+
+  /// Whether collar [collar] is one this window comes in.
+  bool offers(int collar) => _collars.containsKey(collar);
+
+  /// Whether the window comes in one collar type only -- then there is
+  /// nothing to tap between.
+  bool get isFixed => _collars.length == 1;
+
+  /// [collar] if the window comes in it, otherwise the nearest one it does:
+  /// a collar remembered from another window, or saved before the window's
+  /// collars were narrowed, never reaches the screen as one it cannot cut.
+  int nearestOffered(int collar) {
+    if (offers(collar)) return collar;
+    int best = _collars.keys.first;
+    for (final int candidate in _collars.keys) {
+      if ((candidate - collar).abs() < (best - collar).abs()) best = candidate;
+    }
+    return best;
+  }
+
+  /// The same window, offering only [only] of its collars.
+  CollarLayout offering(Iterable<int> only) => CollarLayout._(
+    sides,
+    <int, Set<CollarSide>>{
+      for (final int collar in only)
+        if (_collars.containsKey(collar)) collar: _collars[collar]!,
+    },
+  );
 
   /// The sides collar [collar] puts a collar on. Empty for an unknown number.
   Set<CollarSide> sidesWithCollar(int collar) =>
@@ -62,12 +95,23 @@ class CollarLayout {
   }
 
   /// The collar type after a tap on a whole-frame window: collar all round
-  /// becomes none, and none becomes all round.
-  int toggleWholeFrame(int collar) => collar == 1 ? 2 : 1;
+  /// becomes none, and none becomes all round. Null when the window does not
+  /// come in the other one.
+  int? toggleWholeFrame(int collar) {
+    final int next = collar == 1 ? 2 : 1;
+    return offers(next) ? next : null;
+  }
 
   /// The layout for one of the app's window types, or null for one it does
   /// not know.
+  ///
+  /// A variant window (see [WindowVariants]) has its base window's layout,
+  /// offering only the collars it comes in.
   static CollarLayout? forWindow(String windowCode) {
+    final WindowVariant? variant = WindowVariants.of(windowCode);
+    if (variant != null) {
+      return forWindow(variant.baseCode)?.offering(variant.collars);
+    }
     switch (windowCode) {
       // Four sides, fourteen collars: sliding, panel (plain and M-section),
       // fix and openable windows all share one table.

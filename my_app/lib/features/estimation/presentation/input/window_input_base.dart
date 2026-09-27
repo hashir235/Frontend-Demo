@@ -33,6 +33,7 @@ import '../review_list_screen.dart';
 import 'input_block_order.dart';
 import 'size_entry_notation.dart';
 import '../../models/collar_layout.dart';
+import '../../models/window_variant.dart';
 import '../../models/glass_color.dart';
 import '../../widgets/collar_side_picker.dart';
 import '../../models/window_material.dart';
@@ -187,7 +188,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   bool get _usesSplitWidthInputs => _handler.usesSplitWidthInputs;
   bool get _usesArchInput => _handler.usesArchInput;
   bool get _isFixOnlyRubberWindow {
-    final String? windowCode = widget.node.codeName;
+    final String windowCode = _behavesAs;
     return windowCode == 'F_win' ||
         windowCode == 'FC_win' ||
         windowCode == 'Single_Door' ||
@@ -196,8 +197,20 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
 
   String get _windowCode => widget.node.codeName ?? '';
 
+  /// The window this one behaves as: itself, or for a variant window (a
+  /// sliding window on the B frame, say) its base. Locks, rubbers and the
+  /// like follow the window's make, not its frame.
+  String get _behavesAs => WindowVariants.baseCode(_windowCode);
+
+  /// [collar], or the nearest collar this window comes in.
+  int _offeredCollar(int collar) {
+    final CollarLayout? layout = CollarLayout.forWindow(_windowCode);
+    final int clamped = collar.clamp(1, _handler.collarCount);
+    return layout == null ? clamped : layout.nearestOffered(clamped);
+  }
+
   bool get _isCenterSlideLockWindow {
-    final String windowCode = _windowCode;
+    final String windowCode = _behavesAs;
     return windowCode == 'PS4_win' ||
         windowCode == 'MPS4_win' ||
         windowCode == 'SCS_win' ||
@@ -205,7 +218,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }
 
   bool get _isLockSupportedWindow {
-    final String windowCode = _windowCode;
+    final String windowCode = _behavesAs;
     return windowCode == 'S_win' ||
         windowCode == 'MS_win' ||
         windowCode == 'PF3_win' ||
@@ -767,7 +780,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       if (preferencesState != null) {
         final int? storedCollar = preferencesState.selectedCollar;
         if (storedCollar != null) {
-          _selectedCollar = storedCollar.clamp(1, _handler.collarCount);
+          _selectedCollar = _offeredCollar(storedCollar);
         }
         if (_showsDoorSectionToggles) {
           if (_handler is DoorSingleInputHandler) {
@@ -967,14 +980,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _unitMode =
         widget.editingItem?.unitMode ??
         (_isFabricationFlow ? UnitMode.feet : UnitMode.inches);
-    final int initialCollar = widget.editingItem?.collarIndex ?? 1;
-    if (initialCollar < 1) {
-      _selectedCollar = 1;
-    } else if (initialCollar > _handler.collarCount) {
-      _selectedCollar = _handler.collarCount;
-    } else {
-      _selectedCollar = initialCollar;
-    }
+    _selectedCollar = _offeredCollar(widget.editingItem?.collarIndex ?? 1);
     final WindowReviewItem? editingItem = widget.editingItem;
     _heightController.text = editingItem?.heightValue ?? '';
     if (_usesSplitWidthInputs) {
@@ -2229,7 +2235,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         const SizedBox(width: 6),
         Flexible(
           child: Text(
-            layout.isWholeFrame
+            layout.isFixed
+                ? CollarSidePicker.onlyCollarMessage(layout)
+                : layout.isWholeFrame
                 ? 'Tap the window: collar all round, or none'
                 : 'Tap a side to remove or restore its collar',
             textAlign: TextAlign.center,

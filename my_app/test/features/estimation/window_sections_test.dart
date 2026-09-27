@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/features/estimation/data/window_catalog.dart';
 import 'package:my_app/features/estimation/data/window_sections.dart';
 import 'package:my_app/features/estimation/models/window_type.dart';
+import 'package:my_app/features/estimation/models/window_variant.dart';
 import 'package:my_app/features/formulas/model/formula_window_key.dart';
 
 /// "Used Sections" in the library is the engine's word, not a description:
@@ -25,6 +26,24 @@ void main() {
   /// The catalogue configurations that are this window's, by asking the
   /// app's own window key to name each one back.
   Map<String, Map<String, dynamic>>? configsOf(String code, String context) {
+    // A variant window is not in the catalogue file: it is its base window,
+    // in the collars it comes in, with its own profiles' names -- the rule
+    // WindowVariants states, applied here to the file directly.
+    final WindowVariant? variant = WindowVariants.of(code);
+    if (variant != null) {
+      final Map<String, Map<String, dynamic>>? base = configsOf(variant.baseCode, context);
+      if (base == null) return null;
+      return <String, Map<String, dynamic>>{
+        for (final MapEntry<String, Map<String, dynamic>> config in base.entries)
+          if (variant.collars.contains(int.parse(
+            config.key.split('|').firstWhere((String p) => p.startsWith('collarType=')).split('=')[1],
+          )))
+            config.key: <String, dynamic>{
+              for (final MapEntry<String, dynamic> section in config.value.entries)
+                variant.sectionFor(section.key): section.value,
+            },
+      };
+    }
     final FormulaWindowKey? bare = FormulaWindowKey.of(
       context: context,
       appWindowCode: code,
@@ -160,7 +179,9 @@ void main() {
   test('the library rows: sliding windows, then box type windows', () {
     final List<WindowGroup> estimation = WindowCatalog.groupsForFlow(isFabrication: false);
     expect(estimation.map((WindowGroup g) => g.title), <String>['Sliding Windows', 'Box type Windows']);
-    expect(estimation[0].nodes.map((WindowType n) => n.label), <String>[
+    expect(estimation[0].rows.map((WindowRow r) => r.id),
+        <String>['sliding', 'sliding_b', 'sliding_ba']);
+    expect(estimation[0].rows[0].nodes.map((WindowType n) => n.label), <String>[
       'Sliding Window',
       'Sliding Window M_Section',
       'Panel Windows',
@@ -168,11 +189,15 @@ void main() {
       'Sliding Corner Windows',
       'Sliding Corner Windows M_Section',
     ]);
+    expect(estimation[0].rows[1].nodes.map((WindowType n) => n.label),
+        <String>['Prime Sliding Window', 'Prime Panel Windows', 'Prime Corner Windows']);
+    expect(estimation[0].rows[2].nodes.map((WindowType n) => n.label),
+        <String>['Royal Sliding Window', 'Royal Panel Windows', 'Royal Corner Windows']);
     expect(estimation[1].nodes.map((WindowType n) => n.label),
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door', 'Arch']);
 
     final List<WindowGroup> fabrication = WindowCatalog.groupsForFlow(isFabrication: true);
-    expect(fabrication[0].nodes.length, 6);
+    expect(fabrication[0].nodes.length, 12);
     expect(fabrication[1].nodes.map((WindowType n) => n.label),
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door']);
 

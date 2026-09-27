@@ -16,6 +16,7 @@ import '../data/window_catalog.dart';
 import '../data/window_sections.dart';
 import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
+import '../widgets/window_card_strip.dart';
 import '../widgets/window_navigation_card.dart';
 import 'input/input_registry.dart';
 import 'review_list_screen.dart';
@@ -56,32 +57,11 @@ class WindowNavigationScreen extends StatefulWidget {
 }
 
 class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
-  /// One carousel per row on a phone, each remembering its own page.
-  late final List<PageController> _mobilePageControllers;
-  late final List<int> _pageOf;
-
-  /// The one window the screen has in hand -- the last one swiped to or
-  /// tapped, in whichever row. Only it is drawn selected.
+  /// The one window the screen has in hand -- the last one tapped, in
+  /// whichever row. Only it is drawn selected. Counted within its group, line
+  /// after line.
   int _focusGroup = 0;
   int _focusIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _mobilePageControllers = <PageController>[
-      for (final WindowGroup _ in widget.groups)
-        PageController(viewportFraction: 0.84),
-    ];
-    _pageOf = List<int>.filled(widget.groups.length, 0);
-  }
-
-  @override
-  void dispose() {
-    for (final PageController controller in _mobilePageControllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
 
   void _focus(int group, int index) {
     setState(() {
@@ -99,7 +79,11 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
           settings: RouteSettings(name: FlowSteps.library.id),
           builder: (_) => WindowNavigationScreen(
             groups: <WindowGroup>[
-              WindowGroup(id: 'family', title: node.label, nodes: node.children),
+              WindowGroup(
+                id: 'family',
+                title: node.label,
+                rows: <WindowRow>[WindowRow(id: 'family', nodes: node.children)],
+              ),
             ],
             path: <String>[...widget.path, node.label],
             session: widget.session,
@@ -126,18 +110,8 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
     );
   }
 
-  int _crossAxisCount(double width) {
-    if (width >= 1200) {
-      return 4;
-    }
-    if (width >= 760) {
-      return 3;
-    }
-    return 2;
-  }
-
-  /// Where row [group] starts when every window on the screen is counted in
-  /// order -- the tour names its cards that way.
+  /// Where group [group] starts when every window on the screen is counted
+  /// in order -- the tour names its cards that way.
   int _offsetOf(int group) {
     int offset = 0;
     for (int g = 0; g < group; g++) {
@@ -146,7 +120,17 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
     return offset;
   }
 
+  /// Where line [row] of group [group] starts within its group.
+  int _rowOffset(int group, int row) {
+    int offset = 0;
+    for (int r = 0; r < row; r++) {
+      offset += widget.groups[group].rows[r].nodes.length;
+    }
+    return offset;
+  }
+
   /// One window's card, wired to the tour and to the screen's focus.
+  /// [index] counts within the group.
   Widget _card(int group, int index) {
     final WindowType node = widget.groups[group].nodes[index];
     final bool isSelected = group == _focusGroup && index == _focusIndex;
@@ -176,84 +160,23 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
     );
   }
 
-  Widget _buildMobileCardCarousel(BuildContext context, double width, int group) {
-    final double cardHeight = width < 380 ? 360 : 390;
-    final List<WindowType> nodes = widget.groups[group].nodes;
-
-    return Column(
-      children: <Widget>[
-        SizedBox(
-          key: Key('window_page_view_${widget.groups[group].id}'),
-          height: cardHeight,
-          child: PageView.builder(
-            controller: _mobilePageControllers[group],
-            physics: const BouncingScrollPhysics(),
-            itemCount: nodes.length,
-            onPageChanged: (int index) {
-              _pageOf[group] = index;
-              _focus(group, index);
-            },
-            itemBuilder: (BuildContext context, int index) {
-              return Padding(
-                padding: EdgeInsets.only(
-                  right: index == nodes.length - 1 ? 0 : AppTheme.space4,
-                ),
-                // Phones get this carousel, not the grid below, so the tour's
-                // targets have to be registered on both paths -- without this
-                // the spotlight simply never appeared for real users.
-                child: _card(group, index),
-              );
-            },
-          ),
-        ),
-        if (nodes.length > 1) ...<Widget>[
-          const SizedBox(height: AppTheme.space4),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: AppTheme.space2,
-            runSpacing: AppTheme.space2,
-            children: List<Widget>.generate(nodes.length, (int index) {
-              final bool active = index == _pageOf[group];
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                width: active ? 24 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: active
-                      ? AppTheme.royalBlue
-                      : AppTheme.royalBlue.withValues(alpha: 0.20),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              );
-            }),
-          ),
-        ],
-      ],
+  /// One line of windows, swiped sideways -- on every screen, so a line of
+  /// windows never folds into two.
+  Widget _buildRow(int group, int row) {
+    final WindowRow line = widget.groups[group].rows[row];
+    final int start = _rowOffset(group, row);
+    return WindowCardStrip(
+      key: Key('window_page_view_${line.id}'),
+      itemCount: line.nodes.length,
+      itemBuilder: (BuildContext context, int index) => _card(group, start + index),
     );
   }
 
-  Widget _buildGrid(double width, int group) {
-    final int crossAxisCount = _crossAxisCount(width);
-    final double aspectRatio = crossAxisCount == 2 ? 0.66 : 0.78;
-    return GridView.builder(
-      key: Key('window_page_view_${widget.groups[group].id}'),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: widget.groups[group].nodes.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppTheme.space5,
-        mainAxisSpacing: AppTheme.space5,
-        childAspectRatio: aspectRatio,
-      ),
-      itemBuilder: (BuildContext context, int index) => _card(group, index),
-    );
-  }
-
-  /// A row: its heading, then its windows.
-  Widget _buildGroup(BuildContext context, double width, int group) {
-    final WindowGroup row = widget.groups[group];
-    final bool useMobileCarousel = width < 560;
+  /// A group: its heading, then its lines of windows. Lines after the first
+  /// have no heading of their own -- they are the same kind of window -- and
+  /// sit under a hairline.
+  Widget _buildGroup(BuildContext context, int group) {
+    final WindowGroup kind = widget.groups[group];
     return SectionSurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,8 +194,8 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
               const SizedBox(width: AppTheme.space3),
               Expanded(
                 child: Text(
-                  row.title,
-                  key: Key('library_group_${row.id}'),
+                  kind.title,
+                  key: Key('library_group_${kind.id}'),
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w900,
@@ -281,11 +204,19 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.space5),
-          if (useMobileCarousel)
-            _buildMobileCardCarousel(context, width, group)
-          else
-            _buildGrid(width, group),
+          const SizedBox(height: AppTheme.space4),
+          for (int row = 0; row < kind.rows.length; row++) ...<Widget>[
+            if (row > 0) ...<Widget>[
+              const SizedBox(height: AppTheme.space5),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: AppTheme.line.withValues(alpha: 0.7),
+              ),
+              const SizedBox(height: AppTheme.space4),
+            ],
+            _buildRow(group, row),
+          ],
         ],
       ),
     );
@@ -378,7 +309,7 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
                   ),
                   for (int group = 0; group < widget.groups.length; group++) ...<Widget>[
                     const SizedBox(height: AppTheme.space6),
-                    _buildGroup(context, constraints.maxWidth, group),
+                    _buildGroup(context, group),
                   ],
                   const SizedBox(height: AppTheme.space6),
                 ],

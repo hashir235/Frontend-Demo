@@ -101,10 +101,26 @@ class CollarSidePicker extends StatelessWidget {
     CollarSide.right => 'right',
   };
 
+  /// What a tap is told on a window with one collar type: there is nothing
+  /// else to switch to.
+  static String onlyCollarMessage(CollarLayout layout) =>
+      layout.sidesWithCollar(layout.collars.first).isEmpty
+          ? 'This window has no collar on any side.'
+          : 'This window comes in one collar type only.';
+
   void _tap(Offset position, Size size) {
+    if (layout.isFixed) {
+      onRefused(onlyCollarMessage(layout));
+      return;
+    }
     if (layout.isWholeFrame) {
+      final int? next = layout.toggleWholeFrame(collar);
+      if (next == null) {
+        onRefused(onlyCollarMessage(layout));
+        return;
+      }
       HapticFeedback.selectionClick();
-      onChanged(layout.toggleWholeFrame(collar));
+      onChanged(next);
       return;
     }
     final CollarSide side = sideAt(position, frameIn(size));

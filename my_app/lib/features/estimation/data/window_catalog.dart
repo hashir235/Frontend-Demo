@@ -1,17 +1,34 @@
 import '../models/window_type.dart';
+import '../models/window_variant.dart';
 
-/// A row of the window library: a kind of window, and the windows of that
-/// kind.
+/// One line of windows in the library, swiped sideways.
+class WindowRow {
+  const WindowRow({required this.id, required this.nodes});
+
+  /// A stable name for keys and tests: "sliding", "sliding_b", "box".
+  final String id;
+
+  final List<WindowType> nodes;
+}
+
+/// A kind of window in the library: a heading, and the lines of windows
+/// under it. The sliding windows have three lines -- the plain frame, the B
+/// frame and the BA frame -- under the one heading.
 class WindowGroup {
-  const WindowGroup({required this.id, required this.title, required this.nodes});
+  const WindowGroup({required this.id, required this.title, required this.rows});
 
   /// A stable name for keys and tests: "sliding", "box".
   final String id;
 
-  /// The heading the row goes under.
+  /// The heading the rows go under.
   final String title;
 
-  final List<WindowType> nodes;
+  final List<WindowRow> rows;
+
+  /// Every window in the group, line by line.
+  List<WindowType> get nodes => <WindowType>[
+    for (final WindowRow row in rows) ...row.nodes,
+  ];
 }
 
 class WindowCatalog {
@@ -180,6 +197,175 @@ class WindowCatalog {
     ),
   ];
 
+  /// The sliding windows again on the B frame -- DC30B and DC26B in place of
+  /// DC30C and DC26C, everything else the same. See [WindowVariants].
+  static const List<WindowType> primeWindows = <WindowType>[
+    WindowType(
+      label: 'Prime Sliding Window',
+      subtitle: 'Sliding window on the DC30B / DC26B frame',
+      graphicKey: 'sliding_basic',
+      children: <WindowType>[],
+      displayIndex: 24,
+      codeName: 'SB_win',
+    ),
+    WindowType(
+      label: 'Prime Panel Windows',
+      subtitle: 'Panel windows on the DC30B / DC26B frame',
+      graphicKey: 'panel_basic',
+      children: <WindowType>[
+        WindowType(
+          label: 'Prime Center Fix',
+          subtitle: 'Center fix panel on the DC30B / DC26B frame',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 25,
+          codeName: 'PF3B_win',
+        ),
+        WindowType(
+          label: 'Prime Center Slide',
+          subtitle: 'Center slide panel on the DC30B / DC26B frame',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 26,
+          codeName: 'PS4B_win',
+        ),
+        WindowType(
+          label: 'Prime Equal Panel',
+          subtitle: 'Equal panel on the DC30B / DC26B frame',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 27,
+          codeName: 'EF3B_win',
+        ),
+      ],
+      displayIndex: null,
+    ),
+    WindowType(
+      label: 'Prime Corner Windows',
+      subtitle: 'Sliding corner windows on the DC30B / DC26B frame',
+      graphicKey: 'corner_basic',
+      children: <WindowType>[
+        WindowType(
+          label: 'Prime Corner Center Fix',
+          subtitle: 'Corner with center fixed panel, DC30B / DC26B frame',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 28,
+          codeName: 'SCFB_win',
+        ),
+        WindowType(
+          label: 'Prime Corner Center Slide',
+          subtitle: 'Corner with center sliding panel, DC30B / DC26B frame',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 29,
+          codeName: 'SCSB_win',
+        ),
+        WindowType(
+          label: 'Prime Corner Left Fix',
+          subtitle: 'Corner with left fixed panel, DC30B / DC26B frame',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 30,
+          codeName: 'SCLB_win',
+        ),
+        WindowType(
+          label: 'Prime Corner Right Fix',
+          subtitle: 'Corner with right fixed panel, DC30B / DC26B frame',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 31,
+          codeName: 'SCRB_win',
+        ),
+      ],
+      displayIndex: null,
+    ),
+  ];
+
+  /// And on the BA frame: DC30BA and DC26BA.
+  static const List<WindowType> royalWindows = <WindowType>[
+    WindowType(
+      label: 'Royal Sliding Window',
+      subtitle: 'Sliding window on the DC30BA / DC26BA frame',
+      graphicKey: 'sliding_basic',
+      children: <WindowType>[],
+      displayIndex: 32,
+      codeName: 'SBA_win',
+    ),
+    WindowType(
+      label: 'Royal Panel Windows',
+      subtitle: 'Panel windows on the DC30BA / DC26BA frame',
+      graphicKey: 'panel_basic',
+      children: <WindowType>[
+        WindowType(
+          label: 'Royal Center Fix',
+          subtitle: 'Center fix panel on the DC30BA / DC26BA frame',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 33,
+          codeName: 'PF3BA_win',
+        ),
+        WindowType(
+          label: 'Royal Center Slide',
+          subtitle: 'Center slide panel on the DC30BA / DC26BA frame',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 34,
+          codeName: 'PS4BA_win',
+        ),
+        WindowType(
+          label: 'Royal Equal Panel',
+          subtitle: 'Equal panel on the DC30BA / DC26BA frame',
+          graphicKey: 'panel_basic',
+          children: <WindowType>[],
+          displayIndex: 35,
+          codeName: 'EF3BA_win',
+        ),
+      ],
+      displayIndex: null,
+    ),
+    WindowType(
+      label: 'Royal Corner Windows',
+      subtitle: 'Sliding corner windows on the DC30BA / DC26BA frame',
+      graphicKey: 'corner_basic',
+      children: <WindowType>[
+        WindowType(
+          label: 'Royal Corner Center Fix',
+          subtitle: 'Corner with center fixed panel, DC30BA / DC26BA frame',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 36,
+          codeName: 'SCFBA_win',
+        ),
+        WindowType(
+          label: 'Royal Corner Center Slide',
+          subtitle: 'Corner with center sliding panel, DC30BA / DC26BA frame',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 37,
+          codeName: 'SCSBA_win',
+        ),
+        WindowType(
+          label: 'Royal Corner Left Fix',
+          subtitle: 'Corner with left fixed panel, DC30BA / DC26BA frame',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 38,
+          codeName: 'SCLBA_win',
+        ),
+        WindowType(
+          label: 'Royal Corner Right Fix',
+          subtitle: 'Corner with right fixed panel, DC30BA / DC26BA frame',
+          graphicKey: 'corner_basic',
+          children: <WindowType>[],
+          displayIndex: 39,
+          codeName: 'SCRBA_win',
+        ),
+      ],
+      displayIndex: null,
+    ),
+  ];
+
   /// Windows built as a box: fixed frame all round -- fix, corner fix,
   /// openable, doors and arches.
   static const List<WindowType> boxTypeWindows = <WindowType>[
@@ -260,6 +446,8 @@ class WindowCatalog {
   /// Every window, in library order.
   static const List<WindowType> root = <WindowType>[
     ...slidingWindows,
+    ...primeWindows,
+    ...royalWindows,
     ...boxTypeWindows,
   ];
 
@@ -269,8 +457,20 @@ class WindowCatalog {
         ? nodes.where((WindowType node) => !_isArchFamily(node)).toList(growable: false)
         : nodes;
     return <WindowGroup>[
-      WindowGroup(id: 'sliding', title: 'Sliding Windows', nodes: forFlow(slidingWindows)),
-      WindowGroup(id: 'box', title: 'Box type Windows', nodes: forFlow(boxTypeWindows)),
+      WindowGroup(
+        id: 'sliding',
+        title: 'Sliding Windows',
+        rows: <WindowRow>[
+          WindowRow(id: 'sliding', nodes: forFlow(slidingWindows)),
+          WindowRow(id: 'sliding_b', nodes: forFlow(primeWindows)),
+          WindowRow(id: 'sliding_ba', nodes: forFlow(royalWindows)),
+        ],
+      ),
+      WindowGroup(
+        id: 'box',
+        title: 'Box type Windows',
+        rows: <WindowRow>[WindowRow(id: 'box', nodes: forFlow(boxTypeWindows))],
+      ),
     ];
   }
 
@@ -308,6 +508,23 @@ class WindowCatalog {
 
   static WindowType? byCodeName(String codeName) {
     return _findByCode(root, codeName);
+  }
+
+  /// The window whose drawing [node] uses: a variant window's base (a Prime
+  /// Center Fix is drawn as the Center Fix), and a family of variants the
+  /// family its bases belong to. Every other window is its own.
+  static WindowType drawnAs(WindowType node) {
+    final WindowVariant? variant = WindowVariants.of(node.codeName);
+    if (variant != null) return byCodeName(variant.baseCode) ?? node;
+    if (!node.hasChildren) return node;
+    final WindowVariant? first = WindowVariants.of(node.children.first.codeName);
+    if (first == null) return node;
+    for (final WindowType family in root) {
+      if (family.children.any((WindowType child) => child.codeName == first.baseCode)) {
+        return family;
+      }
+    }
+    return node;
   }
 
   static bool _isArchFamily(WindowType node) {

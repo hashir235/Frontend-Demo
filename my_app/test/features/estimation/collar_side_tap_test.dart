@@ -212,6 +212,20 @@ void main() {
     ) async {
       final CollarLayout layout = CollarLayout.forWindow(code)!;
       await open(tester, code);
+
+      // One collar type only (the Prime and Royal windows): the window opens
+      // on it, and no tap anywhere changes it -- each says why instead.
+      if (layout.isFixed) {
+        final int only = layout.collars.single;
+        expectCollar(tester, only, reason: code);
+        for (final CollarSide side in CollarSide.values) {
+          await tapCollarSide(tester, side);
+          expectCollar(tester, only, reason: '$code ${side.name}');
+        }
+        expect(find.text(CollarSidePicker.onlyCollarMessage(layout)), findsWidgets);
+        return;
+      }
+
       expectCollar(tester, 1, reason: code);
 
       if (layout.isWholeFrame) {

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/features/estimation/data/window_catalog.dart';
 import 'package:my_app/features/estimation/models/collar_layout.dart';
+import 'package:my_app/features/estimation/models/window_variant.dart';
 import 'package:my_app/features/estimation/models/window_type.dart';
 import 'package:my_app/features/estimation/presentation/input/window_input_handler.dart';
 import 'package:my_app/features/formulas/model/formula_window_key.dart';
@@ -57,7 +58,9 @@ void main() {
   }
 
   int checked = 0;
-  for (final String code in codes) {
+  // Variant windows (the Prime and Royal lines) are their base's layout,
+  // narrowed to their collars; window_variant_test holds them to that.
+  for (final String code in codes.where((String c) => WindowVariants.of(c) == null)) {
     test('$code: the collar table is the engine\'s', () {
       final CollarLayout? layout = CollarLayout.forWindow(code);
       expect(layout, isNotNull, reason: 'every window on the menu has a layout');

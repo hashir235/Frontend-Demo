@@ -9,6 +9,7 @@ import '../models/cutting_report.dart';
 import '../models/optimization_request.dart';
 import '../models/section_recalculation.dart';
 import '../models/window_review_item.dart';
+import '../models/window_variant.dart';
 import 'optimization_api_client.dart';
 
 /// Raised when this workshop's own formulas cannot be applied.
@@ -92,10 +93,15 @@ class OptimizationRepository {
     // A piece cut to a size of its own is this workshop's own decision as much
     // as a changed formula is. The engine knows nothing of it, so a job with
     // one must never be handed back to the engine to work out.
+    //
+    // A variant window is the same: the engine would cut it as its base, from
+    // the base's profiles, so it is only ever cut here.
     final bool customised = !book.overrides.isEmpty ||
         request.windows.any(
           (OptimizationWindowRequest window) =>
-              window.pieceSizes.isNotEmpty || window.sideSizes.isNotEmpty,
+              window.pieceSizes.isNotEmpty ||
+              window.sideSizes.isNotEmpty ||
+              WindowVariants.of(window.windowCode) != null,
         );
     final WindowCutCalculator calculator = WindowCutCalculator(book);
     final List<OptimizationWindowRequest> windows = <OptimizationWindowRequest>[];

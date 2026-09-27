@@ -82,9 +82,12 @@ class ReviewListScreen extends StatelessWidget {
   }
 
   Future<void> _editItem(BuildContext context, WindowReviewItem item) async {
+    // By code first: codes are one per window, display numbers are not (the
+    // M-section Center Slide and Equal Panel share one), and opening a window
+    // as its neighbour would save it back as that neighbour.
     final WindowType? node =
-        WindowCatalog.byDisplayIndex(item.windowIndex) ??
-        WindowCatalog.byCodeName(item.windowCode);
+        WindowCatalog.byCodeName(item.windowCode) ??
+        WindowCatalog.byDisplayIndex(item.windowIndex);
     if (node == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Unable to open editor for this item.')),

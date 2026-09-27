@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/window_line_graphic.dart';
+import '../data/window_catalog.dart';
 import '../models/window_type.dart';
+import '../models/window_variant.dart';
 
 /// One window in the library, read top to bottom: its name, the sections it
 /// is made of, then its drawing.
@@ -38,9 +40,19 @@ class WindowNavigationCard extends StatelessWidget {
         node.label.contains('M_Section') ||
         node.label.contains('M Section') ||
         resolvedCode.startsWith('M');
-    final List<Color> diagramColors = isMSectionCard
-        ? <Color>[const Color(0xFFEAF8EB), const Color(0xFFD4F0D7)]
-        : <Color>[const Color(0xFFEFF6FF), const Color(0xFFDCEBFF)];
+    // The frame a variant is on, told apart at a glance by the drawing's
+    // backdrop: the B frame warm, the BA frame lavender.
+    final String? frame = WindowVariants.of(
+      node.hasChildren ? node.children.first.codeName : node.codeName,
+    )?.frame;
+    final List<Color> diagramColors = switch (frame) {
+      'B' => <Color>[const Color(0xFFFFF8EE), const Color(0xFFFBE8CC)],
+      'BA' => <Color>[const Color(0xFFF6F2FF), const Color(0xFFE5DCFB)],
+      _ when isMSectionCard => <Color>[const Color(0xFFEAF8EB), const Color(0xFFD4F0D7)],
+      _ => <Color>[const Color(0xFFEFF6FF), const Color(0xFFDCEBFF)],
+    };
+    // A variant is drawn as the window it is made like.
+    final WindowType drawn = WindowCatalog.drawnAs(node);
     final TextTheme text = Theme.of(context).textTheme;
 
     return LayoutBuilder(
@@ -174,10 +186,10 @@ class WindowNavigationCard extends StatelessWidget {
                             width: compact ? 118 : 150,
                             height: compact ? 72 : 88,
                             child: WindowLineGraphic(
-                              graphicKey: node.graphicKey,
-                              windowLabel: node.label,
-                              displayIndex: node.displayIndex,
-                              windowCode: node.codeName,
+                              graphicKey: drawn.graphicKey,
+                              windowLabel: drawn.label,
+                              displayIndex: drawn.displayIndex,
+                              windowCode: drawn.codeName,
                               strokeColor: highlight
                                   ? AppTheme.royalBlue
                                   : AppTheme.deepTeal,

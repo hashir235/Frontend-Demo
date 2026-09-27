@@ -36,6 +36,7 @@ class WindowSections {
   /// the interlock and the rest.
   static const List<String> _order = <String>[
     'DC30F', 'DC30C', 'DC26F', 'DC26C',
+    'DC30B', 'DC26B', 'DC30BA', 'DC26BA',
     'M30F', 'M30', 'M26F', 'M26',
     'D54F', 'D54A', 'D51F', 'D51A',
     'D50', 'D50A', 'D41', 'D29', 'D31',
@@ -46,6 +47,19 @@ class WindowSections {
   static const List<UsedSection> _sliding = <UsedSection>[
     UsedSection('DC30F'), UsedSection('DC30C'),
     UsedSection('DC26F'), UsedSection('DC26C'),
+    UsedSection('D29'), UsedSection('M23'), UsedSection('M24'), UsedSection('M28'),
+  ];
+
+  /// The sliding windows on the B frame: the plain frame's inner profiles,
+  /// with DC30B and DC26B for the frame. No collar, so no F profiles.
+  static const List<UsedSection> _slidingB = <UsedSection>[
+    UsedSection('DC30B'), UsedSection('DC26B'),
+    UsedSection('D29'), UsedSection('M23'), UsedSection('M24'), UsedSection('M28'),
+  ];
+
+  /// And on the BA frame: DC30BA and DC26BA.
+  static const List<UsedSection> _slidingBA = <UsedSection>[
+    UsedSection('DC30BA'), UsedSection('DC26BA'),
     UsedSection('D29'), UsedSection('M23'), UsedSection('M24'), UsedSection('M28'),
   ];
 
@@ -96,6 +110,22 @@ class WindowSections {
     'Double_Door': _door,
     'A_win': _arch,
     'AR_win': _arch,
+    'SB_win': _slidingB,
+    'PF3B_win': _slidingB,
+    'PS4B_win': <UsedSection>[..._slidingB, UsedSection('D31')],
+    'EF3B_win': _slidingB,
+    'SCFB_win': _slidingB,
+    'SCSB_win': _slidingB,
+    'SCLB_win': _slidingB,
+    'SCRB_win': _slidingB,
+    'SBA_win': _slidingBA,
+    'PF3BA_win': _slidingBA,
+    'PS4BA_win': <UsedSection>[..._slidingBA, UsedSection('D31')],
+    'EF3BA_win': _slidingBA,
+    'SCFBA_win': _slidingBA,
+    'SCSBA_win': _slidingBA,
+    'SCLBA_win': _slidingBA,
+    'SCRBA_win': _slidingBA,
   };
 
   /// Where fabrication's sections differ from estimation's.
