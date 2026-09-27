@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import 'collar_frame_drawing.dart';
 
 class _ZoneSpec {
   final String section;
@@ -39,15 +40,7 @@ class _SlidingMSectionPainter extends CustomPainter {
       }
     }
 
-    final double outerPadding = size.width * 0.08;
-    final double outerWidth = size.width - (outerPadding * 2);
-    final double outerHeight = size.height - (outerPadding * 2);
-    final Rect outerRect = Rect.fromLTWH(
-      outerPadding,
-      outerPadding,
-      outerWidth,
-      outerHeight,
-    );
+    final Rect outerRect = SlidingMSectionOverlay.frameIn(size);
 
     final double gap = size.width * 0.06;
     final Rect innerRect = outerRect.deflate(gap);
@@ -1357,7 +1350,7 @@ class _SlidingMSectionPainter extends CustomPainter {
   }
 }
 
-class SlidingMSectionOverlay extends StatelessWidget {
+class SlidingMSectionOverlay extends StatelessWidget implements CollarFrameDrawing {
   final String? selectedSection;
   final Map<String, String> sectionAliases;
   final int? collarId;
@@ -1418,6 +1411,20 @@ class SlidingMSectionOverlay extends StatelessWidget {
         return [dc30F, dc30C, dc26C, ...universalSections];
     }
   }
+
+  /// Where the outer frame is drawn: in from every edge by 8% of the width.
+  static Rect frameIn(Size size) {
+    final double padding = size.width * 0.08;
+    return Rect.fromLTWH(
+      padding,
+      padding,
+      size.width - (padding * 2),
+      size.height - (padding * 2),
+    );
+  }
+
+  @override
+  Rect collarFrameIn(Size size) => frameIn(size);
 
   @override
   Widget build(BuildContext context) {

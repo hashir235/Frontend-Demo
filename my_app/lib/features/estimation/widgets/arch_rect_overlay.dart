@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import 'collar_frame_drawing.dart';
 
-class ArchRectOverlay extends StatelessWidget {
+class ArchRectOverlay extends StatelessWidget implements CollarFrameDrawing {
   final int collarId;
   final String? selectedSection;
 
@@ -11,6 +12,16 @@ class ArchRectOverlay extends StatelessWidget {
     required this.collarId,
     this.selectedSection,
   });
+
+  /// Where the outer frame is drawn.
+  static Rect frameIn(Size size) => Rect.fromCenter(
+    center: Offset(size.width / 2, size.height / 2),
+    width: size.width * 0.78,
+    height: size.height * 0.42,
+  );
+
+  @override
+  Rect collarFrameIn(Size size) => frameIn(size);
 
   @override
   Widget build(BuildContext context) {
@@ -105,11 +116,7 @@ class _ArchRectPainter extends CustomPainter {
     final bool highlightD51F = normalizedSection == 'D51F';
     final bool highlightD51A = normalizedSection == 'D51A';
 
-    final Rect outerRect = Rect.fromCenter(
-      center: Offset(size.width / 2, size.height / 2),
-      width: size.width * 0.78,
-      height: size.height * 0.42,
-    );
+    final Rect outerRect = ArchRectOverlay.frameIn(size);
     final Rect innerRect = Rect.fromLTWH(
       outerRect.left + size.width * 0.055,
       outerRect.top + size.height * 0.045,

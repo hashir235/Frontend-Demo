@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:my_app/features/estimation/models/collar_layout.dart';
 import 'package:my_app/features/estimation/models/window_type.dart';
 import 'package:my_app/features/estimation/presentation/input/window_input_base.dart';
 import 'package:my_app/features/estimation/presentation/window_navigation_screen.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
+
+import 'helpers/collar_taps.dart';
 
 const Key _pageViewKey = Key('window_page_view');
 const Key _focusedCodeNameKey = Key('focused_code_name');
@@ -146,10 +149,7 @@ void main() {
     ).pop();
     await tester.pumpAndSettle();
 
-    await tester.drag(
-      find.byKey(const Key('collar_page_view')),
-      const Offset(-700, 0),
-    );
+    await goToCollar(tester, 'MS_win', 2);
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
@@ -160,7 +160,7 @@ void main() {
     expect(find.text('D29'), findsNothing);
   });
 
-  testWidgets('SCF input limits collar cards to 2', (
+  testWidgets('SCF collar switches the whole frame on any tap', (
     WidgetTester tester,
   ) async {
     const WindowType scfNode = WindowType(
@@ -177,15 +177,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final PageView pageView = tester.widget<PageView>(
-      find.byKey(const Key('collar_page_view')),
-    );
-    final SliverChildBuilderDelegate delegate =
-        pageView.childrenDelegate as SliverChildBuilderDelegate;
-    expect(delegate.childCount, 2);
+    // A corner window's collar is all round or none: every tap, whichever
+    // side, switches between the two and there is no third.
+    expect(shownCollar(tester), 1);
+    for (final CollarSide side in CollarSide.values) {
+      final int before = shownCollar(tester);
+      await tapCollarSide(tester, side);
+      expect(shownCollar(tester), before == 1 ? 2 : 1);
+    }
   });
 
-  testWidgets('MSCF input limits collar cards to 2', (
+  testWidgets('MSCF collar switches the whole frame on any tap', (
     WidgetTester tester,
   ) async {
     const WindowType mscfNode = WindowType(
@@ -202,12 +204,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final PageView pageView = tester.widget<PageView>(
-      find.byKey(const Key('collar_page_view')),
-    );
-    final SliverChildBuilderDelegate delegate =
-        pageView.childrenDelegate as SliverChildBuilderDelegate;
-    expect(delegate.childCount, 2);
+    // A corner window's collar is all round or none: every tap, whichever
+    // side, switches between the two and there is no third.
+    expect(shownCollar(tester), 1);
+    for (final CollarSide side in CollarSide.values) {
+      final int before = shownCollar(tester);
+      await tapCollarSide(tester, side);
+      expect(shownCollar(tester), before == 1 ? 2 : 1);
+    }
   });
 
   testWidgets('SCF input shows right and left width fields', (
@@ -258,7 +262,7 @@ void main() {
     expect(find.text('Left Width'), findsOneWidget);
   });
 
-  testWidgets('Non-corner windows keep 14 collar cards', (
+  testWidgets('Non-corner windows reach all 14 collars by tapping sides', (
     WidgetTester tester,
   ) async {
     const WindowType slidingNode = WindowType(
@@ -275,12 +279,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final PageView pageView = tester.widget<PageView>(
-      find.byKey(const Key('collar_page_view')),
-    );
-    final SliverChildBuilderDelegate delegate =
-        pageView.childrenDelegate as SliverChildBuilderDelegate;
-    expect(delegate.childCount, 14);
+    // Every one of the 14 collars is a matter of tapping sides.
+    expect(shownCollar(tester), 1);
+    for (int collar = 2; collar <= 14; collar++) {
+      await goToCollar(tester, 'S_win', collar);
+    }
+    await goToCollar(tester, 'S_win', 1);
+    expect(shownCollar(tester), 1);
   });
 
   testWidgets('PF3 drawer follows collar-wise S_win section parity', (
@@ -320,10 +325,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Collar 2
-    await tester.drag(
-      find.byKey(const Key('collar_page_view')),
-      const Offset(-700, 0),
-    );
+    await goToCollar(tester, 'PF3_win', 2);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
     await tester.pumpAndSettle();
@@ -340,10 +342,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Collar 3
-    await tester.drag(
-      find.byKey(const Key('collar_page_view')),
-      const Offset(-700, 0),
-    );
+    await goToCollar(tester, 'PF3_win', 3);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
     await tester.pumpAndSettle();
@@ -397,10 +396,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Collar 2
-    await tester.drag(
-      find.byKey(const Key('collar_page_view')),
-      const Offset(-700, 0),
-    );
+    await goToCollar(tester, 'PS4_win', 2);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
     await tester.pumpAndSettle();
@@ -436,10 +432,7 @@ void main() {
     ).pop();
     await tester.pumpAndSettle();
 
-    await tester.drag(
-      find.byKey(const Key('collar_page_view')),
-      const Offset(-700, 0),
-    );
+    await goToCollar(tester, 'EF3_win', 2);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
     await tester.pumpAndSettle();
@@ -480,10 +473,7 @@ void main() {
     ).pop();
     await tester.pumpAndSettle();
 
-    await tester.drag(
-      find.byKey(const Key('collar_page_view')),
-      const Offset(-700, 0),
-    );
+    await goToCollar(tester, 'ES3_win', 2);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
     await tester.pumpAndSettle();
@@ -522,10 +512,7 @@ void main() {
     ).pop();
     await tester.pumpAndSettle();
 
-    await tester.drag(
-      find.byKey(const Key('collar_page_view')),
-      const Offset(-700, 0),
-    );
+    await goToCollar(tester, 'MPF3_win', 2);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('open_settings_drawer_button')));
     await tester.pumpAndSettle();

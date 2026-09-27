@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'collar_frame_drawing.dart';
 import 'panel_center_fix_overlay.dart';
 
-class PanelEqualOverlay extends StatelessWidget {
+class PanelEqualOverlay extends StatelessWidget implements CollarFrameDrawing {
   final String? selectedSection;
   final Map<String, String> sectionAliases;
   final int? collarId;
@@ -15,6 +16,9 @@ class PanelEqualOverlay extends StatelessWidget {
     this.collarId,
     this.m23HighlightAllVerticals = false,
   });
+
+  @override
+  Rect collarFrameIn(Size size) => PanelCenterFixOverlay.frameIn(size);
 
   @override
   Widget build(BuildContext context) {

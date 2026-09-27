@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import 'collar_frame_drawing.dart';
 
-class FixWindowOverlay extends StatelessWidget {
+class FixWindowOverlay extends StatelessWidget implements CollarFrameDrawing {
   final int collarId;
   final String? selectedSection;
 
@@ -11,6 +12,17 @@ class FixWindowOverlay extends StatelessWidget {
     required this.collarId,
     this.selectedSection,
   });
+
+  /// Where the outer frame is drawn.
+  static Rect frameIn(Size size) => Rect.fromLTWH(
+    size.width * 0.17,
+    size.height * 0.16,
+    size.width * 0.66,
+    size.height * 0.68,
+  );
+
+  @override
+  Rect collarFrameIn(Size size) => frameIn(size);
 
   @override
   Widget build(BuildContext context) {
@@ -118,12 +130,7 @@ class _FixWindowPainter extends CustomPainter {
       color: AppTheme.violet,
     );
 
-    final Rect outerRect = Rect.fromLTWH(
-      size.width * 0.17,
-      size.height * 0.16,
-      size.width * 0.66,
-      size.height * 0.68,
-    );
+    final Rect outerRect = FixWindowOverlay.frameIn(size);
     final Rect innerRect = Rect.fromLTWH(
       size.width * 0.245,
       size.height * 0.245,

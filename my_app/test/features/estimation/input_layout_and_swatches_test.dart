@@ -51,7 +51,7 @@ void main() {
   ) async {
     await open(tester);
 
-    final Rect collar = rectOf(tester, find.byKey(const Key('collar_page_view')));
+    final Rect collar = rectOf(tester, find.byKey(const Key('collar_side_picker')));
     final Rect winNo = rectOf(tester, find.byKey(const Key('current_win_no_label')));
     final Rect quantity = rectOf(tester, fieldLabelled('Quantity'));
     final Rect width = rectOf(tester, fieldLabelled('Width').first);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import 'collar_frame_drawing.dart';
 
 class _LineSpec {
   final String id;
@@ -153,13 +154,7 @@ class _PanelCenterSlidePainter extends CustomPainter {
 
     final bool hideOuter = c == 2;
 
-    final double outerPadding = size.width * 0.08;
-    final Rect outerRect = Rect.fromLTWH(
-      outerPadding,
-      outerPadding,
-      size.width - (outerPadding * 2),
-      size.height - (outerPadding * 2),
-    );
+    final Rect outerRect = PanelCenterSlideOverlay.frameIn(size);
 
     final double gap = size.width * 0.06;
     final Rect innerRect = outerRect.deflate(gap);
@@ -563,7 +558,7 @@ class _PanelCenterSlidePainter extends CustomPainter {
   }
 }
 
-class PanelCenterSlideOverlay extends StatelessWidget {
+class PanelCenterSlideOverlay extends StatelessWidget implements CollarFrameDrawing {
   final String? selectedSection;
   final Map<String, String> sectionAliases;
   final int? collarId;
@@ -574,6 +569,20 @@ class PanelCenterSlideOverlay extends StatelessWidget {
     this.sectionAliases = const <String, String>{},
     this.collarId,
   });
+
+  /// Where the outer frame is drawn: in from every edge by 8% of the width.
+  static Rect frameIn(Size size) {
+    final double padding = size.width * 0.08;
+    return Rect.fromLTWH(
+      padding,
+      padding,
+      size.width - (padding * 2),
+      size.height - (padding * 2),
+    );
+  }
+
+  @override
+  Rect collarFrameIn(Size size) => frameIn(size);
 
   @override
   Widget build(BuildContext context) {

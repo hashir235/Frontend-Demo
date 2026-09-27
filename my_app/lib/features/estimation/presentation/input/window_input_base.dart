@@ -32,7 +32,9 @@ import '../../../settings/state/size_input_mode.dart';
 import '../review_list_screen.dart';
 import 'input_block_order.dart';
 import 'size_entry_notation.dart';
+import '../../models/collar_layout.dart';
 import '../../models/glass_color.dart';
+import '../../widgets/collar_side_picker.dart';
 import '../../models/window_material.dart';
 import '../../widgets/glass_color_picker.dart';
 import '../../widgets/window_material_picker.dart';
@@ -72,7 +74,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   static const int _maxDescriptionLength = 120;
   static const double _collarCardSize = 258;
   static const double _collarCardWidthFactor = 1.16;
-  static const double _collarViewportFraction = 0.78;
   final ProjectRepository _projectRepository = ProjectRepository();
   final WindowInputPreferencesStore _preferencesStore =
       WindowInputPreferencesStore();
@@ -156,8 +157,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     debugLabel: 'descriptionField',
   );
 
-  late final PageController _collarPageController;
-  double _collarPageValue = 0;
   late UnitMode _unitMode;
   late _RubberType _rubberType;
   late _LockType _lockType;
@@ -824,13 +823,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         _syncSplitControllersFromCombined();
       }
     });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_collarPageController.hasClients) {
-        return;
-      }
-      _collarPageController.jumpToPage(_selectedCollar - 1);
-    });
   }
 
   void _restoreHandlerOptionsFromEditingItem(WindowReviewItem? editingItem) {
@@ -1004,103 +996,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (widget.editingItem != null) {
       _winNoController.text = widget.editingItem!.winNo.toString();
     }
-    _collarPageController = PageController(
-      initialPage: _selectedCollar - 1,
-      viewportFraction: _collarViewportFraction,
-    );
-    _collarPageValue = (_selectedCollar - 1).toDouble();
-    _collarPageController.addListener(_onCollarScroll);
     unawaited(_restorePersistedSidebarState());
-  }
-
-  /// Whether there is a collar [delta] steps away.
-  bool _canStepCollar(int delta) {
-    final int next = _collarPageValue.round() + delta;
-    return next >= 0 && next < _handler.collarCount;
-  }
-
-  /// Moves one collar along.
-  ///
-  /// Dragging through fourteen cards to reach the one you want is the slowest
-  /// part of entering a window, and it is done for every window in a project.
-  /// A tap on the near half of the strip is one movement instead of several.
-  void _stepCollar(int delta) {
-    if (!_collarPageController.hasClients) {
-      return;
-    }
-    final int current = (_collarPageController.page ?? _collarPageValue)
-        .round();
-    final int next = current + delta;
-    if (next < 0 || next >= _handler.collarCount) {
-      return;
-    }
-    // Selection follows from onPageChanged, so there is one place that decides
-    // which collar is current however it was reached -- tap, arrow or drag.
-    _collarPageController.animateToPage(
-      next,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeInOutCubic,
-    );
-  }
-
-  /// The two arrows under the collar cards.
-  ///
-  /// Tapping a half of the strip is quicker than dragging, but invisible until
-  /// somebody happens to try it. These say which way each half goes, and fade
-  /// at the ends so a strip that has stopped moving does not read as stuck.
-  Widget _buildCollarStepHint() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        _buildCollarStepArrow(
-          const Key('collar_step_back'),
-          Icons.arrow_back_rounded,
-          -1,
-        ),
-        const SizedBox(width: 40),
-        _buildCollarStepArrow(
-          const Key('collar_step_forward'),
-          Icons.arrow_forward_rounded,
-          1,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCollarStepArrow(Key key, IconData icon, int delta) {
-    final bool enabled = _canStepCollar(delta);
-    return GestureDetector(
-      key: key,
-      behavior: HitTestBehavior.opaque,
-      onTap: enabled ? () => _stepCollar(delta) : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 180),
-          opacity: enabled ? 1 : 0.3,
-          child: Icon(
-            icon,
-            size: 20,
-            color: AppTheme.deepTeal.withValues(alpha: 0.35),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _onCollarScroll() {
-    if (!_collarPageController.hasClients) {
-      return;
-    }
-
-    final double nextPage = _collarPageController.page ?? 0;
-    if (nextPage == _collarPageValue) {
-      return;
-    }
-
-    setState(() {
-      _collarPageValue = nextPage;
-    });
   }
 
   List<({FocusNode node, GlobalKey key})> get _focusTargets {
@@ -1240,8 +1136,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _widthSubFocusNode.dispose();
     _leftWidthSubFocusNode.dispose();
     _quantityFocusNode.dispose();
-    _collarPageController.removeListener(_onCollarScroll);
-    _collarPageController.dispose();
     super.dispose();
   }
 
@@ -2253,81 +2147,114 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
   }
 
-  Widget _buildCollarCard(
-    int index, {
-    required bool isFocused,
-    required double side,
-  }) {
-    final int collarIndex = index + 1;
-    final bool isSelected = _selectedCollar == collarIndex;
-    final Color borderColor = isSelected
-        ? AppTheme.violet
-        : (isFocused ? AppTheme.sky : AppTheme.ice.withValues(alpha: 0.9));
-
-    // No tap handler of its own. The strip takes taps as a whole, so which
-    // half the finger lands on decides the direction rather than which card it
-    // hit -- and since a neighbour card sits in that half anyway, tapping one
-    // still brings it to the middle, as it always did.
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: side * _collarCardWidthFactor,
-          maxHeight: side,
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              top: -18,
-              left: 0,
-              right: 0,
-              child: Center(child: _CollarArchBadge(number: collarIndex)),
-            ),
-            AspectRatio(
-              aspectRatio: _collarCardWidthFactor,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeInOutCubic,
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF8FBFD), Color(0xFFEAF1F5)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+  /// The collar, chosen by tapping the sides of one drawing of the window.
+  ///
+  /// It used to be a row of cards to swipe through until the right one was in
+  /// the middle -- fourteen of them for a sliding window. Now the window is
+  /// drawn once, as the collar chosen so far, and a tap on a side takes its
+  /// collar off or puts it back; the drawing and the number above it follow.
+  /// See [CollarSidePicker].
+  Widget _buildCollarPicker() {
+    final CollarLayout? layout = CollarLayout.forWindow(widget.node.codeName ?? '');
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double side = math.min(
+          _collarCardSize,
+          constraints.maxWidth / _collarCardWidthFactor,
+        );
+        final Widget? drawing = _handler.overlayForCollar(
+          _selectedCollar,
+          _selectedSectionCode,
+        );
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const SizedBox(height: 18),
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.topCenter,
+              children: <Widget>[
+                if (layout == null)
+                  SizedBox(
+                    width: side * _collarCardWidthFactor,
+                    height: side,
+                    child: drawing,
+                  )
+                else
+                  CollarSidePicker(
+                    layout: layout,
+                    collar: _selectedCollar,
+                    drawing: drawing,
+                    width: side * _collarCardWidthFactor,
+                    height: side,
+                    onChanged: _selectCollar,
+                    onRefused: (String reason) {
+                      final ScaffoldMessengerState messenger =
+                          ScaffoldMessenger.of(context);
+                      messenger.hideCurrentSnackBar();
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(reason),
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    },
                   ),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: borderColor,
-                    width: isSelected ? 2.2 : 1.2,
+                // The badge sits over the top edge of the card; a tap there
+                // is meant for the top side under it.
+                Positioned(
+                  top: -18,
+                  child: IgnorePointer(
+                    child: _CollarArchBadge(number: _selectedCollar),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.deepTeal.withValues(alpha: 0.08),
-                      blurRadius: 14,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
                 ),
-                child: Builder(
-                  builder: (BuildContext context) {
-                    final Widget? overlayWidget = _handler.overlayForCollar(
-                      collarIndex,
-                      _selectedSectionCode,
-                    );
-                    return Stack(
-                      children: [
-                        if (overlayWidget case final Widget overlay) overlay,
-                      ],
-                    );
-                  },
-                ),
-              ),
+              ],
             ),
+            const SizedBox(height: 8),
+            if (layout != null) _buildCollarHint(layout),
           ],
-        ),
-      ),
+        );
+      },
     );
+  }
+
+  /// Says what a tap does, under the drawing -- once, in a line.
+  Widget _buildCollarHint(CollarLayout layout) {
+    final ThemeData theme = Theme.of(context);
+    return Row(
+      key: const Key('collar_hint'),
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Icon(Icons.touch_app_rounded, size: 17, color: AppTheme.slate),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            layout.isWholeFrame
+                ? 'Tap the window: collar all round, or none'
+                : 'Tap a side to remove or restore its collar',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppTheme.slate,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Makes [collar] the window's collar, and everything that hangs off the
+  /// collar -- the sections offered, the sidebar choice -- follow it.
+  void _selectCollar(int collar) {
+    if (collar == _selectedCollar) return;
+    setState(() {
+      _selectedCollar = collar;
+      _selectedSectionCode = _normalizedSelectedSectionCode(
+        _selectedSectionCode,
+        _selectedCollar,
+      );
+    });
+    _persistSidebarSelections();
   }
 
   /// The "Height" / "Width" label on a size field.
@@ -3605,78 +3532,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         InputBlockOrder.collar: ArrangeableBlock(
                           id: InputBlockOrder.collar,
                           child: TutorialTarget(
-                          id: 'input.collarCards',
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              SizedBox(
-                                height: _collarCardSize + 30,
-                                child: LayoutBuilder(
-                                  builder:
-                                      (
-                                        BuildContext context,
-                                        BoxConstraints constraints,
-                                      ) {
-                                        final double availableWidth =
-                                            constraints.maxWidth;
-                                        final double side = math.min(
-                                          _collarCardSize,
-                                          availableWidth *
-                                              _collarViewportFraction *
-                                              0.9,
-                                        );
-                                        // Taps are taken here rather than on
-                                        // the page or the cards: on the strip,
-                                        // so the rest of the screen keeps its
-                                        // own taps, and above the PageView, so
-                                        // dragging still works as before.
-                                        return GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTapUp: (TapUpDetails details) {
-                                            _stepCollar(
-                                              details.localPosition.dx <
-                                                      availableWidth / 2
-                                                  ? -1
-                                                  : 1,
-                                            );
-                                          },
-                                          child: PageView.builder(
-                                            key: const Key('collar_page_view'),
-                                            controller: _collarPageController,
-                                            physics:
-                                                const BouncingScrollPhysics(),
-                                            itemCount: _handler.collarCount,
-                                            onPageChanged: (int index) {
-                                              setState(() {
-                                                _selectedCollar = index + 1;
-                                                _selectedSectionCode =
-                                                    _normalizedSelectedSectionCode(
-                                                      _selectedSectionCode,
-                                                      _selectedCollar,
-                                                    );
-                                              });
-                                              _persistSidebarSelections();
-                                            },
-                                            itemBuilder:
-                                                (
-                                                  BuildContext context,
-                                                  int index,
-                                                ) {
-                                                  return _buildCollarCard(
-                                                    index,
-                                                    isFocused: true,
-                                                    side: side,
-                                                  );
-                                                },
-                                          ),
-                                        );
-                                      },
-                                ),
-                              ),
-                              _buildCollarStepHint(),
-                            ],
+                            id: 'input.collarCards',
+                            child: _buildCollarPicker(),
                           ),
-                        ),
                         ),
                         InputBlockOrder.windowNo: ArrangeableBlock(
                           id: InputBlockOrder.windowNo,

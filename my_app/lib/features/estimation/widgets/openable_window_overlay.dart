@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'collar_frame_drawing.dart';
 import 'fix_window_overlay.dart';
 
-class OpenableWindowOverlay extends StatelessWidget {
+class OpenableWindowOverlay extends StatelessWidget
+    implements CollarFrameDrawing {
   final int collarId;
   final String? selectedSection;
 
@@ -25,6 +27,9 @@ class OpenableWindowOverlay extends StatelessWidget {
         return selectedSection;
     }
   }
+
+  @override
+  Rect collarFrameIn(Size size) => FixWindowOverlay.frameIn(size);
 
   @override
   Widget build(BuildContext context) {

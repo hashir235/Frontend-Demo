@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import 'collar_frame_drawing.dart';
 
-class DoorSingleOverlay extends StatelessWidget {
+class DoorSingleOverlay extends StatelessWidget implements CollarFrameDrawing {
   final int collarId;
   final String? selectedSection;
   final bool d46Enabled;
@@ -15,6 +16,17 @@ class DoorSingleOverlay extends StatelessWidget {
     this.d46Enabled = false,
     this.d52Enabled = false,
   });
+
+  /// Where the outer frame is drawn.
+  static Rect frameIn(Size size) => Rect.fromLTWH(
+    size.width * 0.34,
+    size.height * 0.14,
+    size.width * 0.32,
+    size.height * 0.70,
+  );
+
+  @override
+  Rect collarFrameIn(Size size) => frameIn(size);
 
   @override
   Widget build(BuildContext context) {
@@ -104,12 +116,7 @@ class _DoorSinglePainter extends CustomPainter {
     final bool highlightD54F = normalizedSection == 'D54F';
     final bool highlightD54A = normalizedSection == 'D54A';
 
-    final Rect outerRect = Rect.fromLTWH(
-      size.width * 0.34,
-      size.height * 0.14,
-      size.width * 0.32,
-      size.height * 0.70,
-    );
+    final Rect outerRect = DoorSingleOverlay.frameIn(size);
     final Rect innerRect = Rect.fromLTWH(
       outerRect.left + size.width * 0.035,
       outerRect.top + size.height * 0.045,
