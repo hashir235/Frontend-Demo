@@ -4,12 +4,18 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/window_line_graphic.dart';
 import '../models/window_type.dart';
 
+/// One window in the library, read top to bottom: its name, the sections it
+/// is made of, then its drawing.
 class WindowNavigationCard extends StatelessWidget {
   final WindowType node;
   final bool isFocused;
   final bool isSelected;
   final double parallaxShift;
   final VoidCallback onTap;
+
+  /// The sections the window is cut from, as the library writes them
+  /// ("DC30F", "D29 (net)"). Nothing is shown when empty.
+  final List<String> usedSections;
 
   const WindowNavigationCard({
     super.key,
@@ -18,6 +24,7 @@ class WindowNavigationCard extends StatelessWidget {
     required this.isSelected,
     required this.parallaxShift,
     required this.onTap,
+    this.usedSections = const <String>[],
   });
 
   @override
@@ -34,6 +41,7 @@ class WindowNavigationCard extends StatelessWidget {
     final List<Color> diagramColors = isMSectionCard
         ? <Color>[const Color(0xFFEAF8EB), const Color(0xFFD4F0D7)]
         : <Color>[const Color(0xFFEFF6FF), const Color(0xFFDCEBFF)];
+    final TextTheme text = Theme.of(context).textTheme;
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
@@ -41,9 +49,6 @@ class WindowNavigationCard extends StatelessWidget {
             constraints.maxWidth < 240 || constraints.maxHeight < 320;
         final double cardPadding = compact ? AppTheme.space5 : AppTheme.space6;
         final double iconSize = compact ? 36 : 40;
-        final double graphicHeight = compact ? 92 : 122;
-        final int titleLines = compact ? 3 : 2;
-        final int subtitleLines = compact ? 2 : 3;
 
         return Material(
           color: Colors.transparent,
@@ -81,13 +86,12 @@ class WindowNavigationCard extends StatelessWidget {
                                   : null,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.labelMedium
-                                  ?.copyWith(
-                                    color: highlight
-                                        ? accent
-                                        : AppTheme.textPrimary,
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                              style: text.labelMedium?.copyWith(
+                                color: highlight
+                                    ? accent
+                                    : AppTheme.textPrimary,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
                         ),
@@ -108,11 +112,46 @@ class WindowNavigationCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: AppTheme.space3),
+                    // The window's name.
+                    Text(
+                      node.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        height: 1.08,
+                      ),
+                    ),
+                    // What it is made of, quieter than the name.
+                    if (usedSections.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: AppTheme.space2),
+                      Text(
+                        'Used Sections',
+                        style: text.labelMedium?.copyWith(
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        usedSections.join('  ·  '),
+                        key: Key('used_sections_${node.codeName ?? node.label}'),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.bodySmall?.copyWith(
+                          color: AppTheme.textSecondary.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AppTheme.space4),
-                    SizedBox(
-                      height: graphicHeight,
-                      width: double.infinity,
+                    // Then the drawing, in whatever height is left.
+                    Expanded(
                       child: Container(
+                        width: double.infinity,
                         padding: EdgeInsets.all(
                           compact ? AppTheme.space4 : AppTheme.space5,
                         ),
@@ -145,33 +184,6 @@ class WindowNavigationCard extends StatelessWidget {
                               horizontalShift: parallaxShift,
                             ),
                           ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.space4),
-                    Text(
-                      node.label,
-                      maxLines: titleLines,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        height: 1.08,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.space2),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: Text(
-                          node.subtitle ??
-                              (node.hasChildren
-                                  ? 'Open this family to continue'
-                                  : 'Open the detailed input page'),
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium?.copyWith(height: 1.32),
-                          maxLines: subtitleLines,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),

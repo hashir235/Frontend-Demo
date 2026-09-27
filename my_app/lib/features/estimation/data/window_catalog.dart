@@ -1,7 +1,23 @@
 import '../models/window_type.dart';
 
+/// A row of the window library: a kind of window, and the windows of that
+/// kind.
+class WindowGroup {
+  const WindowGroup({required this.id, required this.title, required this.nodes});
+
+  /// A stable name for keys and tests: "sliding", "box".
+  final String id;
+
+  /// The heading the row goes under.
+  final String title;
+
+  final List<WindowType> nodes;
+}
+
 class WindowCatalog {
-  static const List<WindowType> root = <WindowType>[
+  /// Windows that slide: the sliding window, the panel windows and the
+  /// sliding corner windows, each with its M-section twin.
+  static const List<WindowType> slidingWindows = <WindowType>[
     WindowType(
       label: 'Sliding Window',
       subtitle: 'Balanced day-to-day aluminium sliding system',
@@ -162,6 +178,11 @@ class WindowCatalog {
       ],
       displayIndex: null,
     ),
+  ];
+
+  /// Windows built as a box: fixed frame all round -- fix, corner fix,
+  /// openable, doors and arches.
+  static const List<WindowType> boxTypeWindows = <WindowType>[
     WindowType(
       label: 'Fix Window',
       subtitle: 'Simple fixed opening with clean geometry',
@@ -236,13 +257,21 @@ class WindowCatalog {
     ),
   ];
 
-  static List<WindowType> rootForFlow({required bool isFabrication}) {
-    if (!isFabrication) {
-      return root;
-    }
-    return root
-        .where((WindowType node) => !_isArchFamily(node))
-        .toList(growable: false);
+  /// Every window, in library order.
+  static const List<WindowType> root = <WindowType>[
+    ...slidingWindows,
+    ...boxTypeWindows,
+  ];
+
+  /// The library's rows for a flow. Fabrication has no arches.
+  static List<WindowGroup> groupsForFlow({required bool isFabrication}) {
+    List<WindowType> forFlow(List<WindowType> nodes) => isFabrication
+        ? nodes.where((WindowType node) => !_isArchFamily(node)).toList(growable: false)
+        : nodes;
+    return <WindowGroup>[
+      WindowGroup(id: 'sliding', title: 'Sliding Windows', nodes: forFlow(slidingWindows)),
+      WindowGroup(id: 'box', title: 'Box type Windows', nodes: forFlow(boxTypeWindows)),
+    ];
   }
 
   /// Every window kind a job can contain, by the name it is saved under.

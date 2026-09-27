@@ -9,7 +9,7 @@ import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 
 import 'helpers/collar_taps.dart';
 
-const Key _pageViewKey = Key('window_page_view');
+const Key _pageViewKey = Key('window_page_view_sliding');
 const Key _focusedCodeNameKey = Key('focused_code_name');
 
 EstimateSessionStore _testSession() => EstimateSessionStore(
