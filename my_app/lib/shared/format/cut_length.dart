@@ -58,18 +58,22 @@ class CutLength {
     return "${tape.totalInches}'' ${tape.suter}'''";
   }
 
-  /// All three readings, in the order a workshop scans them.
+  /// The readings shown under a formula, in the order a workshop scans them:
+  /// inches and centimetres.
+  ///
+  /// Not feet: a cut is checked against the tape in inches or centimetres, and
+  /// a third line in feet was one more number to read past (the workshop
+  /// asked for it gone, Sep 2026). [inFeetInchSuter] is still there for the
+  /// screens that do list lengths in feet.
   ///
   /// Centimetres first when that is what the formulas are written in, so the
   /// number under a formula lines up with the numbers in it.
   List<CutReading> readings({required bool centimetresFirst}) {
-    final List<CutReading> feetAndInches = <CutReading>[
-      CutReading('ft', inFeetInchSuter),
-      CutReading('in', inInchSuter),
-    ];
+    final CutReading inches = CutReading('in', inInchSuter);
+    final CutReading centimetres = CutReading('cm', inCm);
     return centimetresFirst
-        ? <CutReading>[CutReading('cm', inCm), ...feetAndInches]
-        : <CutReading>[...feetAndInches, CutReading('cm', inCm)];
+        ? <CutReading>[centimetres, inches]
+        : <CutReading>[inches, centimetres];
   }
 
   /// Drops the zeros a tape would not show: 216.40 reads as 216.4, 216.00 as

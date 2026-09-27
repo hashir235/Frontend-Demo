@@ -400,9 +400,9 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// Shown under every box as it is typed, because a formula is abstract and a
   /// size is not: "216.4 cm" is checkable against the drawing in a way that
   /// "HL - 4.2" never is. It is the size that will be cut, with the saw's own
-  /// allowance already off it, and it is given in all three units because a
-  /// workshop that measures in suter should not have to work out in its head
-  /// what taking 2mm off a formula does to the cut.
+  /// allowance already off it, and it is given in inches and centimetres both
+  /// because a workshop that measures in suter should not have to work out in
+  /// its head what taking 2mm off a formula does to the cut.
   _Preview? _preview(FormulaPieceRef ref, FormulaSlot slot) {
     // A size that cannot be cut to has already said why, under its box; a
     // second, vaguer message about the same number would only be noise.

@@ -79,13 +79,22 @@ void main() {
     test('centimetres lead where the formulas are written in centimetres', () {
       final List<CutReading> readings =
           CutLength.fromCm(216.4).readings(centimetresFirst: true);
-      expect(readings.map((CutReading r) => r.unit), <String>['cm', 'ft', 'in']);
+      expect(readings.map((CutReading r) => r.unit), <String>['cm', 'in']);
     });
 
     test('and follow where they are not', () {
       final List<CutReading> readings =
           CutLength.fromCm(216.4).readings(centimetresFirst: false);
-      expect(readings.map((CutReading r) => r.unit), <String>['ft', 'in', 'cm']);
+      expect(readings.map((CutReading r) => r.unit), <String>['in', 'cm']);
+    });
+
+    test('no feet: only inches and centimetres are shown', () {
+      for (final bool cmFirst in <bool>[true, false]) {
+        final List<CutReading> readings =
+            CutLength.fromFeet(7.2).readings(centimetresFirst: cmFirst);
+        expect(readings.map((CutReading r) => r.unit), isNot(contains('ft')));
+        expect(readings.length, 2);
+      }
     });
   });
 

@@ -182,14 +182,13 @@ void main() {
     // The head rail is driven by the width instead.
     expect(find.text('182.5'), findsNWidgets(2));
 
-    // Three readings, each on its own line, so a workshop working in suter can
-    // see what a centimetre off the formula does to the cut. Feet and inches
-    // are two different readings of the same bar: 7 feet 2 inches, or 86
-    // inches -- never the first read out to somebody who works in the second.
+    // Two readings, each on its own line, so a workshop working in suter can
+    // see what a centimetre off the formula does to the cut: inches and
+    // centimetres. No feet -- the workshop asked for that line gone.
     expect(find.text('cm'), findsWidgets);
-    expect(find.text('ft'), findsWidgets);
     expect(find.text('in'), findsWidgets);
-    expect(find.text("7' 2'' 7'''"), findsNWidgets(2));
+    expect(find.text('ft'), findsNothing);
+    expect(find.text("7' 2'' 7'''"), findsNothing);
     expect(find.text("86'' 7'''"), findsNWidgets(2));
   });
 
