@@ -18,6 +18,10 @@ class OptimizationWindowRequest {
   final bool addBottom;
   final bool addTee;
   final bool addNet;
+
+  /// Whether this window's D31 is cut (see [WindowReviewItem.addD31]). Used
+  /// where the lengths are worked out; the engine is never asked.
+  final bool? addD31;
   final double backCollarCm;
   final int? lockType;
   final String? rubberType;
@@ -54,6 +58,7 @@ class OptimizationWindowRequest {
     required this.addBottom,
     required this.addTee,
     required this.addNet,
+    this.addD31,
     required this.backCollarCm,
     required this.lockType,
     required this.rubberType,
@@ -129,6 +134,7 @@ class OptimizationWindowRequest {
       addBottom: item.addBottom,
       addTee: item.addTee,
       addNet: item.addNet,
+      addD31: item.addD31,
       backCollarCm: item.backCollarCm,
       lockType: item.lockType,
       rubberType: item.rubberType,
@@ -182,6 +188,7 @@ class OptimizationWindowRequest {
       addBottom: addBottom,
       addTee: addTee,
       addNet: addNet,
+      addD31: addD31,
       backCollarCm: backCollarCm,
       lockType: lockType,
       rubberType: rubberType,

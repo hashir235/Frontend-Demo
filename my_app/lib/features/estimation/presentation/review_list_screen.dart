@@ -417,6 +417,16 @@ class ReviewListScreen extends StatelessWidget {
         ),
       );
     }
+    if (item.addD31 == true) {
+      chips.add(
+        _buildMetaChip(
+          context,
+          icon: Icons.view_column_rounded,
+          label: 'D31 On',
+          accentColor: AppTheme.royalBlue,
+        ),
+      );
+    }
     if (item.addNet) {
       chips.add(
         _buildMetaChip(

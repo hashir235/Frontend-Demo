@@ -115,6 +115,7 @@ void main() {
     await openSidebar(tester);
     expect(find.textContaining(' or ET24'), findsNothing);
     expect(inSidebar('EC24'), findsOneWidget);
-    expect(inSidebar('DC30F'), findsOneWidget, reason: 'kept as DC30F at collar 1');
+    expect(inSidebar('EC30F'), findsOneWidget, reason: 'the collar frame at collar 1');
+    expect(inSidebar('DC30F'), findsNothing);
   });
 }

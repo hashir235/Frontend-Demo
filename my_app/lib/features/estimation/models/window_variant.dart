@@ -86,9 +86,9 @@ class WindowVariants {
 
   static const List<int> _noCollar = <int>[2];
 
-  /// The Economy frame and profiles, on the plain sliding windows. DC30F is
-  /// kept as DC30F: that is how the Economy list reads.
+  /// The Economy frame and profiles, on the plain sliding windows.
   static const Map<String, String> _economy = <String, String>{
+    'DC30F': 'EC30F',
     'DC26F': 'EC26F',
     'DC30C': 'EC30B',
     'DC26C': 'EC26B',

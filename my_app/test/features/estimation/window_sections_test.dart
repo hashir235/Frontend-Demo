@@ -106,10 +106,22 @@ void main() {
           configs.forEach((String configKey, Map<String, dynamic> sections) {
             final bool present = sections.containsKey(section.code);
             if (section.option == null) return;
+            // The app's own option, not the engine's: the app leaves D31 out
+            // while it is switched off. (In fabrication the engine itself
+            // cuts it with some locks only.)
+            if (section.option == 'addD31') return;
             final bool optionOn = configKey.split('|').contains('${section.option}=true');
             expect(present, optionOn,
                 reason: '${section.code} comes exactly with ${section.option}: $configKey');
           });
+          if (section.option == 'addD31') {
+            expect(
+              configs.values.any((Map<String, dynamic> sections) =>
+                  sections.containsKey(section.code)),
+              isTrue,
+              reason: 'D31 is cut somewhere, when switched on',
+            );
+          }
           if (section.option == null) {
             // "Always there" has to mean some configuration without any
             // option switched on still cuts it.
@@ -132,7 +144,7 @@ void main() {
     );
     expect(
       WindowSections.of('MPS4_win', isFabrication: true).map((UsedSection s) => s.label),
-      <String>['M30F', 'M30', 'M26F', 'M26', 'D31', 'M23', 'M24', 'M28'],
+      <String>['M30F', 'M30', 'M26F', 'M26', 'D31 (optional)', 'M23', 'M24', 'M28'],
     );
   });
 

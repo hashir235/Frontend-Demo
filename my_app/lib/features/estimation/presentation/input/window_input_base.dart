@@ -394,6 +394,38 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _persistSidebarSelections();
   }
 
+  /// Whether D31 is cut. Optional wherever a window has it: off for a new
+  /// window unless switched on (or remembered on for this window type), and
+  /// on for a window saved before the switch existed, as it was cut then.
+  late bool _d31Enabled;
+
+  /// Whether this window has D31 at all, in any collar.
+  bool get _showsD31Toggle => _handler.sectionsByCollar.values.any(
+    (List<String> sections) => sections.contains('D31'),
+  );
+
+  void _setD31Enabled(bool enabled) {
+    if (!_showsD31Toggle || _d31Enabled == enabled) return;
+    setState(() {
+      _d31Enabled = enabled;
+      if (!enabled && _selectedSectionCode == 'D31') {
+        _selectedSectionCode = null;
+      }
+    });
+    _persistSidebarSelections();
+  }
+
+  /// The profiles the sidebar lists for [collarIndex]: the window's own,
+  /// without D31 while it is switched off.
+  List<String> _sectionsFor(int collarIndex) {
+    final List<String> all = _handler.sectionsForCollar(collarIndex);
+    if (_d31Enabled || !all.contains('D31')) return all;
+    return <String>[
+      for (final String section in all)
+        if (section != 'D31') section,
+    ];
+  }
+
   bool get _openableNetEnabled {
     final WindowInputHandler handler = _handler;
     if (handler is OpenableInputHandler) {
@@ -424,9 +456,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (normalized == null) {
       return null;
     }
-    final List<String> availableSections = _handler.sectionsForCollar(
-      collarIndex,
-    );
+    final List<String> availableSections = _sectionsFor(collarIndex);
     return availableSections.contains(normalized) ? normalized : null;
   }
 
@@ -479,6 +509,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
     if (_showsOpenableNetToggle && _openableNetEnabled) {
       parts.add('Net');
+    }
+    if (_showsD31Toggle && _d31Enabled) {
+      parts.add('D31');
     }
     if (_showsBackCollarOption) {
       parts.add('${_backCollarCm}cm collar');
@@ -768,6 +801,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       addBottom: _showsDoorSectionToggles ? _doorD46Enabled : null,
       addTee: _showsDoorSectionToggles ? _doorD52Enabled : null,
       addNet: _showsOpenableNetToggle ? _openableNetEnabled : null,
+      addD31: _showsD31Toggle ? _d31Enabled : null,
       backCollarCm: _showsBackCollarOption ? _backCollarCm : null,
     );
   }
@@ -841,6 +875,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         if (_showsBackCollarOption && preferencesState.backCollarCm != null) {
           _backCollarCm = preferencesState.backCollarCm!;
         }
+        if (_showsD31Toggle && preferencesState.addD31 != null) {
+          _d31Enabled = preferencesState.addD31!;
+        }
         if (_showsLockTypeSelector && preferencesState.lockType != null) {
           _lockType = _lockTypeFromStored(preferencesState.lockType);
         }
@@ -863,6 +900,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         _selectedSectionCode = null;
       }
       if (!_openableNetEnabled && _selectedSectionCode == 'D29') {
+        _selectedSectionCode = null;
+      }
+      if (!_d31Enabled && _selectedSectionCode == 'D31') {
         _selectedSectionCode = null;
       }
       if (_usesSplitInput) {
@@ -999,6 +1039,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         ? savedCode
         : libraryCode;
     _handler = handlerForWindowCode(_codeInUse);
+    _d31Enabled = widget.editingItem == null
+        ? false
+        : widget.editingItem!.cutsD31;
     _restoreHandlerOptionsFromEditingItem(widget.editingItem);
     _rubberType = _rubberTypeFromStored(widget.editingItem?.rubberType);
     if (_isFixOnlyRubberWindow) {
@@ -2119,6 +2162,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         addBottom: _doorD46Enabled,
         addTee: _doorD52Enabled,
         addNet: _openableNetEnabled,
+        addD31: _showsD31Toggle ? _d31Enabled : null,
         backCollarCm: _backCollarCm,
         lockType: lockTypeValue,
         rubberType: rubberTypeValue,
@@ -2168,6 +2212,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           addBottom: _doorD46Enabled,
           addTee: _doorD52Enabled,
           addNet: _openableNetEnabled,
+          addD31: _showsD31Toggle ? _d31Enabled : null,
           backCollarCm: _backCollarCm,
           lockType: lockTypeValue,
           rubberType: rubberTypeValue,
@@ -3401,6 +3446,28 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                     ),
                     const SizedBox(height: 12),
                   ],
+                  if (_showsD31Toggle) ...[
+                    Text(
+                      'D31 Option',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildSidebarToggleOption(
+                      label: 'D31 Off',
+                      selected: !_d31Enabled,
+                      onTap: () => _setD31Enabled(false),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildSidebarToggleOption(
+                      label: 'D31 On',
+                      selected: _d31Enabled,
+                      onTap: () => _setD31Enabled(true),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   if (_showsOpenableNetToggle) ...[
                     Text(
                       'Net Option',
@@ -3440,13 +3507,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         padding: EdgeInsets.zero,
-                        itemCount: _handler
-                            .sectionsForCollar(_selectedCollar)
-                            .length,
+                        itemCount: _sectionsFor(_selectedCollar).length,
                         separatorBuilder: (BuildContext context, int index) =>
                             const SizedBox(height: 6),
                         itemBuilder: (BuildContext context, int index) {
-                          final String code = _handler.sectionsForCollar(
+                          final String code = _sectionsFor(
                             _selectedCollar,
                           )[index];
                           final bool isSelected = code == _selectedSectionCode;

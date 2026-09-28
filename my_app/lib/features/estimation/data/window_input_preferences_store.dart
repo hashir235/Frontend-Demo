@@ -13,6 +13,7 @@ class WindowInputSidebarPreferences {
   final bool? addBottom;
   final bool? addTee;
   final bool? addNet;
+  final bool? addD31;
   final double? backCollarCm;
 
   const WindowInputSidebarPreferences({
@@ -23,6 +24,7 @@ class WindowInputSidebarPreferences {
     this.addBottom,
     this.addTee,
     this.addNet,
+    this.addD31,
     this.backCollarCm,
   });
 
@@ -35,6 +37,7 @@ class WindowInputSidebarPreferences {
       addBottom: _asBool(json['addBottom']),
       addTee: _asBool(json['addTee']),
       addNet: _asBool(json['addNet']),
+      addD31: _asBool(json['addD31']),
       backCollarCm: json['backCollarCm'] == null
           ? null
           : backCollarFromJson(json['backCollarCm']),
@@ -50,6 +53,7 @@ class WindowInputSidebarPreferences {
       'addBottom': addBottom,
       'addTee': addTee,
       'addNet': addNet,
+      'addD31': addD31,
       'backCollarCm': backCollarCm,
     };
   }

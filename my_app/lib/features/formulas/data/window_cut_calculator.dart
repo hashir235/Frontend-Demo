@@ -83,6 +83,7 @@ class WindowCutRequest {
     this.backCollarCm = 1.7,
     this.pieceSizes = const <PieceSize>[],
     this.sideSizes = const SideSizes.empty(),
+    this.leaveOut = const <String>{},
   });
 
   final bool isFabrication;
@@ -107,6 +108,10 @@ class WindowCutRequest {
   /// This window measured one side at a time, when it was. Empty for a window
   /// measured the usual way, which is nearly all of them.
   final SideSizes sideSizes;
+
+  /// Profiles this window is not cut from, though its formulas have them: an
+  /// optional one (D31) the fabricator left switched off.
+  final Set<String> leaveOut;
 
   String get context => isFabrication ? 'fabrication' : 'estimation';
 }
@@ -219,6 +224,7 @@ class WindowCutCalculator {
 
     final List<CutPiece> pieces = <CutPiece>[];
     for (final EffectiveSection section in sections) {
+      if (request.leaveOut.contains(section.section)) continue;
       final String name = sectionAliases[section.section] ?? section.section;
       final bool isFrame = frameSections.contains(section.section);
       for (final EffectiveFormula piece in section.pieces) {

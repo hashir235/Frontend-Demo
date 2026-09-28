@@ -8,8 +8,9 @@ class UsedSection {
   /// The section's name, as it is written on the drawings: "DC30F", "D29".
   final String code;
 
-  /// The engine setting that brings this section in, when it is not always
-  /// there: `addNet`, `addBottom` or `addTee`. Null when every window of this
+  /// The setting that brings this section in, when it is not always there:
+  /// `addNet`, `addBottom` or `addTee` (the engine's), or `addD31` (the app's
+  /// own: D31 is cut only when switched on). Null when every window of this
   /// kind is cut from it.
   final String? option;
 
@@ -45,7 +46,7 @@ class WindowSections {
   static const List<String> _order = <String>[
     'DC30F', 'DC30C', 'DC26F', 'DC26C',
     'DC30B', 'DC26B', 'DC30BA', 'DC26BA',
-    'EC30B', 'EC26F', 'EC26B',
+    'EC30F', 'EC30B', 'EC26F', 'EC26B',
     'M30F', 'M30', 'M26F', 'M26',
     'ET30', 'ET30A', 'ET26', 'ET26A',
     'D54F', 'D54A', 'D51F', 'D51A',
@@ -97,10 +98,10 @@ class WindowSections {
     'S_win': _sliding,
     'MS_win': _slidingM,
     'PF3_win': _sliding,
-    'PS4_win': <UsedSection>[..._sliding, UsedSection('D31')],
+    'PS4_win': <UsedSection>[..._sliding, UsedSection('D31', option: 'addD31')],
     'EF3_win': _sliding,
     'MPF3_win': _slidingM,
-    'MPS4_win': <UsedSection>[..._slidingM, UsedSection('D31')],
+    'MPS4_win': <UsedSection>[..._slidingM, UsedSection('D31', option: 'addD31')],
     'MEF3_win': _slidingM,
     'SCF_win': _sliding,
     'SCS_win': _sliding,
@@ -124,7 +125,7 @@ class WindowSections {
     'AR_win': _arch,
     'SB_win': _slidingB,
     'PF3B_win': _slidingB,
-    'PS4B_win': <UsedSection>[..._slidingB, UsedSection('D31')],
+    'PS4B_win': <UsedSection>[..._slidingB, UsedSection('D31', option: 'addD31')],
     'EF3B_win': _slidingB,
     'SCFB_win': _slidingB,
     'SCSB_win': _slidingB,
@@ -132,7 +133,7 @@ class WindowSections {
     'SCRB_win': _slidingB,
     'SBA_win': _slidingBA,
     'PF3BA_win': _slidingBA,
-    'PS4BA_win': <UsedSection>[..._slidingBA, UsedSection('D31')],
+    'PS4BA_win': <UsedSection>[..._slidingBA, UsedSection('D31', option: 'addD31')],
     'EF3BA_win': _slidingBA,
     'SCFBA_win': _slidingBA,
     'SCSBA_win': _slidingBA,

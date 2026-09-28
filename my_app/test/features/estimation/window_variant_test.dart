@@ -71,6 +71,7 @@ void main() {
 
   test('Economy: every sliding window, M-section too, on the profiles as listed', () {
     const Map<String, String> plain = <String, String>{
+      'DC30F': 'EC30F',
       'DC26F': 'EC26F',
       'DC30C': 'EC30B',
       'DC26C': 'EC26B',
@@ -98,7 +99,6 @@ void main() {
       final bool isM = v.baseCode.startsWith('M');
       if (!isM) {
         expect(v.sections, plain);
-        expect(v.sectionFor('DC30F'), 'DC30F', reason: 'kept, as listed');
         expect(v.alternateCode, isNull);
         continue;
       }

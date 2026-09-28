@@ -102,6 +102,15 @@ class WindowReviewItem {
   final bool addTee;
   final bool addNet;
 
+  /// Whether D31 is cut, on a window that has it (the center slide panel
+  /// windows). D31 is optional: only cut when the fabricator switches it on.
+  /// Null on a window saved before the switch existed -- and on windows
+  /// without D31 -- and then it is cut exactly as it was: see [cutsD31].
+  final bool? addD31;
+
+  /// Whether this window's D31, if it has one, is cut.
+  bool get cutsD31 => addD31 ?? true;
+
   /// Door frame ke peeche wala collar: 1.7 (purana) ya 2.0 (naya).
   final double backCollarCm;
   final int? lockType;
@@ -157,6 +166,7 @@ class WindowReviewItem {
     this.addBottom = false,
     this.addTee = false,
     this.addNet = false,
+    this.addD31,
     this.backCollarCm = 1.7,
     this.lockType,
     this.rubberType,
@@ -182,6 +192,7 @@ class WindowReviewItem {
     bool? addBottom,
     bool? addTee,
     bool? addNet,
+    bool? addD31,
     double? backCollarCm,
     int? lockType,
     String? rubberType,
@@ -216,6 +227,7 @@ class WindowReviewItem {
       addBottom: addBottom ?? this.addBottom,
       addTee: addTee ?? this.addTee,
       addNet: addNet ?? this.addNet,
+      addD31: addD31 ?? this.addD31,
       backCollarCm: backCollarCm ?? this.backCollarCm,
       lockType: clearLockType ? null : (lockType ?? this.lockType),
       rubberType: clearRubberType ? null : (rubberType ?? this.rubberType),
@@ -243,6 +255,7 @@ class WindowReviewItem {
       addBottom: json['addBottom'] == true,
       addTee: json['addTee'] == true,
       addNet: json['addNet'] == true,
+      addD31: json['addD31'] is bool ? json['addD31'] as bool : null,
       backCollarCm: backCollarFromJson(json['backCollarCm']),
       lockType: json['lockType'] == null ? null : _asInt(json['lockType']),
       rubberType: (json['rubberType'] as String?)?.trim(),
@@ -283,6 +296,7 @@ class WindowReviewItem {
       'addBottom': addBottom,
       'addTee': addTee,
       'addNet': addNet,
+      'addD31': addD31,
       'backCollarCm': backCollarCm,
       'lockType': lockType,
       'rubberType': rubberType,

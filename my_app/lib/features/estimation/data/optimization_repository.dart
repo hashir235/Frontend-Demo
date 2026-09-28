@@ -101,6 +101,7 @@ class OptimizationRepository {
           (OptimizationWindowRequest window) =>
               window.pieceSizes.isNotEmpty ||
               window.sideSizes.isNotEmpty ||
+              window.addD31 == false ||
               WindowVariants.of(window.windowCode) != null,
         );
     final WindowCutCalculator calculator = WindowCutCalculator(book);
@@ -126,6 +127,9 @@ class OptimizationRepository {
           backCollarCm: window.backCollarCm,
           pieceSizes: window.pieceSizes,
           sideSizes: window.sideSizes,
+          // D31 is cut only when switched on. The engine would cut it
+          // regardless, which is why a job with it off is never handed back.
+          leaveOut: window.addD31 == false ? const <String>{'D31'} : const <String>{},
         ),
         margins: margins,
       );
