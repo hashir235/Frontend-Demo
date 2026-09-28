@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'section_length_groups.dart';
 import '../../help_videos/help_video_button.dart';
 import '../../help_videos/tutorial_videos.dart';
 import 'package:flutter/material.dart';
@@ -28,8 +29,6 @@ import '../models/estimation_settings.dart';
 import '../models/extra_pieces_allowance.dart';
 import '../models/fabrication_settings.dart';
 import '../../../shared/widgets/social_links_card.dart';
-import '../../estimation/presentation/section_recalculation_screen.dart'
-    show kMinStockLengthFt, kMaxStockLengthFt;
 import '../../app_update/app_update_service.dart';
 import '../../app_update/presentation/force_update_screen.dart';
 import '../../flow_nav/models/flow_step.dart';
@@ -1133,48 +1132,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Puts every section back to the mill's standard bars.
-  ///
-  /// Sections whose name ends in F come in 15/17/19 ft; everything else comes
-  /// in 14/16/18. Without this, a user who mistyped a length had no way back
-  /// except remembering what had been there before.
-  void _restoreStandardSectionLengths(
-    Map<String, TextEditingController> controllers,
-  ) {
-    setState(() {
-      for (final String key in controllers.keys) {
-        final bool isF = key.toUpperCase().endsWith('F');
-        controllers[key]!.text = isF ? '15, 17, 19' : '14, 16, 18';
-      }
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Standard lengths filled in. Save to apply them.'),
-      ),
-    );
-  }
-
-  String? _sectionLengthsValidator(String? value) {
-    final List<int>? lengths = _parseLengthList(value);
-    if (lengths == null) {
-      return 'Use comma-separated whole numbers';
-    }
-    if (lengths.isEmpty) {
-      return 'Enter at least one length';
-    }
-    // These are the bars the dealer stocks, in feet. A user once saved 238
-    // here -- reading the field as inches -- and every section then failed to
-    // optimize, with an error that pointed nowhere near this screen.
-    final Iterable<int> outOfRange = lengths.where(
-      (int ft) => ft < kMinStockLengthFt || ft > kMaxStockLengthFt,
-    );
-    if (outOfRange.isNotEmpty) {
-      return 'Lengths are in feet ($kMinStockLengthFt-$kMaxStockLengthFt). '
-          'Check ${outOfRange.first} — did you mean inches?';
-    }
-    return null;
-  }
-
   List<int>? _parseLengthList(String? value) {
     final String text = (value ?? '').trim();
     if (text.isEmpty) {
@@ -2231,28 +2188,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       title: 'Assigned Lengths for Section',
       subtitle:
-          'Lengths of the bars your dealer stocks, in feet. '
-          'Use commas, for example 14, 16, 18.',
+          'Every section is cut from one group of bar lengths, in feet. '
+          'Tap × on a section to move it to the other group, or Add to bring '
+          'one in.',
       children: <Widget>[
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => _restoreStandardSectionLengths(controllers),
-            icon: const Icon(Icons.restart_alt_rounded, size: 18),
-            label: const Text('Restore standard lengths'),
-          ),
+        SectionLengthGroups(
+          controllers: controllers,
+          onChanged: () => setState(() {}),
         ),
-        const SizedBox(height: 4),
-        ..._sortedSectionKeys(controllers).map((String key) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: TextFormField(
-              controller: controllers[key]!,
-              validator: _sectionLengthsValidator,
-              decoration: _inputDecoration(key),
-            ),
-          );
-        }),
       ],
     );
   }
