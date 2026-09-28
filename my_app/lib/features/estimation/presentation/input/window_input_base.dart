@@ -33,6 +33,7 @@ import '../review_list_screen.dart';
 import 'input_block_order.dart';
 import 'size_entry_notation.dart';
 import '../../models/collar_layout.dart';
+import '../../models/door_strip.dart';
 import '../../models/window_variant.dart';
 import '../../models/glass_color.dart';
 import '../../widgets/collar_side_picker.dart';
@@ -399,6 +400,15 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// on for a window saved before the switch existed, as it was cut then.
   late bool _d31Enabled;
 
+  /// The strip this door is closed in with instead of glass, or null.
+  String? _strip;
+
+  void _setStrip(String? section) {
+    if (!_showsDoorSectionToggles || _strip == section) return;
+    setState(() => _strip = section);
+    _persistSidebarSelections();
+  }
+
   /// Whether this window has D31 at all, in any collar.
   bool get _showsD31Toggle => _handler.sectionsByCollar.values.any(
     (List<String> sections) => sections.contains('D31'),
@@ -512,6 +522,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
     if (_showsD31Toggle && _d31Enabled) {
       parts.add('D31');
+    }
+    if (_showsDoorSectionToggles && _strip != null) {
+      parts.add('Strips $_strip');
     }
     if (_showsBackCollarOption) {
       parts.add('${_backCollarCm}cm collar');
@@ -802,6 +815,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       addTee: _showsDoorSectionToggles ? _doorD52Enabled : null,
       addNet: _showsOpenableNetToggle ? _openableNetEnabled : null,
       addD31: _showsD31Toggle ? _d31Enabled : null,
+      strip: _showsDoorSectionToggles ? (_strip ?? 'none') : null,
       backCollarCm: _showsBackCollarOption ? _backCollarCm : null,
     );
   }
@@ -877,6 +891,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         }
         if (_showsD31Toggle && preferencesState.addD31 != null) {
           _d31Enabled = preferencesState.addD31!;
+        }
+        if (_showsDoorSectionToggles && preferencesState.strip != null) {
+          _strip = DoorStrips.of(preferencesState.strip)?.section;
         }
         if (_showsLockTypeSelector && preferencesState.lockType != null) {
           _lockType = _lockTypeFromStored(preferencesState.lockType);
@@ -1042,6 +1059,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _d31Enabled = widget.editingItem == null
         ? false
         : widget.editingItem!.cutsD31;
+    _strip = DoorStrips.of(widget.editingItem?.strip)?.section;
     _restoreHandlerOptionsFromEditingItem(widget.editingItem);
     _rubberType = _rubberTypeFromStored(widget.editingItem?.rubberType);
     if (_isFixOnlyRubberWindow) {
@@ -2163,6 +2181,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         addTee: _doorD52Enabled,
         addNet: _openableNetEnabled,
         addD31: _showsD31Toggle ? _d31Enabled : null,
+        strip: _showsDoorSectionToggles ? _strip : null,
+        clearStrip: !_showsDoorSectionToggles || _strip == null,
         backCollarCm: _backCollarCm,
         lockType: lockTypeValue,
         rubberType: rubberTypeValue,
@@ -2213,6 +2233,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           addTee: _doorD52Enabled,
           addNet: _openableNetEnabled,
           addD31: _showsD31Toggle ? _d31Enabled : null,
+          strip: _showsDoorSectionToggles ? _strip : null,
           backCollarCm: _backCollarCm,
           lockType: lockTypeValue,
           rubberType: rubberTypeValue,
@@ -3419,6 +3440,41 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                         onTap: () {
                           if (name != _switchableProfile!.own) _switchProfile();
                         },
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                    const SizedBox(height: 6),
+                  ],
+                  if (_showsDoorSectionToggles) ...[
+                    Text(
+                      'Strips',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.deepTeal,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'In place of glass. Tap again to remove.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final DoorStrip strip in DoorStrips.all) ...[
+                      // One at a time: the chosen one lit, the rest dimmed
+                      // while it is chosen; tapping it again takes it off.
+                      AnimatedOpacity(
+                        key: Key('strip_${strip.section}'),
+                        duration: const Duration(milliseconds: 180),
+                        opacity: _strip == null || _strip == strip.section ? 1 : 0.45,
+                        child: _buildSidebarToggleOption(
+                          label: strip.section,
+                          selected: _strip == strip.section,
+                          onTap: () => _setStrip(
+                            _strip == strip.section ? null : strip.section,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 6),
                     ],

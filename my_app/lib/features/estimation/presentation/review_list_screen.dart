@@ -417,6 +417,16 @@ class ReviewListScreen extends StatelessWidget {
         ),
       );
     }
+    if (item.strip != null) {
+      chips.add(
+        _buildMetaChip(
+          context,
+          icon: Icons.view_agenda_rounded,
+          label: 'Strips ${item.strip}',
+          accentColor: AppTheme.royalBlue,
+        ),
+      );
+    }
     if (item.addD31 == true) {
       chips.add(
         _buildMetaChip(

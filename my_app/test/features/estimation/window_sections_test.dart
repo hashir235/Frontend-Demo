@@ -99,10 +99,13 @@ void main() {
         final Set<String> cut = <String>{
           for (final Map<String, dynamic> sections in configs.values) ...sections.keys,
         };
-        expect(listed.map((UsedSection s) => s.code).toSet(), cut);
-        expect(listed.length, cut.length, reason: 'no section listed twice');
+        // Strips are the app's own, not the engine's: not in the catalogue.
+        final List<UsedSection> fromEngine =
+            listed.where((UsedSection s) => s.option != 'strip').toList();
+        expect(fromEngine.map((UsedSection s) => s.code).toSet(), cut);
+        expect(fromEngine.length, cut.length, reason: 'no section listed twice');
 
-        for (final UsedSection section in listed) {
+        for (final UsedSection section in fromEngine) {
           configs.forEach((String configKey, Map<String, dynamic> sections) {
             final bool present = sections.containsKey(section.code);
             if (section.option == null) return;
@@ -155,7 +158,10 @@ void main() {
     );
     expect(
       WindowSections.of('Single_Door', isFabrication: true).map((UsedSection s) => s.label),
-      <String>['D54F', 'D54A', 'D50', 'D46 (optional)', 'D52 (optional)'],
+      <String>[
+        'D54F', 'D54A', 'D50', 'D46 (optional)', 'D52 (optional)',
+        'D61A / D61H / PATTI4 / PATTI6 (strips)',
+      ],
     );
   });
 

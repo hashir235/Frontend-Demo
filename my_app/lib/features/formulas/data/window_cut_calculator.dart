@@ -1,6 +1,7 @@
 /// Working out one window's cut list in the app.
 library;
 
+import '../../estimation/models/door_strip.dart';
 import '../model/formula_expression.dart';
 import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';
@@ -84,6 +85,7 @@ class WindowCutRequest {
     this.pieceSizes = const <PieceSize>[],
     this.sideSizes = const SideSizes.empty(),
     this.leaveOut = const <String>{},
+    this.strip,
   });
 
   final bool isFabrication;
@@ -112,6 +114,9 @@ class WindowCutRequest {
   /// Profiles this window is not cut from, though its formulas have them: an
   /// optional one (D31) the fabricator left switched off.
   final Set<String> leaveOut;
+
+  /// Strips laid in a door in place of its glass, or null for glass.
+  final DoorStrip? strip;
 
   String get context => isFabrication ? 'fabrication' : 'estimation';
 }
@@ -295,7 +300,77 @@ class WindowCutCalculator {
       glass.add(GlassPiece(heightCm: height.value!, widthCm: width.value!));
     }
 
+    // Strips in place of the glass. Each pane is covered by strips as long as
+    // it is wide, laid one above another until they reach its height -- P1 +
+    // P2 + ... >= the height -- and the door takes no glass.
+    final DoorStrip? strip = request.strip;
+    if (strip != null) {
+      final List<GlassPiece> panes = request.isFabrication
+          ? glass
+          : _doorGlassForEstimation(request, measuredValues, problems);
+      int number = 0;
+      for (final GlassPiece pane in panes) {
+        final double lengthFt = request.isFabrication
+            // As the fabrication formulas are: (size + cm) / feet, the
+            // margin added for the optimizer and taken off the cutting list.
+            ? (pane.widthCm + (margins['cm'] ?? 0)) / _feetInCm
+            // As the estimation ones are: size + the profile's own margin.
+            : pane.widthCm / _feetInCm + (margins['cm_${strip.section}'] ?? 0);
+        for (int i = 0; i < strip.piecesFor(pane.heightCm); i++) {
+          number++;
+          pieces.add(CutPiece(section: strip.section, label: 'P$number', lengthFt: lengthFt));
+        }
+      }
+      return WindowCutList._(pieces, problems);
+    }
+
     return WindowCutList._(pieces, problems, glass: glass);
+  }
+
+  /// A door's panes for estimation, which has no glass formulas of its own:
+  /// the same door's fabrication ones (with the plain 1.7cm back collar),
+  /// worked out on its measurements in centimetres.
+  List<GlassPiece> _doorGlassForEstimation(
+    WindowCutRequest request,
+    Map<String, double> measured,
+    List<String> problems,
+  ) {
+    final String? window =
+        FormulaWindowKey.engineWindowFor(request.appWindowCode, 'fabrication')?.window;
+    final FormulaWindowKey? key = window == null
+        ? null
+        : FormulaWindowKey.of(
+            context: 'fabrication',
+            appWindowCode: request.appWindowCode,
+            dimensions: book.catalogue.dimensionsFor('fabrication/$window'),
+            collarIndex: request.collarIndex,
+            addBottom: request.addBottom,
+            addTee: request.addTee,
+          );
+    final List<EffectiveSection> panes =
+        key == null ? const <EffectiveSection>[] : book.glassFor(key);
+    if (panes.isEmpty) {
+      problems.add('Quick AL cannot size strips for this door: it has no '
+          'glass size to cover.');
+      return const <GlassPiece>[];
+    }
+    final Map<String, double> inCm = <String, double>{
+      for (final MapEntry<String, double> entry in measured.entries)
+        entry.key: entry.value * _feetInCm,
+      'feet': _feetInCm,
+    };
+    final List<GlassPiece> out = <GlassPiece>[];
+    for (final EffectiveSection pane in panes) {
+      if (pane.pieces.length != 2) continue;
+      final FormulaResult height = pane.pieces[0].slot.lengthFor(inCm);
+      final FormulaResult width = pane.pieces[1].slot.lengthFor(inCm);
+      if (!height.isUsable || !width.isUsable) {
+        problems.add('${pane.displayName}: ${height.problem ?? width.problem}');
+        continue;
+      }
+      out.add(GlassPiece(heightCm: height.value!, widthCm: width.value!));
+    }
+    return out;
   }
 
   /// The measurements one piece is cut from when the window was measured side

@@ -25,6 +25,7 @@ class UsedSection {
     return switch (option) {
       null => name,
       'addNet' => '$name (net)',
+      'strip' => '$name (strips)',
       _ => '$name (optional)',
     };
   }
@@ -88,6 +89,9 @@ class WindowSections {
   static const List<UsedSection> _door = <UsedSection>[
     UsedSection('D54F'), UsedSection('D54A'), UsedSection('D50'),
     UsedSection('D46', option: 'addBottom'), UsedSection('D52', option: 'addTee'),
+    // Strips, in place of the glass: one of the four, or none. The app's
+    // own, not the engine's.
+    UsedSection('D61A', option: 'strip', orAs: 'D61H / PATTI4 / PATTI6'),
   ];
 
   static const List<UsedSection> _arch = <UsedSection>[

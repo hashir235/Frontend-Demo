@@ -193,7 +193,8 @@ void main() {
     expect(find.text('Single Door'), findsOneWidget);
     expect(
       tester.widget<Text>(find.byKey(const Key('used_sections_Single_Door'))).data,
-      'D54F  ·  D54A  ·  D50  ·  D46 (optional)  ·  D52 (optional)',
+      'D54F  ·  D54A  ·  D50  ·  D46 (optional)  ·  D52 (optional)  ·  '
+      'D61A / D61H / PATTI4 / PATTI6 (strips)',
     );
   });
 

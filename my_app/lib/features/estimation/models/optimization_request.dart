@@ -22,6 +22,10 @@ class OptimizationWindowRequest {
   /// Whether this window's D31 is cut (see [WindowReviewItem.addD31]). Used
   /// where the lengths are worked out; the engine is never asked.
   final bool? addD31;
+
+  /// The strips a door is closed in with instead of glass, if any. Worked out
+  /// where the lengths are; the engine is never asked.
+  final String? strip;
   final double backCollarCm;
   final int? lockType;
   final String? rubberType;
@@ -59,6 +63,7 @@ class OptimizationWindowRequest {
     required this.addTee,
     required this.addNet,
     this.addD31,
+    this.strip,
     required this.backCollarCm,
     required this.lockType,
     required this.rubberType,
@@ -135,6 +140,7 @@ class OptimizationWindowRequest {
       addTee: item.addTee,
       addNet: item.addNet,
       addD31: item.addD31,
+      strip: item.strip,
       backCollarCm: item.backCollarCm,
       lockType: item.lockType,
       rubberType: item.rubberType,
@@ -189,6 +195,7 @@ class OptimizationWindowRequest {
       addTee: addTee,
       addNet: addNet,
       addD31: addD31,
+      strip: strip,
       backCollarCm: backCollarCm,
       lockType: lockType,
       rubberType: rubberType,

@@ -9,6 +9,7 @@ import '../models/cutting_report.dart';
 import '../models/optimization_request.dart';
 import '../models/section_recalculation.dart';
 import '../models/window_review_item.dart';
+import '../models/door_strip.dart';
 import '../models/window_variant.dart';
 import 'optimization_api_client.dart';
 
@@ -102,6 +103,7 @@ class OptimizationRepository {
               window.pieceSizes.isNotEmpty ||
               window.sideSizes.isNotEmpty ||
               window.addD31 == false ||
+              window.strip != null ||
               WindowVariants.of(window.windowCode) != null,
         );
     final WindowCutCalculator calculator = WindowCutCalculator(book);
@@ -130,6 +132,9 @@ class OptimizationRepository {
           // D31 is cut only when switched on. The engine would cut it
           // regardless, which is why a job with it off is never handed back.
           leaveOut: window.addD31 == false ? const <String>{'D31'} : const <String>{},
+          // Strips in place of the door's glass: the engine knows nothing of
+          // them, which is why such a job is never handed back to it either.
+          strip: DoorStrips.of(window.strip),
         ),
         margins: margins,
       );

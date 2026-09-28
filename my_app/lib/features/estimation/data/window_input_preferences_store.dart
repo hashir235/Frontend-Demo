@@ -14,6 +14,10 @@ class WindowInputSidebarPreferences {
   final bool? addTee;
   final bool? addNet;
   final bool? addD31;
+
+  /// The strip last chosen for this door: a profile, 'none', or null for
+  /// nothing remembered.
+  final String? strip;
   final double? backCollarCm;
 
   const WindowInputSidebarPreferences({
@@ -25,6 +29,7 @@ class WindowInputSidebarPreferences {
     this.addTee,
     this.addNet,
     this.addD31,
+    this.strip,
     this.backCollarCm,
   });
 
@@ -38,6 +43,7 @@ class WindowInputSidebarPreferences {
       addTee: _asBool(json['addTee']),
       addNet: _asBool(json['addNet']),
       addD31: _asBool(json['addD31']),
+      strip: _asString(json['strip']),
       backCollarCm: json['backCollarCm'] == null
           ? null
           : backCollarFromJson(json['backCollarCm']),
@@ -54,6 +60,7 @@ class WindowInputSidebarPreferences {
       'addTee': addTee,
       'addNet': addNet,
       'addD31': addD31,
+      'strip': strip,
       'backCollarCm': backCollarCm,
     };
   }
