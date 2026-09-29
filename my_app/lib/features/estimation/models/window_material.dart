@@ -16,9 +16,9 @@ class WindowMaterial {
 
   const WindowMaterial({required this.gauge, required this.color});
 
-  /// What the first window of a brand-new job starts on. Every window after it
-  /// inherits from the one before, so a shop doing ten windows in one stock
-  /// picks it once.
+  /// What the first window starts on until the shop picks a stock of its own
+  /// (see `LastWindowMaterial`). Every window after it inherits from the one
+  /// before, so a shop doing ten windows in one stock picks it once.
   static const WindowMaterial initial = WindowMaterial(
     gauge: WindowGauges.g12,
     color: AluminiumColors.champagne,

@@ -9,6 +9,7 @@ import '../../formulas/model/piece_size.dart';
 import '../../formulas/model/window_sides.dart';
 import '../../settings/state/numbering_mode.dart';
 import 'last_glass_color.dart';
+import 'last_window_material.dart';
 
 /// Which kind of job a session belongs to.
 ///
@@ -306,9 +307,10 @@ class EstimateSessionStore extends ChangeNotifier {
   /// A shop doing ten windows in 2mm black should say so once, not ten times.
   /// The exceptions -- the one door in a different colour -- are the windows
   /// where the fabricator is already thinking about it and will change it
-  /// himself. Falls back to the opening default on the first window of a job.
+  /// himself. The first window of a job opens on the stock last picked in
+  /// any job; see [LastWindowMaterial].
   WindowMaterial get materialForNextWindow {
-    if (_items.isEmpty) return WindowMaterial.initial;
+    if (_items.isEmpty) return LastWindowMaterial.instance.value;
     // The one entered last, not the lowest-numbered: that is the one whose
     // stock is still in mind.
     // orElse: a window from a job that was never estimated can still have no

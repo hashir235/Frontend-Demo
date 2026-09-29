@@ -11,6 +11,7 @@ import '../../models/window_review_item.dart';
 import '../../models/window_type.dart';
 import '../../state/estimate_session_store.dart';
 import '../../state/last_glass_color.dart';
+import '../../state/last_window_material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../flow_nav/models/flow_step.dart';
 import '../../../flow_nav/presentation/flow_progress_bar.dart';
@@ -229,6 +230,25 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         _selectedCollar,
       );
     });
+    // The next window of this kind opens on the same one.
+    _persistSidebarSelections();
+  }
+
+  /// Whether the other of a switchable profile pair is in use (ET24A rather
+  /// than ET24), or null for a window with no such choice.
+  bool? get _profileSwitched {
+    final WindowInputHandler handler = _handler;
+    if (handler is! VariantInputHandler || handler.variant.alternateCode == null) {
+      return null;
+    }
+    return handler.alternateOn;
+  }
+
+  /// Takes a gauge or colour picked on this window. The first window of the
+  /// next job opens on it too, until somebody picks again.
+  void _pickMaterial(WindowMaterial next) {
+    setState(() => _material = next);
+    unawaited(LastWindowMaterial.instance.remember(next));
   }
 
   /// The window this one behaves as: itself, or for a variant window (a
@@ -817,6 +837,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       addD31: _showsD31Toggle ? _d31Enabled : null,
       strip: _showsDoorSectionToggles ? (_strip ?? 'none') : null,
       backCollarCm: _showsBackCollarOption ? _backCollarCm : null,
+      profileSwitched: _profileSwitched,
     );
   }
 
@@ -859,6 +880,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         _unitMode = storedUnitMode;
       }
       if (preferencesState != null) {
+        // First, as it renames the profiles the choices below are kept under.
+        final WindowInputHandler switchable = _handler;
+        if (preferencesState.profileSwitched != null &&
+            switchable is VariantInputHandler &&
+            switchable.variant.alternateCode != null) {
+          switchable.alternateOn = preferencesState.profileSwitched!;
+          _codeInUse = switchable.current.code;
+        }
         final int? storedCollar = preferencesState.selectedCollar;
         if (storedCollar != null) {
           _selectedCollar = _offeredCollar(storedCollar);
@@ -3836,9 +3865,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             id: 'input.material',
                             child: WindowGaugePicker(
                               value: _material,
-                              onChanged: (WindowMaterial next) {
-                                setState(() => _material = next);
-                              },
+                              onChanged: _pickMaterial,
                             ),
                           ),
                         ),
@@ -3846,9 +3873,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           id: InputBlockOrder.aluminiumColor,
                           child: AluminiumColorPicker(
                             value: _material,
-                            onChanged: (WindowMaterial next) {
-                              setState(() => _material = next);
-                            },
+                            onChanged: _pickMaterial,
                           ),
                         ),
                         // Both flows need the glass, for different reasons.

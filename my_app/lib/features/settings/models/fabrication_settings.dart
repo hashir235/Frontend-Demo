@@ -85,6 +85,23 @@ class FabricationSettingsModel {
     );
   }
 
+  /// These settings with the pair-cutting switches changed.
+  FabricationSettingsModel copyWithPairCutting({
+    required bool pairCutting,
+    required bool pairCuttingD29,
+  }) {
+    return FabricationSettingsModel(
+      cuttingMarginCm: cuttingMarginCm,
+      sectionLengths: sectionLengths,
+      maxExtraPieces: maxExtraPieces,
+      enforceMaxExtraPieces: enforceMaxExtraPieces,
+      redZoneEven: redZoneEven,
+      redZoneOdd: redZoneOdd,
+      pairCutting: pairCutting,
+      pairCuttingD29: pairCuttingD29,
+    );
+  }
+
   Map<String, Object?> toJson() {
     return <String, Object?>{
       'cuttingMarginCm': cuttingMarginCm,

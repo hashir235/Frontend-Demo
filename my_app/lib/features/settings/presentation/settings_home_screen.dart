@@ -18,6 +18,7 @@ import '../../subscription/presentation/subscription_gate_screen.dart';
 import '../data/billing_settings_repository.dart';
 import '../data/estimation_settings_repository.dart';
 import '../data/fabrication_settings_repository.dart';
+import '../data/pair_cutting_saver.dart';
 import '../data/payment_preferences_api_client.dart';
 import '../data/settings_defaults_api_client.dart';
 import '../data/bill_defaults_api_client.dart';
@@ -248,12 +249,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isSavingFabricationSettings = false;
   String? _fabricationSettingsError;
 
-  /// Pair cutting for M23 and M28, as loaded; saved with the rest of the
-  /// fabrication form.
+  /// Pair cutting for M23 and M28. Saved the moment it is switched, and stays
+  /// as the workshop left it until switched again -- no Save to forget.
   bool _fabricationPairCutting = false;
 
   /// Pair cutting for D29, the same way.
   bool _fabricationPairCuttingD29 = false;
+
+  late final PairCuttingSaver _pairCuttingSaver;
 
   @override
   void initState() {
@@ -264,6 +267,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _billingSettingsRepository = BillingSettingsRepository();
     _estimationSettingsRepository = EstimationSettingsRepository();
     _fabricationSettingsRepository = FabricationSettingsRepository();
+    _pairCuttingSaver = PairCuttingSaver(_fabricationSettingsRepository);
     _paymentPreferencesApiClient = PaymentPreferencesApiClient();
     AppSettings.instance.addListener(_onSettingsChanged);
     _loadBillingSettings();
@@ -2003,7 +2007,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           'two bars with exactly the same cuts, marked x 2 — clamp the two '
           'lengths together and cut both at once to save time. It can take a '
           'little more aluminium than cutting one bar at a time. Other '
-          'sections are not affected.',
+          'sections are not affected. Each switch is saved as soon as you '
+          'turn it, and stays until you turn it again.',
       children: <Widget>[
         Directionality(
           textDirection: TextDirection.rtl,
@@ -2020,10 +2025,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: 'Cut M23 & M28 in pairs',
           note: 'Sash sections: two or four of one length per window.',
           value: _fabricationPairCutting,
-          onChanged: (bool value) {
-            setState(() => _fabricationPairCutting = value);
-          },
-          section: 'M23 & M28',
+          onChanged: (bool value) => _switchPairCutting(
+            section: 'M23 & M28',
+            value: value,
+            apply: (bool next) => _fabricationPairCutting = next,
+          ),
         ),
         const SizedBox(height: 8),
         _buildPairCuttingSwitch(
@@ -2034,13 +2040,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'Two equal heights and two equal widths per window — heights '
               'pair with heights, widths with widths.',
           value: _fabricationPairCuttingD29,
-          onChanged: (bool value) {
-            setState(() => _fabricationPairCuttingD29 = value);
-          },
-          section: 'D29',
+          onChanged: (bool value) => _switchPairCutting(
+            section: 'D29',
+            value: value,
+            apply: (bool next) => _fabricationPairCuttingD29 = next,
+          ),
         ),
       ],
     );
+  }
+
+  /// Turns a pair-cutting switch and saves it there and then, so it stays as
+  /// set -- on this phone and any other -- until it is switched again. If the
+  /// save fails the switch goes back, so it never shows a setting the cutting
+  /// sheet will not follow.
+  Future<void> _switchPairCutting({
+    required String section,
+    required bool value,
+    required void Function(bool next) apply,
+  }) async {
+    setState(() => apply(value));
+    String message;
+    try {
+      await _pairCuttingSaver.save(
+        () => (
+          pairCutting: _fabricationPairCutting,
+          pairCuttingD29: _fabricationPairCuttingD29,
+        ),
+      );
+      message = value
+          ? '$section pair cutting on. Saved.'
+          : '$section pair cutting off. Saved.';
+    } on Exception {
+      if (mounted) setState(() => apply(!value));
+      message =
+          'Could not save $section pair cutting. Check the internet and try '
+          'again.';
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildPairCuttingSwitch(
@@ -2050,7 +2089,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String note,
     required bool value,
     required ValueChanged<bool> onChanged,
-    required String section,
   }) {
     return Material(
       color: value
@@ -2060,19 +2098,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: SwitchListTile(
         key: switchKey,
         value: value,
-        onChanged: (bool next) {
-          onChanged(next);
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                next
-                    ? '$section pair cutting on. Save to apply it.'
-                    : '$section pair cutting off. Save to apply it.',
-              ),
-            ),
-          );
-        },
+        onChanged: onChanged,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(
           title,

@@ -102,6 +102,44 @@ void main() {
     expect(inSidebar('ET24A'), findsNWidgets(2));
   });
 
+  testWidgets('the next new window of that card opens on the one picked last', (
+    WidgetTester tester,
+  ) async {
+    await open(tester, 'MSE_win');
+    await openSidebar(tester);
+    await tester.ensureVisible(inSidebar('ET24A'));
+    await tester.tap(inSidebar('ET24A'));
+    await tester.pumpAndSettle();
+
+    // A new window of the same card, in this job or the next.
+    await tester.pumpWidget(const SizedBox());
+    await open(tester, 'MSE_win');
+    await openSidebar(tester);
+    expect(inSidebar('ET24A'), findsNWidgets(2), reason: 'still ET24A');
+    Navigator.of(tester.element(find.byKey(const Key('settings_drawer')))).pop();
+    await tester.pumpAndSettle();
+    await saveWindow(tester);
+    expect(session.items.single.windowCode, 'MSEA_win');
+
+    // Switched back, it stays back.
+    await tester.pumpWidget(const SizedBox());
+    await open(tester, 'MSE_win');
+    await openSidebar(tester);
+    await tester.ensureVisible(inSidebar('ET24'));
+    await tester.tap(inSidebar('ET24').first);
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    await open(tester, 'MSE_win');
+    await openSidebar(tester);
+    expect(inSidebar('ET24'), findsNWidgets(2), reason: 'back on ET24');
+
+    // Another card keeps its own choice.
+    await tester.pumpWidget(const SizedBox());
+    await open(tester, 'MSCLE_win');
+    await saveWindow(tester);
+    expect(session.items.single.windowCode, 'MSCLE_win');
+  });
+
   testWidgets('left on ET24, it saves as the window on the card', (
     WidgetTester tester,
   ) async {

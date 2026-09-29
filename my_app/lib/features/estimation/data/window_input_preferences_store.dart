@@ -20,6 +20,10 @@ class WindowInputSidebarPreferences {
   final String? strip;
   final double? backCollarCm;
 
+  /// On a window with a switchable profile (ET24 or ET24A), whether the other
+  /// of the pair was in use; null for a window with no such choice.
+  final bool? profileSwitched;
+
   const WindowInputSidebarPreferences({
     this.selectedCollar,
     this.selectedSectionCode,
@@ -31,6 +35,7 @@ class WindowInputSidebarPreferences {
     this.addD31,
     this.strip,
     this.backCollarCm,
+    this.profileSwitched,
   });
 
   factory WindowInputSidebarPreferences.fromJson(Map<String, dynamic> json) {
@@ -47,6 +52,7 @@ class WindowInputSidebarPreferences {
       backCollarCm: json['backCollarCm'] == null
           ? null
           : backCollarFromJson(json['backCollarCm']),
+      profileSwitched: _asBool(json['profileSwitched']),
     );
   }
 
@@ -62,6 +68,7 @@ class WindowInputSidebarPreferences {
       'addD31': addD31,
       'strip': strip,
       'backCollarCm': backCollarCm,
+      'profileSwitched': profileSwitched,
     };
   }
 

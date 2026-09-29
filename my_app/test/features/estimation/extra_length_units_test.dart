@@ -7,6 +7,7 @@ import 'package:my_app/features/estimation/models/section_recalculation.dart';
 import 'package:my_app/features/estimation/presentation/input/feet_inch_suter_notation.dart';
 import 'package:my_app/features/estimation/presentation/input/size_entry_notation.dart';
 import 'package:my_app/features/estimation/presentation/section_recalculation_screen.dart';
+import 'package:my_app/features/settings/state/app_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Re Calculation's extra length, typed in the unit its buttons say: cm with
@@ -121,7 +122,10 @@ void main() {
   });
 
   group('the Re Calculation screen', () {
-    setUp(() => SharedPreferences.setMockInitialValues(<String, Object>{}));
+    setUp(() {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      AppSettings.instance.resetForTest();
+    });
 
     const CuttingReportSection section = CuttingReportSection(
       name: 'DC30F',
@@ -151,15 +155,20 @@ void main() {
 
     late _FakeRepository repository;
 
-    Future<void> open(WidgetTester tester) async {
+    Future<void> open(
+      WidgetTester tester, {
+      CuttingReportSection onSection = section,
+    }) async {
       tester.view.physicalSize = const Size(1080, 2340);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
       repository = _FakeRepository();
       await tester.pumpWidget(
         MaterialApp(
+          // A new key each time: opening the screen again, not rebuilding it.
           home: SectionRecalculationScreen(
-            section: section,
+            key: UniqueKey(),
+            section: onSection,
             requestContext: 'fabrication',
             displayUnit: 'inch_sutter',
             repository: repository,
@@ -264,6 +273,55 @@ void main() {
       await tester.enterText(field, '914.4');
       await optimize(tester);
       expect(repository.calls, 1);
+    });
+
+    testWidgets('the unit picked is the one the screen opens on next time', (
+      WidgetTester tester,
+    ) async {
+      await open(tester);
+      await pickUnit(tester, 'cm');
+      await open(tester);
+      expect(unitButtons(tester).selected, <ExtraLengthUnit>{ExtraLengthUnit.cm});
+      await pickUnit(tester, 'inch');
+      await open(tester);
+      expect(unitButtons(tester).selected, <ExtraLengthUnit>{ExtraLengthUnit.inch});
+      await tester.pump(const Duration(milliseconds: 10));
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('quick_al.recalc_extra_length_unit'), 'inch',
+          reason: 'kept on the phone, not only for this run');
+    });
+
+    testWidgets('the lengths are listed longest first: 18, 16, 14', (
+      WidgetTester tester,
+    ) async {
+      await open(
+        tester,
+        onSection: const CuttingReportSection(
+          name: 'M23',
+          summary: null,
+          groups: <CuttingReportGroup>[],
+          allowedLengthsFt: <double>[14, 16, 18],
+          allowedLengthsDisplay: <String>['14 ft', '16 ft', '18 ft'],
+        ),
+      );
+      final double top18 = tester.getTopLeft(find.text('18 ft')).dy;
+      final double top16 = tester.getTopLeft(find.text('16 ft')).dy;
+      final double top14 = tester.getTopLeft(find.text('14 ft')).dy;
+      expect(top18, lessThan(top16));
+      expect(top16, lessThan(top14));
+
+      // Each quantity goes with the length beside it.
+      final Finder quantities = find.widgetWithText(TextFormField, 'Quantity');
+      await tester.enterText(quantities.at(0), '5');
+      await tester.enterText(quantities.at(2), '1');
+      await optimize(tester);
+      final Map<double, int?> sent = <double, int?>{
+        for (final SectionStockAvailability option in repository.last!.stockOptions)
+          option.lengthFt: option.quantity,
+      };
+      expect(sent[18], 5);
+      expect(sent[16], isNull);
+      expect(sent[14], 1);
     });
 
     testWidgets('a quantity with no length still asks for the length', (

@@ -22,6 +22,7 @@ import '../models/glass_report.dart';
 import 'extra_margin_field.dart';
 import '../models/glass_sheet_optimization.dart';
 import '../../help_videos/tutorial_videos.dart';
+import '../../settings/state/app_settings.dart';
 
 class GlassSheetOptimizationScreen extends StatefulWidget {
   final String? projectId;
@@ -43,15 +44,23 @@ class GlassSheetOptimizationScreen extends StatefulWidget {
 class _GlassSheetOptimizationScreenState
     extends State<GlassSheetOptimizationScreen> {
   late final GlassSheetOptimizationApiClient _apiClient;
+  // The sheet and rotation open as this phone last left them.
   final TextEditingController _widthController = TextEditingController(
-    text: '7',
+    text: AppSettings.instance.glassSheetWidthFt,
   );
   final TextEditingController _heightController = TextEditingController(
-    text: '12',
+    text: AppSettings.instance.glassSheetHeightFt,
   );
 
-  bool _useCustomSize = false;
-  bool _allowRotation = true;
+  bool _useCustomSize = AppSettings.instance.customGlassSheet;
+  bool _allowRotation = AppSettings.instance.allowGlassRotation;
+
+  void _keepSheetSize(String _) {
+    AppSettings.instance.setGlassSheetSize(
+      widthFt: _widthController.text.trim(),
+      heightFt: _heightController.text.trim(),
+    );
+  }
 
   /// How far past the real sheet a layout may reach before a new sheet is
   /// unavoidable. Zero by default: this changes what gets cut, so it has to be
@@ -340,6 +349,7 @@ class _GlassSheetOptimizationScreenState
               setState(() {
                 _useCustomSize = value;
               });
+              AppSettings.instance.setCustomGlassSheet(value);
             },
           ),
           if (_useCustomSize) ...<Widget>[
@@ -355,6 +365,7 @@ class _GlassSheetOptimizationScreenState
                     inputFormatters: <TextInputFormatter>[
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                     ],
+                    onChanged: _keepSheetSize,
                     decoration: const InputDecoration(labelText: 'Width ft'),
                   ),
                 ),
@@ -368,6 +379,7 @@ class _GlassSheetOptimizationScreenState
                     inputFormatters: <TextInputFormatter>[
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                     ],
+                    onChanged: _keepSheetSize,
                     decoration: const InputDecoration(labelText: 'Height ft'),
                   ),
                 ),
@@ -382,6 +394,7 @@ class _GlassSheetOptimizationScreenState
               setState(() {
                 _allowRotation = value;
               });
+              AppSettings.instance.setAllowGlassRotation(value);
             },
           ),
           const Divider(height: AppTheme.space6),

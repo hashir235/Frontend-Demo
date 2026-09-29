@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/format/cut_length.dart';
 import '../../../shared/format/suter_half.dart';
+import '../../settings/state/app_settings.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -81,8 +82,12 @@ class _SectionRecalculationScreenState
   final TextEditingController _extraQuantityController =
       TextEditingController();
 
-  /// Feet by default: the stock lengths above are all in feet.
-  ExtraLengthUnit _extraUnit = ExtraLengthUnit.feet;
+  /// The unit last picked, on this phone, for any section; feet the first
+  /// time, as the stock lengths above are all in feet.
+  ExtraLengthUnit _extraUnit = ExtraLengthUnit.values.firstWhere(
+    (ExtraLengthUnit unit) => unit.name == AppSettings.instance.extraLengthUnit,
+    orElse: () => ExtraLengthUnit.feet,
+  );
 
   bool _isSubmitting = false;
   String? _errorMessage;
@@ -110,17 +115,18 @@ class _SectionRecalculationScreenState
     super.dispose();
   }
 
+  /// The bar lengths to ask a quantity for, longest first -- 18, 16, 14 --
+  /// the way the stock is counted off the rack. (The server sorts them
+  /// itself, so the order here is only for reading.)
   List<double> _resolveBaseLengths() {
-    if (widget.section.allowedLengthsFt.isNotEmpty) {
-      return widget.section.allowedLengthsFt;
+    final Set<double> unique = <double>{...widget.section.allowedLengthsFt};
+    if (unique.isEmpty) {
+      final CuttingReportSummary? summary = widget.section.summary;
+      if (summary != null) {
+        unique.addAll(summary.usedLengths);
+      }
     }
-    final Set<double> unique = <double>{};
-    final CuttingReportSummary? summary = widget.section.summary;
-    if (summary != null) {
-      unique.addAll(summary.usedLengths);
-    }
-    final List<double> fallback = unique.toList()..sort();
-    return fallback;
+    return unique.toList()..sort((double a, double b) => b.compareTo(a));
   }
 
   /// A bar's length: whole feet as `16 ft`, anything else -- an extra length
@@ -631,6 +637,7 @@ class _SectionRecalculationScreenState
           _extraUnit = picked.first;
           _extraLengthController.clear();
         });
+        AppSettings.instance.setExtraLengthUnit(picked.first.name);
       },
     );
   }
