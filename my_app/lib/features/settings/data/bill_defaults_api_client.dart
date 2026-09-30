@@ -47,6 +47,21 @@ class BillDefaultsApiClient {
     );
   }
 
+  /// Turns running feet on or off, on its own -- the rates are not sent.
+  Future<BillDefaults> setRunningFeet(bool enabled) async {
+    final http.Response response = await _client
+        .put(
+          Uri.parse('${ApiConfig.baseUrl}/api/settings/running-feet'),
+          headers: const <String, String>{'Content-Type': 'application/json'},
+          body: jsonEncode(<String, Object?>{'enabled': enabled}),
+        )
+        .timeout(const Duration(seconds: 12));
+    final Map<String, dynamic> body = _decode(response);
+    return BillDefaults.fromJson(
+      (body['defaults'] as Map<String, dynamic>?) ?? const <String, dynamic>{},
+    );
+  }
+
   Map<String, dynamic> _decode(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw const BillDefaultsApiException(

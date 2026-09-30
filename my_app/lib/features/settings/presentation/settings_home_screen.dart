@@ -120,6 +120,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       };
   bool _savingBillDefaults = false;
 
+  /// Running feet as this workshop chose it, or null while it goes by its
+  /// city. See [BillDefaults.runningFeet].
+  bool? _runningFeetChoice;
+  bool _savingRunningFeet = false;
+
+  bool get _runningFeetOn => BillDefaults.runningFeetFor(_runningFeetChoice, _city);
+
   // --- City -------------------------------------------------------------
   // Which city's rate list this workshop works to. Saved with the rest of the
   // workshop details, because that is what it is: part of who they are.
@@ -181,10 +188,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
             in _hardwareRateControllers.entries) {
           e.value.text = defaults.hardware[e.key] ?? '';
         }
+        _runningFeetChoice = defaults.runningFeet;
       });
     } catch (_) {
       // Leave the boxes as they are; the rest of Settings still works.
     }
+  }
+
+  /// Turns running feet on or off and saves it there and then. If the save
+  /// fails the switch goes back, so it never shows a way of billing the bill
+  /// will not follow.
+  Future<void> _switchRunningFeet(bool value) async {
+    final bool? before = _runningFeetChoice;
+    setState(() {
+      _runningFeetChoice = value;
+      _savingRunningFeet = true;
+    });
+    String message;
+    try {
+      final BillDefaults saved = await _billDefaultsApiClient.setRunningFeet(value);
+      if (mounted) setState(() => _runningFeetChoice = saved.runningFeet ?? value);
+      message = value
+          ? 'Running feet on. Bills will use Rn.ft. Saved.'
+          : 'Running feet off. Bills will use sq.ft. Saved.';
+    } catch (_) {
+      if (mounted) setState(() => _runningFeetChoice = before);
+      message = 'Could not save running feet. Check the internet and try again.';
+    }
+    if (!mounted) return;
+    setState(() => _savingRunningFeet = false);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Running feet: Karachi's way of billing a window, on its own switch.
+  Widget _buildRunningFeetSwitch(BuildContext context) {
+    final bool on = _runningFeetOn;
+    final bool byCity = _runningFeetChoice == null;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Material(
+        color: on ? AppTheme.violet.withValues(alpha: 0.10) : AppTheme.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            SwitchListTile(
+              key: const Key('running_feet_switch'),
+              value: on,
+              onChanged: _savingRunningFeet ? null : _switchRunningFeet,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              title: Text(
+                'Running feet (Rn.ft)',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              subtitle: Text(
+                '${on ? 'On' : 'Off'}${byCity ? ' — set by your city' : ''}. '
+                'Glass and labour on an estimate bill are charged by each '
+                "window's feet: 4 ft x 4 ft or smaller by its running feet "
+                '(top + bottom + left + right, 3 x 4 = 14); bigger both ways '
+                'by square feet (5 x 5 = 25); bigger one way, whichever is '
+                'more. On by default in Karachi.',
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: Text(
+                  'آن ہو تو بل پر گلاس اور لیبر رننگ فٹ سے لگیں گے: 4 ضرب 4 فٹ '
+                  'یا چھوٹی کھڑکی کے چاروں سائیڈ جمع (3×4 = 14)، دونوں طرف بڑی '
+                  'ہو تو مربع فٹ، ایک طرف بڑی ہو تو جو زیادہ ہو۔',
+                  style: UrduText.caption(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _saveBillDefaults() async {
@@ -768,6 +852,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
+          _buildRunningFeetSwitch(context),
           _buildRateField(
             context,
             key: const Key('bill_default_labour'),
@@ -788,7 +873,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Glass ke rates (per sq ft)',
+            'Glass ke rates (per ${_runningFeetOn ? 'Rn.ft' : 'sq ft'})',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
               color: AppTheme.textPrimary,
               fontWeight: FontWeight.w900,

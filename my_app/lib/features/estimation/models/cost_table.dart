@@ -1,3 +1,5 @@
+import 'area_method.dart';
+
 class RateOverrideInput {
   final String section;
 
@@ -142,6 +144,12 @@ class CostTable {
   /// for anything answered by a server that predates it.
   final List<GlassAreaSummary> glassAreas;
 
+  /// "running" when [glassAreas] are in running feet, '' for square feet.
+  final String areaMethod;
+
+  /// "Rn.ft" or "sq.ft", for beside [glassAreas].
+  String get areaUnit => areaUnitFor(areaMethod);
+
   const CostTable({
     required this.ok,
     required this.errors,
@@ -151,6 +159,7 @@ class CostTable {
     required this.grandTotal,
     required this.rows,
     this.glassAreas = const <GlassAreaSummary>[],
+    this.areaMethod = '',
   });
 
   factory CostTable.fromJson(Map<String, dynamic> json) {
@@ -176,6 +185,7 @@ class CostTable {
           .whereType<Map<String, dynamic>>()
           .map(GlassAreaSummary.fromJson)
           .toList(),
+      areaMethod: json['areaMethod'] as String? ?? '',
     );
   }
 }

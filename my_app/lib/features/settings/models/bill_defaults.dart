@@ -57,13 +57,28 @@ class BillDefaults {
   /// used before this existed.
   final Map<String, String> hardware;
 
+  /// Running feet (how Karachi bills a window): true or false once the
+  /// workshop has chosen, null while it goes by its city -- on in Karachi,
+  /// off elsewhere. Saved on its own the moment it is switched, never with
+  /// the rates.
+  final bool? runningFeet;
+
   const BillDefaults({
     this.labourRate = '',
     this.hardwareRate = '',
     this.aluminiumDiscount = '',
     this.glass = const <String, String>{},
     this.hardware = const <String, String>{},
+    this.runningFeet,
   });
+
+  /// The city whose workshops bill in running feet unless they switch it off.
+  static const String runningFeetCity = 'Karachi';
+
+  /// Whether a workshop in [city] bills in running feet, given what it chose
+  /// ([explicit], null for nothing yet). The server decides the same way.
+  static bool runningFeetFor(bool? explicit, String city) =>
+      explicit ?? city.trim().toLowerCase() == runningFeetCity.toLowerCase();
 
   const BillDefaults.empty() : this();
 
@@ -108,6 +123,7 @@ class BillDefaults {
       aluminiumDiscount: aluminiumDiscount ?? this.aluminiumDiscount,
       glass: glass ?? this.glass,
       hardware: hardware ?? this.hardware,
+      runningFeet: runningFeet,
     );
   }
 
@@ -128,6 +144,7 @@ class BillDefaults {
         for (final MapEntry<String, dynamic> e in rawHardware.entries)
           e.key: '${e.value}'.trim(),
       },
+      runningFeet: json['runningFeet'] is bool ? json['runningFeet'] as bool : null,
     );
   }
 

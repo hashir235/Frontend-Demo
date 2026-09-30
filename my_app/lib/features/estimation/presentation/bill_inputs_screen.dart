@@ -34,6 +34,10 @@ class BillInputsScreen extends StatefulWidget {
   /// footage it buys. Empty for a job answered by a server that predates this,
   /// and the screen then asks for the single glass rate it always did.
   final List<GlassAreaSummary> glassAreas;
+
+  /// What [glassAreas] are counted in: "Rn.ft" for a workshop that bills in
+  /// running feet, "sq.ft" otherwise.
+  final String areaUnit;
   final String gaugeLabel;
   final String gaugeValue;
   final String colorLabel;
@@ -47,6 +51,7 @@ class BillInputsScreen extends StatefulWidget {
     required this.session,
     required this.aluminiumTotal,
     this.glassAreas = const <GlassAreaSummary>[],
+    this.areaUnit = 'sq.ft',
     required this.gaugeLabel,
     required this.gaugeValue,
     required this.colorLabel,
@@ -587,7 +592,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
           decoration: InputDecoration(
             labelText:
                 'Glass Rate — ${group.color}  ·  '
-                '${_formatArea(group.areaSqFt)} sq ft *',
+                '${_formatArea(group.areaSqFt)} ${widget.areaUnit} *',
             prefixIcon: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppTheme.space4,

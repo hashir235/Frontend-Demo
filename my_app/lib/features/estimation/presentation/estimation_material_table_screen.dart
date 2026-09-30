@@ -233,6 +233,8 @@ class _EstimationMaterialTableScreenState
           // Worked out by the engine on this same run, so the footage beside
           // each glass rate is the footage that rate will be charged on.
           glassAreas: table.glassAreas,
+          // Rn.ft for a workshop billing in running feet, sq.ft otherwise.
+          areaUnit: table.areaUnit,
           gaugeLabel: widget.gaugeLabel,
           gaugeValue: widget.gaugeValue,
           colorLabel: widget.colorLabel,

@@ -1,3 +1,5 @@
+import 'area_method.dart';
+
 class BillCustomer {
   final String name;
   final String phone;
@@ -204,6 +206,12 @@ class BillSnapshot {
   /// Glazing broken out by glass. One row per glass the job actually used.
   final List<BillGlassSummary> glassSummary;
 
+  /// "running" for a bill made in running feet, '' for square feet.
+  final String areaMethod;
+
+  /// "Rn.ft" or "sq.ft", for beside every figure of feet on this bill.
+  String get areaUnit => areaUnitFor(areaMethod);
+
   const BillSnapshot({
     required this.ok,
     required this.errors,
@@ -218,6 +226,7 @@ class BillSnapshot {
     required this.totals,
     required this.windowSummary,
     this.glassSummary = const <BillGlassSummary>[],
+    this.areaMethod = '',
   });
 
   factory BillSnapshot.fromJson(Map<String, dynamic> json) {
@@ -257,6 +266,7 @@ class BillSnapshot {
               .whereType<Map<String, dynamic>>()
               .map(BillGlassSummary.fromJson)
               .toList(),
+      areaMethod: json['areaMethod'] as String? ?? '',
     );
   }
 }

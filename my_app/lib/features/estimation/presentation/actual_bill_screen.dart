@@ -374,7 +374,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
             Expanded(
               child: MetricCard(
                 label: 'Total Area',
-                value: '${_formatNumber(snapshot.totals.totalArea)} sq.ft',
+                value: '${_formatNumber(snapshot.totals.totalArea)} ${snapshot.areaUnit}',
                 icon: Icons.square_foot_rounded,
                 accent: AppTheme.tealAccent,
               ),
@@ -405,7 +405,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
         ),
         const SizedBox(height: AppTheme.space4),
         MetricCard(
-          label: 'Net Amount / sq.ft',
+          label: 'Net Amount / ${snapshot.areaUnit}',
           value: _formatNumber(_netAmountPerSqFt(snapshot)),
           icon: Icons.functions_rounded,
           accent: AppTheme.tealAccent,
@@ -477,11 +477,11 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
           tourId: 'bill.ratesUsed',
           entries: <MapEntry<String, String>>[
             MapEntry<String, String>(
-              'Glass Rate / sq.ft',
+              'Glass Rate / ${snapshot.areaUnit}',
               _formatNumber(snapshot.rates.glassPerSqFt),
             ),
             MapEntry<String, String>(
-              'Labor Rate / sq.ft',
+              'Labor Rate / ${snapshot.areaUnit}',
               _formatNumber(snapshot.rates.laborPerSqFt),
             ),
             MapEntry<String, String>(
@@ -509,7 +509,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
             ),
             MapEntry<String, String>(
               'Total Area',
-              '${_formatNumber(snapshot.totals.totalArea)} sq.ft',
+              '${_formatNumber(snapshot.totals.totalArea)} ${snapshot.areaUnit}',
             ),
             MapEntry<String, String>(
               'Before Discount Amount',
@@ -524,7 +524,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
               _formatNumber(snapshot.totals.aluminiumAfterDiscount),
             ),
             MapEntry<String, String>(
-              'Net Amount / sq.ft',
+              'Net Amount / ${snapshot.areaUnit}',
               _formatNumber(_netAmountPerSqFt(snapshot)),
             ),
           ],
@@ -541,7 +541,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
             entries: <MapEntry<String, String>>[
               for (final BillGlassSummary row in _namedGlass(snapshot))
                 MapEntry<String, String>(
-                  '${row.color}  ·  ${_formatArea(row.areaSqFt)} sq.ft '
+                  '${row.color}  ·  ${_formatArea(row.areaSqFt)} ${snapshot.areaUnit} '
                   '@ ${_formatNumber(row.rate)}',
                   _formatNumber(row.cost),
                 ),
@@ -765,7 +765,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
                     Expanded(
                       flex: 2,
                       child: Text(
-                        '${_formatNumber(row.areaSqFt)} sq.ft',
+                        '${_formatNumber(row.areaSqFt)} ${snapshot.areaUnit}',
                         textAlign: TextAlign.right,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w800,
