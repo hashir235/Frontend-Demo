@@ -647,7 +647,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           ],
           const SizedBox(height: AppTheme.space5),
           if (section.hasPairs) ...<Widget>[
-            _buildPairCuttingNote(context),
+            _buildPairCuttingNote(context, section.cutTogetherSizes),
             const SizedBox(height: AppTheme.space5),
           ],
           ...section.barBlocksLongestFirst.map(
@@ -699,8 +699,8 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     );
   }
 
-  /// Says what the x 2 cards are, once, above them.
-  Widget _buildPairCuttingNote(BuildContext context) {
+  /// Says what the x 2 and x 4 cards are, once, above them.
+  Widget _buildPairCuttingNote(BuildContext context, Set<int> sizes) {
     return Container(
       key: const Key('pair_cutting_note'),
       padding: const EdgeInsets.all(AppTheme.space4),
@@ -715,8 +715,16 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
           const SizedBox(width: AppTheme.space3),
           Expanded(
             child: Text(
-              'Pair cutting: each "x 2" card is two bars with the same cuts. '
-              'Clamp both lengths together and cut them at once.',
+              sizes.contains(4)
+                  ? (sizes.contains(2)
+                      ? 'Cut together: each "x 2" card is two bars with the '
+                          'same cuts, each "x 4" card four. Clamp the lengths '
+                          'together and cut them at once.'
+                      : 'Cut together: each "x 4" card is four bars with the '
+                          'same cuts. Clamp the four lengths together and cut '
+                          'them at once.')
+                  : 'Pair cutting: each "x 2" card is two bars with the same '
+                      'cuts. Clamp both lengths together and cut them at once.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -727,10 +735,16 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     );
   }
 
-  /// One value when the twins agree, both when they do not.
-  static String _both(String first, String? second) {
-    if (second == null || second.isEmpty || second == first) return first;
-    return '$first / $second';
+  /// One value when the bars cut together agree, each when they do not. For
+  /// a pair: the first, or "first / second".
+  static String _both(String first, Iterable<String> others) {
+    final List<String> differing = <String>[];
+    for (final String other in others) {
+      if (other.isNotEmpty && other != first && !differing.contains(other)) {
+        differing.add(other);
+      }
+    }
+    return differing.isEmpty ? first : <String>[first, ...differing].join(' / ');
   }
 
   Widget _buildGroupCard(
@@ -740,10 +754,11 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     CuttingReportGroup group, {
     CuttingReportBarBlock? block,
   }) {
-    // Pair cutting: one card for the bar and its twin, which are cut together
-    // from two lengths clamped side by side. The cuts are the same; only the
-    // window a piece goes to can differ, and then both are named.
+    // Bars cut together -- a pair, or M24's four -- are one card: lengths
+    // clamped side by side and cut at once. The cuts are the same; only the
+    // window a piece goes to can differ, and then each is named.
     final bool isPair = block?.isPair ?? false;
+    final int together = block?.count ?? 1;
     final String wastageText =
         'Wastage: ${SuterHalf.inText(group.wastageDisplay)}'
         '${group.offcut ? ' | Offcut' : ''}';
@@ -752,7 +767,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     final bool isTourExample = groupIndex == 0;
     return SectionSurfaceCard(
       title: isPair
-          ? 'Lengths: ${_lengthDisplay(group.stockLenFt)}  x 2 — cut together'
+          ? 'Lengths: ${_lengthDisplay(group.stockLenFt)}  x $together — cut together'
           : 'Lengths: ${_lengthDisplay(group.stockLenFt)}',
       trailing: _maybeTourTarget(
         id: 'lo.wastage',
@@ -783,11 +798,13 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
               MapEntry<int, CuttingReportCut> entry,
             ) {
               final CuttingReportCut cut = entry.value;
-              final CuttingReportCut? twinCut = block?.twinCutAt(entry.key);
-              final String windowNo = twinCut == null ||
-                      twinCut.windowNo == cut.windowNo
-                  ? '${cut.windowNo}'
-                  : '${cut.windowNo}+${twinCut.windowNo}';
+              final List<int> otherWindows = <int>[
+                for (final CuttingReportCut other
+                    in block?.othersCutAt(entry.key) ?? const <CuttingReportCut>[])
+                  if (other.windowNo != cut.windowNo) other.windowNo,
+              ];
+              final String windowNo =
+                  <int>{cut.windowNo, ...otherWindows}.join('+');
               return CutLayoutSegment(
                 label: '$windowNo/${_pieceSymbolForCut(cut)}',
                 lengthFt: cut.lengthFt,
@@ -824,7 +841,8 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                 .map((MapEntry<int, CuttingReportCut> entry) {
                   final int cutIndex = entry.key;
                   final CuttingReportCut cut = entry.value;
-                  final CuttingReportCut? twinCut = block?.twinCutAt(cutIndex);
+                  final List<CuttingReportCut> otherCuts =
+                      block?.othersCutAt(cutIndex) ?? const <CuttingReportCut>[];
                   final String rowKey = _cutRowKey(
                     sectionName,
                     groupIndex,
@@ -844,7 +862,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                       DataCell(
                         _buildCutCell(
                           isPair
-                              ? '${SuterHalf.inText(cut.lengthDisplay)}  x 2'
+                              ? '${SuterHalf.inText(cut.lengthDisplay)}  x $together'
                               : SuterHalf.inText(cut.lengthDisplay),
                           isMarked: isMarked,
                         ),
@@ -859,14 +877,17 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                         _buildCutCell(
                           _both(
                             cut.windowNo.toString(),
-                            twinCut?.windowNo.toString(),
+                            otherCuts.map((CuttingReportCut o) => o.windowNo.toString()),
                           ),
                           isMarked: isMarked,
                         ),
                       ),
                       DataCell(
                         _buildCutCell(
-                          _both(cut.windowName, twinCut?.windowName),
+                          _both(
+                            cut.windowName,
+                            otherCuts.map((CuttingReportCut o) => o.windowName),
+                          ),
                           isMarked: isMarked,
                         ),
                       ),
@@ -874,7 +895,7 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
                         _buildCutCell(
                           _both(
                             _winSizeForCut(cut),
-                            twinCut == null ? null : _winSizeForCut(twinCut),
+                            otherCuts.map(_winSizeForCut),
                           ),
                           isMarked: isMarked,
                         ),

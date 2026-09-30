@@ -256,6 +256,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Pair cutting for D29, the same way.
   bool _fabricationPairCuttingD29 = false;
 
+  /// M24 cut four bars at a time, the same way.
+  bool _fabricationQuadCuttingM24 = false;
+
   late final PairCuttingSaver _pairCuttingSaver;
 
   @override
@@ -468,6 +471,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _fabricationPairCutting = settings.pairCutting;
         _fabricationPairCuttingD29 = settings.pairCuttingD29;
+        _fabricationQuadCuttingM24 = settings.quadCuttingM24;
         _isLoadingFabricationSettings = false;
       });
     } on Exception catch (error) {
@@ -1347,6 +1351,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               pairCutting: _fabricationPairCutting,
               pairCuttingD29: _fabricationPairCuttingD29,
+              quadCuttingM24: _fabricationQuadCuttingM24,
             ),
           );
 
@@ -1372,6 +1377,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _fabricationPairCutting = saved.pairCutting;
         _fabricationPairCuttingD29 = saved.pairCuttingD29;
+        _fabricationQuadCuttingM24 = saved.quadCuttingM24;
         _isSavingFabricationSettings = false;
       });
 
@@ -2046,6 +2052,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
             apply: (bool next) => _fabricationPairCuttingD29 = next,
           ),
         ),
+        const SizedBox(height: 8),
+        _buildPairCuttingSwitch(
+          context,
+          switchKey: const Key('fabrication_quad_cutting_m24_switch'),
+          title: 'Cut M24 in fours',
+          note:
+              "A window's four M24 of one length come as four bars with the "
+              'same cuts, marked x 4. Measured side by side with the top and '
+              'bottom half an inch (4 suter) or more apart: the top rails are '
+              'cut to the top, the bottom rails to the bottom, in twos. Also '
+              'EC24, ET24 and ET24A.',
+          value: _fabricationQuadCuttingM24,
+          onChanged: (bool value) => _switchPairCutting(
+            section: 'M24',
+            value: value,
+            apply: (bool next) => _fabricationQuadCuttingM24 = next,
+            what: 'cutting in fours',
+          ),
+        ),
+        const SizedBox(height: 6),
+        Directionality(
+          textDirection: TextDirection.rtl,
+          child: Text(
+            'M24 آن کریں تو ہر کھڑکی کی چار ایک جیسی M24 چار لینتھوں میں ایک '
+            'ساتھ کٹیں گی (x 4)۔ اوپر اور نیچے کے سائز میں 4 سوتر یا زیادہ فرق '
+            'ہو تو اوپر والی اوپر کے سائز سے، نیچے والی نیچے کے سائز سے، دو دو '
+            'میں کٹیں گی۔',
+            style: UrduText.caption(),
+          ),
+        ),
       ],
     );
   }
@@ -2058,6 +2094,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String section,
     required bool value,
     required void Function(bool next) apply,
+    String what = 'pair cutting',
   }) async {
     setState(() => apply(value));
     String message;
@@ -2066,16 +2103,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         () => (
           pairCutting: _fabricationPairCutting,
           pairCuttingD29: _fabricationPairCuttingD29,
+          quadCuttingM24: _fabricationQuadCuttingM24,
         ),
       );
       message = value
-          ? '$section pair cutting on. Saved.'
-          : '$section pair cutting off. Saved.';
+          ? '$section $what on. Saved.'
+          : '$section $what off. Saved.';
     } on Exception {
       if (mounted) setState(() => apply(!value));
       message =
-          'Could not save $section pair cutting. Check the internet and try '
-          'again.';
+          'Could not save $section $what. Check the internet and try again.';
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();

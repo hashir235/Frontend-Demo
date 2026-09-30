@@ -22,6 +22,13 @@ class FabricationSettingsModel {
   /// other.
   final bool pairCuttingD29;
 
+  /// Cut M24 four bars at a time: a window's own M24 of one length in fours,
+  /// what is left in twos. With it on, a window measured side by side whose
+  /// top and bottom differ by half an inch or more has its top rails cut to
+  /// the top and its bottom rails to the bottom. Off unless the workshop turns
+  /// it on.
+  final bool quadCuttingM24;
+
   const FabricationSettingsModel({
     required this.cuttingMarginCm,
     this.sectionLengths = const <String, List<int>>{},
@@ -31,6 +38,7 @@ class FabricationSettingsModel {
     this.redZoneOdd = 13.0,
     this.pairCutting = false,
     this.pairCuttingD29 = false,
+    this.quadCuttingM24 = false,
   });
 
   const FabricationSettingsModel.defaults()
@@ -41,7 +49,8 @@ class FabricationSettingsModel {
       redZoneEven = 12.0,
       redZoneOdd = 13.0,
       pairCutting = false,
-      pairCuttingD29 = false;
+      pairCuttingD29 = false,
+      quadCuttingM24 = false;
 
   factory FabricationSettingsModel.fromJson(Map<String, dynamic> json) {
     final Object? rawValue = json['cuttingMarginCm'];
@@ -82,6 +91,7 @@ class FabricationSettingsModel {
       // Absent from a server that predates pair cutting: off.
       pairCutting: json['pairCutting'] == true,
       pairCuttingD29: json['pairCuttingD29'] == true,
+      quadCuttingM24: json['quadCuttingM24'] == true,
     );
   }
 
@@ -89,6 +99,7 @@ class FabricationSettingsModel {
   FabricationSettingsModel copyWithPairCutting({
     required bool pairCutting,
     required bool pairCuttingD29,
+    required bool quadCuttingM24,
   }) {
     return FabricationSettingsModel(
       cuttingMarginCm: cuttingMarginCm,
@@ -99,6 +110,7 @@ class FabricationSettingsModel {
       redZoneOdd: redZoneOdd,
       pairCutting: pairCutting,
       pairCuttingD29: pairCuttingD29,
+      quadCuttingM24: quadCuttingM24,
     );
   }
 
@@ -114,6 +126,7 @@ class FabricationSettingsModel {
       'redZoneOdd': redZoneOdd,
       'pairCutting': pairCutting,
       'pairCuttingD29': pairCuttingD29,
+      'quadCuttingM24': quadCuttingM24,
     };
   }
 }

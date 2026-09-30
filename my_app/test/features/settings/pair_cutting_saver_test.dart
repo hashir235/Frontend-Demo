@@ -23,7 +23,7 @@ void main() {
   test('only the switches change; the rest goes back as the server has it', () async {
     final _FakeRepository repository = _FakeRepository(onServer);
     await PairCuttingSaver(repository).save(
-      () => (pairCutting: true, pairCuttingD29: false),
+      () => (pairCutting: true, pairCuttingD29: false, quadCuttingM24: false),
     );
 
     final FabricationSettingsModel saved = repository.stored;
@@ -45,9 +45,9 @@ void main() {
     bool d29 = false;
 
     m23 = true;
-    final Future<void> first = saver.save(() => (pairCutting: m23, pairCuttingD29: d29));
+    final Future<void> first = saver.save(() => (pairCutting: m23, pairCuttingD29: d29, quadCuttingM24: false));
     d29 = true;
-    final Future<void> second = saver.save(() => (pairCutting: m23, pairCuttingD29: d29));
+    final Future<void> second = saver.save(() => (pairCutting: m23, pairCuttingD29: d29, quadCuttingM24: false));
     await Future.wait(<Future<void>>[first, second]);
 
     expect(repository.maxInFlight, 1, reason: 'never two saves at once');
@@ -61,13 +61,25 @@ void main() {
     bool m23 = true;
 
     await expectLater(
-      saver.save(() => (pairCutting: m23, pairCuttingD29: false)),
+      saver.save(() => (pairCutting: m23, pairCuttingD29: false, quadCuttingM24: false)),
       throwsA(isA<FabricationSettingsApiException>()),
     );
     m23 = false; // the screen puts the switch back
-    await saver.save(() => (pairCutting: m23, pairCuttingD29: true));
+    await saver.save(() => (pairCutting: m23, pairCuttingD29: true, quadCuttingM24: false));
     expect(repository.stored.pairCutting, isFalse);
     expect(repository.stored.pairCuttingD29, isTrue);
+  });
+
+  test('the M24 switch is saved on its own, the others as they are', () async {
+    final _FakeRepository repository = _FakeRepository(onServer);
+    await PairCuttingSaver(repository).save(
+      () => (pairCutting: false, pairCuttingD29: true, quadCuttingM24: true),
+    );
+    expect(repository.stored.quadCuttingM24, isTrue);
+    expect(repository.stored.pairCuttingD29, isTrue);
+    expect(repository.stored.pairCutting, isFalse);
+    expect(repository.stored.sectionLengths, onServer.sectionLengths);
+    expect(repository.stored.toJson()['quadCuttingM24'], isTrue, reason: 'what goes to the server');
   });
 
   test('never saves over the bar lengths with nothing', () async {
@@ -75,7 +87,7 @@ void main() {
       const FabricationSettingsModel(cuttingMarginCm: 1.2),
     );
     await expectLater(
-      PairCuttingSaver(repository).save(() => (pairCutting: true, pairCuttingD29: true)),
+      PairCuttingSaver(repository).save(() => (pairCutting: true, pairCuttingD29: true, quadCuttingM24: false)),
       throwsA(isA<FabricationSettingsApiException>()),
     );
     expect(repository.saves, 0);

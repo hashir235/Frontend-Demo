@@ -90,11 +90,12 @@ class CuttingReportSection {
   }
 
   /// [groupsLongestFirst] as the cutter handles them: each bar on its own, or
-  /// -- with pair cutting -- a bar and its twin together, as one block.
+  /// the bars cut together as one block -- two with pair cutting, four with
+  /// M24 in fours.
   ///
-  /// The twins of a pair are written one after the other with the same
+  /// The bars of a group are written one after the other with the same
   /// length, so they stay side by side in [groupsLongestFirst]. [index] is the
-  /// first bar's place in that list; a report with no pairs gives one block
+  /// first bar's place in that list; a report with no groups gives one block
   /// per bar at exactly the index it always had.
   List<CuttingReportBarBlock> get barBlocksLongestFirst {
     final List<CuttingReportGroup> bars = groupsLongestFirst;
@@ -102,22 +103,31 @@ class CuttingReportSection {
     int i = 0;
     while (i < bars.length) {
       final CuttingReportGroup bar = bars[i];
-      final bool pairsWithNext =
-          bar.pairId > 0 && i + 1 < bars.length && bars[i + 1].pairId == bar.pairId;
+      int end = i + 1;
+      while (bar.pairId > 0 && end < bars.length && bars[end].pairId == bar.pairId) {
+        end++;
+      }
       blocks.add(
         CuttingReportBarBlock(
           index: i,
           bar: bar,
-          twin: pairsWithNext ? bars[i + 1] : null,
+          others: bars.sublist(i + 1, end),
         ),
       );
-      i += pairsWithNext ? 2 : 1;
+      i = end;
     }
     return blocks;
   }
 
-  /// Whether any bar here is pair cut.
+  /// Whether any bar here is cut together with others.
   bool get hasPairs => groups.any((CuttingReportGroup group) => group.pairId > 0);
+
+  /// How many bars each block of bars cut together holds -- 2 for pairs, 4
+  /// for M24 in fours -- once each.
+  Set<int> get cutTogetherSizes => <int>{
+    for (final CuttingReportBarBlock block in barBlocksLongestFirst)
+      if (block.isPair) block.count,
+  };
 
   factory CuttingReportSection.fromJson(Map<String, dynamic> json) {
     return CuttingReportSection(
@@ -186,8 +196,9 @@ class CuttingReportGroup {
   final String wastageDisplay;
   final bool offcut;
 
-  /// Pair cutting: two bars with the same non-zero pairId are twins -- same
-  /// length, same cuts, sawn together. Zero for an ordinary bar.
+  /// Bars with the same non-zero pairId are cut together -- same length, same
+  /// cuts, clamped and sawn at once: two with pair cutting, four with M24 in
+  /// fours. Zero for an ordinary bar.
   final int pairId;
 
   final List<CuttingReportCut> cuts;
@@ -218,20 +229,29 @@ class CuttingReportGroup {
   }
 }
 
-/// One bar, or a bar and its twin cut together. See
+/// One bar, or bars cut together: a bar and its twin, or four M24 bars. See
 /// [CuttingReportSection.barBlocksLongestFirst].
 class CuttingReportBarBlock {
   final int index;
   final CuttingReportGroup bar;
-  final CuttingReportGroup? twin;
+
+  /// The bars cut together with [bar], in order; empty for a bar on its own.
+  final List<CuttingReportGroup> others;
 
   const CuttingReportBarBlock({
     required this.index,
     required this.bar,
-    this.twin,
+    this.others = const <CuttingReportGroup>[],
   });
 
-  bool get isPair => twin != null;
+  /// Whether [bar] is cut together with others.
+  bool get isPair => others.isNotEmpty;
+
+  /// How many bars are cut at once: 1, 2 or 4.
+  int get count => 1 + others.length;
+
+  /// The first of the others -- a pair's twin -- or null.
+  CuttingReportGroup? get twin => others.isEmpty ? null : others.first;
 
   /// The twin's cut at the same place on the bar, or null.
   CuttingReportCut? twinCutAt(int position) {
@@ -239,6 +259,12 @@ class CuttingReportBarBlock {
     if (cuts == null || position >= cuts.length) return null;
     return cuts[position];
   }
+
+  /// Every other bar's cut at the same place on the bar.
+  List<CuttingReportCut> othersCutAt(int position) => <CuttingReportCut>[
+    for (final CuttingReportGroup other in others)
+      if (position < other.cuts.length) other.cuts[position],
+  ];
 }
 
 class CuttingReportCut {

@@ -362,7 +362,7 @@ class _SectionRecalculationScreenState
                           child: _buildGroupCard(
                             context,
                             block.bar,
-                            twin: block.twin,
+                            others: block.others,
                           ),
                         ),
                       ),
@@ -730,21 +730,31 @@ class _SectionRecalculationScreenState
     );
   }
 
-  /// One bar, or with pair cutting a bar and its [twin] as one card: two
-  /// lengths with the same cuts, cut together.
+  /// One bar, or bars cut together as one card -- a pair's two, or M24's
+  /// four: lengths with the same cuts, cut at once.
   Widget _buildGroupCard(
     BuildContext context,
     CuttingReportGroup group, {
-    CuttingReportGroup? twin,
+    List<CuttingReportGroup> others = const <CuttingReportGroup>[],
   }) {
-    String both(String first, String? second) =>
-        second == null || second.isEmpty || second == first
-        ? first
-        : '$first / $second';
-    CuttingReportCut? twinCutAt(int position) =>
-        twin == null || position >= twin.cuts.length
-        ? null
-        : twin.cuts[position];
+    final bool together = others.isNotEmpty;
+    final int count = 1 + others.length;
+    // One value when the bars agree, each when they do not; for a pair, the
+    // first or "first / second".
+    String both(String first, Iterable<String> rest) {
+      final List<String> differing = <String>[];
+      for (final String other in rest) {
+        if (other.isNotEmpty && other != first && !differing.contains(other)) {
+          differing.add(other);
+        }
+      }
+      return differing.isEmpty ? first : <String>[first, ...differing].join(' / ');
+    }
+
+    List<CuttingReportCut> othersAt(int position) => <CuttingReportCut>[
+      for (final CuttingReportGroup other in others)
+        if (position < other.cuts.length) other.cuts[position],
+    ];
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -764,11 +774,11 @@ class _SectionRecalculationScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            twin == null
+            !together
                 ? 'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}'
-                : 'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}  x 2 — cut together',
+                : 'Lengths: ${_stockDisplayInFeet(group.stockLenFt)}  x $count — cut together',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: twin == null ? AppTheme.deepTeal : AppTheme.violet,
+              color: !together ? AppTheme.deepTeal : AppTheme.violet,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -806,25 +816,31 @@ class _SectionRecalculationScreenState
                   .entries
                   .map((MapEntry<int, CuttingReportCut> entry) {
                     final CuttingReportCut cut = entry.value;
-                    final CuttingReportCut? other = twinCutAt(entry.key);
+                    final List<CuttingReportCut> same = othersAt(entry.key);
                     return DataRow(
                       cells: <DataCell>[
-                        DataCell(Text(both(cut.dimension, other?.dimension))),
-                        DataCell(Text(both(cut.windowName, other?.windowName))),
+                        DataCell(Text(both(
+                          cut.dimension,
+                          same.map((CuttingReportCut o) => o.dimension),
+                        ))),
+                        DataCell(Text(both(
+                          cut.windowName,
+                          same.map((CuttingReportCut o) => o.windowName),
+                        ))),
                         DataCell(
                           Text(
                             both(
                               cut.windowNo.toString(),
-                              other?.windowNo.toString(),
+                              same.map((CuttingReportCut o) => o.windowNo.toString()),
                             ),
                           ),
                         ),
                         DataCell(Text(_pieceSymbolForCut(cut))),
                         DataCell(
                           Text(
-                            twin == null
+                            !together
                                 ? SuterHalf.inText(cut.lengthDisplay)
-                                : '${SuterHalf.inText(cut.lengthDisplay)}  x 2',
+                                : '${SuterHalf.inText(cut.lengthDisplay)}  x $count',
                           ),
                         ),
                       ],

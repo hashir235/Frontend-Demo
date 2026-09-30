@@ -99,6 +99,22 @@ void main() {
       expect(s.hasPairs, isTrue);
     });
 
+    test('M24 in fours: four bars under one number are one block', () {
+      final CuttingReportSection s = section(<Map<String, dynamic>>[
+        for (int i = 0; i < 4; i++)
+          bar(16, <Map<String, dynamic>>[cut(3, 2.5, '30'), cut(5, 2.4, '29')], pairId: 1),
+        bar(16, <Map<String, dynamic>>[cut(7, 2.2, '26')], pairId: 2),
+        bar(16, <Map<String, dynamic>>[cut(7, 2.2, '26')], pairId: 2),
+        bar(14, <Map<String, dynamic>>[cut(8, 2, '24')]),
+      ]);
+      final List<CuttingReportBarBlock> blocks = s.barBlocksLongestFirst;
+      expect(blocks.map((CuttingReportBarBlock b) => b.count), <int>[4, 2, 1]);
+      expect(blocks[0].others, hasLength(3));
+      expect(blocks[0].othersCutAt(1).map((CuttingReportCut c) => c.windowNo), <int>[5, 5, 5]);
+      expect(blocks[1].index, 4, reason: 'the pair starts after the four bars');
+      expect(s.cutTogetherSizes, <int>{4, 2});
+    });
+
     test('with no pairs, one block per bar at the index it always had', () {
       final CuttingReportSection s = section(<Map<String, dynamic>>[
         bar(14, <Map<String, dynamic>>[cut(1, 4, '48')]),
@@ -194,6 +210,25 @@ void main() {
       expect(find.text('2 / 4'), findsOneWidget, reason: 'the twins go to windows 2 and 4');
       expect(find.text('1'), findsWidgets, reason: 'both twins go to window 1');
       expect(find.text('1 / 1'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('four bars cut together show once, marked x 4', (
+      WidgetTester tester,
+    ) async {
+      await open(
+        tester,
+        report(<Map<String, dynamic>>[
+          for (int i = 0; i < 4; i++)
+            bar(16, <Map<String, dynamic>>[cut(6, 2.5, "30'' 0'''")], pairId: 1),
+        ]),
+      );
+      expect(find.byKey(const Key('pair_cutting_note')), findsOneWidget);
+      expect(find.textContaining('"x 4" card is four bars'), findsOneWidget);
+      expect(find.textContaining('x 4 — cut together'), findsOneWidget);
+      expect(find.textContaining('x 2'), findsNothing);
+      expect(find.text('6'), findsWidgets, reason: 'all four bars go to window 6');
+      expect(find.text('6 / 6'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 

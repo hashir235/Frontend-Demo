@@ -80,10 +80,10 @@ class OptimizationRepository {
   /// to the wrong number.
   Future<OptimizationRequest> _withOwnLengths(OptimizationRequest request) async {
     FormulaBook book;
-    Map<String, double> margins;
+    ({Map<String, double> margins, bool m24TopAndBottom}) settings;
     try {
       book = await _formulas.load();
-      margins = await _marginsFor(request.isFabrication);
+      settings = await _cuttingSettingsFor(request.isFabrication);
     } catch (error) {
       throw const FormulasUnavailable(
         'Quick AL could not read your cutting margins, so it cannot work out '
@@ -135,8 +135,11 @@ class OptimizationRepository {
           // Strips in place of the door's glass: the engine knows nothing of
           // them, which is why such a job is never handed back to it either.
           strip: DoorStrips.of(window.strip),
+          // Fabrication's "Cut M24 in fours": the rails of a window whose top
+          // and bottom differ are cut to each. Off, exactly as before.
+          m24TopAndBottom: settings.m24TopAndBottom,
         ),
-        margins: margins,
+        margins: settings.margins,
       );
 
       if (cut.problems.isNotEmpty) {
@@ -173,20 +176,29 @@ class OptimizationRepository {
   }
 
   /// The cutting margins this job is cut with, read from the server so they
-  /// are the same ones the engine would have used.
-  Future<Map<String, double>> _marginsFor(bool isFabrication) async {
+  /// are the same ones the engine would have used -- and, for fabrication,
+  /// whether M24 is cut in fours, which the engine reads from the same place.
+  Future<({Map<String, double> margins, bool m24TopAndBottom})> _cuttingSettingsFor(
+    bool isFabrication,
+  ) async {
     if (isFabrication) {
       final FabricationSettingsModel settings =
           await _fabricationSettings.fetchFabricationSettings();
-      return <String, double>{'cm': settings.cuttingMarginCm};
+      return (
+        margins: <String, double>{'cm': settings.cuttingMarginCm},
+        m24TopAndBottom: settings.quadCuttingM24,
+      );
     }
 
     final EstimationSettingsModel settings =
         await _estimationSettings.fetchEstimationSettings();
-    return <String, double>{
-      for (final MapEntry<String, double> entry in settings.cuttingMargins.entries)
-        'cm_${entry.key}': entry.value,
-    };
+    return (
+      margins: <String, double>{
+        for (final MapEntry<String, double> entry in settings.cuttingMargins.entries)
+          'cm_${entry.key}': entry.value,
+      },
+      m24TopAndBottom: false,
+    );
   }
 
   Future<CuttingReport> recalculateSection(

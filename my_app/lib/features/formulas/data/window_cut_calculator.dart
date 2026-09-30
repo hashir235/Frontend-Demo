@@ -13,6 +13,14 @@ import 'formula_book.dart';
 /// Centimetres in a foot.
 const double _feetInCm = 30.48;
 
+/// How far apart a window's top and bottom must be before its M24 rails are
+/// cut to each: 4 suter, half an inch, in the centimetres fabrication works in.
+const double m24TopBottomGapCm = 1.27;
+
+/// The sash rail and the names variant windows give it -- M24 on the ordinary
+/// windows, EC24, ET24 and ET24A on the Economy ones.
+const Set<String> m24Sections = <String>{'M24', 'EC24', 'ET24', 'ET24A'};
+
 /// One length of aluminium to be cut.
 class CutPiece {
   const CutPiece({
@@ -86,6 +94,7 @@ class WindowCutRequest {
     this.sideSizes = const SideSizes.empty(),
     this.leaveOut = const <String>{},
     this.strip,
+    this.m24TopAndBottom = false,
   });
 
   final bool isFabrication;
@@ -117,6 +126,12 @@ class WindowCutRequest {
 
   /// Strips laid in a door in place of its glass, or null for glass.
   final DoorStrip? strip;
+
+  /// Fabrication's "Cut M24 in fours" is on: a window measured side by side
+  /// whose top and bottom differ by [m24TopBottomGapCm] or more has its top
+  /// M24 rails cut to the top and its bottom ones to the bottom, instead of
+  /// all of them to the smaller. Off, every M24 is cut exactly as before.
+  final bool m24TopAndBottom;
 
   String get context => isFabrication ? 'fabrication' : 'estimation';
 }
@@ -232,7 +247,14 @@ class WindowCutCalculator {
       if (request.leaveOut.contains(section.section)) continue;
       final String name = sectionAliases[section.section] ?? section.section;
       final bool isFrame = frameSections.contains(section.section);
-      for (final EffectiveFormula piece in section.pieces) {
+      // Only with the switch on, only for the M24 rails, only when measured
+      // side by side -- everything else takes the path it always did.
+      final List<Map<String, double>?> railSizes =
+          request.m24TopAndBottom && sides != null && m24Sections.contains(section.section)
+              ? _m24TopAndBottom(section.pieces, sides)
+              : const <Map<String, double>?>[];
+      for (int index = 0; index < section.pieces.length; index++) {
+        final EffectiveFormula piece = section.pieces[index];
         final FormulaSlot slot = piece.slot;
 
         // A formula naming a margin nobody has set reads it as no margin at
@@ -243,12 +265,16 @@ class WindowCutCalculator {
           variables[margin] = 0;
         }
 
-        final Map<String, double> forPiece = _withSide(
-          variables,
-          sides,
-          isFrame: isFrame,
-          label: slot.label,
-        );
+        final Map<String, double>? railSize =
+            index < railSizes.length ? railSizes[index] : null;
+        final Map<String, double> forPiece = railSize != null
+            ? <String, double>{...variables, ...railSize}
+            : _withSide(
+                variables,
+                sides,
+                isFrame: isFrame,
+                label: slot.label,
+              );
         final ({Map<String, double>? variables, String? problem}) own =
             _variablesFor(piece, forPiece, request.pieceSizes);
         if (own.problem != null) {
@@ -396,6 +422,48 @@ class WindowCutCalculator {
     if (own == null || dimension == null) return variables;
     if (variables[dimension] == own) return variables;
     return <String, double>{...variables, dimension: own};
+  }
+
+  /// The top and bottom of each wall, by the measurement its M24 rails read.
+  static const Map<String, (String, String)> _railSides = <String, (String, String)>{
+    'w': (WindowSide.top, WindowSide.bottom),
+    'wl': (WindowSide.topLeft, WindowSide.bottomLeft),
+    'wr': (WindowSide.topRight, WindowSide.bottomRight),
+  };
+
+  /// For each of a section's M24 rails, the measurement to cut it to, or null
+  /// to cut it as always (to the smaller of top and bottom).
+  ///
+  /// A window's rails are listed a wall at a time, the top ones first: W1 W2
+  /// then W3 W4 on a sliding window, W1s W2f W3s then W4s W5f W6s on a
+  /// three-panel one, WL1 WL2 then WL3 WL4 on a corner's left wall (and its
+  /// right wall the same by itself). So of each wall's rails the first half
+  /// are its top and the rest its bottom. A wall whose top and bottom are
+  /// within [m24TopBottomGapCm], or with an odd number of rails, keeps the
+  /// smaller for every rail.
+  static List<Map<String, double>?> _m24TopAndBottom(
+    List<EffectiveFormula> rails,
+    SideMeasurements sides,
+  ) {
+    final List<Map<String, double>?> out =
+        List<Map<String, double>?>.filled(rails.length, null);
+    final Map<String, List<int>> byWall = <String, List<int>>{};
+    for (int index = 0; index < rails.length; index++) {
+      byWall.putIfAbsent(rails[index].slot.dimension, () => <int>[]).add(index);
+    }
+    byWall.forEach((String dimension, List<int> wall) {
+      final (String, String)? ends = _railSides[dimension];
+      if (ends == null || wall.length.isOdd) return;
+      final double? top = sides.bySide[ends.$1];
+      final double? bottom = sides.bySide[ends.$2];
+      if (top == null || bottom == null) return;
+      if ((top - bottom).abs() < m24TopBottomGapCm - 1e-9) return;
+      final int half = wall.length ~/ 2;
+      for (int i = 0; i < wall.length; i++) {
+        out[wall[i]] = <String, double>{dimension: i < half ? top : bottom};
+      }
+    });
+    return out;
   }
 
   /// The measurements one piece is cut from: the window's own, with this

@@ -2,8 +2,13 @@ import '../models/fabrication_settings.dart';
 import 'fabrication_settings_api_client.dart';
 import 'fabrication_settings_repository.dart';
 
-/// The two pair-cutting switches, as they are to be saved.
-typedef PairCuttingSwitches = ({bool pairCutting, bool pairCuttingD29});
+/// The cutting switches -- M23/M28 and D29 in pairs, M24 in fours -- as they
+/// are to be saved.
+typedef PairCuttingSwitches = ({
+  bool pairCutting,
+  bool pairCuttingD29,
+  bool quadCuttingM24,
+});
 
 /// Saves the fabrication pair-cutting switches on their own, the moment one
 /// is switched, so they stay as the workshop left them without a Save to
@@ -44,6 +49,7 @@ class PairCuttingSaver {
       saved.copyWithPairCutting(
         pairCutting: switches.pairCutting,
         pairCuttingD29: switches.pairCuttingD29,
+        quadCuttingM24: switches.quadCuttingM24,
       ),
     );
   }
