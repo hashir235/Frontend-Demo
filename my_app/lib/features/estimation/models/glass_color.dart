@@ -68,6 +68,18 @@ class GlassColors {
         return const Color(0xFFA3ADB6);
       case 'Ocean Blue':
         return const Color(0xFF1F7A8C);
+      // A plain grey, between the light Gray Simple and the dark mirrored one.
+      case 'Gray':
+        return const Color(0xFF7D868E);
+      case 'Bronze Gucci':
+        return const Color(0xFFA0713F);
+      // Patterned and frosted glass: pale, as they look against the light.
+      case 'Figure Glass':
+        return const Color(0xFFCFDCE3);
+      case '3D White':
+        return const Color(0xFFF2F4F5);
+      case 'Etching Glass':
+        return const Color(0xFFE3E8EB);
       default:
         return const Color(0xFFDDE9F0);
     }
@@ -85,6 +97,9 @@ class GlassColors {
       case 'Blue Simple':
       case 'Gray Simple':
       case 'Brown Simple':
+      case 'Figure Glass':
+      case '3D White':
+      case 'Etching Glass':
         return const Color(0xFF1B2430);
       default:
         return Colors.white;
@@ -104,6 +119,10 @@ class GlassColors {
     }
     if (name.endsWith(' Simple')) {
       return name.substring(0, name.length - 7);
+    }
+    // "Figure Glass" -> "Figure", as "Clear Glass" -> "Clear".
+    if (name.endsWith(' Glass')) {
+      return name.substring(0, name.length - 6);
     }
     return name;
   }

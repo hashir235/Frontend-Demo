@@ -36,7 +36,11 @@ void main() {
       // something the bill had no price for.
       expect(GlassColors.all, same(GlassTypes.all));
       expect(GlassColors.all, contains('Green Mercury'));
-      expect(GlassColors.all, hasLength(10));
+      // Ten from the start, five more asked for by shops (Oct 2026).
+      expect(GlassColors.all, hasLength(15));
+      expect(GlassColors.all, containsAll(<String>[
+        'Gray', 'Bronze Gucci', 'Figure Glass', '3D White', 'Etching Glass',
+      ]));
     });
 
     test('every glass has a rate slot it can reach', () {

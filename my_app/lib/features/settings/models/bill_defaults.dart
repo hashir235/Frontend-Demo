@@ -17,6 +17,12 @@ class GlassTypes {
     'Gray Mercury',
     'Gray Simple',
     'Ocean Blue',
+    // Asked for by shops (Oct 2026): offered on every window, both flows.
+    'Gray',
+    'Bronze Gucci',
+    'Figure Glass',
+    '3D White',
+    'Etching Glass',
   ];
 
   /// Matches a glass name the user typed on a bill against this list, ignoring
