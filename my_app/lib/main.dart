@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'app.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/estimation/state/last_glass_color.dart';
+import 'features/estimation/state/invoice_print_choices.dart';
 import 'features/estimation/state/last_window_material.dart';
 import 'features/settings/state/app_settings.dart';
 import 'features/help_videos/video_links_store.dart';
@@ -18,6 +19,8 @@ Future<void> main() async {
   await LastGlassColor.instance.load();
   // The gauge and colour too, for the same reason.
   await LastWindowMaterial.instance.load();
+  // The invoice figures the shop keeps off its bills.
+  await InvoicePrintChoices.instance.load();
   // The same: a window input system the shop chose has to be the one it opens
   // on, not the one it opened on the first time.
   await AppSettings.instance.load();
