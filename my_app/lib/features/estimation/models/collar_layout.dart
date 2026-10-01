@@ -109,6 +109,9 @@ class CollarLayout {
   /// offering only the collars it comes in.
   static CollarLayout? forWindow(String windowCode) {
     final WindowVariant? variant = WindowVariants.of(windowCode);
+    // A window cut to formulas of its own has no collar to pick: it is
+    // drawn plain, one line all round.
+    if (variant?.own != null) return null;
     if (variant != null) {
       final CollarLayout? base = forWindow(variant.baseCode);
       final List<int>? only = variant.collars;

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/features/estimation/data/window_catalog.dart';
 import 'package:my_app/features/estimation/models/collar_layout.dart';
 import 'package:my_app/features/estimation/models/window_type.dart';
+import 'package:my_app/features/estimation/models/window_variant.dart';
 import 'package:my_app/features/estimation/presentation/input/window_input_base.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 import 'package:my_app/features/estimation/widgets/collar_side_picker.dart';
@@ -204,8 +205,11 @@ void main() {
 
   // Every window in the library, every side it has: a tap on the side's line
   // near one end takes that side's collar off -- exactly the collar the table
-  // says -- and a tap near the other end puts it back.
-  for (final WindowType node in windows) {
+  // says -- and a tap near the other end puts it back. A window with no
+  // collar system (Prime Economy) has no collar to tap; its own test says so.
+  for (final WindowType node in windows.where(
+    (WindowType node) => WindowVariants.ownOf(node.codeName) == null,
+  )) {
     final String code = node.codeName!;
     testWidgets('$code: each side toggles on its own line', (
       WidgetTester tester,

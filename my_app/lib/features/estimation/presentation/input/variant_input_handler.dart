@@ -27,6 +27,13 @@ class VariantInputHandler extends WindowInputHandler {
   WindowVariant get current =>
       alternateOn ? (WindowVariants.of(variant.alternateCode) ?? variant) : variant;
 
+  /// For a window cut to formulas of its own: whether its switched profile
+  /// (the net, D29) is cut. Off until switched on, like the openable's net.
+  bool netEnabled = false;
+
+  /// What this window does its own way, or null for a frame variant.
+  OwnWindow? get own => variant.own;
+
   @override
   bool get usesSplitWidthInputs => base.usesSplitWidthInputs;
 
@@ -39,7 +46,23 @@ class VariantInputHandler extends WindowInputHandler {
   int get collarCount => base.collarCount;
 
   @override
-  Map<int, List<String>> get sectionsByCollar => <int, List<String>>{
+  Map<int, List<String>> get sectionsByCollar {
+    final OwnWindow? mine = own;
+    if (mine != null) {
+      // Its own profiles at the one collar it comes in, the net only while
+      // it is switched on.
+      return <int, List<String>>{
+        for (final int collar in variant.collars ?? const <int>[2])
+          collar: <String>[
+            for (final String section in mine.sections)
+              if (section != mine.netSection || netEnabled) section,
+          ],
+      };
+    }
+    return _baseSectionsByCollar;
+  }
+
+  Map<int, List<String>> get _baseSectionsByCollar => <int, List<String>>{
     for (final MapEntry<int, List<String>> entry in base.sectionsByCollar.entries)
       if (variant.offersCollar(entry.key))
         entry.key: <String>[
@@ -48,7 +71,13 @@ class VariantInputHandler extends WindowInputHandler {
   };
 
   @override
-  Map<int, Map<String, String>> get sectionAliasesByCollar => <int, Map<String, String>>{
+  Map<int, Map<String, String>> get sectionAliasesByCollar {
+    if (own != null) return const <int, Map<String, String>>{};
+    return _baseSectionAliasesByCollar;
+  }
+
+  Map<int, Map<String, String>> get _baseSectionAliasesByCollar =>
+      <int, Map<String, String>>{
     for (final MapEntry<int, Map<String, String>> entry
         in base.sectionAliasesByCollar.entries)
       if (variant.offersCollar(entry.key))
@@ -59,9 +88,15 @@ class VariantInputHandler extends WindowInputHandler {
   };
 
   @override
-  Widget? overlayForCollar(int collarIndex, String? selectedSection) =>
-      base.overlayForCollar(
-        collarIndex,
-        selectedSection == null ? null : current.baseSectionFor(selectedSection),
-      );
+  Widget? overlayForCollar(int collarIndex, String? selectedSection) {
+    // Its own drawing, plain, under its own profiles' names. The Prime
+    // Economy sliding window is the only window cut to formulas of its own.
+    if (own != null) {
+      return PrimeEconomySlidingOverlay(selectedSection: selectedSection);
+    }
+    return base.overlayForCollar(
+      collarIndex,
+      selectedSection == null ? null : current.baseSectionFor(selectedSection),
+    );
+  }
 }

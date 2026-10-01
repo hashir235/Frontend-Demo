@@ -110,6 +110,7 @@ class OptimizationRepository {
     final List<OptimizationWindowRequest> windows = <OptimizationWindowRequest>[];
 
     for (final OptimizationWindowRequest window in request.windows) {
+      final String? switchedNet = WindowVariants.ownOf(window.windowCode)?.netSection;
       final WindowCutList cut = calculator.compute(
         WindowCutRequest(
           isFabrication: request.isFabrication,
@@ -131,7 +132,12 @@ class OptimizationRepository {
           sideSizes: window.sideSizes,
           // D31 is cut only when switched on. The engine would cut it
           // regardless, which is why a job with it off is never handed back.
-          leaveOut: window.addD31 == false ? const <String>{'D31'} : const <String>{},
+          // So is the net of a window cut to its own formulas (Prime
+          // Economy's D29): only with its switch, the window's addNet, on.
+          leaveOut: <String>{
+            if (window.addD31 == false) 'D31',
+            if (switchedNet != null && !window.addNet) switchedNet,
+          },
           // Strips in place of the door's glass: the engine knows nothing of
           // them, which is why such a job is never handed back to it either.
           strip: DoorStrips.of(window.strip),

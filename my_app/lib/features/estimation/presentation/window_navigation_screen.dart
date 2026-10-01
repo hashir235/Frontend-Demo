@@ -215,6 +215,19 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
               ),
               const SizedBox(height: AppTheme.space4),
             ],
+            // A line with a name of its own -- whose windows they are -- says
+            // it above its cards, smaller than the group's heading.
+            if (kind.rows[row].title != null) ...<Widget>[
+              Text(
+                kind.rows[row].title!,
+                key: Key('library_row_${kind.rows[row].id}'),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppTheme.deepTeal,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: AppTheme.space3),
+            ],
             _buildRow(group, row),
           ],
         ],

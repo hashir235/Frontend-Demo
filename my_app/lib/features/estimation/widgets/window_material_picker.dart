@@ -45,10 +45,15 @@ class WindowGaugePicker extends StatelessWidget {
   final WindowMaterial value;
   final ValueChanged<WindowMaterial> onChanged;
 
+  /// The gauges the window comes in: the rate list's three, unless it is
+  /// made in others (Prime Economy, in 0.9mm only).
+  final List<String> gauges;
+
   const WindowGaugePicker({
     super.key,
     required this.value,
     required this.onChanged,
+    this.gauges = WindowGauges.all,
   });
 
   @override
@@ -56,7 +61,7 @@ class WindowGaugePicker extends StatelessWidget {
     return OptionSwitchRow(
       label: 'Gauge',
       options: <Widget>[
-        for (final String gauge in WindowGauges.all)
+        for (final String gauge in gauges)
           OptionSwitch(
             label: gauge,
             selected: gauge == value.gauge,
@@ -81,10 +86,16 @@ class AluminiumColorPicker extends StatelessWidget {
   final WindowMaterial value;
   final ValueChanged<WindowMaterial> onChanged;
 
+  /// The finishes' names as the window's maker writes them, or null for the
+  /// rate list's own. Only the name changes: the colour picked, and the rate
+  /// it is priced at, are the same either way.
+  final String Function(String color)? nameFor;
+
   const AluminiumColorPicker({
     super.key,
     required this.value,
     required this.onChanged,
+    this.nameFor,
   });
 
   @override
@@ -93,7 +104,7 @@ class AluminiumColorPicker extends StatelessWidget {
       title: 'ALUMINIUM COLOR',
       options: AluminiumColors.all,
       selected: value.color,
-      nameFor: AluminiumColors.labelFor,
+      nameFor: nameFor ?? AluminiumColors.labelFor,
       swatchBuilder: (String color, double size) =>
           AluminiumSwatch(color: color, size: size),
       keyPrefix: 'aluminium_color',
@@ -171,7 +182,11 @@ class _WoodGrainPainter extends CustomPainter {
 class WindowMaterialChip extends StatelessWidget {
   final WindowMaterial material;
 
-  const WindowMaterialChip({super.key, required this.material});
+  /// The finish under its maker's name, where the window has one (Prime
+  /// Economy's "Dull Silver"); null for the usual short name.
+  final String? colorName;
+
+  const WindowMaterialChip({super.key, required this.material, this.colorName});
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +210,7 @@ class WindowMaterialChip extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            material.label,
+            colorName == null ? material.label : '${material.gauge} · $colorName',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.w700,
               color: AppTheme.textSecondary,

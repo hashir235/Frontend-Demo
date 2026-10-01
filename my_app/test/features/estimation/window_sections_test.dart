@@ -30,6 +30,18 @@ void main() {
     // in the collars it comes in, with its own profiles' names -- the rule
     // WindowVariants states, applied here to the file directly.
     final WindowVariant? variant = WindowVariants.of(code);
+    // A window cut to formulas of its own: those, at its one collar.
+    final OwnWindow? own = variant?.own;
+    if (variant != null && own != null) {
+      return <String, Map<String, dynamic>>{
+        for (final int collar in variant.collars!)
+          'collarType=$collar': <String, dynamic>{
+            for (final MapEntry<String, List<OwnPiece>> section
+                in own.formulasFor(context).entries)
+              section.key: section.value,
+          },
+      };
+    }
     if (variant != null) {
       final Map<String, Map<String, dynamic>>? base = configsOf(variant.baseCode, context);
       if (base == null) return null;
@@ -105,19 +117,24 @@ void main() {
         expect(fromEngine.map((UsedSection s) => s.code).toSet(), cut);
         expect(fromEngine.length, cut.length, reason: 'no section listed twice');
 
+        // The net of a window cut to its own formulas is switched by the app
+        // too: its formulas always carry it, and the app leaves it out.
+        final bool ownFormulas = WindowVariants.ownOf(code) != null;
         for (final UsedSection section in fromEngine) {
+          final bool appsOwnOption = section.option == 'addD31' ||
+              (ownFormulas && section.option == 'addNet');
           configs.forEach((String configKey, Map<String, dynamic> sections) {
             final bool present = sections.containsKey(section.code);
             if (section.option == null) return;
             // The app's own option, not the engine's: the app leaves D31 out
             // while it is switched off. (In fabrication the engine itself
             // cuts it with some locks only.)
-            if (section.option == 'addD31') return;
+            if (appsOwnOption) return;
             final bool optionOn = configKey.split('|').contains('${section.option}=true');
             expect(present, optionOn,
                 reason: '${section.code} comes exactly with ${section.option}: $configKey');
           });
-          if (section.option == 'addD31') {
+          if (appsOwnOption) {
             expect(
               configs.values.any((Map<String, dynamic> sections) =>
                   sections.containsKey(section.code)),
@@ -212,13 +229,23 @@ void main() {
         <String>['Prime Sliding Window', 'Prime Panel Windows', 'Prime Corner Windows']);
     expect(estimation[0].rows[2].nodes.map((WindowType n) => n.label),
         <String>['Royal Sliding Window', 'Royal Panel Windows', 'Royal Corner Windows']);
-    expect(estimation[1].rows.single.nodes, WindowCatalog.economyWindows);
+    // Two lines of Economy windows, each under its maker's name.
+    expect(estimation[1].rows.map((WindowRow r) => r.id),
+        <String>['economy', 'economy_prime']);
+    expect(estimation[1].rows.map((WindowRow r) => r.title),
+        <String>['PAK AL TECH', 'Prime Economy Sliding Windows']);
+    expect(estimation[1].rows[0].nodes, WindowCatalog.economyWindows);
+    expect(estimation[1].rows[1].nodes, WindowCatalog.primeEconomyWindows);
+    expect(estimation[0].rows.every((WindowRow r) => r.title == null), isTrue,
+        reason: 'the sliding windows\' lines keep no headings of their own');
     expect(estimation[2].nodes.map((WindowType n) => n.label),
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door', 'Arch']);
 
     final List<WindowGroup> fabrication = WindowCatalog.groupsForFlow(isFabrication: true);
     expect(fabrication[0].nodes.length, 12);
-    expect(fabrication[1].nodes.length, 6);
+    // Prime Economy is in fabrication too.
+    expect(fabrication[1].nodes.length, 7);
+    expect(fabrication[1].rows[1].nodes, WindowCatalog.primeEconomyWindows);
     expect(fabrication[2].nodes.map((WindowType n) => n.label),
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door']);
 

@@ -9,6 +9,7 @@ import '../../widgets/sliding_corner_center_fix_overlay.dart';
 import '../../widgets/sliding_corner_m_section_overlay.dart';
 import '../../widgets/fix_window_overlay.dart';
 import '../../widgets/openable_window_overlay.dart';
+import '../../widgets/prime_economy_sliding_overlay.dart';
 import '../../widgets/door_single_overlay.dart';
 import '../../widgets/door_double_overlay.dart';
 import '../../widgets/arch_round_overlay.dart';

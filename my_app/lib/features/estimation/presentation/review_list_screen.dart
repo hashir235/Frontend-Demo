@@ -320,11 +320,14 @@ class ReviewListScreen extends StatelessWidget {
     Color accentColor,
     Color codeColor,
   ) {
+    // A window cut to formulas of its own (Prime Economy) has no collar to
+    // speak of, and its finishes go by its maker's names.
+    final OwnWindow? own = WindowVariants.ownOf(item.windowCode);
     final List<Widget> chips = <Widget>[
       _buildMetaChip(
         context,
         icon: Icons.grid_view_rounded,
-        label: 'Collar ${item.collarIndex}',
+        label: own != null ? 'No collar' : 'Collar ${item.collarIndex}',
         accentColor: accentColor,
       ),
       _buildMetaChip(
@@ -337,7 +340,10 @@ class ReviewListScreen extends StatelessWidget {
       // choices made on the same screen. A job can mix them now, so this is
       // the page where a wrong one gets caught -- reading down the list is how
       // anyone checks their own work before it goes to the saw.
-      WindowMaterialChip(material: item.material),
+      WindowMaterialChip(
+        material: item.material,
+        colorName: own?.colorNameFor(item.material.color),
+      ),
       // The glass, beside the aluminium, because it was picked on the same
       // screen and is priced and cut on its own. Reading down this list is how
       // anyone checks their own work before it goes to the saw, and a window
@@ -442,7 +448,7 @@ class ReviewListScreen extends StatelessWidget {
         _buildMetaChip(
           context,
           icon: Icons.grid_on_rounded,
-          label: 'Net On',
+          label: '${own?.netSection ?? 'Net'} On',
           accentColor: AppTheme.tealAccent,
         ),
       );

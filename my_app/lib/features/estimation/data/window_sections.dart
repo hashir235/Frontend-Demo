@@ -158,6 +158,16 @@ class WindowSections {
         (isFabrication ? _fabrication[code] : null) ?? _estimation[code];
     if (listed != null) return _sorted(listed);
 
+    // A window cut to formulas of its own lists its own profiles, in its own
+    // order -- the same in both flows -- with the switched one marked.
+    final OwnWindow? own = WindowVariants.ownOf(code);
+    if (own != null) {
+      return List<UsedSection>.unmodifiable(<UsedSection>[
+        for (final String section in own.sections)
+          UsedSection(section, option: section == own.netSection ? 'addNet' : null),
+      ]);
+    }
+
     // A variant in every collar its base comes in is its base's list under
     // its own names, in its base's order.
     final WindowVariant? variant = WindowVariants.of(code);

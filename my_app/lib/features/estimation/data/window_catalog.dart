@@ -3,12 +3,17 @@ import '../models/window_variant.dart';
 
 /// One line of windows in the library, swiped sideways.
 class WindowRow {
-  const WindowRow({required this.id, required this.nodes});
+  const WindowRow({required this.id, required this.nodes, this.title});
 
   /// A stable name for keys and tests: "sliding", "sliding_b", "box".
   final String id;
 
   final List<WindowType> nodes;
+
+  /// The line's own heading, where a group holds lines from different makers
+  /// (the Economy windows: PAK AL TECH's, and Prime's). Null for a line that
+  /// needs none beyond its group's.
+  final String? title;
 }
 
 /// A kind of window in the library: a heading, and the lines of windows
@@ -532,6 +537,20 @@ class WindowCatalog {
     ),
   ];
 
+  /// The Prime Economy line, on Prime's EF profiles, cut to formulas of its
+  /// own (see [OwnWindow]). One window so far: the plain two-panel sliding
+  /// window, with no collar.
+  static const List<WindowType> primeEconomyWindows = <WindowType>[
+    WindowType(
+      label: 'Prime Eco Sliding Window',
+      subtitle: 'Two-panel sliding window on the Prime EF profiles',
+      graphicKey: 'sliding_basic',
+      children: <WindowType>[],
+      displayIndex: 56,
+      codeName: 'SPE_win',
+    ),
+  ];
+
   /// Windows built as a box: fixed frame all round -- fix, corner fix,
   /// openable, doors and arches.
   static const List<WindowType> boxTypeWindows = <WindowType>[
@@ -615,6 +634,7 @@ class WindowCatalog {
     ...primeWindows,
     ...royalWindows,
     ...economyWindows,
+    ...primeEconomyWindows,
     ...boxTypeWindows,
   ];
 
@@ -633,10 +653,24 @@ class WindowCatalog {
           WindowRow(id: 'sliding_ba', nodes: forFlow(royalWindows)),
         ],
       ),
+      // Two makers' Economy windows, a line each under its maker's name: the
+      // first line was built from PAK AL TECH's catalogue, the second is
+      // Prime's.
       WindowGroup(
         id: 'economy',
         title: 'Economy Sliding Window',
-        rows: <WindowRow>[WindowRow(id: 'economy', nodes: forFlow(economyWindows))],
+        rows: <WindowRow>[
+          WindowRow(
+            id: 'economy',
+            title: 'PAK AL TECH',
+            nodes: forFlow(economyWindows),
+          ),
+          WindowRow(
+            id: 'economy_prime',
+            title: 'Prime Economy Sliding Windows',
+            nodes: forFlow(primeEconomyWindows),
+          ),
+        ],
       ),
       WindowGroup(
         id: 'box',

@@ -77,7 +77,10 @@ class FormulaCatalogue {
   /// map it wrote itself. Keeping the loading out of here is what lets the
   /// harness run the app's own cutting code outside a Flutter app at all.
   static FormulaCatalogue fromJson(Map<String, dynamic> json) {
-    final List<String> formulas = (json['formulas'] as List<dynamic>).cast<String>();
+    // A copy that can grow: a window cut to formulas of its own (see
+    // [OwnWindow]) adds the ones nothing else uses.
+    final List<String> formulas =
+        List<String>.of((json['formulas'] as List<dynamic>).cast<String>());
     final Map<String, Map<String, Map<String, List<dynamic>>>> windows =
         <String, Map<String, Map<String, List<dynamic>>>>{};
     final Map<String, Map<String, List<dynamic>>> glass =
@@ -107,7 +110,37 @@ class FormulaCatalogue {
 
     final Map<String, ({String baseKey, WindowVariant variant})> variantBases =
         <String, ({String baseKey, WindowVariant variant})>{};
+    final Map<String, Set<String>> ownFrames = <String, Set<String>>{};
+
+    int indexOf(String formula) {
+      final int at = formulas.indexOf(formula);
+      if (at >= 0) return at;
+      formulas.add(formula);
+      return formulas.length - 1;
+    }
+
     for (final WindowVariant variant in WindowVariants.all) {
+      final OwnWindow? own = variant.own;
+      if (own != null) {
+        // Its own formulas, at the one collar it comes in, in both flows; no
+        // glass, so none is listed and none is cut.
+        for (final String context in <String>['estimation', 'fabrication']) {
+          final String key = '$context/${variant.code}';
+          windows[key] = <String, Map<String, List<dynamic>>>{
+            for (final int collar in variant.collars ?? const <int>[2])
+              'collarType=$collar': <String, List<dynamic>>{
+                for (final MapEntry<String, List<OwnPiece>> section
+                    in own.formulasFor(context).entries)
+                  section.key: <dynamic>[
+                    for (final OwnPiece piece in section.value)
+                      <dynamic>[piece.label, indexOf(piece.formula)],
+                  ],
+              },
+          };
+          ownFrames[key] = own.frame;
+        }
+        continue;
+      }
       for (final String context in <String>['estimation', 'fabrication']) {
         final ({String window, String? dimension, String? value})? base =
             FormulaWindowKey.engineWindowFor(variant.baseCode, context);
@@ -148,7 +181,11 @@ class FormulaCatalogue {
       }
     }
 
-    return FormulaCatalogue._(formulas, windows, glass, variantBases);
+    return FormulaCatalogue._(formulas, windows, glass, variantBases)
+      .._frameSections.addAll(<String, Set<String>>{
+        for (final MapEntry<String, Set<String>> entry in ownFrames.entries)
+          entry.key: Set<String>.unmodifiable(entry.value),
+      });
   }
 
   /// What a window's configuration is made of -- collarType, lockType and the

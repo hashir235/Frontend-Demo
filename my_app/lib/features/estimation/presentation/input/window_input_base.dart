@@ -248,7 +248,37 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// next job opens on it too, until somebody picks again.
   void _pickMaterial(WindowMaterial next) {
     setState(() => _material = next);
-    unawaited(LastWindowMaterial.instance.remember(next));
+    // A gauge only this window comes in (Prime Economy's 0.9mm) is no choice
+    // for the next ordinary window, so that one keeps the gauge it had; the
+    // finish carries over like any other pick.
+    final WindowMaterial remembered = _ownWindow == null
+        ? next
+        : next.copyWith(gauge: LastWindowMaterial.instance.value.gauge);
+    unawaited(LastWindowMaterial.instance.remember(remembered));
+  }
+
+  /// What this window does its own way -- profiles, formulas, gauge, the
+  /// names of its finishes -- or null for every other window.
+  OwnWindow? get _ownWindow => WindowVariants.ownOf(_windowCode);
+
+  /// The gauges this window comes in.
+  List<String> get _gauges => _ownWindow?.gauges ?? WindowGauges.all;
+
+  /// [material] in a gauge this window comes in.
+  ///
+  /// The material a new window opens on is the last window's, and that can
+  /// be a gauge this one is not made in: a Prime Economy window's 0.9mm on
+  /// an ordinary window would price every bar at nothing, the rate list
+  /// having no 0.9mm for it. So a window made in its own gauges opens on its
+  /// first, and any other on the shop's usual one.
+  WindowMaterial _fittedToWindow(WindowMaterial material) {
+    final List<String> gauges = _gauges;
+    if (gauges.contains(material.gauge)) return material;
+    return material.copyWith(
+      gauge: _ownWindow != null
+          ? gauges.first
+          : LastWindowMaterial.instance.value.gauge,
+    );
   }
 
   /// The window this one behaves as: itself, or for a variant window (a
@@ -260,7 +290,14 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   int _offeredCollar(int collar) {
     final CollarLayout? layout = CollarLayout.forWindow(_windowCode);
     final int clamped = collar.clamp(1, _handler.collarCount);
-    return layout == null ? clamped : layout.nearestOffered(clamped);
+    final int offered = layout == null ? clamped : layout.nearestOffered(clamped);
+    // A window drawn without a collar picker still comes in only the collars
+    // it lists -- the Prime Economy window in the engine's collar 2.
+    final List<int>? only = WindowVariants.of(_windowCode)?.collars;
+    if (only != null && only.isNotEmpty && !only.contains(offered)) {
+      return only.first;
+    }
+    return offered;
   }
 
   bool get _isCenterSlideLockWindow {
@@ -272,6 +309,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }
 
   bool get _isLockSupportedWindow {
+    // Cut to its own formulas, which have no lock in them.
+    if (_ownWindow != null) return false;
     final String windowCode = _behavesAs;
     return windowCode == 'S_win' ||
         windowCode == 'MS_win' ||
@@ -293,6 +332,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
 
   bool get _showsLockTypeSelector =>
       _isFabricationFlow && _isLockSupportedWindow;
+
+  /// The rubber decides the glass, so it is asked in fabrication -- except on
+  /// a window that takes no glass there yet (Prime Economy).
+  bool get _showsRubberSelector => _isFabricationFlow && _ownWindow == null;
 
   bool get _allowsHandalLockType => !_isCenterSlideLockWindow;
   bool get _isFabricationFlow => widget.session.isFabrication;
@@ -341,7 +384,15 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       !_isFabricationFlow && _unitMode == UnitMode.cm;
   bool get _showsDoorSectionToggles =>
       _handler is DoorSingleInputHandler || _handler is DoorDoubleInputHandler;
-  bool get _showsOpenableNetToggle => _handler is OpenableInputHandler;
+  bool get _showsOpenableNetToggle =>
+      _handler is OpenableInputHandler || _ownWindow?.netSection != null;
+
+  /// The profile the net switch brings in: D29, on every window that has one.
+  String get _netSection => _ownWindow?.netSection ?? 'D29';
+
+  /// What the sidebar calls the net switch: "Net" on the openable, the
+  /// profile's own name on a window that lists it (D29 Off / D29 On).
+  String get _netLabel => _ownWindow?.netSection ?? 'Net';
 
   /// Back collar sirf fabrication ke door formula par asar karta ha, is liye
   /// button bhi sirf fabrication flow ke doors mein dikhta ha.
@@ -461,18 +512,31 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (handler is OpenableInputHandler) {
       return handler.netEnabled;
     }
+    if (handler is VariantInputHandler && handler.own?.netSection != null) {
+      return handler.netEnabled;
+    }
     return false;
   }
 
-  void _setOpenableNetEnabled(bool enabled) {
+  /// Puts the net switch of whichever window has one -- the openable's, or
+  /// the D29 of a window cut to its own formulas -- to [enabled].
+  void _applyNetEnabled(bool enabled) {
     final WindowInputHandler handler = _handler;
-    if (handler is! OpenableInputHandler || handler.netEnabled == enabled) {
+    if (handler is OpenableInputHandler) {
+      handler.netEnabled = enabled;
+    } else if (handler is VariantInputHandler && handler.own?.netSection != null) {
+      handler.netEnabled = enabled;
+    }
+  }
+
+  void _setOpenableNetEnabled(bool enabled) {
+    if (!_showsOpenableNetToggle || _openableNetEnabled == enabled) {
       return;
     }
 
     setState(() {
-      handler.netEnabled = enabled;
-      if (!enabled && _selectedSectionCode == 'D29') {
+      _applyNetEnabled(enabled);
+      if (!enabled && _selectedSectionCode == _netSection) {
         _selectedSectionCode = null;
       }
     });
@@ -526,11 +590,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
 
   /// How this window is set up, in the words the fabricator chose it by.
   String get _formulaConfigSummary {
-    final List<String> parts = <String>['Collar $_selectedCollar'];
+    final List<String> parts = <String>[
+      _ownWindow != null ? 'No collar' : 'Collar $_selectedCollar',
+    ];
     if (_showsLockTypeSelector) {
       parts.add(_lockTypeLabel(_lockType));
     }
-    if (_isFabricationFlow) {
+    if (_showsRubberSelector) {
       parts.add(_rubberType == _RubberType.u ? 'U rubber' : 'F rubber');
     }
     if (_showsDoorSectionToggles) {
@@ -538,7 +604,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       if (_doorD52Enabled) parts.add('D52');
     }
     if (_showsOpenableNetToggle && _openableNetEnabled) {
-      parts.add('Net');
+      parts.add(_netLabel);
     }
     if (_showsD31Toggle && _d31Enabled) {
       parts.add('D31');
@@ -909,11 +975,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
             }
           }
         }
-        final WindowInputHandler activeHandler = _handler;
-        if (_showsOpenableNetToggle &&
-            preferencesState.addNet != null &&
-            activeHandler is OpenableInputHandler) {
-          activeHandler.netEnabled = preferencesState.addNet!;
+        if (_showsOpenableNetToggle && preferencesState.addNet != null) {
+          _applyNetEnabled(preferencesState.addNet!);
         }
         if (_showsBackCollarOption && preferencesState.backCollarCm != null) {
           _backCollarCm = preferencesState.backCollarCm!;
@@ -945,7 +1008,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       if (!_doorD52Enabled && _selectedSectionCode == 'D52') {
         _selectedSectionCode = null;
       }
-      if (!_openableNetEnabled && _selectedSectionCode == 'D29') {
+      if (!_openableNetEnabled && _selectedSectionCode == _netSection) {
         _selectedSectionCode = null;
       }
       if (!_d31Enabled && _selectedSectionCode == 'D31') {
@@ -972,6 +1035,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _handler.d52Enabled = editingItem.addTee;
     } else if (_handler is OpenableInputHandler) {
       _handler.netEnabled = editingItem.addNet;
+    } else if (_showsOpenableNetToggle) {
+      // A window cut to its own formulas: its D29, as it was saved.
+      _applyNetEnabled(editingItem.addNet);
     }
   }
 
@@ -1098,9 +1164,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _normalizeLockTypeSelectionForWindow();
     // orElse: an old window may carry none of its own, and the picker must
     // open on something the user can see.
-    _material =
-        widget.editingItem?.material.orElse(WindowMaterial.initial) ??
-        widget.session.materialForNextWindow;
+    _material = _fittedToWindow(
+      widget.editingItem?.material.orElse(WindowMaterial.initial) ??
+          widget.session.materialForNextWindow,
+    );
     _glassColor = GlassColors.normalize(
       widget.editingItem?.glassColor ?? widget.session.glassColorForNextWindow,
     );
@@ -2352,13 +2419,15 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                     },
                   ),
                 // The badge sits over the top edge of the card; a tap there
-                // is meant for the top side under it.
-                Positioned(
-                  top: -18,
-                  child: IgnorePointer(
-                    child: _CollarArchBadge(number: _selectedCollar),
+                // is meant for the top side under it. A window with no
+                // collar system has no collar number to show.
+                if (_ownWindow == null)
+                  Positioned(
+                    top: -18,
+                    child: IgnorePointer(
+                      child: _CollarArchBadge(number: _selectedCollar),
+                    ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -3555,7 +3624,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                   ],
                   if (_showsOpenableNetToggle) ...[
                     Text(
-                      'Net Option',
+                      '$_netLabel Option',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppTheme.deepTeal,
                         fontWeight: FontWeight.w700,
@@ -3563,13 +3632,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                     ),
                     const SizedBox(height: 8),
                     _buildSidebarToggleOption(
-                      label: 'Net Off',
+                      label: '$_netLabel Off',
                       selected: !_openableNetEnabled,
                       onTap: () => _setOpenableNetEnabled(false),
                     ),
                     const SizedBox(height: 6),
                     _buildSidebarToggleOption(
-                      label: 'Net On',
+                      label: '$_netLabel On',
                       selected: _openableNetEnabled,
                       onTap: () => _setOpenableNetEnabled(true),
                     ),
@@ -3818,7 +3887,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             compact: true,
                             child: _buildLockRow(context),
                           ),
-                        if (_isFabricationFlow)
+                        if (_showsRubberSelector)
                           InputBlockOrder.rubber: ArrangeableBlock(
                             id: InputBlockOrder.rubber,
                             compact: true,
@@ -3865,6 +3934,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             id: 'input.material',
                             child: WindowGaugePicker(
                               value: _material,
+                              gauges: _gauges,
                               onChanged: _pickMaterial,
                             ),
                           ),
@@ -3873,6 +3943,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           id: InputBlockOrder.aluminiumColor,
                           child: AluminiumColorPicker(
                             value: _material,
+                            // A maker's own names for the finishes, where
+                            // this window is made by one (Prime Economy).
+                            nameFor: _ownWindow?.colorNameFor,
                             onChanged: _pickMaterial,
                           ),
                         ),

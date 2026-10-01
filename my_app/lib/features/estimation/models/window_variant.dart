@@ -23,7 +23,14 @@ class WindowVariant {
     required this.sections,
     this.alternateCode,
     this.isAlternate = false,
+    this.own,
   });
+
+  /// Set for a window that is its base's only on the outside -- the engine
+  /// it is handed to, the screen it is entered on -- and cut to formulas of
+  /// its own, from profiles of its own. Null for every frame variant above,
+  /// which are their base's formulas under other names.
+  final OwnWindow? own;
 
   /// This window's own code, as it is saved: "SB_win".
   final String code;
@@ -80,9 +87,173 @@ class WindowVariant {
   }
 }
 
+/// One piece of a window cut to formulas of its own: what the cutting list
+/// calls it, and the sum that cuts it, written as the catalogue writes one.
+typedef OwnPiece = ({String label, String formula});
+
+/// What a window cut to formulas of its own does its own way.
+///
+/// The first is the Prime Economy sliding window (Hashir, Oct 2026): a plain
+/// two-panel sliding window on Prime's EF profiles, with no collar. To the
+/// engine it is the sliding window at collar 2, which works out its area and
+/// names its cuts; every length is the app's, from the formulas here. In
+/// fabrication it takes no glass yet -- its glass formula is still to come --
+/// so none is listed and none is cut.
+class OwnWindow {
+  const OwnWindow({
+    required this.sections,
+    required this.frame,
+    required this.estimation,
+    required this.fabrication,
+    required this.gauges,
+    required this.colorNames,
+    this.netSection,
+  });
+
+  /// Its profiles, in the order the sidebar lists them.
+  final List<String> sections;
+
+  /// The profiles of its frame: on a window measured side by side, the ones
+  /// cut to their own side.
+  final Set<String> frame;
+
+  /// Each profile's pieces in cutting order. Estimation's are in feet, with
+  /// a margin per profile (`cm_...`); fabrication's in centimetres, as
+  /// `(core + cm) / feet`, the way the catalogue writes every formula.
+  final Map<String, List<OwnPiece>> estimation;
+  final Map<String, List<OwnPiece>> fabrication;
+
+  Map<String, List<OwnPiece>> formulasFor(String context) =>
+      context == 'fabrication' ? fabrication : estimation;
+
+  /// The one profile cut only when it is switched on in the sidebar, kept
+  /// on the window as its addNet; null when every profile is always cut.
+  final String? netSection;
+
+  /// The gauges it comes in, written as the rate list writes them.
+  final List<String> gauges;
+
+  /// The finishes under its maker's names, keyed by the rate-list column
+  /// each is priced from -- which is the colour's own value everywhere.
+  final Map<String, String> colorNames;
+
+  /// [color] as this maker names it.
+  String colorNameFor(String color) => colorNames[color] ?? color;
+}
+
 /// Every variant window the app knows.
 class WindowVariants {
   const WindowVariants._();
+
+  // Fabrication sizes in suter, as Hashir gave them, in the centimetres the
+  // formulas work in: eight suter to the inch, 2.54cm to the inch.
+  //   3 suter            = 3/8"  = 0.9525cm
+  //   7 suter            = 7/8"  = 2.2225cm
+  //   3 inch 2 suter     = 3.25" = 8.255cm
+
+  /// The Prime Economy sliding window: two panels, Prime's EF profiles.
+  ///
+  /// Estimation cuts it the way it cuts the plain sliding window with no
+  /// collar -- heights to the height, the frame head and sill to the width,
+  /// each panel's rails and the net to half of it -- and each piece takes the
+  /// margin of the profile in the same place on that window, as the Economy
+  /// windows do: one margin for a frame head, whoever makes it.
+  ///
+  /// Fabrication is Hashir's own list (Oct 2026): EF30 as measured; EF27 and
+  /// EF26A 3 suter short of the width; EF22 and EF28 7 suter short of the
+  /// height; EF25 and EF24 half of the width less 3 inch 2 suter; D29 the
+  /// same as those, height and half-width.
+  static const OwnWindow _primeEconomy = OwnWindow(
+    sections: <String>['EF30', 'EF27', 'EF26A', 'EF25', 'EF24', 'EF22', 'EF28', 'D29'],
+    frame: <String>{'EF30', 'EF27', 'EF26A'},
+    netSection: 'D29',
+    gauges: <String>['0.9mm'],
+    colorNames: <String, String>{
+      'DULL': 'Dull Silver',
+      'H23/PC-RAL': 'Chm/Ral Gold',
+      'SAHARA/ BROWN': 'Brown Sahara',
+      'BLACK/ MULTI': 'Multi/BLK Ral +',
+      'WOOD COAT': 'Wood Sahara +',
+    },
+    estimation: <String, List<OwnPiece>>{
+      // The frame: both jambs, the head, the sill.
+      'EF30': <OwnPiece>[
+        (label: 'HL', formula: 'h + cm_DC30C'),
+        (label: 'HR', formula: 'h + cm_DC30C'),
+      ],
+      'EF27': <OwnPiece>[(label: 'WT', formula: 'w + cm_DC30C')],
+      'EF26A': <OwnPiece>[(label: 'WB', formula: 'w + cm_DC26C')],
+      // Each panel's top rail, then each one's bottom rail.
+      'EF25': <OwnPiece>[
+        (label: 'W1', formula: 'w / 2 + cm_M24'),
+        (label: 'W2', formula: 'w / 2 + cm_M24'),
+      ],
+      'EF24': <OwnPiece>[
+        (label: 'W3', formula: 'w / 2 + cm_M24'),
+        (label: 'W4', formula: 'w / 2 + cm_M24'),
+      ],
+      // The outer stiles, left and right; the two meeting at the centre.
+      'EF22': <OwnPiece>[
+        (label: 'H', formula: 'h + cm_M23'),
+        (label: 'H', formula: 'h + cm_M23'),
+      ],
+      'EF28': <OwnPiece>[
+        (label: 'H', formula: 'h + cm_M28'),
+        (label: 'H', formula: 'h + cm_M28'),
+      ],
+      // The net over one panel: two heights and two half-widths.
+      'D29': <OwnPiece>[
+        (label: 'HL', formula: 'h + cm_D29'),
+        (label: 'HR', formula: 'h + cm_D29'),
+        (label: 'WT', formula: 'w / 2 + cm_D29'),
+        (label: 'WB', formula: 'w / 2 + cm_D29'),
+      ],
+    },
+    fabrication: <String, List<OwnPiece>>{
+      'EF30': <OwnPiece>[
+        (label: 'HL', formula: '(h + cm) / feet'),
+        (label: 'HR', formula: '(h + cm) / feet'),
+      ],
+      'EF27': <OwnPiece>[(label: 'WT', formula: '(w - 0.9525 + cm) / feet')],
+      'EF26A': <OwnPiece>[(label: 'WB', formula: '(w - 0.9525 + cm) / feet')],
+      'EF25': <OwnPiece>[
+        (label: 'W1', formula: '((w - 8.255) / 2 + cm) / feet'),
+        (label: 'W2', formula: '((w - 8.255) / 2 + cm) / feet'),
+      ],
+      'EF24': <OwnPiece>[
+        (label: 'W3', formula: '((w - 8.255) / 2 + cm) / feet'),
+        (label: 'W4', formula: '((w - 8.255) / 2 + cm) / feet'),
+      ],
+      'EF22': <OwnPiece>[
+        (label: 'H', formula: '(h - 2.2225 + cm) / feet'),
+        (label: 'H', formula: '(h - 2.2225 + cm) / feet'),
+      ],
+      'EF28': <OwnPiece>[
+        (label: 'H', formula: '(h - 2.2225 + cm) / feet'),
+        (label: 'H', formula: '(h - 2.2225 + cm) / feet'),
+      ],
+      'D29': <OwnPiece>[
+        (label: 'HL', formula: '(h - 2.2225 + cm) / feet'),
+        (label: 'HR', formula: '(h - 2.2225 + cm) / feet'),
+        (label: 'WT', formula: '((w - 8.255) / 2 + cm) / feet'),
+        (label: 'WB', formula: '((w - 8.255) / 2 + cm) / feet'),
+      ],
+    },
+  );
+
+  /// The Prime Economy line. One window so far: the two-panel sliding one.
+  static const List<WindowVariant> _primeEconomyLine = <WindowVariant>[
+    WindowVariant(
+      code: 'SPE_win',
+      baseCode: 'S_win',
+      frame: 'PE',
+      // No collar: the engine's collar 2, which is its sliding window with
+      // none on any side. The screen offers no other.
+      collars: <int>[2],
+      sections: <String, String>{},
+      own: _primeEconomy,
+    ),
+  ];
 
   static const List<int> _noCollar = <int>[2];
 
@@ -201,14 +372,20 @@ class WindowVariants {
           ),
       ];
 
-  /// Every variant: the B frame, the BA frame, then the Economy line.
+  /// Every variant: the B frame, the BA frame, the Economy line, then the
+  /// Prime Economy one.
   static final List<WindowVariant> all = List<WindowVariant>.unmodifiable(
     <WindowVariant>[
       ..._frame('B', _bFrame),
       ..._frame('BA', _baFrame),
       ..._economyLine(),
+      ..._primeEconomyLine,
     ],
   );
+
+  /// What window [code] does its own way, or null for every window cut to
+  /// its own base's formulas (or a window that is no variant at all).
+  static OwnWindow? ownOf(String? code) => of(code)?.own;
 
   static final Map<String, WindowVariant> _byCode = <String, WindowVariant>{
     for (final WindowVariant variant in all) variant.code: variant,

@@ -114,7 +114,8 @@ void main() {
     final WindowGroup group = WindowCatalog.groupsForFlow(isFabrication: false)
         .firstWhere((WindowGroup g) => g.id == 'economy');
     expect(group.title, 'Economy Sliding Window');
-    expect(group.rows.single.nodes.map((WindowType n) => n.label), <String>[
+    expect(group.rows.first.title, 'PAK AL TECH');
+    expect(group.rows.first.nodes.map((WindowType n) => n.label), <String>[
       'Eco Sliding Window',
       'Eco Sliding Window M_Section',
       'Eco Panel Windows',
@@ -134,7 +135,12 @@ void main() {
         reason: 'each has its own hardware rate');
   });
 
-  for (final WindowVariant variant in WindowVariants.all) {
+  // The frame variants: their base's formulas under other names. (A window
+  // cut to formulas of its own -- Prime Economy -- has its own test.)
+  final List<WindowVariant> frameVariants =
+      WindowVariants.all.where((WindowVariant v) => v.own == null).toList();
+
+  for (final WindowVariant variant in frameVariants) {
     for (final String context in <String>['estimation', 'fabrication']) {
       test('${variant.code} ($context): the base\'s formulas, its collars, own profiles', () {
         final Set<String> dims = catalogue.dimensionsFor(
@@ -228,7 +234,7 @@ void main() {
       'cm_DC26F': 0.25,
     };
 
-    for (final WindowVariant variant in WindowVariants.all) {
+    for (final WindowVariant variant in frameVariants) {
       final bool corner = variant.baseCode.contains('SC');
       for (final ({bool fabrication, int collar}) run in <({bool fabrication, int collar})>[
         for (final bool fabrication in <bool>[false, true])
