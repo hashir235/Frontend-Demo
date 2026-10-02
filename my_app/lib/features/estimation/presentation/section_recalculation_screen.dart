@@ -12,6 +12,7 @@ import '../../tutorial/tutorial_target.dart';
 import '../data/optimization_repository.dart';
 import '../models/cutting_report.dart';
 import '../models/section_recalculation.dart';
+import '../models/window_size_label.dart';
 import 'input/feet_inch_suter_notation.dart';
 import 'input/size_entry_notation.dart';
 
@@ -819,9 +820,10 @@ class _SectionRecalculationScreenState
                     final List<CuttingReportCut> same = othersAt(entry.key);
                     return DataRow(
                       cells: <DataCell>[
+                        // Width first, the half as ½ (see WindowSizeLabel).
                         DataCell(Text(both(
-                          cut.dimension,
-                          same.map((CuttingReportCut o) => o.dimension),
+                          WindowSizeLabel.shown(cut.dimension),
+                          same.map((CuttingReportCut o) => WindowSizeLabel.shown(o.dimension)),
                         ))),
                         DataCell(Text(both(
                           cut.windowName,

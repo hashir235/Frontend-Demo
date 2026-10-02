@@ -29,17 +29,47 @@ void main() {
 
     test('sizes that arrive as text show their halves as ½', () {
       expect(SuterHalf.inText("34'' 4.5'''"), "34'' 4½'''");
-      expect(SuterHalf.inText("2' 3'' 0.5'''"), "2' 3'' ½'''");
+      // Half a suter alone keeps its 0 (Hashir, Oct 2026): a bare ½ was read
+      // as no suter at all.
+      expect(SuterHalf.inText("2' 3'' 0.5'''"), "2' 3'' 0½'''");
       expect(
         SuterHalf.inText("27'' 6.5''' x 58'' 0.5'''"),
-        "27'' 6½''' x 58'' ½'''",
+        "27'' 6½''' x 58'' 0½'''",
       );
+      // Already marked, but bare: the 0 is put in front.
+      expect(SuterHalf.inText("34'' ½'''"), "34'' 0½'''");
+      expect(SuterHalf.inText("34'' 0½'''"), "34'' 0½'''", reason: 'never twice');
       // Only a suter is touched: whole suters, feet, centimetres and the
       // stored notation are left exactly as they were.
       expect(SuterHalf.inText("34'' 4'''"), "34'' 4'''");
       expect(SuterHalf.inText('12.5 ft'), '12.5 ft');
       expect(SuterHalf.inText('44.55'), '44.55');
       expect(SuterHalf.inText('10.5 cm'), '10.5 cm');
+    });
+
+    test('a result shows half a suter as 0½; a typing box as ½', () {
+      expect(SuterHalf.shown(0.5), '0½');
+      expect(SuterHalf.shown(3.5), '3½');
+      expect(SuterHalf.shown(3), '3');
+      expect(SuterHalf.shown(0), '0');
+      expect(SuterHalf.format(0.5), '½', reason: 'the typing boxes are left as they were');
+    });
+
+    test('a cut length with half a suter reads 0½', () {
+      final double ft = (34 + 0.5 / 8) / 12;
+      expect(CutLength.fromFeet(ft).inInchSuter, "34'' 0½'''");
+      expect(CutLength.fromFeet(ft).inFeetInchSuter, "2' 10'' 0½'''");
+    });
+
+    test('a stored size with half a suter, as the review list shows it', () {
+      expect(
+        SuterHalf.inText(SizeNotation.storedToMerged('34.05', isFeet: false)),
+        "34'' 0½'''",
+      );
+      expect(
+        SuterHalf.inText(SizeNotation.storedToMerged('34.35', isFeet: false)),
+        "34'' 3½'''",
+      );
     });
   });
 

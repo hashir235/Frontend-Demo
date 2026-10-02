@@ -8,6 +8,7 @@ import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/format/suter_half.dart';
 import '../../estimation/models/glass_color.dart';
+import '../../estimation/models/window_size_label.dart';
 import '../../estimation/state/last_glass_color.dart';
 import '../../estimation/widgets/glass_color_picker.dart';
 import '../../../shared/widgets/app_hero_header.dart';
@@ -464,7 +465,8 @@ class _GlassReportScreenState extends State<GlassReportScreen> {
 
   String _winSizeForRow(GlassReportRow row) {
     final String inputSize = row.inputSize.trim();
-    return inputSize.isEmpty ? '--' : inputSize;
+    // Width first, the half as ½ (see WindowSizeLabel).
+    return inputSize.isEmpty ? '--' : WindowSizeLabel.shown(inputSize);
   }
 
   /// The row's own sizes, half suters shown as ½. The row keeps the .5 the

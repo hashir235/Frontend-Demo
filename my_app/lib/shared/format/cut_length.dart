@@ -121,7 +121,8 @@ class _Tape {
       whole += 1;
     }
 
-    // The half as the tape marks it: 1½, not 1.5.
-    return _Tape(whole, SuterHalf.format(suter));
+    // The half as the tape marks it: 1½, not 1.5 -- and half a suter on its
+    // own as 0½, never a bare ½ that reads as nothing.
+    return _Tape(whole, SuterHalf.shown(suter));
   }
 }

@@ -1,6 +1,7 @@
 import '../../formulas/model/piece_size.dart';
 import '../../formulas/model/window_sides.dart';
 import 'window_review_item.dart';
+import 'window_size_label.dart';
 import 'window_variant.dart';
 
 class OptimizationWindowRequest {
@@ -47,6 +48,11 @@ class OptimizationWindowRequest {
   /// at all.
   final String glassColor;
 
+  /// The window's size as its cuts and panes are to be labelled: width first,
+  /// in the unit it was measured in (see [WindowSizeLabel]). An engine that
+  /// does not know the field labels them as it always did.
+  final String sizeLabel;
+
   const OptimizationWindowRequest({
     required this.winNo,
     required this.windowCode,
@@ -70,6 +76,7 @@ class OptimizationWindowRequest {
     required this.gauge,
     required this.color,
     required this.glassColor,
+    this.sizeLabel = '',
     this.computedPieces,
     this.computedGlass,
     this.pieceSizes = const <PieceSize>[],
@@ -102,39 +109,65 @@ class OptimizationWindowRequest {
         sides.smallestRaw(of, unitMode: unitMode) ?? fallback;
     final bool measuredBySide = isFabrication && sides.isNotEmpty;
 
+    final String height = measuredBySide
+        ? smallest(<String>[WindowSide.left, WindowSide.right], item.heightValue)
+        : dim(item.heightValue);
+    final String width = measuredBySide
+        ? smallest(
+            <String>[
+              WindowSide.top,
+              WindowSide.bottom,
+              WindowSide.topRight,
+              WindowSide.bottomRight,
+            ],
+            item.widthValue,
+          )
+        : dim(item.widthValue);
+    final String? right = measuredBySide && item.rightWidthValue != null
+        ? smallest(
+            <String>[WindowSide.topRight, WindowSide.bottomRight],
+            item.rightWidthValue!,
+          )
+        : dimOrNull(item.rightWidthValue);
+    final String? left = measuredBySide && item.leftWidthValue != null
+        ? smallest(
+            <String>[WindowSide.topLeft, WindowSide.bottomLeft],
+            item.leftWidthValue!,
+          )
+        : dimOrNull(item.leftWidthValue);
+    final String? arch = dimOrNull(item.archValue);
+
+    // The label reads in the unit the window was measured in -- an estimation
+    // window typed in cm is labelled in cm, not in the inches it is sent in.
+    final String sizeLabel = estimationCm
+        ? WindowSizeLabel.compose(
+            unit: 'cm',
+            height: item.heightValue,
+            width: item.widthValue,
+            right: item.rightWidthValue,
+            left: item.leftWidthValue,
+            arch: item.archValue,
+          )
+        : WindowSizeLabel.compose(
+            unit: unitMode,
+            height: height,
+            width: width,
+            right: right,
+            left: left,
+            arch: arch,
+          );
+
     return OptimizationWindowRequest(
       winNo: item.winNo,
       windowCode: item.windowCode,
       windowLabel: item.windowLabel,
       collarIndex: item.collarIndex,
       unitMode: unitMode,
-      heightValue: measuredBySide
-          ? smallest(<String>[WindowSide.left, WindowSide.right], item.heightValue)
-          : dim(item.heightValue),
-      widthValue: measuredBySide
-          ? smallest(
-              <String>[
-                WindowSide.top,
-                WindowSide.bottom,
-                WindowSide.topRight,
-                WindowSide.bottomRight,
-              ],
-              item.widthValue,
-            )
-          : dim(item.widthValue),
-      rightWidthValue: measuredBySide && item.rightWidthValue != null
-          ? smallest(
-              <String>[WindowSide.topRight, WindowSide.bottomRight],
-              item.rightWidthValue!,
-            )
-          : dimOrNull(item.rightWidthValue),
-      leftWidthValue: measuredBySide && item.leftWidthValue != null
-          ? smallest(
-              <String>[WindowSide.topLeft, WindowSide.bottomLeft],
-              item.leftWidthValue!,
-            )
-          : dimOrNull(item.leftWidthValue),
-      archValue: dimOrNull(item.archValue),
+      heightValue: height,
+      widthValue: width,
+      rightWidthValue: right,
+      leftWidthValue: left,
+      archValue: arch,
       description: item.description,
       addBottom: item.addBottom,
       addTee: item.addTee,
@@ -147,6 +180,7 @@ class OptimizationWindowRequest {
       gauge: item.material.gauge,
       color: item.material.color,
       glassColor: item.glassColor,
+      sizeLabel: sizeLabel,
       pieceSizes: item.pieceSizes,
       sideSizes: measuredBySide ? sides : const SideSizes.empty(),
     );
@@ -202,6 +236,7 @@ class OptimizationWindowRequest {
       gauge: gauge,
       color: color,
       glassColor: glassColor,
+      sizeLabel: sizeLabel,
       computedPieces: pieces,
       computedGlass: glass,
       pieceSizes: pieceSizes,
@@ -238,6 +273,7 @@ class OptimizationWindowRequest {
       'gauge': gauge,
       'color': color,
       'glassColor': glassColor,
+      if (sizeLabel.isNotEmpty) 'sizeLabel': sizeLabel,
     };
   }
 }

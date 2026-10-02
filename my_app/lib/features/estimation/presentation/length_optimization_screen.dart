@@ -24,6 +24,7 @@ import '../models/optimization_error_text.dart';
 import '../models/window_material.dart';
 import '../widgets/cut_layout_bar.dart';
 import '../models/window_review_item.dart';
+import '../models/window_size_label.dart';
 import '../state/estimate_session_store.dart';
 import 'rate_review_screen.dart';
 import 'section_recalculation_screen.dart';
@@ -103,7 +104,8 @@ class _LengthOptimizationScreenState extends State<LengthOptimizationScreen> {
     return report.sections.first;
   }
 
-  String _winSizeForCut(CuttingReportCut cut) => cut.dimension;
+  /// The window's size, width first and the half as ½ (see [WindowSizeLabel]).
+  String _winSizeForCut(CuttingReportCut cut) => WindowSizeLabel.shown(cut.dimension);
 
   String _pieceSymbolForCut(CuttingReportCut cut) {
     final int pipeIndex = cut.label.lastIndexOf('|');

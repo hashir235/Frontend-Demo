@@ -51,20 +51,32 @@ class SuterHalf {
     return value == null ? text : format(value);
   }
 
+  /// A suter as a result or a list shows it: as [format], except that half a
+  /// suter on its own reads "0½" rather than a bare "½" -- which was being
+  /// missed, the half read as nothing at all (Hashir, Oct 2026). Typing boxes
+  /// keep [format].
+  static String shown(double suter) {
+    final String text = format(suter);
+    return text == mark ? '0$mark' : text;
+  }
+
   // A single suter digit and its .5, right before the suter mark ''' -- and
   // not the tail of a longer number, which would be something else.
   static final RegExp _halfBeforeMark = RegExp(r"(?<![\d.])(\d)\.5(?=''')");
 
+  // A ½ with no suter digit before it, right before the suter mark.
+  static final RegExp _loneHalfBeforeMark = RegExp("(?<![\\d.])$mark(?=''')");
+
   /// Every half suter in a finished size, shown as ½: `34'' 4.5'''` ->
-  /// `34'' 4½'''`, `2' 3'' 0.5'''` -> `2' 3'' ½'''`.
+  /// `34'' 4½'''`, and half a suter alone with its 0: `34'' 0.5'''` and
+  /// `34'' ½'''` -> `34'' 0½'''`.
   ///
   /// For sizes that arrive as text -- from the server, or saved before this --
   /// and are only to be shown. Numbers without the suter mark are left alone:
   /// a centimetre or a foot figure is not a suter.
-  static String inText(String text) => text.replaceAllMapped(
-    _halfBeforeMark,
-    (Match m) => m.group(1) == '0' ? mark : '${m.group(1)}$mark',
-  );
+  static String inText(String text) => text
+      .replaceAllMapped(_halfBeforeMark, (Match m) => '${m.group(1)}$mark')
+      .replaceAll(_loneHalfBeforeMark, '0$mark');
 }
 
 /// The keys that move a size on: the point, the space, and the comma some

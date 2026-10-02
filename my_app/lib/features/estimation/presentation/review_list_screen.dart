@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/format/suter_half.dart';
 import '../../../shared/widgets/next_step_action.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
@@ -55,9 +56,12 @@ class ReviewListScreen extends StatelessWidget {
     final bool isCm = item.unitMode == UnitMode.cm ||
         (session.isFabrication && item.unitMode == UnitMode.feet);
     if (isCm) return value;
-    return SizeNotation.storedToMerged(
-      value,
-      isFeet: !session.isFabrication && item.unitMode == UnitMode.feet,
+    // Half a suter on its own as 0½, as the results show it, not a bare ½.
+    return SuterHalf.inText(
+      SizeNotation.storedToMerged(
+        value,
+        isFeet: !session.isFabrication && item.unitMode == UnitMode.feet,
+      ),
     );
   }
 
