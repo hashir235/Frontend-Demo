@@ -54,6 +54,14 @@ void main() {
       ]);
     });
 
+    test('Net Amount per foot switched off stays off too', () async {
+      await choices().toggle(InvoiceFigure.netAmountPerArea);
+      await settle();
+      await reopen();
+      expect(choices().prints(InvoiceFigure.netAmountPerArea), isFalse);
+      expect(choices().hidden, <String>[InvoiceFigure.netAmountPerArea]);
+    });
+
     test('tapped again, it prints again -- and that is kept too', () async {
       await choices().toggle(InvoiceFigure.grandTotal);
       await choices().toggle(InvoiceFigure.grandTotal);
@@ -215,9 +223,48 @@ void main() {
       expect(find.text('Hardware by Window'), findsOneWidget);
       expect(find.text('Glass by Color'), findsOneWidget);
       expect(find.byIcon(Icons.print_disabled_outlined), findsNothing);
-      // The hint's own icon, then one mark per switch: 4 metric cards, 3
+      // The hint's own icon, then one mark per switch: 5 metric cards, 4
       // Project Summary lines, 10 Cost Breakdown lines, 2 + 3 + 2 headings.
-      expect(find.byIcon(Icons.print_rounded), findsNWidgets(1 + 4 + 3 + 10 + 7));
+      expect(find.byIcon(Icons.print_rounded), findsNWidgets(1 + 5 + 4 + 10 + 7));
+    });
+
+    testWidgets('Net Amount per foot prints, and is one switch shown twice', (
+      WidgetTester tester,
+    ) async {
+      await open(tester, bill());
+      expect(choices().prints(InvoiceFigure.netAmountPerArea), isTrue);
+      // 167708 / 103.41
+      expect(find.text('1621.78'), findsNWidgets(2));
+      expect(markIn('Net Amount / sq.ft'), findsOneWidget);
+
+      await tapLine(tester, 'Net Amount / sq.ft');
+      expect(choices().prints(InvoiceFigure.netAmountPerArea), isFalse);
+      // The card and the Project Summary line both dim.
+      expect(find.byIcon(Icons.print_disabled_outlined), findsNWidgets(2));
+      expect(find.text('1 figure is off the PDF'), findsOneWidget);
+      expect(choices().hidden, <String>[InvoiceFigure.netAmountPerArea]);
+    });
+
+    testWidgets('no feet on the bill: Net Amount is not a switch', (
+      WidgetTester tester,
+    ) async {
+      final Map<String, dynamic> json = bill();
+      (json['totals'] as Map<String, dynamic>)['totalArea'] = 0;
+      await open(tester, json);
+      final Finder line = find.text('Net Amount / sq.ft').first;
+      await tester.ensureVisible(line);
+      await tester.tap(line, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(choices().hidden, isEmpty);
+    });
+
+    testWidgets('a running-feet bill names its Net Amount per Rn.ft', (
+      WidgetTester tester,
+    ) async {
+      final Map<String, dynamic> json = bill();
+      json['areaMethod'] = 'running';
+      await open(tester, json);
+      expect(markIn('Net Amount / Rn.ft'), findsOneWidget);
     });
 
     testWidgets('one window type still has its hardware switches', (
@@ -316,6 +363,7 @@ void main() {
       await open(tester, bill());
       await tapLine(tester, 'Labor Cost');
       await tapLine(tester, 'H/W Rate');
+      await tapLine(tester, 'Net Amount / sq.ft');
 
       final List<Map<String, dynamic>> sent = <Map<String, dynamic>>[];
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -349,6 +397,7 @@ void main() {
       expect(sent.single['projectId'], 'p-1');
       expect(sent.single['hiddenFigures'], <String>[
         InvoiceFigure.totalLaborCost,
+        InvoiceFigure.netAmountPerArea,
         InvoiceFigure.windowHardwareRate,
       ]);
     });

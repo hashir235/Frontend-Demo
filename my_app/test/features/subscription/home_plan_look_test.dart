@@ -10,6 +10,7 @@ import 'package:my_app/features/subscription/data/subscription_api_client.dart';
 import 'package:my_app/features/subscription/models/home_plan_look.dart';
 import 'package:my_app/features/subscription/models/subscription_models.dart';
 import 'package:my_app/features/subscription/presentation/plan_validity_card.dart';
+import 'package:my_app/features/subscription/state/plan_shade.dart';
 import 'package:my_app/features/tutorial/tutorial_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -192,6 +193,8 @@ void main() {
       SharedPreferences.setMockInitialValues(<String, Object>{});
       // Home would otherwise start the first-run tour over the test.
       await TutorialController.instance.markSeen();
+      // One shade for the whole app: the last test's must not carry over.
+      PlanShade.instance.clear();
     });
 
     testWidgets('a running plan: green Home, plan and date at the foot', (
@@ -205,6 +208,8 @@ void main() {
       expect(find.text('1 Year plan'), findsOneWidget);
       expect(find.textContaining('Valid till '), findsOneWidget);
       expect(tint(tester), planToneTint(PlanTone.active));
+      // Handed on to every other screen.
+      expect(PlanShade.instance.value, PlanTone.active);
     });
 
     testWidgets('ten days left: yellow Home', (WidgetTester tester) async {
@@ -227,6 +232,7 @@ void main() {
       expect(find.text('Ended'), findsOneWidget);
       expect(find.textContaining('Ended on '), findsOneWidget);
       expect(tint(tester), planToneTint(PlanTone.ended));
+      expect(PlanShade.instance.value, PlanTone.ended);
     });
 
     testWidgets('no plan bought: the usual Home, no card', (
@@ -237,6 +243,20 @@ void main() {
         statusJson(withSubscription: false, entitlement: 'trial'),
       );
       expect(find.byKey(const Key('home_plan_card')), findsNothing);
+      expect(tint(tester), isNull);
+      expect(PlanShade.instance.value, isNull);
+    });
+
+    testWidgets('a plan that has gone: the shade goes with it', (
+      WidgetTester tester,
+    ) async {
+      // Green from an earlier read; the server now says there is no plan.
+      PlanShade.instance.value = PlanTone.active;
+      await openHome(
+        tester,
+        statusJson(withSubscription: false, entitlement: 'trial'),
+      );
+      expect(PlanShade.instance.value, isNull);
       expect(tint(tester), isNull);
     });
 

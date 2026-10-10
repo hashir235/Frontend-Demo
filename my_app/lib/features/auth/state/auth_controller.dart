@@ -7,6 +7,7 @@ import '../data/auth_api_client.dart';
 import '../data/auth_session_store.dart';
 import '../data/google_sign_in_service.dart';
 import '../../formulas/data/formula_book_loader.dart';
+import '../../subscription/state/plan_shade.dart';
 import '../models/auth_session_result.dart';
 import '../models/auth_user.dart';
 import 'account_block.dart';
@@ -220,8 +221,9 @@ class AuthController extends ChangeNotifier {
     AuthSession.clear();
     await _sessionStore.clear();
     // The account signing in on this handset next is somebody else, and must
-    // not meet the last shop's notice.
+    // not meet the last shop's notice -- or open in the last shop's colour.
     AccountBlock.instance.clear();
+    PlanShade.instance.clear();
     _needsWorkshopSetup = false;
     _busy = false;
     notifyListeners();
@@ -256,6 +258,7 @@ class AuthController extends ChangeNotifier {
     }
     AuthSession.clear();
     await _sessionStore.clear();
+    PlanShade.instance.clear();
     _needsWorkshopSetup = false;
     _busy = false;
     notifyListeners();
@@ -280,6 +283,7 @@ class AuthController extends ChangeNotifier {
     AuthSession.clear();
     unawaited(_sessionStore.clear());
     unawaited(_googleSignIn.signOut());
+    PlanShade.instance.clear();
     _needsWorkshopSetup = false;
     _busy = false;
     _errorMessage =

@@ -26,6 +26,7 @@ import '../../../../shared/widgets/suter_wheel.dart';
 import '../../../settings/data/estimation_settings_repository.dart';
 import '../../../settings/models/estimation_settings.dart';
 import '../../../settings/state/app_settings.dart';
+import '../../../subscription/presentation/plan_tint.dart';
 import '../../../formulas/data/formula_book_loader.dart';
 import '../../../formulas/model/window_measurements.dart';
 import '../../../settings/state/numbering_mode.dart';
@@ -3741,292 +3742,294 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
               end: Alignment.bottomRight,
             ),
           ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        color: AppTheme.deepTeal,
-                      ),
-                      Expanded(
-                        child: Text(
-                          widget.session.isFabrication
-                              ? 'Fabrication'
-                              : 'Estimation',
-                          key: const Key('input_estimation_heading'),
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineLarge
-                              ?.copyWith(fontSize: 30, height: 1),
-                        ),
-                      ),
-                      TutorialTarget(
-                        id: 'input.next',
-                        child: IconButton(
-                          key: const Key('open_review_button'),
-                          onPressed: () {
-                            TutorialController.instance.advanceAfterTap();
-                            _openReview();
-                          },
-                          icon: const Icon(Icons.arrow_forward_rounded),
+          child: PlanTint(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.arrow_back_rounded),
                           color: AppTheme.deepTeal,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 48),
-                      Expanded(
-                        child: Text(
-                          widget.node.label,
-                          key: const Key('input_window_label'),
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                color: AppTheme.deepTeal,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ),
-                      // Was three dots, which said nothing about what was
-                      // behind it. The panel is about sections, so the button
-                      // says so.
-                      TutorialTarget(
-                        id: 'input.sectionsButton',
-                        child: TextButton.icon(
-                          key: const Key('open_settings_drawer_button'),
-                          onPressed: _openSettings,
-                          icon: const Icon(Icons.view_list_rounded, size: 19),
-                          label: const Text('Sections'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppTheme.royalBlue,
-                            textStyle: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            visualDensity: VisualDensity.compact,
+                        Expanded(
+                          child: Text(
+                            widget.session.isFabrication
+                                ? 'Fabrication'
+                                : 'Estimation',
+                            key: const Key('input_estimation_heading'),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineLarge
+                                ?.copyWith(fontSize: 30, height: 1),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: EdgeInsets.fromLTRB(
-                      18,
-                      6,
-                      18,
-                      math.max(24, keyboardInset + 140),
+                        TutorialTarget(
+                          id: 'input.next',
+                          child: IconButton(
+                            key: const Key('open_review_button'),
+                            onPressed: () {
+                              TutorialController.instance.advanceAfterTap();
+                              _openReview();
+                            },
+                            icon: const Icon(Icons.arrow_forward_rounded),
+                            color: AppTheme.deepTeal,
+                          ),
+                        ),
+                      ],
                     ),
-                    // Every part below can be held and dragged up or down; the
-                    // order is this phone's own and is kept.
-                    child: ArrangeableColumn(
-                      key: const Key('input_parts'),
-                      onReorder: _onPartsReordered,
-                      blocks: _inArrangedOrder(<String, ArrangeableBlock>{
-                        InputBlockOrder.collar: ArrangeableBlock(
-                          id: InputBlockOrder.collar,
-                          child: TutorialTarget(
-                            id: 'input.collarCards',
-                            child: _buildCollarPicker(),
-                          ),
-                        ),
-                        InputBlockOrder.windowNo: ArrangeableBlock(
-                          id: InputBlockOrder.windowNo,
-                          child: _buildWinNoAndQuantityRow(hintStyle),
-                        ),
-                        InputBlockOrder.dimensions: ArrangeableBlock(
-                          id: InputBlockOrder.dimensions,
-                          // The heading's own height is its spacing.
-                          tight: true,
-                          child: Row(
-                            children: [
-                              Text(
-                                'Dimensions',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: AppTheme.deepTeal,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                              const Spacer(),
-                              IconButton(
-                                onPressed: _showDimensionInfo,
-                                icon: const Icon(Icons.info_outline_rounded),
-                                color: AppTheme.deepTeal,
-                              ),
-                            ],
-                          ),
-                        ),
-                        InputBlockOrder.unit: ArrangeableBlock(
-                          id: InputBlockOrder.unit,
-                          compact: true,
-                          child: TutorialTarget(
-                            id: 'input.unit',
-                            child: _buildInlineUnitSelector(context),
-                          ),
-                        ),
-                        if (_showsLockTypeSelector)
-                          InputBlockOrder.lock: ArrangeableBlock(
-                            id: InputBlockOrder.lock,
-                            compact: true,
-                            child: _buildLockRow(context),
-                          ),
-                        if (_showsRubberSelector)
-                          InputBlockOrder.rubber: ArrangeableBlock(
-                            id: InputBlockOrder.rubber,
-                            compact: true,
-                            child: _buildRubberRow(context),
-                          ),
-                        if (_canMeasureSides)
-                          InputBlockOrder.perSide: ArrangeableBlock(
-                            id: InputBlockOrder.perSide,
-                            child: _buildPerSideToggle(),
-                          ),
-                        InputBlockOrder.sizes: ArrangeableBlock(
-                          id: InputBlockOrder.sizes,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              TutorialTarget(
-                                id: 'input.sizes',
-                                child: _buildSizeFields(
-                                  numberInputStyle,
-                                  hintStyle,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 48),
+                        Expanded(
+                          child: Text(
+                            widget.node.label,
+                            key: const Key('input_window_label'),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: AppTheme.deepTeal,
+                                  fontWeight: FontWeight.w700,
                                 ),
+                          ),
+                        ),
+                        // Was three dots, which said nothing about what was
+                        // behind it. The panel is about sections, so the button
+                        // says so.
+                        TutorialTarget(
+                          id: 'input.sectionsButton',
+                          child: TextButton.icon(
+                            key: const Key('open_settings_drawer_button'),
+                            onPressed: _openSettings,
+                            icon: const Icon(Icons.view_list_rounded, size: 19),
+                            label: const Text('Sections'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.royalBlue,
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
                               ),
-                              // Right under the sizes, because it changes what
-                              // they mean for these pieces: set on the formula
-                              // screen, it would otherwise be invisible from
-                              // here. It moves with them.
-                              if (_pieceSizes.isNotEmpty) ...[
-                                const SizedBox(height: 10),
-                                _PieceSizesNotice(
-                                  sizes: _pieceSizes,
-                                  unit: _isFabricationFlow ? 'cm' : 'ft',
-                                  onClear: () => setState(
-                                    () => _pieceSizes = const <PieceSize>[],
-                                  ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: EdgeInsets.fromLTRB(
+                        18,
+                        6,
+                        18,
+                        math.max(24, keyboardInset + 140),
+                      ),
+                      // Every part below can be held and dragged up or down; the
+                      // order is this phone's own and is kept.
+                      child: ArrangeableColumn(
+                        key: const Key('input_parts'),
+                        onReorder: _onPartsReordered,
+                        blocks: _inArrangedOrder(<String, ArrangeableBlock>{
+                          InputBlockOrder.collar: ArrangeableBlock(
+                            id: InputBlockOrder.collar,
+                            child: TutorialTarget(
+                              id: 'input.collarCards',
+                              child: _buildCollarPicker(),
+                            ),
+                          ),
+                          InputBlockOrder.windowNo: ArrangeableBlock(
+                            id: InputBlockOrder.windowNo,
+                            child: _buildWinNoAndQuantityRow(hintStyle),
+                          ),
+                          InputBlockOrder.dimensions: ArrangeableBlock(
+                            id: InputBlockOrder.dimensions,
+                            // The heading's own height is its spacing.
+                            tight: true,
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Dimensions',
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
+                                        color: AppTheme.deepTeal,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                                const Spacer(),
+                                IconButton(
+                                  onPressed: _showDimensionInfo,
+                                  icon: const Icon(Icons.info_outline_rounded),
+                                  color: AppTheme.deepTeal,
                                 ),
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                        InputBlockOrder.gauge: ArrangeableBlock(
-                          id: InputBlockOrder.gauge,
-                          child: TutorialTarget(
-                            id: 'input.material',
-                            child: WindowGaugePicker(
+                          InputBlockOrder.unit: ArrangeableBlock(
+                            id: InputBlockOrder.unit,
+                            compact: true,
+                            child: TutorialTarget(
+                              id: 'input.unit',
+                              child: _buildInlineUnitSelector(context),
+                            ),
+                          ),
+                          if (_showsLockTypeSelector)
+                            InputBlockOrder.lock: ArrangeableBlock(
+                              id: InputBlockOrder.lock,
+                              compact: true,
+                              child: _buildLockRow(context),
+                            ),
+                          if (_showsRubberSelector)
+                            InputBlockOrder.rubber: ArrangeableBlock(
+                              id: InputBlockOrder.rubber,
+                              compact: true,
+                              child: _buildRubberRow(context),
+                            ),
+                          if (_canMeasureSides)
+                            InputBlockOrder.perSide: ArrangeableBlock(
+                              id: InputBlockOrder.perSide,
+                              child: _buildPerSideToggle(),
+                            ),
+                          InputBlockOrder.sizes: ArrangeableBlock(
+                            id: InputBlockOrder.sizes,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                TutorialTarget(
+                                  id: 'input.sizes',
+                                  child: _buildSizeFields(
+                                    numberInputStyle,
+                                    hintStyle,
+                                  ),
+                                ),
+                                // Right under the sizes, because it changes what
+                                // they mean for these pieces: set on the formula
+                                // screen, it would otherwise be invisible from
+                                // here. It moves with them.
+                                if (_pieceSizes.isNotEmpty) ...[
+                                  const SizedBox(height: 10),
+                                  _PieceSizesNotice(
+                                    sizes: _pieceSizes,
+                                    unit: _isFabricationFlow ? 'cm' : 'ft',
+                                    onClear: () => setState(
+                                      () => _pieceSizes = const <PieceSize>[],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          InputBlockOrder.gauge: ArrangeableBlock(
+                            id: InputBlockOrder.gauge,
+                            child: TutorialTarget(
+                              id: 'input.material',
+                              child: WindowGaugePicker(
+                                value: _material,
+                                gauges: _gauges,
+                                onChanged: _pickMaterial,
+                              ),
+                            ),
+                          ),
+                          InputBlockOrder.aluminiumColor: ArrangeableBlock(
+                            id: InputBlockOrder.aluminiumColor,
+                            child: AluminiumColorPicker(
                               value: _material,
-                              gauges: _gauges,
+                              // A maker's own names for the finishes, where
+                              // this window is made by one (Prime Economy).
+                              nameFor: _ownWindow?.colorNameFor,
                               onChanged: _pickMaterial,
                             ),
                           ),
-                        ),
-                        InputBlockOrder.aluminiumColor: ArrangeableBlock(
-                          id: InputBlockOrder.aluminiumColor,
-                          child: AluminiumColorPicker(
-                            value: _material,
-                            // A maker's own names for the finishes, where
-                            // this window is made by one (Prime Economy).
-                            nameFor: _ownWindow?.colorNameFor,
-                            onChanged: _pickMaterial,
-                          ),
-                        ),
-                        // Both flows need the glass, for different reasons.
-                        // Estimation prices each glass separately, so this
-                        // decides what a window's glazing is charged at.
-                        // Fabrication cuts it: the glass list carries the
-                        // colour, and the sheet optimizer keeps each colour on
-                        // its own sheets -- two colours packed onto one sheet
-                        // is a sheet that cannot be cut.
-                        InputBlockOrder.glassColor: ArrangeableBlock(
-                          id: InputBlockOrder.glassColor,
-                          child: TutorialTarget(
-                            id: 'input.glass',
-                            child: GlassColorPicker(
-                              value: _glassColor,
-                              onChanged: (String next) {
-                                setState(() => _glassColor = next);
-                                // Every window and glass row after this opens
-                                // on it too, in this job and the next, until
-                                // somebody picks again.
-                                unawaited(
-                                  LastGlassColor.instance.remember(next),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        InputBlockOrder.description: ArrangeableBlock(
-                          id: InputBlockOrder.description,
-                          child: TutorialTarget(
-                            id: 'input.description',
-                            child: TextField(
-                              key: _descriptionFieldKey,
-                              controller: _descriptionController,
-                              focusNode: _descriptionFocusNode,
-                              textInputAction: _textInputActionForField(
-                                _descriptionFocusNode,
-                              ),
-                              maxLength: _maxDescriptionLength,
-                              maxLines: 2,
-                              onSubmitted: (_) =>
-                                  _submitFromField(_descriptionFocusNode),
-                              decoration: InputDecoration(
-                                labelText: 'Description (Optional)',
-                                hintText: 'e.g. bath room window',
-                                hintStyle: hintStyle,
+                          // Both flows need the glass, for different reasons.
+                          // Estimation prices each glass separately, so this
+                          // decides what a window's glazing is charged at.
+                          // Fabrication cuts it: the glass list carries the
+                          // colour, and the sheet optimizer keeps each colour on
+                          // its own sheets -- two colours packed onto one sheet
+                          // is a sheet that cannot be cut.
+                          InputBlockOrder.glassColor: ArrangeableBlock(
+                            id: InputBlockOrder.glassColor,
+                            child: TutorialTarget(
+                              id: 'input.glass',
+                              child: GlassColorPicker(
+                                value: _glassColor,
+                                onChanged: (String next) {
+                                  setState(() => _glassColor = next);
+                                  // Every window and glass row after this opens
+                                  // on it too, in this job and the next, until
+                                  // somebody picks again.
+                                  unawaited(
+                                    LastGlassColor.instance.remember(next),
+                                  );
+                                },
                               ),
                             ),
                           ),
-                        ),
-                      }),
-                    ),
-                  ),
-                ),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  padding: EdgeInsets.fromLTRB(
-                    18,
-                    8,
-                    18,
-                    math.max(16, keyboardInset + 16),
-                  ),
-                  child: TutorialTarget(
-                    id: 'input.save',
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        key: const Key('input_save_button'),
-                        onPressed: () {
-                          TutorialController.instance.advanceAfterTap();
-                          _onSavePressed();
-                        },
-                        icon: const Icon(Icons.save_outlined),
-                        label: Text(widget.isEditMode ? 'Update' : 'Save'),
+                          InputBlockOrder.description: ArrangeableBlock(
+                            id: InputBlockOrder.description,
+                            child: TutorialTarget(
+                              id: 'input.description',
+                              child: TextField(
+                                key: _descriptionFieldKey,
+                                controller: _descriptionController,
+                                focusNode: _descriptionFocusNode,
+                                textInputAction: _textInputActionForField(
+                                  _descriptionFocusNode,
+                                ),
+                                maxLength: _maxDescriptionLength,
+                                maxLines: 2,
+                                onSubmitted: (_) =>
+                                    _submitFromField(_descriptionFocusNode),
+                                decoration: InputDecoration(
+                                  labelText: 'Description (Optional)',
+                                  hintText: 'e.g. bath room window',
+                                  hintStyle: hintStyle,
+                                ),
+                              ),
+                            ),
+                          ),
+                        }),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    padding: EdgeInsets.fromLTRB(
+                      18,
+                      8,
+                      18,
+                      math.max(16, keyboardInset + 16),
+                    ),
+                    child: TutorialTarget(
+                      id: 'input.save',
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          key: const Key('input_save_button'),
+                          onPressed: () {
+                            TutorialController.instance.advanceAfterTap();
+                            _onSavePressed();
+                          },
+                          icon: const Icon(Icons.save_outlined),
+                          label: Text(widget.isEditMode ? 'Update' : 'Save'),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

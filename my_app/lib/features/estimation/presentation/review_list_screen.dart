@@ -5,6 +5,7 @@ import '../../../shared/format/suter_half.dart';
 import '../../../shared/widgets/next_step_action.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
+import '../../subscription/presentation/plan_tint.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -760,32 +761,34 @@ class ReviewListScreen extends StatelessWidget {
 
             return Container(
               decoration: AppTheme.pageDecoration(),
-              child: ListView(
-                key: const Key('review_list_view'),
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-                children: <Widget>[
-                  _buildSummaryCard(context, items.length),
-                  const SizedBox(height: 12),
-                  ...List<Widget>.generate(items.length, (int index) {
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        bottom: index == items.length - 1 ? 0 : 10,
-                      ),
-                      // The tour explains recheck / edit / delete on the first
-                      // card, so only that one carries a target.
-                      child: index == 0
-                          ? TutorialTarget(
-                              id: 'review.card',
-                              child: _buildReviewCard(
-                                context,
-                                items[index],
-                                index,
-                              ),
-                            )
-                          : _buildReviewCard(context, items[index], index),
-                    );
-                  }),
-                ],
+              child: PlanTint(
+                child: ListView(
+                  key: const Key('review_list_view'),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+                  children: <Widget>[
+                    _buildSummaryCard(context, items.length),
+                    const SizedBox(height: 12),
+                    ...List<Widget>.generate(items.length, (int index) {
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: index == items.length - 1 ? 0 : 10,
+                        ),
+                        // The tour explains recheck / edit / delete on the first
+                        // card, so only that one carries a target.
+                        child: index == 0
+                            ? TutorialTarget(
+                                id: 'review.card',
+                                child: _buildReviewCard(
+                                  context,
+                                  items[index],
+                                  index,
+                                ),
+                              )
+                            : _buildReviewCard(context, items[index], index),
+                      );
+                    }),
+                  ],
+                ),
               ),
             );
           },

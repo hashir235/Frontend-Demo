@@ -176,9 +176,10 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
 
   /// The figures this bill's PDF prints, by the same rules InvoicePDF.py
   /// uses: the window table when there are windows, the glass table when the
-  /// glass is named, Other Charges and Advance Paid when not nothing, and
-  /// Remaining Due only under an advance. Only these get a print switch, so
-  /// a printer mark on the screen always means "this is on the PDF".
+  /// glass is named, Other Charges and Advance Paid when not nothing,
+  /// Remaining Due only under an advance, and Net Amount per foot when there
+  /// are feet to share the total over. Only these get a print switch, so a
+  /// printer mark on the screen always means "this is on the PDF".
   static Set<String> _figuresOnBill(BillSnapshot snapshot) {
     final BillTotals totals = snapshot.totals;
     return <String>{
@@ -203,6 +204,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
       if (totals.advancePaid != 0) InvoiceFigure.advancePaid,
       InvoiceFigure.grandTotal,
       if (totals.advancePaid != 0) InvoiceFigure.remainingDue,
+      if (totals.totalArea > 0) InvoiceFigure.netAmountPerArea,
     };
   }
 
@@ -495,11 +497,15 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
           ],
         ),
         const SizedBox(height: AppTheme.space4),
-        MetricCard(
-          label: 'Net Amount / ${snapshot.areaUnit}',
-          value: _formatNumber(_netAmountPerSqFt(snapshot)),
-          icon: Icons.functions_rounded,
-          accent: AppTheme.tealAccent,
+        _printSwitchCard(
+          _onBill(snapshot, InvoiceFigure.netAmountPerArea),
+          MetricCard(
+            key: const Key('bill_net_amount_per_area'),
+            label: 'Net Amount / ${snapshot.areaUnit}',
+            value: _formatNumber(_netAmountPerSqFt(snapshot)),
+            icon: Icons.functions_rounded,
+            accent: AppTheme.tealAccent,
+          ),
         ),
         const SizedBox(height: AppTheme.space6),
         _buildDetailCard(
@@ -602,6 +608,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
             _BillLine(
               'Net Amount / ${snapshot.areaUnit}',
               _formatNumber(_netAmountPerSqFt(snapshot)),
+              figure: _onBill(snapshot, InvoiceFigure.netAmountPerArea),
             ),
           ],
         ),

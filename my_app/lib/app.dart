@@ -11,6 +11,8 @@ import 'features/auth/state/account_block.dart';
 import 'features/auth/presentation/workshop_onboarding_screen.dart';
 import 'features/auth/state/auth_controller.dart';
 import 'features/home/presentation/home_screen.dart';
+import 'features/subscription/presentation/plan_tint.dart';
+import 'features/subscription/state/plan_shade.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -18,9 +20,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Rebuilt whenever the theme choice changes, so switching to dark in
-    // Settings repaints the app underneath the sheet straight away.
+    // Settings repaints the app underneath the sheet straight away -- and
+    // when the plan's shade changes, which every plain page wears.
     return ListenableBuilder(
-      listenable: ThemeController.instance,
+      listenable: Listenable.merge(<Listenable>[
+        ThemeController.instance,
+        PlanShade.instance,
+      ]),
       builder: (BuildContext context, Widget? child) {
         return MaterialApp(
           // Keyed on the mode so the whole tree is discarded and rebuilt when
@@ -35,7 +41,10 @@ class MyApp extends StatelessWidget {
           key: ValueKey<bool>(AppTheme.isDark),
           title: 'Quick AL',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.current(),
+          // Only the theme changes with the plan, never the key: a plan read
+          // on returning to the app must not throw away the screen the shop
+          // was on.
+          theme: withPlanShade(AppTheme.current(), PlanShade.instance.value),
           home: const _BlockGate(),
         );
       },

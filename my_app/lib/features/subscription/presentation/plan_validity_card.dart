@@ -16,9 +16,9 @@ Color planToneColor(PlanTone tone) {
   }
 }
 
-/// The shade laid over Home's background, so the state of the plan can be
-/// seen from across the shop without reading anything: light green, light
-/// yellow, light red.
+/// The shade laid over every screen's background (see PlanShade), so the
+/// state of the plan can be seen from across the shop without reading
+/// anything: light green, light yellow, light red.
 Color planToneTint(PlanTone tone) {
   switch (tone) {
     case PlanTone.active:

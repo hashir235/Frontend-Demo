@@ -24,6 +24,7 @@ import '../../subscription/models/home_plan_look.dart';
 import '../../subscription/models/subscription_models.dart';
 import '../../subscription/presentation/plan_status_strip.dart';
 import '../../subscription/presentation/plan_validity_card.dart';
+import '../../subscription/state/plan_shade.dart';
 import '../../glass_fabrication/presentation/glass_fabrication_menu_screen.dart';
 import '../../subscription/presentation/subscription_gate_screen.dart';
 import '../../tutorial/tutorial_controller.dart';
@@ -136,7 +137,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final SubscriptionStatus status = await _subscriptionClient.fetchStatus();
       if (!mounted) return;
-      setState(() => _plan = HomePlanLook.from(status));
+      final HomePlanLook? plan = HomePlanLook.from(status);
+      setState(() => _plan = plan);
+      // Every screen's background, not only this one's. Home stays mounted
+      // under every journey, so this read keeps the whole app current.
+      PlanShade.instance.value = plan?.tone;
     } catch (_) {
       // Offline, or the server is having a moment: Home keeps whatever it
       // last showed rather than guessing.
@@ -289,10 +294,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
       body: TutorialOverlay(
         screen: TutorialScreen.home,
+        // Green while the plan runs, yellow in its last ten days, red once it
+        // has ended and not been renewed -- the shell takes it from PlanShade,
+        // as every screen does.
         child: AppScreenShell(
-          // Green while the plan runs, yellow in its last ten days, red once
-          // it has ended and not been renewed.
-          tint: _plan == null ? null : planToneTint(_plan!.tone),
           child: ListView(
             children: <Widget>[
               // First thing on the screen: what you are on and how long is

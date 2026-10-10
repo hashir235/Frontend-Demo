@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/format/cut_length.dart';
 import '../../../shared/format/suter_half.dart';
 import '../../settings/state/app_settings.dart';
+import '../../subscription/presentation/plan_tint.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlay.dart';
 import '../../tutorial/tutorial_step.dart';
@@ -321,54 +322,56 @@ class _SectionRecalculationScreenState
                 end: Alignment.bottomRight,
               ),
             ),
-            child: SafeArea(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                  children: <Widget>[
-                    TutorialTarget(
-                      id: 'recalc.header',
-                      child: _buildHeaderCard(context),
-                    ),
-                    const SizedBox(height: 12),
-                    ..._buildLengthCards(),
-                    const SizedBox(height: 12),
-                    TutorialTarget(
-                      id: 'recalc.extra',
-                      child: _buildExtraLengthCard(),
-                    ),
-                    if (_errorMessage != null) ...<Widget>[
-                      const SizedBox(height: 12),
-                      _buildErrorBanner(context, _errorMessage!),
-                    ],
-                    if (resultSection != null) ...<Widget>[
-                      const SizedBox(height: 18),
-                      Text(
-                        'Updated Result',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.deepTeal,
-                          fontWeight: FontWeight.w800,
-                        ),
+            child: PlanTint(
+              child: SafeArea(
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                    children: <Widget>[
+                      TutorialTarget(
+                        id: 'recalc.header',
+                        child: _buildHeaderCard(context),
                       ),
+                      const SizedBox(height: 12),
+                      ..._buildLengthCards(),
                       const SizedBox(height: 12),
                       TutorialTarget(
-                        id: 'recalc.result',
-                        child: _buildSummaryCard(context, resultSection),
+                        id: 'recalc.extra',
+                        child: _buildExtraLengthCard(),
                       ),
-                      const SizedBox(height: 12),
-                      ...resultSection.barBlocksLongestFirst.map(
-                        (CuttingReportBarBlock block) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildGroupCard(
-                            context,
-                            block.bar,
-                            others: block.others,
+                      if (_errorMessage != null) ...<Widget>[
+                        const SizedBox(height: 12),
+                        _buildErrorBanner(context, _errorMessage!),
+                      ],
+                      if (resultSection != null) ...<Widget>[
+                        const SizedBox(height: 18),
+                        Text(
+                          'Updated Result',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: AppTheme.deepTeal,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                        TutorialTarget(
+                          id: 'recalc.result',
+                          child: _buildSummaryCard(context, resultSection),
+                        ),
+                        const SizedBox(height: 12),
+                        ...resultSection.barBlocksLongestFirst.map(
+                          (CuttingReportBarBlock block) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildGroupCard(
+                              context,
+                              block.bar,
+                              others: block.others,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),

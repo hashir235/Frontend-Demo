@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/format/cut_length.dart';
 import '../../help_videos/help_video_button.dart';
 import '../../help_videos/tutorial_videos.dart';
+import '../../subscription/presentation/plan_tint.dart';
 import '../data/formula_book.dart';
 import '../model/formula_overrides.dart';
 import '../model/formula_expression.dart';
@@ -700,48 +701,50 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
         ),
         body: Container(
           decoration: BoxDecoration(gradient: AppTheme.pageGradient),
-          child: _sections.isEmpty
-              ? const _EmptyState()
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-                  children: <Widget>[
-                    _Introduction(
-                      isFabrication: widget.windowKey.context == 'fabrication',
-                      applied: _appliedAutomatically,
-                      hasMeasurements: widget.measurements.isNotEmpty,
-                    ),
-                    const SizedBox(height: 16),
-                    for (final EffectiveSection section in _sections) ...<Widget>[
-                      _SectionBlock(
-                        section: section,
-                        controllerFor: (FormulaPieceRef ref) => _controllers[ref]!,
-                        sizeControllerFor: (FormulaPieceRef ref) =>
-                            _sizeControllers[ref]!,
-                        editingFormulaFor: _editingFormula.contains,
-                        hasSizeFor: _hasSize,
-                        problemFor: (FormulaPieceRef ref) => _problems[ref],
-                        sizeProblemFor: (FormulaPieceRef ref) => _sizeProblems[ref],
-                        ownSizeFor: (EffectiveFormula piece) => _hasOwnSize(piece)
-                            ? '${_windowSizeFor(piece)} $_sizeUnit'
-                            : null,
-                        previewFor: _preview,
-                        isEdited: (FormulaPieceRef ref) =>
-                            _controllers[ref]!.text.trim() != _opened[ref],
-                        onTyped: _onTyped,
-                        onSizeTyped: (FormulaPieceRef ref, String _) =>
-                            _onSizeTyped(ref),
-                        onToggleEditing: (FormulaPieceRef ref) => setState(() {
-                          if (!_editingFormula.remove(ref)) {
-                            _editingFormula.add(ref);
-                          }
-                        }),
-                        onReset: _resetPiece,
-                        onResetSize: _resetSize,
+          child: PlanTint(
+            child: _sections.isEmpty
+                ? const _EmptyState()
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                    children: <Widget>[
+                      _Introduction(
+                        isFabrication: widget.windowKey.context == 'fabrication',
+                        applied: _appliedAutomatically,
+                        hasMeasurements: widget.measurements.isNotEmpty,
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
+                      for (final EffectiveSection section in _sections) ...<Widget>[
+                        _SectionBlock(
+                          section: section,
+                          controllerFor: (FormulaPieceRef ref) => _controllers[ref]!,
+                          sizeControllerFor: (FormulaPieceRef ref) =>
+                              _sizeControllers[ref]!,
+                          editingFormulaFor: _editingFormula.contains,
+                          hasSizeFor: _hasSize,
+                          problemFor: (FormulaPieceRef ref) => _problems[ref],
+                          sizeProblemFor: (FormulaPieceRef ref) => _sizeProblems[ref],
+                          ownSizeFor: (EffectiveFormula piece) => _hasOwnSize(piece)
+                              ? '${_windowSizeFor(piece)} $_sizeUnit'
+                              : null,
+                          previewFor: _preview,
+                          isEdited: (FormulaPieceRef ref) =>
+                              _controllers[ref]!.text.trim() != _opened[ref],
+                          onTyped: _onTyped,
+                          onSizeTyped: (FormulaPieceRef ref, String _) =>
+                              _onSizeTyped(ref),
+                          onToggleEditing: (FormulaPieceRef ref) => setState(() {
+                            if (!_editingFormula.remove(ref)) {
+                              _editingFormula.add(ref);
+                            }
+                          }),
+                          onReset: _resetPiece,
+                          onResetSize: _resetSize,
+                        ),
+                        const SizedBox(height: 18),
+                      ],
                     ],
-                  ],
-                ),
+                  ),
+          ),
         ),
         bottomNavigationBar: _SaveBar(
           canSave: (_hasFormulaEdits || _sizesChanged) && !_hasProblems && !_saving,

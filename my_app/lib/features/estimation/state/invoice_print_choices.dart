@@ -31,6 +31,9 @@ abstract final class InvoiceFigure {
   static const String grandTotal = 'totals.grandTotal';
   static const String remainingDue = 'totals.remainingDue';
 
+  /// Grand Total over the job's feet: the last line of Cost Breakdown.
+  static const String netAmountPerArea = 'totals.netAmountPerArea';
+
   static const Set<String> all = <String>{
     windowQuantity,
     windowArea,
@@ -49,6 +52,7 @@ abstract final class InvoiceFigure {
     advancePaid,
     grandTotal,
     remainingDue,
+    netAmountPerArea,
   };
 }
 

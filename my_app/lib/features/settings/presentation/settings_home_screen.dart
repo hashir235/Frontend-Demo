@@ -14,6 +14,7 @@ import '../../auth/state/auth_controller.dart';
 import '../../estimation/data/window_catalog.dart';
 import '../../subscription/data/subscription_api_client.dart';
 import '../../subscription/models/subscription_models.dart';
+import '../../subscription/presentation/plan_tint.dart';
 import '../../subscription/presentation/subscription_gate_screen.dart';
 import '../data/billing_settings_repository.dart';
 import '../data/estimation_settings_repository.dart';
@@ -3073,26 +3074,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               end: Alignment.bottomRight,
             ),
           ),
-          child: SafeArea(
-            child: openSection == null
-                ? ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-                    itemCount: _sections.length + 1,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (BuildContext context, int index) {
-                      if (index == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _buildPageHero(context),
-                        );
-                      }
-                      return _buildSectionTile(context, _sections[index - 1]);
-                    },
-                  )
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-                    children: <Widget>[openSection.builder(context)],
-                  ),
+          child: PlanTint(
+            child: SafeArea(
+              child: openSection == null
+                  ? ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+                      itemCount: _sections.length + 1,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (BuildContext context, int index) {
+                        if (index == 0) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _buildPageHero(context),
+                          );
+                        }
+                        return _buildSectionTile(context, _sections[index - 1]);
+                      },
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+                      children: <Widget>[openSection.builder(context)],
+                    ),
+            ),
           ),
         ),
       ),
