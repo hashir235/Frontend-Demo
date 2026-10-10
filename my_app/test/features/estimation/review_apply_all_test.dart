@@ -151,9 +151,18 @@ void main() {
   ) async {
     final EstimateSessionStore store = job();
     await open(tester, store);
+    // Each window's card names its gauge.
+    expect(find.text('1.2mm · Dull'), findsOneWidget);
+    expect(find.text('2mm · Dull'), findsOneWidget);
+    expect(find.text('0.9mm · Dull Silver'), findsOneWidget);
+
     await choose(tester, 'review_apply_gauge', '2mm');
 
     expect(gauges(store), <String>['2mm', '2mm', '0.9mm']);
+    // The cards show it straight away.
+    expect(find.text('1.2mm · Dull'), findsNothing);
+    expect(find.text('2mm · Dull'), findsNWidgets(2));
+    expect(find.text('0.9mm · Dull Silver'), findsOneWidget);
     expect(
       find.text(
         '2mm on 1 window. 1 window does not come in 2mm and kept its own.',
