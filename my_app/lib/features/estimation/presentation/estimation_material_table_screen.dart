@@ -4,10 +4,6 @@ import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
-import '../../tutorial/tutorial_controller.dart';
-import '../../tutorial/tutorial_overlay.dart';
-import '../../tutorial/tutorial_step.dart';
-import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/bottom_action_bar.dart';
@@ -42,6 +38,10 @@ class EstimationMaterialTableScreen extends StatefulWidget {
   final bool showNextToBill;
   final bool showPdfActions;
 
+  /// The table, already fetched -- by Review's one press to Bill Inputs,
+  /// which works this step out on the way. Null to fetch it here.
+  final CostTable? initialTable;
+
   const EstimationMaterialTableScreen({
     super.key,
     required this.session,
@@ -58,6 +58,7 @@ class EstimationMaterialTableScreen extends StatefulWidget {
     this.screenTitle = 'Estimation Material Table',
     this.showNextToBill = true,
     this.showPdfActions = true,
+    this.initialTable,
   });
 
   @override
@@ -97,7 +98,13 @@ class _EstimationMaterialTableScreenState
       ),
     );
     widget.session.setRateOverrides(widget.overrides);
-    _loadTable();
+    final CostTable? ready = widget.initialTable;
+    if (ready != null) {
+      _table = ready;
+      _isLoading = false;
+    } else {
+      _loadTable();
+    }
   }
 
   Future<void> _loadTable() async {
@@ -323,26 +330,22 @@ class _EstimationMaterialTableScreenState
         if (widget.showPdfActions && showGlassReport)
           const SizedBox(width: AppTheme.space4),
         if (showGlassReport)
-          TutorialTarget(
-            id: 'table.glassReport',
-            child: FilledButton.tonalIcon(
-              onPressed: _openingGlass
-                  ? null
-                  : () {
-                      TutorialController.instance.advanceAfterTap();
-                      _openGlassReport();
-                    },
-              icon: _openingGlass
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.window_rounded),
-              // Named for what it hands you rather than what it prints: this
-              // opens the glass job with the sizes already in it.
-              label: Text(_openingGlass ? 'Opening' : 'Glass Size'),
-            ),
+          FilledButton.tonalIcon(
+            onPressed: _openingGlass
+                ? null
+                : () {
+                    _openGlassReport();
+                  },
+            icon: _openingGlass
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.window_rounded),
+            // Named for what it hands you rather than what it prints: this
+            // opens the glass job with the sizes already in it.
+            label: Text(_openingGlass ? 'Opening' : 'Glass Size'),
           ),
         if (widget.showPdfActions) ...<Widget>[
           const SizedBox(width: AppTheme.space4),
@@ -516,35 +519,28 @@ class _EstimationMaterialTableScreenState
 
   @override
   Widget build(BuildContext context) {
-    return TutorialOverlay(
-      screen: TutorialScreen.materialTable,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.screenTitle),
-          actions: <Widget>[
-            // Fabrication reuses this screen with no bill step after it, so the
-            // action only appears when there is somewhere to go next.
-            if (widget.showNextToBill)
-              TutorialTarget(
-                id: 'table.next',
-                child: NextStepAction(
-                  onPressed:
-                      _isLoading || _errorMessage != null || _table == null
-                      ? null
-                      : () {
-                          TutorialController.instance.advanceAfterTap();
-                          _handleNextPressed();
-                        },
-                ),
-              ),
-          ],
-        ),
-        bottomNavigationBar: FlowBottomBar(
-          stepId: FlowSteps.material.id,
-          actions: _buildBottomActions(),
-        ),
-        body: AppScreenShell(child: _buildBody(context)),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.screenTitle),
+        actions: <Widget>[
+          // Fabrication reuses this screen with no bill step after it, so the
+          // action only appears when there is somewhere to go next.
+          if (widget.showNextToBill)
+            NextStepAction(
+              onPressed:
+                  _isLoading || _errorMessage != null || _table == null
+                  ? null
+                  : () {
+                      _handleNextPressed();
+                    },
+            ),
+        ],
       ),
+      bottomNavigationBar: FlowBottomBar(
+        stepId: FlowSteps.material.id,
+        actions: _buildBottomActions(),
+      ),
+      body: AppScreenShell(child: _buildBody(context)),
     );
   }
 
@@ -638,141 +634,138 @@ class _EstimationMaterialTableScreenState
           title: 'Material Summary',
           subtitle:
               'Lengths are shown in the user-readable display format returned by the backend.',
-          child: TutorialTarget(
-            id: 'table.summary',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        _editing
-                            ? 'Correct anything the cut list could not know'
-                            : 'Material table',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    if (_editing)
-                      TextButton.icon(
-                        onPressed: _saving ? null : () => _editRow(),
-                        icon: const Icon(Icons.add_rounded, size: 20),
-                        label: const Text('Add section'),
-                      ),
-                    TextButton.icon(
-                      onPressed: _saving
-                          ? null
-                          : () => setState(() => _editing = !_editing),
-                      icon: Icon(
-                        _editing
-                            ? Icons.check_rounded
-                            : Icons.edit_outlined,
-                        size: 20,
-                      ),
-                      label: Text(_editing ? 'Done' : 'Edit'),
-                    ),
-                  ],
-                ),
-                if (_editing)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppTheme.space3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
                     child: Text(
-                      'Changes here carry through to the bill and the PDF.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
+                      _editing
+                          ? 'Correct anything the cut list could not know'
+                          : 'Material table',
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                   ),
-                if (_saving) const LinearProgressIndicator(minHeight: 2),
-                SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: _editing
-                  ? DataTable(
-                      columns: const <DataColumn>[
-                        DataColumn(label: Text('Section')),
-                        DataColumn(label: Text('Gauge')),
-                        DataColumn(label: Text('Color')),
-                        DataColumn(label: Text('Total ft')),
-                        DataColumn(label: Text('Rates')),
-                        DataColumn(label: Text('Total Rates')),
-                        DataColumn(label: Text('')),
-                      ],
-                      rows: table.rows
-                          .map(
-                            (CostTableRow row) => DataRow(
-                              cells: <DataCell>[
-                                DataCell(Text(row.section)),
-                                DataCell(Text(_gaugeFor(table, row))),
-                                DataCell(Text(_colorFor(table, row))),
-                                DataCell(Text(row.totalFtDisplay)),
-                                DataCell(Text(_formatNumber(row.rate))),
-                                DataCell(Text(_formatNumber(row.totalPrice))),
-                                DataCell(
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: <Widget>[
-                                      IconButton(
-                                        tooltip: 'Edit',
-                                        icon: const Icon(
-                                          Icons.edit_outlined,
-                                          size: 20,
-                                        ),
-                                        color: AppTheme.royalBlue,
-                                        onPressed: _saving
-                                            ? null
-                                            : () => _editRow(existing: row),
-                                      ),
-                                      IconButton(
-                                        tooltip: 'Remove',
-                                        icon: const Icon(
-                                          Icons.delete_outline_rounded,
-                                          size: 20,
-                                        ),
-                                        color: AppTheme.danger,
-                                        onPressed: _saving
-                                            ? null
-                                            : () => _deleteRow(row),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                          .toList(growable: false),
-                    )
-                  : DataTable(
-                      columns: const <DataColumn>[
-                        DataColumn(label: Text('Section')),
-                        DataColumn(label: Text('Gauge')),
-                        DataColumn(label: Text('Color')),
-                        DataColumn(label: Text('Length')),
-                        DataColumn(label: Text('Quantity')),
-                        DataColumn(label: Text('Total ft')),
-                        DataColumn(label: Text('Rates')),
-                        DataColumn(label: Text('Total Rates')),
-                      ],
-                      rows: rows
-                          .map(
-                            (_MaterialDisplayRow row) => DataRow(
-                              cells: <DataCell>[
-                                DataCell(Text(row.section)),
-                                DataCell(Text(row.gauge)),
-                                DataCell(Text(row.color)),
-                                DataCell(Text(row.lengthDisplay)),
-                                DataCell(Text('${row.quantity}')),
-                                DataCell(Text(row.totalFtDisplay)),
-                                DataCell(Text(_formatNumber(row.rate))),
-                                DataCell(Text(_formatNumber(row.totalRate))),
-                              ],
-                            ),
-                          )
-                          .toList(growable: false),
+                  if (_editing)
+                    TextButton.icon(
+                      onPressed: _saving ? null : () => _editRow(),
+                      icon: const Icon(Icons.add_rounded, size: 20),
+                      label: const Text('Add section'),
                     ),
+                  TextButton.icon(
+                    onPressed: _saving
+                        ? null
+                        : () => setState(() => _editing = !_editing),
+                    icon: Icon(
+                      _editing
+                          ? Icons.check_rounded
+                          : Icons.edit_outlined,
+                      size: 20,
+                    ),
+                    label: Text(_editing ? 'Done' : 'Edit'),
+                  ),
+                ],
+              ),
+              if (_editing)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppTheme.space3),
+                  child: Text(
+                    'Changes here carry through to the bill and the PDF.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
                 ),
-              ],
-            ),
+              if (_saving) const LinearProgressIndicator(minHeight: 2),
+              SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: _editing
+                ? DataTable(
+                    columns: const <DataColumn>[
+                      DataColumn(label: Text('Section')),
+                      DataColumn(label: Text('Gauge')),
+                      DataColumn(label: Text('Color')),
+                      DataColumn(label: Text('Total ft')),
+                      DataColumn(label: Text('Rates')),
+                      DataColumn(label: Text('Total Rates')),
+                      DataColumn(label: Text('')),
+                    ],
+                    rows: table.rows
+                        .map(
+                          (CostTableRow row) => DataRow(
+                            cells: <DataCell>[
+                              DataCell(Text(row.section)),
+                              DataCell(Text(_gaugeFor(table, row))),
+                              DataCell(Text(_colorFor(table, row))),
+                              DataCell(Text(row.totalFtDisplay)),
+                              DataCell(Text(_formatNumber(row.rate))),
+                              DataCell(Text(_formatNumber(row.totalPrice))),
+                              DataCell(
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    IconButton(
+                                      tooltip: 'Edit',
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        size: 20,
+                                      ),
+                                      color: AppTheme.royalBlue,
+                                      onPressed: _saving
+                                          ? null
+                                          : () => _editRow(existing: row),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Remove',
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 20,
+                                      ),
+                                      color: AppTheme.danger,
+                                      onPressed: _saving
+                                          ? null
+                                          : () => _deleteRow(row),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        .toList(growable: false),
+                  )
+                : DataTable(
+                    columns: const <DataColumn>[
+                      DataColumn(label: Text('Section')),
+                      DataColumn(label: Text('Gauge')),
+                      DataColumn(label: Text('Color')),
+                      DataColumn(label: Text('Length')),
+                      DataColumn(label: Text('Quantity')),
+                      DataColumn(label: Text('Total ft')),
+                      DataColumn(label: Text('Rates')),
+                      DataColumn(label: Text('Total Rates')),
+                    ],
+                    rows: rows
+                        .map(
+                          (_MaterialDisplayRow row) => DataRow(
+                            cells: <DataCell>[
+                              DataCell(Text(row.section)),
+                              DataCell(Text(row.gauge)),
+                              DataCell(Text(row.color)),
+                              DataCell(Text(row.lengthDisplay)),
+                              DataCell(Text('${row.quantity}')),
+                              DataCell(Text(row.totalFtDisplay)),
+                              DataCell(Text(_formatNumber(row.rate))),
+                              DataCell(Text(_formatNumber(row.totalRate))),
+                            ],
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+              ),
+            ],
           ),
         ),
       ],

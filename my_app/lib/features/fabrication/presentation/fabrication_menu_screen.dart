@@ -14,10 +14,6 @@ import '../../estimation/presentation/window_navigation_screen.dart';
 import '../../estimation/state/estimate_session_store.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
-import '../../tutorial/tutorial_controller.dart';
-import '../../tutorial/tutorial_overlay.dart';
-import '../../tutorial/tutorial_step.dart';
-import '../../tutorial/tutorial_target.dart';
 import '../../help_videos/tutorial_videos.dart';
 
 class FabricationMenuScreen extends StatelessWidget {
@@ -61,85 +57,78 @@ class FabricationMenuScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TutorialOverlay(
-      screen: TutorialScreen.fabricationMenu,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Fabrication')),
-        bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.projects.id),
-        body: AppScreenShell(
-          child: ListView(
-            children: <Widget>[
-              AppHeroHeader(
-                eyebrow: 'FABRICATION',
-                title: 'Fabrication Workflow',
-                videoKey: TutorialVideos.fabricationMenu,
-                subtitle:
-                    'Start fabrication projects, run cutting and glass output flows, and reopen recent work from the same polished surface.',
-                trailing: Container(
-                  width: 84,
-                  height: 84,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: <Color>[AppTheme.tealAccent, AppTheme.royalBlue],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Fabrication')),
+      bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.projects.id),
+      body: AppScreenShell(
+        child: ListView(
+          children: <Widget>[
+            AppHeroHeader(
+              eyebrow: 'FABRICATION',
+              title: 'Fabrication Workflow',
+              videoKey: TutorialVideos.fabricationMenu,
+              subtitle:
+                  'Start fabrication projects, run cutting and glass output flows, and reopen recent work from the same polished surface.',
+              trailing: Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: <Color>[AppTheme.tealAccent, AppTheme.royalBlue],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: const Icon(
-                    Icons.precision_manufacturing_rounded,
-                    size: 40,
-                    color: Colors.white,
-                  ),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                ),
+                child: const Icon(
+                  Icons.precision_manufacturing_rounded,
+                  size: 40,
+                  color: Colors.white,
                 ),
               ),
-              const SizedBox(height: AppTheme.space6),
-              SectionSurfaceCard(
-                title: 'Start Work',
-                subtitle:
-                    'Create a new fabrication project, view the latest glass report, or reopen recent work.',
-                child: Column(
-                  children: <Widget>[
-                    TutorialTarget(
-                      id: 'fab.createProject',
-                      child: PrimaryCardButton(
-                        icon: Icons.add_box_outlined,
-                        title: 'Create Aluminum Project  +',
-                        subtitle:
-                            'Windows and doors: pick from the catalogue, then cut, rate and report.',
-                        accent: AppTheme.tealAccent,
-                        onTap: () {
-                          TutorialController.instance.advanceAfterTap();
-                          _handleCreateAluminiumProject(context);
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.space5),
-                    // Aluminium jobs only. Glass has its own module on Home
-                    // with its own history, and listing glass jobs here as
-                    // well would undo the point of separating them.
-                    const RecentProjectsListSection(
-                      flow: EstimateFlow.fabrication,
-                      moduleTitle: 'Aluminium Fabrication',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppTheme.space6),
-              const Row(
+            ),
+            const SizedBox(height: AppTheme.space6),
+            SectionSurfaceCard(
+              title: 'Start Work',
+              subtitle:
+                  'Create a new fabrication project, view the latest glass report, or reopen recent work.',
+              child: Column(
                 children: <Widget>[
-                  Expanded(
-                    child: MetricCard(
-                      label: 'Glass + cutting flow',
-                      value: 'Integrated',
-                      icon: Icons.fact_check_outlined,
-                      accent: AppTheme.tealAccent,
-                    ),
+                  PrimaryCardButton(
+                    icon: Icons.add_box_outlined,
+                    title: 'Create Aluminum Project  +',
+                    subtitle:
+                        'Windows and doors: pick from the catalogue, then cut, rate and report.',
+                    accent: AppTheme.tealAccent,
+                    onTap: () {
+                      _handleCreateAluminiumProject(context);
+                    },
+                  ),
+                  const SizedBox(height: AppTheme.space5),
+                  // Aluminium jobs only. Glass has its own module on Home
+                  // with its own history, and listing glass jobs here as
+                  // well would undo the point of separating them.
+                  const RecentProjectsListSection(
+                    flow: EstimateFlow.fabrication,
+                    moduleTitle: 'Aluminium Fabrication',
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: AppTheme.space6),
+            const Row(
+              children: <Widget>[
+                Expanded(
+                  child: MetricCard(
+                    label: 'Glass + cutting flow',
+                    value: 'Integrated',
+                    icon: Icons.fact_check_outlined,
+                    accent: AppTheme.tealAccent,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

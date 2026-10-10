@@ -156,12 +156,25 @@ class EstimateSessionStore extends ChangeNotifier {
       _rateOverrides = const <RateOverrideInput>[];
       _billDraft = null;
     }
-    notifyListeners();
+    // Quiet when nothing moved. The rate and material screens set these as
+    // they open, and Review's one press to Bill Inputs opens them already
+    // set; a notice for no change would rebuild Review mid-build.
+    if (selectionChanged || previous == null) notifyListeners();
   }
 
   void setRateOverrides(Iterable<RateOverrideInput> overrides) {
-    _rateOverrides = List<RateOverrideInput>.from(overrides);
-    notifyListeners();
+    final List<RateOverrideInput> next = List<RateOverrideInput>.from(
+      overrides,
+    );
+    final bool same =
+        next.length == _rateOverrides.length &&
+        <int>[for (int i = 0; i < next.length; i++) i].every(
+          (int i) =>
+              next[i].key == _rateOverrides[i].key &&
+              next[i].rate == _rateOverrides[i].rate,
+        );
+    _rateOverrides = next;
+    if (!same) notifyListeners();
   }
 
   void setBillDraft(EstimateBillDraft? draft) {
@@ -291,6 +304,52 @@ class EstimateSessionStore extends ChangeNotifier {
     _items.removeWhere((WindowReviewItem item) => item.winNo == winNo);
     _syncNextWinNo();
     notifyListeners();
+  }
+
+  /// Every window that comes in [gauge] put on it, the rest left as they
+  /// are -- Review's "Gauge" (Hashir, Oct 2026). A job that was half 1.2mm and
+  /// half 2mm is all [gauge] after it, except a window not made in it (Prime
+  /// Economy comes in 0.9mm only). How many windows changed.
+  int setGaugeOnAll(String gauge) => _setOnAll(
+    (WindowReviewItem item) =>
+        WindowGauges.forWindow(item.windowCode).contains(gauge),
+    (WindowReviewItem item) =>
+        item.copyWith(material: item.material.copyWith(gauge: gauge)),
+  );
+
+  /// Every window's aluminium in [color]. Every window comes in every
+  /// finish. How many windows changed.
+  int setAluminiumColorOnAll(String color) => _setOnAll(
+    (_) => true,
+    (WindowReviewItem item) =>
+        item.copyWith(material: item.material.copyWith(color: color)),
+  );
+
+  /// Every window glazed in [glass]. How many windows changed.
+  int setGlassOnAll(String glass) => _setOnAll(
+    (_) => true,
+    (WindowReviewItem item) =>
+        item.copyWith(glassColor: GlassColors.normalize(glass)),
+  );
+
+  int _setOnAll(
+    bool Function(WindowReviewItem item) takes,
+    WindowReviewItem Function(WindowReviewItem item) change,
+  ) {
+    int changed = 0;
+    for (int i = 0; i < _items.length; i++) {
+      final WindowReviewItem item = _items[i];
+      if (!takes(item)) continue;
+      final WindowReviewItem next = change(item);
+      if (next.material == item.material &&
+          next.glassColor == item.glassColor) {
+        continue;
+      }
+      _items[i] = next;
+      changed++;
+    }
+    if (changed > 0) notifyListeners();
+    return changed;
   }
 
   /// The glass the next window opens on.

@@ -17,4 +17,11 @@ class SupportContact {
 
   /// wa.me wants digits only -- no plus, no spaces.
   static const String whatsAppUrl = 'https://wa.me/923297590468';
+
+  /// A WhatsApp chat with the office, [message] already typed in for the
+  /// shop to send. Spaces and line breaks travel as %20 and %0A: a `+` for a
+  /// space, which a query string usually gets, reaches some WhatsApp
+  /// versions as a literal plus sign.
+  static Uri whatsAppChat(String message) =>
+      Uri.parse('$whatsAppUrl?text=${Uri.encodeComponent(message)}');
 }

@@ -209,11 +209,18 @@ class WindowMaterialChip extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          Text(
-            colorName == null ? material.label : '${material.gauge} · $colorName',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textSecondary,
+          // Flexible: a maker's long name ("0.9mm · Multi/BLK Ral +") ran
+          // past the card on a narrow phone; it ends in "…" instead.
+          Flexible(
+            child: Text(
+              colorName == null
+                  ? material.label
+                  : '${material.gauge} · $colorName',
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textSecondary,
+              ),
             ),
           ),
         ],

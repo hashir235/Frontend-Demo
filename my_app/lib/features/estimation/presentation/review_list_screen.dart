@@ -6,11 +6,10 @@ import '../../../shared/widgets/next_step_action.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
 import '../../subscription/presentation/plan_tint.dart';
-import '../../tutorial/tutorial_controller.dart';
-import '../../tutorial/tutorial_overlay.dart';
-import '../../tutorial/tutorial_step.dart';
-import '../../tutorial/tutorial_target.dart';
+import '../data/cost_table_api_client.dart';
+import '../data/optimization_repository.dart';
 import '../data/project_repository.dart';
+import '../data/rate_review_api_client.dart';
 import '../data/window_catalog.dart';
 import '../models/window_variant.dart';
 import '../models/window_material.dart';
@@ -20,14 +19,22 @@ import '../models/window_type.dart';
 import '../state/estimate_session_store.dart';
 import 'input/size_entry_notation.dart';
 import '../widgets/glass_color_picker.dart';
+import '../widgets/review_apply_all_bar.dart';
 import '../widgets/window_material_picker.dart';
+import 'bill_fast_track.dart';
 import 'input/input_registry.dart';
 import 'length_optimization_screen.dart';
 import 'rate_review_screen.dart';
 
 class ReviewListScreen extends StatelessWidget {
   final EstimateSessionStore session;
-  final ProjectRepository _projectRepository = ProjectRepository();
+  final ProjectRepository _projectRepository;
+
+  /// Injected in tests: what an estimate's Next works out on its way to
+  /// Bill Inputs. Null in the app, which uses the real ones.
+  final OptimizationRepository? optimization;
+  final RateReviewApiClient? rates;
+  final CostTableApiClient? costs;
 
   static const List<Color> _cardAccentPalette = <Color>[
     AppTheme.royalBlue,
@@ -35,7 +42,14 @@ class ReviewListScreen extends StatelessWidget {
     AppTheme.amberAccent,
   ];
 
-  ReviewListScreen({super.key, required this.session});
+  ReviewListScreen({
+    super.key,
+    required this.session,
+    ProjectRepository? projectRepository,
+    this.optimization,
+    this.rates,
+    this.costs,
+  }) : _projectRepository = projectRepository ?? ProjectRepository();
 
   Color _accentForIndex(int index) {
     return _cardAccentPalette[index % _cardAccentPalette.length];
@@ -147,7 +161,7 @@ class ReviewListScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _openLengthOptimization(BuildContext context) async {
+  Future<void> _openNext(BuildContext context) async {
     final List<WindowReviewItem> items = session.items;
     if (items.isEmpty) {
       return;
@@ -193,6 +207,7 @@ class ReviewListScreen extends StatelessWidget {
             projectLocation: session.projectLocation,
             requestContext: 'fabrication',
             showPdfActions: true,
+            repository: optimization,
             materialSelectionBuilder:
                 (
                   BuildContext context,
@@ -212,6 +227,8 @@ class ReviewListScreen extends StatelessWidget {
                     projectName: projectName,
                     projectLocation: projectLocation,
                     requestContext: 'fabrication',
+                    apiClient: rates,
+                    costTableApiClient: costs,
                     materialTableTitle: 'Fabrication Material Table',
                     materialTableShowNextToBill: false,
                     materialTableShowPdfActions: true,
@@ -223,18 +240,17 @@ class ReviewListScreen extends StatelessWidget {
       return;
     }
 
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        settings: RouteSettings(name: FlowSteps.lengthOptimization.id),
-        builder: (_) => LengthOptimizationScreen(
-          session: session,
-          items: items,
-          projectId: projectId,
-          projectName: session.projectName,
-          projectLocation: session.projectLocation,
-          requestContext: 'estimation',
-        ),
-      ),
+    // An estimate goes straight on to Bill Inputs: the lengths, rates and
+    // material table are worked out on the way and wait under it, a bubble
+    // away (Hashir, Oct 2026).
+    await openBillInputsFromReview(
+      context,
+      session: session,
+      items: items,
+      projectId: projectId,
+      optimization: optimization,
+      rates: rates,
+      costs: costs,
     );
   }
 
@@ -712,87 +728,72 @@ class ReviewListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Wraps the Scaffold rather than the body so the tour can spotlight the
-    // Next arrow, which lives in the AppBar.
-    return TutorialOverlay(
-      screen: TutorialScreen.reviewList,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Review'),
-          centerTitle: true,
-          actions: <Widget>[
-            // Stays disabled (not hidden) until a window is saved, so the step is
-            // still discoverable on an empty list.
-            AnimatedBuilder(
-              animation: session,
-              builder: (BuildContext context, Widget? child) {
-                return TutorialTarget(
-                  id: 'review.next',
-                  child: NextStepAction(
-                    key: const Key('review_next_button'),
-                    onPressed: session.items.isEmpty
-                        ? null
-                        : () {
-                            TutorialController.instance.advanceAfterTap();
-                            _openLengthOptimization(context);
-                          },
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.review.id),
-        body: AnimatedBuilder(
-          animation: session,
-          builder: (BuildContext context, Widget? child) {
-            final List<WindowReviewItem> items = session.items;
-            if (items.isEmpty) {
-              return Center(
-                child: Text(
-                  'No saved windows yet.',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.deepTeal,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Review'),
+        centerTitle: true,
+        actions: <Widget>[
+          // Stays disabled (not hidden) until a window is saved, so the step is
+          // still discoverable on an empty list.
+          AnimatedBuilder(
+            animation: session,
+            builder: (BuildContext context, Widget? child) {
+              return NextStepAction(
+                key: const Key('review_next_button'),
+                onPressed: session.items.isEmpty
+                    ? null
+                    : () {
+                        _openNext(context);
+                      },
               );
-            }
-
-            return Container(
-              decoration: AppTheme.pageDecoration(),
-              child: PlanTint(
-                child: ListView(
-                  key: const Key('review_list_view'),
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-                  children: <Widget>[
-                    _buildSummaryCard(context, items.length),
-                    const SizedBox(height: 12),
-                    ...List<Widget>.generate(items.length, (int index) {
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          bottom: index == items.length - 1 ? 0 : 10,
-                        ),
-                        // The tour explains recheck / edit / delete on the first
-                        // card, so only that one carries a target.
-                        child: index == 0
-                            ? TutorialTarget(
-                                id: 'review.card',
-                                child: _buildReviewCard(
-                                  context,
-                                  items[index],
-                                  index,
-                                ),
-                              )
-                            : _buildReviewCard(context, items[index], index),
-                      );
-                    }),
-                  ],
+            },
+          ),
+        ],
+      ),
+      bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.review.id),
+      body: AnimatedBuilder(
+        animation: session,
+        builder: (BuildContext context, Widget? child) {
+          final List<WindowReviewItem> items = session.items;
+          if (items.isEmpty) {
+            return Center(
+              child: Text(
+                'No saved windows yet.',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppTheme.deepTeal,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             );
-          },
-        ),
+          }
+
+          return Container(
+            decoration: AppTheme.pageDecoration(),
+            child: PlanTint(
+              child: ListView(
+                key: const Key('review_list_view'),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+                children: <Widget>[
+                  _buildSummaryCard(context, items.length),
+                  const SizedBox(height: 12),
+                  ReviewApplyAllBar(
+                    session: session,
+                    save: () => _projectRepository.syncSession(session),
+                  ),
+                  const SizedBox(height: 12),
+                  ...List<Widget>.generate(items.length, (int index) {
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index == items.length - 1 ? 0 : 10,
+                      ),
+                      child: _buildReviewCard(context, items[index], index),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

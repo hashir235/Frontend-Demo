@@ -15,10 +15,6 @@ import '../../state/last_window_material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../flow_nav/models/flow_step.dart';
 import '../../../flow_nav/presentation/flow_progress_bar.dart';
-import '../../../tutorial/tutorial_controller.dart';
-import '../../../tutorial/tutorial_overlay.dart';
-import '../../../tutorial/tutorial_step.dart';
-import '../../../tutorial/tutorial_target.dart';
 import '../../../../shared/format/suter_half.dart';
 import '../../../../shared/widgets/arrangeable_column.dart';
 import '../../../../shared/widgets/option_switch.dart';
@@ -263,7 +259,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   OwnWindow? get _ownWindow => WindowVariants.ownOf(_windowCode);
 
   /// The gauges this window comes in.
-  List<String> get _gauges => _ownWindow?.gauges ?? WindowGauges.all;
+  List<String> get _gauges => WindowGauges.forWindow(_windowCode);
 
   /// [material] in a gauge this window comes in.
   ///
@@ -1354,8 +1350,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   }
 
   void _openSettings() {
-    // Opening the sidebar is itself a step of the tour.
-    TutorialController.instance.advanceAfterTap();
     _scaffoldKey.currentState?.openEndDrawer();
   }
 
@@ -2581,31 +2575,28 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Expanded(
-          child: TutorialTarget(id: 'input.winNo', child: winNo),
+          child: winNo,
         ),
         if (!widget.isEditMode) ...[
           const SizedBox(width: 12),
           Expanded(
-            child: TutorialTarget(
-              id: 'input.quantity',
-              child: TextField(
-                key: _quantityFieldKey,
-                controller: _quantityController,
-                focusNode: _quantityFocusNode,
-                keyboardType: const TextInputType.numberWithOptions(
-                  signed: false,
-                ),
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                textInputAction: _textInputActionForField(_quantityFocusNode),
-                onSubmitted: (_) => _submitFromField(_quantityFocusNode),
-                // "Quantity (Optional)" does not fit half a line; the hint
-                // says it once the box is tapped.
-                decoration: InputDecoration(
-                  labelText: 'Quantity',
-                  hintText: '1 if empty',
-                  hintStyle: hintStyle,
-                  prefixIcon: const Icon(Icons.copy_all_rounded),
-                ),
+            child: TextField(
+              key: _quantityFieldKey,
+              controller: _quantityController,
+              focusNode: _quantityFocusNode,
+              keyboardType: const TextInputType.numberWithOptions(
+                signed: false,
+              ),
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              textInputAction: _textInputActionForField(_quantityFocusNode),
+              onSubmitted: (_) => _submitFromField(_quantityFocusNode),
+              // "Quantity (Optional)" does not fit half a line; the hint
+              // says it once the box is tapped.
+              decoration: InputDecoration(
+                labelText: 'Quantity',
+                hintText: '1 if empty',
+                hintStyle: hintStyle,
+                prefixIcon: const Icon(Icons.copy_all_rounded),
               ),
             ),
           ),
@@ -3006,9 +2997,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     final String label = _usesSplitWidthInputs ? 'Right Width' : 'Width';
     if (_usesSplitInput) {
       return _buildSplitDimensionField(
-        // Width is the first field on screen now, so it is the one the tour
-        // can point at when it explains the wheel.
-        isTourWheelExample: true,
         label: label,
         wholeFieldKey: _widthFieldKey,
         wholeController: _widthInchController,
@@ -3177,10 +3165,6 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     /// Focus for the sub-part box. Only used when sizes are typed — the wheel
     /// takes no focus, so the chain skips it there.
     FocusNode? subFocusNode,
-    // Only the first field on screen carries the tour's wheel target; ids are
-    // unique, so registering it on all three would leave the spotlight
-    // pointing at whichever built last.
-    bool isTourWheelExample = false,
   }) {
     final bool feetMode = _usesFeetInchSplit;
     final double wheelValue = SuterHalf.parse(wheelController.text) ?? 0;
@@ -3231,48 +3215,33 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: _maybeTourTarget(
-              id: 'input.wheel',
-              enabled: isTourWheelExample,
-              child: _usesKeypadSizeInput
-                  ? _buildSubPartField(
-                      controller: wheelController,
-                      feetMode: feetMode,
-                      numberInputStyle: numberInputStyle,
-                      onChanged: onChanged,
-                      focusNode: subFocusNode,
-                    )
-                  : feetMode
-                  ? InchWheel(
-                      value: wheelValue,
-                      onChanged: (double value) {
-                        wheelController.text = InchWheel.format(value);
-                        onChanged();
-                      },
-                    )
-                  : SuterWheel(
-                      value: wheelValue,
-                      onChanged: (double value) {
-                        wheelController.text = SuterWheel.format(value);
-                        onChanged();
-                      },
-                    ),
-            ),
+            child: _usesKeypadSizeInput
+                ? _buildSubPartField(
+                    controller: wheelController,
+                    feetMode: feetMode,
+                    numberInputStyle: numberInputStyle,
+                    onChanged: onChanged,
+                    focusNode: subFocusNode,
+                  )
+                : feetMode
+                ? InchWheel(
+                    value: wheelValue,
+                    onChanged: (double value) {
+                      wheelController.text = InchWheel.format(value);
+                      onChanged();
+                    },
+                  )
+                : SuterWheel(
+                    value: wheelValue,
+                    onChanged: (double value) {
+                      wheelController.text = SuterWheel.format(value);
+                      onChanged();
+                    },
+                  ),
           ),
         ),
       ],
     );
-  }
-
-  /// Wraps [child] in a tour target only where the tour actually wants one,
-  /// so a builder shared by several fields registers the id just once.
-  Widget _maybeTourTarget({
-    required String id,
-    required bool enabled,
-    required Widget child,
-  }) {
-    if (!enabled) return child;
-    return TutorialTarget(id: id, child: child);
   }
 
   /// Settings se aane wala faisla: wheel ya seedha typing box.
@@ -3431,605 +3400,566 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
         );
     final double keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
-    // The overlay wraps the whole Scaffold, not just its body: the settings
-    // drawer is painted above the body, so a spotlight inside the body could
-    // never reach the section buttons the tour has to point at.
-    return TutorialOverlay(
-      screen: TutorialScreen.windowInput,
-      child: Scaffold(
-        key: _scaffoldKey,
-        resizeToAvoidBottomInset: false,
-        // Hidden while the keyboard is up: on a phone the chain would sit on
-        // top of the field being typed into.
-        bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
-            ? null
-            : FlowProgressBar(stepId: FlowSteps.sizeInput.id),
-        endDrawer: Drawer(
-          key: const Key('settings_drawer'),
-          width: _handler.showDrawerForCollar(_selectedCollar)
-              ? MediaQuery.sizeOf(context).width * 0.38
-              : null,
-          child: SafeArea(
-            // Chhoti screen par sab options ek saath nahi aate, is liye poora
-            // sidebar upar-neeche scroll hota ha -- sirf sections ki list nahi.
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+    return Scaffold(
+      key: _scaffoldKey,
+      resizeToAvoidBottomInset: false,
+      // Hidden while the keyboard is up: on a phone the chain would sit on
+      // top of the field being typed into.
+      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
+          ? null
+          : FlowProgressBar(stepId: FlowSteps.sizeInput.id),
+      endDrawer: Drawer(
+        key: const Key('settings_drawer'),
+        width: _handler.showDrawerForCollar(_selectedCollar)
+            ? MediaQuery.sizeOf(context).width * 0.38
+            : null,
+        child: SafeArea(
+          // Chhoti screen par sab options ek saath nahi aate, is liye poora
+          // sidebar upar-neeche scroll hota ha -- sirf sections ki list nahi.
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sections',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.deepTeal,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // The arithmetic behind this window's cut lengths. It sits
+                // at the top of the sidebar rather than in settings because
+                // it belongs to the window on the bench, not to the app: a
+                // formula only means anything alongside the collar and lock
+                // it is cut with.
+                _FormulaEditorButton(onTap: _openFormulaEditor),
+                const SizedBox(height: 8),
+                const Divider(),
+                const SizedBox(height: 8),
+                _buildPartsLayoutOption(context),
+                const SizedBox(height: 8),
+                const Divider(),
+                const SizedBox(height: 8),
+                if (_showsDoorSectionToggles) ...[
                   Text(
-                    'Sections',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    'D46 Option',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: AppTheme.deepTeal,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  _buildSidebarToggleOption(
+                    label: 'D46 Off',
+                    selected: !_doorD46Enabled,
+                    onTap: () => _setDoorD46Enabled(false),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSidebarToggleOption(
+                    label: 'D46 On',
+                    selected: _doorD46Enabled,
+                    onTap: () => _setDoorD46Enabled(true),
+                  ),
                   const SizedBox(height: 12),
-                  // The arithmetic behind this window's cut lengths. It sits
-                  // at the top of the sidebar rather than in settings because
-                  // it belongs to the window on the bench, not to the app: a
-                  // formula only means anything alongside the collar and lock
-                  // it is cut with.
-                  _FormulaEditorButton(onTap: _openFormulaEditor),
+                  Text(
+                    'D52 Option',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  const Divider(),
+                  _buildSidebarToggleOption(
+                    label: 'D52 Off',
+                    selected: !_doorD52Enabled,
+                    onTap: () => _setDoorD52Enabled(false),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSidebarToggleOption(
+                    label: 'D52 On',
+                    selected: _doorD52Enabled,
+                    onTap: () => _setDoorD52Enabled(true),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (_switchableProfile != null) ...[
+                  Text(
+                    '${_switchableProfile!.own} or ${_switchableProfile!.other}',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  _buildPartsLayoutOption(context),
-                  const SizedBox(height: 8),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  if (_showsDoorSectionToggles) ...[
-                    Text(
-                      'D46 Option',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                  for (final String name in <String>[
+                    ...<String>[_switchableProfile!.own, _switchableProfile!.other]
+                      ..sort(),
+                  ]) ...[
                     _buildSidebarToggleOption(
-                      label: 'D46 Off',
-                      selected: !_doorD46Enabled,
-                      onTap: () => _setDoorD46Enabled(false),
+                      label: name,
+                      selected: name == _switchableProfile!.own,
+                      onTap: () {
+                        if (name != _switchableProfile!.own) _switchProfile();
+                      },
                     ),
-                    const SizedBox(height: 6),
-                    _buildSidebarToggleOption(
-                      label: 'D46 On',
-                      selected: _doorD46Enabled,
-                      onTap: () => _setDoorD46Enabled(true),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'D52 Option',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildSidebarToggleOption(
-                      label: 'D52 Off',
-                      selected: !_doorD52Enabled,
-                      onTap: () => _setDoorD52Enabled(false),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildSidebarToggleOption(
-                      label: 'D52 On',
-                      selected: _doorD52Enabled,
-                      onTap: () => _setDoorD52Enabled(true),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (_switchableProfile != null) ...[
-                    Text(
-                      '${_switchableProfile!.own} or ${_switchableProfile!.other}',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    for (final String name in <String>[
-                      ...<String>[_switchableProfile!.own, _switchableProfile!.other]
-                        ..sort(),
-                    ]) ...[
-                      _buildSidebarToggleOption(
-                        label: name,
-                        selected: name == _switchableProfile!.own,
-                        onTap: () {
-                          if (name != _switchableProfile!.own) _switchProfile();
-                        },
-                      ),
-                      const SizedBox(height: 6),
-                    ],
                     const SizedBox(height: 6),
                   ],
-                  if (_showsDoorSectionToggles) ...[
-                    Text(
-                      'Strips',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  const SizedBox(height: 6),
+                ],
+                if (_showsDoorSectionToggles) ...[
+                  Text(
+                    'Strips',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'In place of glass. Tap again to remove.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'In place of glass. Tap again to remove.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textSecondary,
                     ),
-                    const SizedBox(height: 8),
-                    for (final DoorStrip strip in DoorStrips.all) ...[
-                      // One at a time: the chosen one lit, the rest dimmed
-                      // while it is chosen; tapping it again takes it off.
-                      AnimatedOpacity(
-                        key: Key('strip_${strip.section}'),
-                        duration: const Duration(milliseconds: 180),
-                        opacity: _strip == null || _strip == strip.section ? 1 : 0.45,
-                        child: _buildSidebarToggleOption(
-                          label: strip.section,
-                          selected: _strip == strip.section,
-                          onTap: () => _setStrip(
-                            _strip == strip.section ? null : strip.section,
-                          ),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final DoorStrip strip in DoorStrips.all) ...[
+                    // One at a time: the chosen one lit, the rest dimmed
+                    // while it is chosen; tapping it again takes it off.
+                    AnimatedOpacity(
+                      key: Key('strip_${strip.section}'),
+                      duration: const Duration(milliseconds: 180),
+                      opacity: _strip == null || _strip == strip.section ? 1 : 0.45,
+                      child: _buildSidebarToggleOption(
+                        label: strip.section,
+                        selected: _strip == strip.section,
+                        onTap: () => _setStrip(
+                          _strip == strip.section ? null : strip.section,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                    ],
-                    const SizedBox(height: 6),
-                  ],
-                  if (_showsBackCollarOption) ...[
-                    Text(
-                      'Back Collar',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildSidebarToggleOption(
-                      label: '1.7 cm',
-                      selected: _backCollarCm != kBackCollarTwoCm,
-                      onTap: () => _setBackCollarCm(kBackCollarDefaultCm),
                     ),
                     const SizedBox(height: 6),
-                    _buildSidebarToggleOption(
-                      label: '2 cm',
-                      selected: _backCollarCm == kBackCollarTwoCm,
-                      onTap: () => _setBackCollarCm(kBackCollarTwoCm),
-                    ),
-                    const SizedBox(height: 12),
                   ],
-                  if (_showsD31Toggle) ...[
-                    Text(
-                      'D31 Option',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildSidebarToggleOption(
-                      label: 'D31 Off',
-                      selected: !_d31Enabled,
-                      onTap: () => _setD31Enabled(false),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildSidebarToggleOption(
-                      label: 'D31 On',
-                      selected: _d31Enabled,
-                      onTap: () => _setD31Enabled(true),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (_showsOpenableNetToggle) ...[
-                    Text(
-                      '$_netLabel Option',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildSidebarToggleOption(
-                      label: '$_netLabel Off',
-                      selected: !_openableNetEnabled,
-                      onTap: () => _setOpenableNetEnabled(false),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildSidebarToggleOption(
-                      label: '$_netLabel On',
-                      selected: _openableNetEnabled,
-                      onTap: () => _setOpenableNetEnabled(true),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (_handler.showDrawerForCollar(_selectedCollar)) ...[
-                    Text(
-                      'Sections',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.deepTeal,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Poora drawer scroll hota ha, is liye ye list apna scroll
-                    // nahi chalati -- warna do scroll ek doosre sa larte hain.
-                    TutorialTarget(
-                      id: 'input.sidebarSections',
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: EdgeInsets.zero,
-                        itemCount: _sectionsFor(_selectedCollar).length,
-                        separatorBuilder: (BuildContext context, int index) =>
-                            const SizedBox(height: 6),
-                        itemBuilder: (BuildContext context, int index) {
-                          final String code = _sectionsFor(
-                            _selectedCollar,
-                          )[index];
-                          final bool isSelected = code == _selectedSectionCode;
-                          return Material(
-                            color: isSelected
-                                ? AppTheme.violet.withValues(alpha: 0.12)
-                                : Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(10),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(10),
-                              onTap: () {
-                                setState(() {
-                                  _selectedSectionCode = isSelected
-                                      ? null
-                                      : code;
-                                });
-                                _persistSidebarSelections();
-                                TutorialController.instance.advanceAfterTap();
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                child: Row(
-                                  children: [
-                                    // A long profile name (DC30BA, ET26A)
-                                    // shrinks to fit the narrow sidebar
-                                    // rather than losing its last letter.
-                                    Expanded(
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          code,
-                                          maxLines: 1,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyLarge
-                                              ?.copyWith(
-                                                color: AppTheme.deepTeal,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                        ),
-                                      ),
-                                    ),
-                                    if (isSelected)
-                                      Icon(
-                                        Icons.check_circle,
-                                        size: 18,
-                                        color: AppTheme.violet,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
+                  const SizedBox(height: 6),
                 ],
-              ),
+                if (_showsBackCollarOption) ...[
+                  Text(
+                    'Back Collar',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSidebarToggleOption(
+                    label: '1.7 cm',
+                    selected: _backCollarCm != kBackCollarTwoCm,
+                    onTap: () => _setBackCollarCm(kBackCollarDefaultCm),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSidebarToggleOption(
+                    label: '2 cm',
+                    selected: _backCollarCm == kBackCollarTwoCm,
+                    onTap: () => _setBackCollarCm(kBackCollarTwoCm),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (_showsD31Toggle) ...[
+                  Text(
+                    'D31 Option',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSidebarToggleOption(
+                    label: 'D31 Off',
+                    selected: !_d31Enabled,
+                    onTap: () => _setD31Enabled(false),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSidebarToggleOption(
+                    label: 'D31 On',
+                    selected: _d31Enabled,
+                    onTap: () => _setD31Enabled(true),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (_showsOpenableNetToggle) ...[
+                  Text(
+                    '$_netLabel Option',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSidebarToggleOption(
+                    label: '$_netLabel Off',
+                    selected: !_openableNetEnabled,
+                    onTap: () => _setOpenableNetEnabled(false),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSidebarToggleOption(
+                    label: '$_netLabel On',
+                    selected: _openableNetEnabled,
+                    onTap: () => _setOpenableNetEnabled(true),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (_handler.showDrawerForCollar(_selectedCollar)) ...[
+                  Text(
+                    'Sections',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.deepTeal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Poora drawer scroll hota ha, is liye ye list apna scroll
+                  // nahi chalati -- warna do scroll ek doosre sa larte hain.
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    itemCount: _sectionsFor(_selectedCollar).length,
+                    separatorBuilder: (BuildContext context, int index) =>
+                        const SizedBox(height: 6),
+                    itemBuilder: (BuildContext context, int index) {
+                      final String code = _sectionsFor(
+                        _selectedCollar,
+                      )[index];
+                      final bool isSelected = code == _selectedSectionCode;
+                      return Material(
+                        color: isSelected
+                            ? AppTheme.violet.withValues(alpha: 0.12)
+                            : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(10),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () {
+                            setState(() {
+                              _selectedSectionCode = isSelected
+                                  ? null
+                                  : code;
+                            });
+                            _persistSidebarSelections();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              children: [
+                                // A long profile name (DC30BA, ET26A)
+                                // shrinks to fit the narrow sidebar
+                                // rather than losing its last letter.
+                                Expanded(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      code,
+                                      maxLines: 1,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(
+                                            color: AppTheme.deepTeal,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.check_circle,
+                                    size: 18,
+                                    color: AppTheme.violet,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ],
             ),
           ),
         ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppTheme.mist, AppTheme.ice],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppTheme.mist, AppTheme.ice],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          child: PlanTint(
-            child: SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.arrow_back_rounded),
-                          color: AppTheme.deepTeal,
-                        ),
-                        Expanded(
-                          child: Text(
-                            widget.session.isFabrication
-                                ? 'Fabrication'
-                                : 'Estimation',
-                            key: const Key('input_estimation_heading'),
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headlineLarge
-                                ?.copyWith(fontSize: 30, height: 1),
-                          ),
-                        ),
-                        TutorialTarget(
-                          id: 'input.next',
-                          child: IconButton(
-                            key: const Key('open_review_button'),
-                            onPressed: () {
-                              TutorialController.instance.advanceAfterTap();
-                              _openReview();
-                            },
-                            icon: const Icon(Icons.arrow_forward_rounded),
-                            color: AppTheme.deepTeal,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 48),
-                        Expanded(
-                          child: Text(
-                            widget.node.label,
-                            key: const Key('input_window_label'),
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  color: AppTheme.deepTeal,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
-                        // Was three dots, which said nothing about what was
-                        // behind it. The panel is about sections, so the button
-                        // says so.
-                        TutorialTarget(
-                          id: 'input.sectionsButton',
-                          child: TextButton.icon(
-                            key: const Key('open_settings_drawer_button'),
-                            onPressed: _openSettings,
-                            icon: const Icon(Icons.view_list_rounded, size: 19),
-                            label: const Text('Sections'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppTheme.royalBlue,
-                              textStyle: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: EdgeInsets.fromLTRB(
-                        18,
-                        6,
-                        18,
-                        math.max(24, keyboardInset + 140),
+        ),
+        child: PlanTint(
+          child: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        color: AppTheme.deepTeal,
                       ),
-                      // Every part below can be held and dragged up or down; the
-                      // order is this phone's own and is kept.
-                      child: ArrangeableColumn(
-                        key: const Key('input_parts'),
-                        onReorder: _onPartsReordered,
-                        blocks: _inArrangedOrder(<String, ArrangeableBlock>{
-                          InputBlockOrder.collar: ArrangeableBlock(
-                            id: InputBlockOrder.collar,
-                            child: TutorialTarget(
-                              id: 'input.collarCards',
-                              child: _buildCollarPicker(),
-                            ),
-                          ),
-                          InputBlockOrder.windowNo: ArrangeableBlock(
-                            id: InputBlockOrder.windowNo,
-                            child: _buildWinNoAndQuantityRow(hintStyle),
-                          ),
-                          InputBlockOrder.dimensions: ArrangeableBlock(
-                            id: InputBlockOrder.dimensions,
-                            // The heading's own height is its spacing.
-                            tight: true,
-                            child: Row(
-                              children: [
-                                Text(
-                                  'Dimensions',
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(
-                                        color: AppTheme.deepTeal,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                ),
-                                const Spacer(),
-                                IconButton(
-                                  onPressed: _showDimensionInfo,
-                                  icon: const Icon(Icons.info_outline_rounded),
-                                  color: AppTheme.deepTeal,
-                                ),
-                              ],
-                            ),
-                          ),
-                          InputBlockOrder.unit: ArrangeableBlock(
-                            id: InputBlockOrder.unit,
-                            compact: true,
-                            child: TutorialTarget(
-                              id: 'input.unit',
-                              child: _buildInlineUnitSelector(context),
-                            ),
-                          ),
-                          if (_showsLockTypeSelector)
-                            InputBlockOrder.lock: ArrangeableBlock(
-                              id: InputBlockOrder.lock,
-                              compact: true,
-                              child: _buildLockRow(context),
-                            ),
-                          if (_showsRubberSelector)
-                            InputBlockOrder.rubber: ArrangeableBlock(
-                              id: InputBlockOrder.rubber,
-                              compact: true,
-                              child: _buildRubberRow(context),
-                            ),
-                          if (_canMeasureSides)
-                            InputBlockOrder.perSide: ArrangeableBlock(
-                              id: InputBlockOrder.perSide,
-                              child: _buildPerSideToggle(),
-                            ),
-                          InputBlockOrder.sizes: ArrangeableBlock(
-                            id: InputBlockOrder.sizes,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                TutorialTarget(
-                                  id: 'input.sizes',
-                                  child: _buildSizeFields(
-                                    numberInputStyle,
-                                    hintStyle,
-                                  ),
-                                ),
-                                // Right under the sizes, because it changes what
-                                // they mean for these pieces: set on the formula
-                                // screen, it would otherwise be invisible from
-                                // here. It moves with them.
-                                if (_pieceSizes.isNotEmpty) ...[
-                                  const SizedBox(height: 10),
-                                  _PieceSizesNotice(
-                                    sizes: _pieceSizes,
-                                    unit: _isFabricationFlow ? 'cm' : 'ft',
-                                    onClear: () => setState(
-                                      () => _pieceSizes = const <PieceSize>[],
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          InputBlockOrder.gauge: ArrangeableBlock(
-                            id: InputBlockOrder.gauge,
-                            child: TutorialTarget(
-                              id: 'input.material',
-                              child: WindowGaugePicker(
-                                value: _material,
-                                gauges: _gauges,
-                                onChanged: _pickMaterial,
-                              ),
-                            ),
-                          ),
-                          InputBlockOrder.aluminiumColor: ArrangeableBlock(
-                            id: InputBlockOrder.aluminiumColor,
-                            child: AluminiumColorPicker(
-                              value: _material,
-                              // A maker's own names for the finishes, where
-                              // this window is made by one (Prime Economy).
-                              nameFor: _ownWindow?.colorNameFor,
-                              onChanged: _pickMaterial,
-                            ),
-                          ),
-                          // Both flows need the glass, for different reasons.
-                          // Estimation prices each glass separately, so this
-                          // decides what a window's glazing is charged at.
-                          // Fabrication cuts it: the glass list carries the
-                          // colour, and the sheet optimizer keeps each colour on
-                          // its own sheets -- two colours packed onto one sheet
-                          // is a sheet that cannot be cut.
-                          InputBlockOrder.glassColor: ArrangeableBlock(
-                            id: InputBlockOrder.glassColor,
-                            child: TutorialTarget(
-                              id: 'input.glass',
-                              child: GlassColorPicker(
-                                value: _glassColor,
-                                onChanged: (String next) {
-                                  setState(() => _glassColor = next);
-                                  // Every window and glass row after this opens
-                                  // on it too, in this job and the next, until
-                                  // somebody picks again.
-                                  unawaited(
-                                    LastGlassColor.instance.remember(next),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          InputBlockOrder.description: ArrangeableBlock(
-                            id: InputBlockOrder.description,
-                            child: TutorialTarget(
-                              id: 'input.description',
-                              child: TextField(
-                                key: _descriptionFieldKey,
-                                controller: _descriptionController,
-                                focusNode: _descriptionFocusNode,
-                                textInputAction: _textInputActionForField(
-                                  _descriptionFocusNode,
-                                ),
-                                maxLength: _maxDescriptionLength,
-                                maxLines: 2,
-                                onSubmitted: (_) =>
-                                    _submitFromField(_descriptionFocusNode),
-                                decoration: InputDecoration(
-                                  labelText: 'Description (Optional)',
-                                  hintText: 'e.g. bath room window',
-                                  hintStyle: hintStyle,
-                                ),
-                              ),
-                            ),
-                          ),
-                        }),
+                      Expanded(
+                        child: Text(
+                          widget.session.isFabrication
+                              ? 'Fabrication'
+                              : 'Estimation',
+                          key: const Key('input_estimation_heading'),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineLarge
+                              ?.copyWith(fontSize: 30, height: 1),
+                        ),
                       ),
-                    ),
+                      IconButton(
+                        key: const Key('open_review_button'),
+                        onPressed: () {
+                          _openReview();
+                        },
+                        icon: const Icon(Icons.arrow_forward_rounded),
+                        color: AppTheme.deepTeal,
+                      ),
+                    ],
                   ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 48),
+                      Expanded(
+                        child: Text(
+                          widget.node.label,
+                          key: const Key('input_window_label'),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: AppTheme.deepTeal,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ),
+                      // Was three dots, which said nothing about what was
+                      // behind it. The panel is about sections, so the button
+                      // says so.
+                      TextButton.icon(
+                        key: const Key('open_settings_drawer_button'),
+                        onPressed: _openSettings,
+                        icon: const Icon(Icons.view_list_rounded, size: 19),
+                        label: const Text('Sections'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppTheme.royalBlue,
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: EdgeInsets.fromLTRB(
                       18,
-                      8,
+                      6,
                       18,
-                      math.max(16, keyboardInset + 16),
+                      math.max(24, keyboardInset + 140),
                     ),
-                    child: TutorialTarget(
-                      id: 'input.save',
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          key: const Key('input_save_button'),
-                          onPressed: () {
-                            TutorialController.instance.advanceAfterTap();
-                            _onSavePressed();
-                          },
-                          icon: const Icon(Icons.save_outlined),
-                          label: Text(widget.isEditMode ? 'Update' : 'Save'),
+                    // Every part below can be held and dragged up or down; the
+                    // order is this phone's own and is kept.
+                    child: ArrangeableColumn(
+                      key: const Key('input_parts'),
+                      onReorder: _onPartsReordered,
+                      blocks: _inArrangedOrder(<String, ArrangeableBlock>{
+                        InputBlockOrder.collar: ArrangeableBlock(
+                          id: InputBlockOrder.collar,
+                          child: _buildCollarPicker(),
                         ),
-                      ),
+                        InputBlockOrder.windowNo: ArrangeableBlock(
+                          id: InputBlockOrder.windowNo,
+                          child: _buildWinNoAndQuantityRow(hintStyle),
+                        ),
+                        InputBlockOrder.dimensions: ArrangeableBlock(
+                          id: InputBlockOrder.dimensions,
+                          // The heading's own height is its spacing.
+                          tight: true,
+                          child: Row(
+                            children: [
+                              Text(
+                                'Dimensions',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      color: AppTheme.deepTeal,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                onPressed: _showDimensionInfo,
+                                icon: const Icon(Icons.info_outline_rounded),
+                                color: AppTheme.deepTeal,
+                              ),
+                            ],
+                          ),
+                        ),
+                        InputBlockOrder.unit: ArrangeableBlock(
+                          id: InputBlockOrder.unit,
+                          compact: true,
+                          child: _buildInlineUnitSelector(context),
+                        ),
+                        if (_showsLockTypeSelector)
+                          InputBlockOrder.lock: ArrangeableBlock(
+                            id: InputBlockOrder.lock,
+                            compact: true,
+                            child: _buildLockRow(context),
+                          ),
+                        if (_showsRubberSelector)
+                          InputBlockOrder.rubber: ArrangeableBlock(
+                            id: InputBlockOrder.rubber,
+                            compact: true,
+                            child: _buildRubberRow(context),
+                          ),
+                        if (_canMeasureSides)
+                          InputBlockOrder.perSide: ArrangeableBlock(
+                            id: InputBlockOrder.perSide,
+                            child: _buildPerSideToggle(),
+                          ),
+                        InputBlockOrder.sizes: ArrangeableBlock(
+                          id: InputBlockOrder.sizes,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              _buildSizeFields(
+                                numberInputStyle,
+                                hintStyle,
+                              ),
+                              // Right under the sizes, because it changes what
+                              // they mean for these pieces: set on the formula
+                              // screen, it would otherwise be invisible from
+                              // here. It moves with them.
+                              if (_pieceSizes.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                _PieceSizesNotice(
+                                  sizes: _pieceSizes,
+                                  unit: _isFabricationFlow ? 'cm' : 'ft',
+                                  onClear: () => setState(
+                                    () => _pieceSizes = const <PieceSize>[],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        InputBlockOrder.gauge: ArrangeableBlock(
+                          id: InputBlockOrder.gauge,
+                          child: WindowGaugePicker(
+                            value: _material,
+                            gauges: _gauges,
+                            onChanged: _pickMaterial,
+                          ),
+                        ),
+                        InputBlockOrder.aluminiumColor: ArrangeableBlock(
+                          id: InputBlockOrder.aluminiumColor,
+                          child: AluminiumColorPicker(
+                            value: _material,
+                            // A maker's own names for the finishes, where
+                            // this window is made by one (Prime Economy).
+                            nameFor: _ownWindow?.colorNameFor,
+                            onChanged: _pickMaterial,
+                          ),
+                        ),
+                        // Both flows need the glass, for different reasons.
+                        // Estimation prices each glass separately, so this
+                        // decides what a window's glazing is charged at.
+                        // Fabrication cuts it: the glass list carries the
+                        // colour, and the sheet optimizer keeps each colour on
+                        // its own sheets -- two colours packed onto one sheet
+                        // is a sheet that cannot be cut.
+                        InputBlockOrder.glassColor: ArrangeableBlock(
+                          id: InputBlockOrder.glassColor,
+                          child: GlassColorPicker(
+                            value: _glassColor,
+                            onChanged: (String next) {
+                              setState(() => _glassColor = next);
+                              // Every window and glass row after this opens
+                              // on it too, in this job and the next, until
+                              // somebody picks again.
+                              unawaited(
+                                LastGlassColor.instance.remember(next),
+                              );
+                            },
+                          ),
+                        ),
+                        InputBlockOrder.description: ArrangeableBlock(
+                          id: InputBlockOrder.description,
+                          child: TextField(
+                            key: _descriptionFieldKey,
+                            controller: _descriptionController,
+                            focusNode: _descriptionFocusNode,
+                            textInputAction: _textInputActionForField(
+                              _descriptionFocusNode,
+                            ),
+                            maxLength: _maxDescriptionLength,
+                            maxLines: 2,
+                            onSubmitted: (_) =>
+                                _submitFromField(_descriptionFocusNode),
+                            decoration: InputDecoration(
+                              labelText: 'Description (Optional)',
+                              hintText: 'e.g. bath room window',
+                              hintStyle: hintStyle,
+                            ),
+                          ),
+                        ),
+                      }),
                     ),
                   ),
-                ],
-              ),
+                ),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  padding: EdgeInsets.fromLTRB(
+                    18,
+                    8,
+                    18,
+                    math.max(16, keyboardInset + 16),
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      key: const Key('input_save_button'),
+                      onPressed: () {
+                        _onSavePressed();
+                      },
+                      icon: const Icon(Icons.save_outlined),
+                      label: Text(widget.isEditMode ? 'Update' : 'Save'),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

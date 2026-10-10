@@ -177,6 +177,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Job 5'), findsOneWidget);
 
+    // Each record is a full card now; the last one sits below the fold.
+    await tester.ensureVisible(find.byKey(const Key('delete_project_p5')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('delete_project_p5')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('confirm_delete_project')));

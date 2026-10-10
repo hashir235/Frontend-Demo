@@ -4,10 +4,6 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
-import '../../tutorial/tutorial_controller.dart';
-import '../../tutorial/tutorial_overlay.dart';
-import '../../tutorial/tutorial_step.dart';
-import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/metric_card.dart';
@@ -62,73 +58,66 @@ class EstimationMenuScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Estimation')),
       bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.projects.id),
-      body: TutorialOverlay(
-        screen: TutorialScreen.projectMenu,
-        child: AppScreenShell(
-          child: ListView(
-            children: <Widget>[
-              AppHeroHeader(
-                eyebrow: 'ESTIMATION',
-                title: 'Estimation process for quotation',
-                videoKey: TutorialVideos.estimationMenu,
-                subtitle:
-                    'Create projects, pick windows visually, and move through review, optimization, rates, and billing with a consistent premium workflow.',
-                trailing: Container(
-                  width: 84,
-                  height: 84,
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.brandGradient,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  ),
-                  child: const Icon(
-                    Icons.calculate_rounded,
-                    size: 40,
-                    color: Colors.white,
-                  ),
+      body: AppScreenShell(
+        child: ListView(
+          children: <Widget>[
+            AppHeroHeader(
+              eyebrow: 'ESTIMATION',
+              title: 'Estimation process for quotation',
+              videoKey: TutorialVideos.estimationMenu,
+              subtitle:
+                  'Create projects, pick windows visually, and move through review, optimization, rates, and billing with a consistent premium workflow.',
+              trailing: Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.brandGradient,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                ),
+                child: const Icon(
+                  Icons.calculate_rounded,
+                  size: 40,
+                  color: Colors.white,
                 ),
               ),
-              const SizedBox(height: AppTheme.space6),
-              SectionSurfaceCard(
-                title: 'Start Work',
-                subtitle:
-                    'Create a new estimation project or continue from a saved one.',
-                child: Column(
-                  children: <Widget>[
-                    TutorialTarget(
-                      id: 'menu.createProject',
-                      child: PrimaryCardButton(
-                        icon: Icons.add_box_outlined,
-                        title: 'Create Project',
-                        subtitle:
-                            'Capture project details and open the full window catalogue.',
-                        onTap: () {
-                          TutorialController.instance.advanceAfterTap();
-                          _handleCreateProject(context);
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.space5),
-                    const RecentProjectsListSection(
-                      flow: EstimateFlow.estimation,
-                      moduleTitle: 'Estimation',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppTheme.space6),
-              const Row(
+            ),
+            const SizedBox(height: AppTheme.space6),
+            SectionSurfaceCard(
+              title: 'Start Work',
+              subtitle:
+                  'Create a new estimation project or continue from a saved one.',
+              child: Column(
                 children: <Widget>[
-                  Expanded(
-                    child: MetricCard(
-                      label: 'Workflow',
-                      value: 'Create -> Review -> Optimize',
-                      icon: Icons.timeline_rounded,
-                    ),
+                  PrimaryCardButton(
+                    icon: Icons.add_box_outlined,
+                    title: 'Create Project',
+                    subtitle:
+                        'Capture project details and open the full window catalogue.',
+                    onTap: () {
+                      _handleCreateProject(context);
+                    },
+                  ),
+                  const SizedBox(height: AppTheme.space5),
+                  const RecentProjectsListSection(
+                    flow: EstimateFlow.estimation,
+                    moduleTitle: 'Estimation',
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: AppTheme.space6),
+            const Row(
+              children: <Widget>[
+                Expanded(
+                  child: MetricCard(
+                    label: 'Workflow',
+                    value: 'Create -> Review -> Optimize',
+                    icon: Icons.timeline_rounded,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

@@ -44,12 +44,16 @@ class ProjectApiClient {
     return SavedProjectDetail.fromJson(payload);
   }
 
+  /// [details]: each job with its last bill's customer and totals, for the
+  /// full history list.
   Future<List<SavedProjectSummary>> fetchRecentProjects({
     required String context,
     int limit = 30,
+    bool details = false,
   }) async {
     final Uri uri = Uri.parse(
-      '$_baseUrl/api/projects/recent?context=$context&limit=$limit',
+      '$_baseUrl/api/projects/recent?context=$context&limit=$limit'
+      '${details ? '&details=1' : ''}',
     );
     final Map<String, dynamic> payload = await _getJson(
       uri,
@@ -89,6 +93,21 @@ class ProjectApiClient {
       failureMessage: 'Project save failed.',
     );
     return SavedProjectDetail.fromJson(payload);
+  }
+
+  /// The shop's notes on a job, replacing what was there. The notes as the
+  /// server saved them.
+  Future<String> saveProjectNotes({
+    required String projectId,
+    required String notes,
+  }) async {
+    final Map<String, dynamic> payload = await _putJson(
+      Uri.parse('$_baseUrl/api/projects/$projectId/notes'),
+      <String, Object?>{'notes': notes},
+      unreachableMessage: 'Unable to reach local project service.',
+      failureMessage: 'Notes save failed.',
+    );
+    return payload['notes'] is String ? payload['notes'] as String : notes;
   }
 
   /// Takes a project off the shop's lists.

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../tutorial/urdu_text.dart';
+import '../../../shared/format/urdu_text.dart';
 
 /// Which language the payment instructions are shown in.
 ///

@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
-import '../../tutorial/tutorial_controller.dart';
-import '../../tutorial/tutorial_overlay.dart';
-import '../../tutorial/tutorial_step.dart';
-import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/next_step_action.dart';
@@ -110,16 +106,6 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
     );
   }
 
-  /// Where group [group] starts when every window on the screen is counted
-  /// in order -- the tour names its cards that way.
-  int _offsetOf(int group) {
-    int offset = 0;
-    for (int g = 0; g < group; g++) {
-      offset += widget.groups[g].nodes.length;
-    }
-    return offset;
-  }
-
   /// Where line [row] of group [group] starts within its group.
   int _rowOffset(int group, int row) {
     int offset = 0;
@@ -129,34 +115,27 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
     return offset;
   }
 
-  /// One window's card, wired to the tour and to the screen's focus.
-  /// [index] counts within the group.
+  /// One window's card, wired to the screen's focus. [index] counts within
+  /// the group.
   Widget _card(int group, int index) {
     final WindowType node = widget.groups[group].nodes[index];
     final bool isSelected = group == _focusGroup && index == _focusIndex;
-    final int overall = _offsetOf(group) + index;
-    // The tour points at the first card -- Sliding Window at the top of the
-    // catalogue -- as its worked example.
-    return TutorialTarget(
-      id: overall == 0 ? 'library.sliding' : 'library.card.$overall',
-      child: WindowNavigationCard(
-        node: node,
-        isFocused: isSelected,
-        isSelected: isSelected,
-        parallaxShift: 0,
-        usedSections: <String>[
-          for (final UsedSection section in WindowSections.forNode(
-            node,
-            isFabrication: widget.session.isFabrication,
-          ))
-            section.label,
-        ],
-        onTap: () {
-          _focus(group, index);
-          TutorialController.instance.advanceAfterTap();
-          _onNodeTap(node);
-        },
-      ),
+    return WindowNavigationCard(
+      node: node,
+      isFocused: isSelected,
+      isSelected: isSelected,
+      parallaxShift: 0,
+      usedSections: <String>[
+        for (final UsedSection section in WindowSections.forNode(
+          node,
+          isFabrication: widget.session.isFabrication,
+        ))
+          section.label,
+      ],
+      onTap: () {
+        _focus(group, index);
+        _onNodeTap(node);
+      },
     );
   }
 
@@ -263,72 +242,69 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
         ],
       ),
       bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.library.id),
-      body: TutorialOverlay(
-        screen: TutorialScreen.windowLibrary,
-        child: AppScreenShell(
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              return ListView(
-                children: <Widget>[
-                  AppHeroHeader(
-                    eyebrow: widget.moduleTitle.toUpperCase(),
-                    title: 'Windows Library',
-                    videoKey: widget.session.isFabrication
-                        ? TutorialVideos.fabricationLibrary
-                        : TutorialVideos.estimationLibrary,
-                    subtitle:
-                        'Browse the catalogue visually, then move directly into the detailed input workflow.',
-                    trailing: Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.brandGradient,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                      ),
-                      child: const Icon(
-                        Icons.window_rounded,
-                        size: 38,
-                        color: Colors.white,
-                      ),
+      body: AppScreenShell(
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            return ListView(
+              children: <Widget>[
+                AppHeroHeader(
+                  eyebrow: widget.moduleTitle.toUpperCase(),
+                  title: 'Windows Library',
+                  videoKey: widget.session.isFabrication
+                      ? TutorialVideos.fabricationLibrary
+                      : TutorialVideos.estimationLibrary,
+                  subtitle:
+                      'Browse the catalogue visually, then move directly into the detailed input workflow.',
+                  trailing: Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.brandGradient,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    ),
+                    child: const Icon(
+                      Icons.window_rounded,
+                      size: 38,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: AppTheme.space4),
-                  Text(
-                    widget.moduleTitle,
-                    key: const Key('navigation_estimation_heading'),
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      fontSize: 0,
-                      color: Colors.transparent,
-                      height: 0,
-                    ),
+                ),
+                const SizedBox(height: AppTheme.space4),
+                Text(
+                  widget.moduleTitle,
+                  key: const Key('navigation_estimation_heading'),
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    fontSize: 0,
+                    color: Colors.transparent,
+                    height: 0,
                   ),
-                  Text(
-                    '${widget.path.join(' / ')} / $currentLabel',
-                    key: const Key('navigation_context_label'),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontSize: 0,
-                      color: Colors.transparent,
-                      height: 0,
-                    ),
+                ),
+                Text(
+                  '${widget.path.join(' / ')} / $currentLabel',
+                  key: const Key('navigation_context_label'),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 0,
+                    color: Colors.transparent,
+                    height: 0,
                   ),
-                  const SizedBox(height: AppTheme.space5),
-                  ProjectMetaStrip(
-                    projectName: widget.session.projectName,
-                    projectLocation: widget.session.projectLocation,
-                    extras: <Widget>[
-                      _InfoBadge(label: 'Flow', value: widget.moduleTitle),
-                      _InfoBadge(label: 'Path', value: widget.path.join(' / ')),
-                    ],
-                  ),
-                  for (int group = 0; group < widget.groups.length; group++) ...<Widget>[
-                    const SizedBox(height: AppTheme.space6),
-                    _buildGroup(context, group),
+                ),
+                const SizedBox(height: AppTheme.space5),
+                ProjectMetaStrip(
+                  projectName: widget.session.projectName,
+                  projectLocation: widget.session.projectLocation,
+                  extras: <Widget>[
+                    _InfoBadge(label: 'Flow', value: widget.moduleTitle),
+                    _InfoBadge(label: 'Path', value: widget.path.join(' / ')),
                   ],
+                ),
+                for (int group = 0; group < widget.groups.length; group++) ...<Widget>[
                   const SizedBox(height: AppTheme.space6),
+                  _buildGroup(context, group),
                 ],
-              );
-            },
-          ),
+                const SizedBox(height: AppTheme.space6),
+              ],
+            );
+          },
         ),
       ),
     );

@@ -35,9 +35,7 @@ import '../../app_update/app_update_service.dart';
 import '../../app_update/presentation/force_update_screen.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
-import '../../tutorial/tutorial_controller.dart';
-import '../../tutorial/tutorial_step.dart';
-import '../../tutorial/urdu_text.dart';
+import '../../../shared/format/urdu_text.dart';
 import '../state/app_settings.dart';
 import '../state/numbering_mode.dart';
 import '../state/size_input_mode.dart';
@@ -760,8 +758,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Starting the tour pops the user back to Home, because that is where it
-  /// begins and where its first step points.
   /// A way to reach an update that is always there.
   ///
   /// The startup prompt is easy to miss and gone once dismissed, and Play's
@@ -1049,40 +1045,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildTutorialCard(BuildContext context) {
-    return _buildSettingsCard(
-      context,
-      icon: Icons.play_circle_outline_rounded,
-      title: 'App kaise istemal karein',
-      subtitle:
-          'Do alag rehnumai: Estimation — window ke naap se le kar tayyar bill '
-          'tak. Fabrication — cutting list aur sheeshe ki report tak. Dono '
-          'asli screens par, Urdu mein.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          FilledButton.icon(
-            onPressed: () => _startTour(context, TutorialTour.estimation),
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: Text(
-              'ایسٹیمیشن کی رہنمائی',
-              style: UrduText.body(color: Colors.white, fontSize: 15),
-            ),
-          ),
-          const SizedBox(height: 10),
-          FilledButton.tonalIcon(
-            onPressed: () => _startTour(context, TutorialTour.fabrication),
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: Text(
-              'فیبریکیشن کی رہنمائی',
-              style: UrduText.body(fontSize: 15),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Which bubble a settings section belongs to.
   ///
   /// Only the sections the owner named get their own bubble; the rest sit on
@@ -1096,11 +1058,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     'payment' => FlowSteps.paymentSettings,
     _ => FlowSteps.settings,
   };
-
-  void _startTour(BuildContext context, TutorialTour tour) {
-    TutorialController.instance.start(tour: tour);
-    Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
-  }
 
   /// Rates get their own full screen -- the table is far too wide to sit
   /// inside a settings card -- so this card is the door to it.
@@ -2918,14 +2875,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       subtitle: 'Policies aur customer support.',
       builder: _buildLegalSupportCard,
       accent: const Color(0xFF5C6BC0),
-    ),
-    _SettingsSection(
-      id: 'tutorial',
-      icon: Icons.play_circle_outline_rounded,
-      title: 'App kaise istemal karein',
-      subtitle: 'Qadam ba qadam rehnumai — Urdu mein.',
-      builder: _buildTutorialCard,
-      accent: const Color(0xFFD4477E),
     ),
     _SettingsSection(
       id: 'app_update',

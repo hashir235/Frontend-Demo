@@ -5,7 +5,7 @@ import 'package:my_app/features/auth/state/auth_controller.dart';
 import 'package:my_app/shared/widgets/app_hero_header.dart';
 import 'package:my_app/shared/widgets/app_screen_shell.dart';
 import 'package:my_app/shared/widgets/section_surface_card.dart';
-import 'package:my_app/features/tutorial/urdu_text.dart';
+import 'package:my_app/shared/format/urdu_text.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});

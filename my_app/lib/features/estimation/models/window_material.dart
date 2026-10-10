@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'window_variant.dart';
+
 /// The stock one window is made from: which gauge of aluminium, in which
 /// finish.
 ///
@@ -67,6 +69,11 @@ class WindowGauges {
   static const String g2 = '2mm';
 
   static const List<String> all = <String>[g12, g16, g2];
+
+  /// The gauges window [windowCode] comes in: these three, unless it is made
+  /// in others (Prime Economy, in 0.9mm only).
+  static List<String> forWindow(String windowCode) =>
+      WindowVariants.ownOf(windowCode)?.gauges ?? all;
 }
 
 /// The finishes, and what each one looks like.

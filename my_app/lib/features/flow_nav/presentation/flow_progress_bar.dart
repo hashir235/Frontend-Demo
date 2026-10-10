@@ -93,8 +93,17 @@ class _FlowProgressBarState extends State<FlowProgressBar> {
 
   void _centreOnCurrent() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final BuildContext? ctx = _currentKey.currentContext;
       if (ctx == null || !_scroll.hasClients) return;
+      // Only the bar on screen scrolls. A screen covered the moment it was
+      // pushed -- the steps Review's one press to Bill Inputs puts under it
+      // -- has never been laid out, and its bubbles have no size to scroll
+      // to; it centres itself when it is uncovered.
+      final ModalRoute<Object?>? route = ModalRoute.of(context);
+      if (route != null && !route.isCurrent) return;
+      final RenderObject? box = ctx.findRenderObject();
+      if (box is! RenderBox || !box.hasSize) return;
       Scrollable.ensureVisible(
         ctx,
         alignment: 0.5,

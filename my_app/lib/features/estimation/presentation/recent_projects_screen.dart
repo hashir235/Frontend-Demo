@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../../../shared/widgets/state_message_card.dart';
@@ -13,6 +12,12 @@ import '../models/saved_project.dart';
 import '../state/estimate_session_store.dart';
 import 'window_navigation_screen.dart';
 
+/// Every project of one kind, as a record: the site, the customer, what the
+/// bill came to and what is still owed, and the shop's own notes -- the
+/// "View all" list behind Recent Projects (Hashir, Oct 2026).
+///
+/// Tapping a card reopens the job, as before; the bin deletes it, and the
+/// note under it is written and saved right there.
 class RecentProjectsScreen extends StatefulWidget {
   final EstimateFlow flow;
   final String moduleTitle;
@@ -34,6 +39,9 @@ class RecentProjectsScreen extends StatefulWidget {
     this.repository,
   });
 
+  /// Every record, not the latest few: the server's ceiling for this list.
+  static const int recordLimit = 500;
+
   @override
   State<RecentProjectsScreen> createState() => _RecentProjectsScreenState();
 }
@@ -51,14 +59,31 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
   final Set<String> _deletedIds = <String>{};
   String? _deletingProjectId;
 
+  /// Notes saved here since the list loaded, by project.
+  final Map<String, String> _savedNotes = <String, String>{};
+  String? _savingNotesId;
+
+  final TextEditingController _search = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _projectsFuture = _loadProjects();
+    _search.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<List<SavedProjectSummary>> _loadProjects() {
-    return _projectRepository.fetchRecentProjects(flow: widget.flow);
+    return _projectRepository.fetchRecentProjects(
+      flow: widget.flow,
+      limit: RecentProjectsScreen.recordLimit,
+      details: true,
+    );
   }
 
   Future<void> _deleteProject(SavedProjectSummary project) async {
@@ -77,6 +102,7 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
 
   void _reload() {
     setState(() {
+      _savedNotes.clear();
       _projectsFuture = _loadProjects();
     });
   }
@@ -139,124 +165,63 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
     }
   }
 
-  String _formatUpdatedAt(DateTime? value) {
-    if (value == null) {
-      return '--';
+  String _notesOf(SavedProjectSummary project) =>
+      _savedNotes[project.id] ?? project.notes;
+
+  Future<void> _editNotes(SavedProjectSummary project) async {
+    final String before = _notesOf(project);
+    final String? written = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _NotesSheet(project: project, initial: before),
+    );
+    if (written == null || written.trim() == before.trim() || !mounted) return;
+
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    setState(() => _savingNotesId = project.id);
+    try {
+      final String saved = await _projectRepository.saveProjectNotes(
+        project.id,
+        written,
+      );
+      if (!mounted) return;
+      setState(() => _savedNotes[project.id] = saved);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(saved.isEmpty ? 'Note removed.' : 'Note saved.'),
+        ),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not save the note. $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _savingNotesId = null);
     }
-    final DateTime local = value.toLocal();
-    String two(int part) => part.toString().padLeft(2, '0');
-    return '${local.year}-${two(local.month)}-${two(local.day)} ${two(local.hour)}:${two(local.minute)}';
   }
 
-  Widget _buildProjectCard(BuildContext context, SavedProjectSummary project) {
-    final bool isOpening = _openingProjectId == project.id;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        onTap: isOpening ? null : () => _openProject(project),
-        child: Ink(
-          decoration: AppTheme.elevatedCardDecoration(),
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.space6),
-            child: Row(
-              children: <Widget>[
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: AppTheme.royalBlue.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Icon(
-                    Icons.workspaces_rounded,
-                    color: AppTheme.royalBlue,
-                  ),
-                ),
-                const SizedBox(width: AppTheme.space5),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        project.projectName,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.space2),
-                      Text(
-                        project.projectLocation,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.space4),
-                      Wrap(
-                        spacing: AppTheme.space3,
-                        runSpacing: AppTheme.space3,
-                        children: <Widget>[
-                          _pill(context, 'Windows', '${project.windowCount}'),
-                          _pill(context, 'Status', project.status),
-                          _pill(
-                            context,
-                            'Updated',
-                            _formatUpdatedAt(project.updatedAt),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppTheme.space4),
-                // Not while picking a project for something else: there the
-                // list is a question, not the shop's library.
-                if (!_hasCustomHandler) ...<Widget>[
-                  _DeleteProjectButton(
-                    project: project,
-                    deleting: _deletingProjectId == project.id,
-                    onPressed: isOpening || _deletingProjectId != null
-                        ? null
-                        : () => _deleteProject(project),
-                  ),
-                  const SizedBox(width: AppTheme.space2),
-                ],
-                isOpening
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2.2),
-                      )
-                    : const Icon(Icons.arrow_forward_rounded),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _pill(BuildContext context, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.space3,
-        vertical: AppTheme.space2,
-      ),
-      decoration: AppTheme.infoChipDecoration(),
-      child: Text(
-        '$label: $value',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: AppTheme.textPrimary,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
+  bool _matches(SavedProjectSummary project, String query) {
+    if (query.isEmpty) return true;
+    final ProjectBillSummary? bill = project.bill;
+    final String haystack = <String>[
+      project.projectName,
+      project.projectLocation,
+      bill?.customerName ?? '',
+      bill?.customerPhone ?? '',
+      _notesOf(project),
+    ].join(' ').toLowerCase();
+    return query
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((String word) => word.isNotEmpty)
+        .every(haystack.contains);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Recent Projects')),
+      appBar: AppBar(title: const Text('All Records')),
       body: AppScreenShell(
         child: FutureBuilder<List<SavedProjectSummary>>(
           future: _projectsFuture,
@@ -273,7 +238,7 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
                   return Center(
                     child: StateMessageCard(
                       icon: Icons.cloud_off_rounded,
-                      title: 'Unable to load recent projects',
+                      title: 'Unable to load your records',
                       message: snapshot.error.toString(),
                       action: FilledButton.icon(
                         onPressed: _reload,
@@ -284,53 +249,712 @@ class _RecentProjectsScreenState extends State<RecentProjectsScreen> {
                   );
                 }
 
-                final List<SavedProjectSummary> projects =
+                final List<SavedProjectSummary> all =
                     (snapshot.data ?? <SavedProjectSummary>[])
                         .where(
                           (SavedProjectSummary project) =>
                               !_deletedIds.contains(project.id),
                         )
                         .toList(growable: false);
-                if (projects.isEmpty) {
+                if (all.isEmpty) {
                   return const Center(
                     child: StateMessageCard(
                       icon: Icons.history_toggle_off_rounded,
-                      title: 'No recent projects yet',
+                      title: 'No projects yet',
                       message:
                           'Create a project first and it will appear here for quick reopening.',
                     ),
                   );
                 }
 
+                final String query = _search.text.trim();
+                final List<SavedProjectSummary> shown = all
+                    .where((SavedProjectSummary p) => _matches(p, query))
+                    .toList(growable: false);
+
                 return ListView(
                   children: <Widget>[
-                    AppHeroHeader(
-                      eyebrow: widget.moduleTitle.toUpperCase(),
-                      title: 'Recent Projects',
-                      subtitle:
-                          'Open a saved project, continue the workflow, and keep the latest calculations close at hand.',
+                    _RecordsSummary(
+                      projects: shown,
+                      showsBills: widget.flow == EstimateFlow.estimation,
                     ),
-                    const SizedBox(height: AppTheme.space6),
-                    SectionSurfaceCard(
-                      title: 'Saved Work',
-                      subtitle:
-                          'Tap any card to reopen its flow with the saved windows and outputs.',
-                      child: Column(
-                        children: projects
-                            .map(
-                              (SavedProjectSummary project) => Padding(
-                                padding: const EdgeInsets.only(
-                                  bottom: AppTheme.space4,
-                                ),
-                                child: _buildProjectCard(context, project),
+                    const SizedBox(height: AppTheme.space5),
+                    TextField(
+                      key: const Key('records_search'),
+                      controller: _search,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        hintText: 'Search site, customer, phone or location',
+                        suffixIcon: query.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear',
+                                onPressed: _search.clear,
+                                icon: const Icon(Icons.close_rounded),
                               ),
-                            )
-                            .toList(growable: false),
                       ),
                     ),
+                    const SizedBox(height: AppTheme.space5),
+                    if (shown.isEmpty)
+                      StateMessageCard(
+                        icon: Icons.search_off_rounded,
+                        title: 'Nothing matches "$query"',
+                      )
+                    else
+                      for (final SavedProjectSummary project in shown)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: AppTheme.space4,
+                          ),
+                          child: _RecordCard(
+                            project: project,
+                            notes: _notesOf(project),
+                            showsBill:
+                                !project.isGlass &&
+                                project.context == 'estimation',
+                            opening: _openingProjectId == project.id,
+                            savingNotes: _savingNotesId == project.id,
+                            onOpen: () => _openProject(project),
+                            onEditNotes: () => _editNotes(project),
+                            deleteButton: _hasCustomHandler
+                                ? null
+                                : _DeleteProjectButton(
+                                    project: project,
+                                    deleting: _deletingProjectId == project.id,
+                                    onPressed:
+                                        _openingProjectId != null ||
+                                            _deletingProjectId != null
+                                        ? null
+                                        : () => _deleteProject(project),
+                                  ),
+                          ),
+                        ),
                   ],
                 );
               },
+        ),
+      ),
+    );
+  }
+}
+
+/// "Rs 167,708", "Rs 1,250.5": rupees as the bill writes them.
+String _rupees(double value) {
+  final bool whole = value == value.roundToDouble();
+  final String fixed = whole
+      ? value.round().abs().toString()
+      : value.abs().toStringAsFixed(2).replaceFirst(RegExp(r'0$'), '');
+  final List<String> parts = fixed.split('.');
+  final String digits = parts.first;
+  final StringBuffer grouped = StringBuffer();
+  for (int i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write(',');
+    grouped.write(digits[i]);
+  }
+  final String sign = value < 0 ? '-' : '';
+  return 'Rs $sign$grouped${parts.length > 1 ? '.${parts[1]}' : ''}';
+}
+
+/// "10 Oct 2026, 14:20".
+String _when(DateTime? value) {
+  if (value == null) return '--';
+  const List<String> months = <String>[
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final DateTime local = value.toLocal();
+  String two(int part) => part.toString().padLeft(2, '0');
+  return '${local.day} ${months[local.month - 1]} ${local.year}, '
+      '${two(local.hour)}:${two(local.minute)}';
+}
+
+/// The counts across the list as it is filtered: how many jobs, and -- on
+/// estimates -- what their bills come to and what is still owed.
+class _RecordsSummary extends StatelessWidget {
+  final List<SavedProjectSummary> projects;
+  final bool showsBills;
+
+  const _RecordsSummary({required this.projects, required this.showsBills});
+
+  @override
+  Widget build(BuildContext context) {
+    double billed = 0;
+    double remaining = 0;
+    int windows = 0;
+    for (final SavedProjectSummary project in projects) {
+      windows += project.windowCount;
+      final ProjectBillSummary? bill = project.bill;
+      if (bill == null) continue;
+      billed += bill.grandTotal;
+      remaining += bill.remainingDue > 0 ? bill.remainingDue : 0;
+    }
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: _SummaryTile(
+            key: const Key('records_total_projects'),
+            label: 'Projects',
+            value: '${projects.length}',
+            icon: Icons.folder_open_rounded,
+            accent: AppTheme.royalBlue,
+          ),
+        ),
+        const SizedBox(width: AppTheme.space3),
+        if (showsBills) ...<Widget>[
+          Expanded(
+            child: _SummaryTile(
+              key: const Key('records_total_billed'),
+              label: 'Billed',
+              value: _rupees(billed),
+              icon: Icons.receipt_long_rounded,
+              accent: AppTheme.success,
+            ),
+          ),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: _SummaryTile(
+              key: const Key('records_total_remaining'),
+              label: 'Remaining',
+              value: _rupees(remaining),
+              icon: Icons.account_balance_wallet_rounded,
+              accent: remaining > 0 ? AppTheme.warning : AppTheme.success,
+            ),
+          ),
+        ] else
+          Expanded(
+            child: _SummaryTile(
+              label: 'Windows',
+              value: '$windows',
+              icon: Icons.window_rounded,
+              accent: AppTheme.tealAccent,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SummaryTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color accent;
+
+  const _SummaryTile({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space4),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: accent.withValues(alpha: 0.30)),
+        boxShadow: AppTheme.softShadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, size: 20, color: accent),
+          const SizedBox(height: AppTheme.space3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: text.titleMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: text.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One job, as a record.
+class _RecordCard extends StatelessWidget {
+  final SavedProjectSummary project;
+  final String notes;
+
+  /// Estimates carry a bill: customer, Grand Total, Remaining. Cutting and
+  /// glass jobs have none, so their cards do not leave empty boxes for one.
+  final bool showsBill;
+  final bool opening;
+  final bool savingNotes;
+  final VoidCallback onOpen;
+  final VoidCallback onEditNotes;
+  final Widget? deleteButton;
+
+  const _RecordCard({
+    required this.project,
+    required this.notes,
+    required this.showsBill,
+    required this.opening,
+    required this.savingNotes,
+    required this.onOpen,
+    required this.onEditNotes,
+    required this.deleteButton,
+  });
+
+  static (String, Color) _status(String status) => switch (status) {
+    'billed' => ('Billed', AppTheme.success),
+    'in_progress' => ('In progress', AppTheme.royalBlue),
+    'draft' => ('Draft', AppTheme.slate),
+    '' => ('Draft', AppTheme.slate),
+    _ => (
+      status[0].toUpperCase() + status.substring(1).replaceAll('_', ' '),
+      AppTheme.slate,
+    ),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    final ProjectBillSummary? bill = project.bill;
+    final (String statusLabel, Color statusColor) = _status(project.status);
+    final Color kindColor = project.isGlass
+        ? AppTheme.amberAccent
+        : AppTheme.tealAccent;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: Key('record_card_${project.id}'),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        onTap: opening ? null : onOpen,
+        child: Ink(
+          decoration: AppTheme.elevatedCardDecoration(),
+          child: Padding(
+            padding: const EdgeInsets.all(AppTheme.space5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                // Site, place and where the job stands.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: kindColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        project.isGlass
+                            ? Icons.grid_view_rounded
+                            : Icons.window_rounded,
+                        color: kindColor,
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.space4),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            project.projectName,
+                            style: text.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: <Widget>[
+                              Icon(
+                                Icons.place_outlined,
+                                size: 15,
+                                color: AppTheme.textSecondary,
+                              ),
+                              const SizedBox(width: 3),
+                              Flexible(
+                                child: Text(
+                                  project.projectLocation.isEmpty
+                                      ? '--'
+                                      : project.projectLocation,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: text.bodyMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.space3),
+                    _Pill(label: statusLabel, color: statusColor),
+                  ],
+                ),
+                if (showsBill) ...<Widget>[
+                  const SizedBox(height: AppTheme.space4),
+                  Row(
+                    children: <Widget>[
+                      Icon(
+                        Icons.person_outline_rounded,
+                        size: 18,
+                        color: AppTheme.textSecondary,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          bill == null
+                              ? 'Bill not made yet'
+                              : <String>[
+                                  bill.customerName.isEmpty
+                                      ? 'No customer name'
+                                      : bill.customerName,
+                                  if (bill.customerPhone.isNotEmpty)
+                                    bill.customerPhone,
+                                ].join('  ·  '),
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: bill == null || bill.customerName.isEmpty
+                                ? AppTheme.textSecondary
+                                : AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: AppTheme.space4),
+                // The figures, side by side.
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _Figure(
+                        label: project.isGlass ? 'Kind' : 'Windows',
+                        value: project.isGlass
+                            ? 'Glass'
+                            : '${project.windowCount}',
+                      ),
+                    ),
+                    if (showsBill) ...<Widget>[
+                      const SizedBox(width: AppTheme.space3),
+                      Expanded(
+                        flex: 2,
+                        child: _Figure(
+                          label: 'Grand Total',
+                          value: bill == null ? '--' : _rupees(bill.grandTotal),
+                        ),
+                      ),
+                      const SizedBox(width: AppTheme.space3),
+                      Expanded(
+                        flex: 2,
+                        child: _Figure(
+                          label: bill != null && bill.isPaid
+                              ? 'Remaining · Paid'
+                              : 'Remaining',
+                          value: bill == null
+                              ? '--'
+                              : _rupees(
+                                  bill.remainingDue > 0 ? bill.remainingDue : 0,
+                                ),
+                          accent: bill == null
+                              ? null
+                              : bill.remainingDue > 0
+                              ? AppTheme.warning
+                              : AppTheme.success,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: AppTheme.space4),
+                _NotesLine(
+                  key: Key('record_notes_${project.id}'),
+                  notes: notes,
+                  saving: savingNotes,
+                  onTap: onEditNotes,
+                ),
+                const SizedBox(height: AppTheme.space3),
+                Row(
+                  children: <Widget>[
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 15,
+                      color: AppTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Updated ${_when(project.updatedAt)}',
+                        style: text.bodySmall,
+                      ),
+                    ),
+                    ?deleteButton,
+                    if (opening)
+                      const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.2),
+                        ),
+                      )
+                    else
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: AppTheme.royalBlue,
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _Pill({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w900,
+          fontSize: 11.5,
+        ),
+      ),
+    );
+  }
+}
+
+/// One figure in a card's row: its value large, what it is small.
+class _Figure extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? accent;
+
+  const _Figure({required this.label, required this.value, this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    final Color tone = accent ?? AppTheme.royalBlue;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.space3,
+        vertical: AppTheme.space3,
+      ),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.labelSmall?.copyWith(
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: text.titleSmall?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: accent ?? AppTheme.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The shop's note on the job, or the way to add one.
+class _NotesLine extends StatelessWidget {
+  final String notes;
+  final bool saving;
+  final VoidCallback onTap;
+
+  const _NotesLine({
+    super.key,
+    required this.notes,
+    required this.saving,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    final bool empty = notes.trim().isEmpty;
+    return Material(
+      color: AppTheme.amberAccent.withValues(alpha: empty ? 0.05 : 0.10),
+      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        onTap: saving ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppTheme.space3),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(
+                Icons.sticky_note_2_outlined,
+                size: 18,
+                color: AppTheme.amberAccent,
+              ),
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
+                child: Text(
+                  empty ? 'Add a note' : notes,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyMedium?.copyWith(
+                    fontWeight: empty ? FontWeight.w700 : FontWeight.w600,
+                    color: empty
+                        ? AppTheme.textSecondary
+                        : AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space3),
+              saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      empty ? Icons.add_rounded : Icons.edit_outlined,
+                      size: 18,
+                      color: AppTheme.textSecondary,
+                    ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Writing the note: the box, and Save. Gives back what was written, or null
+/// when the sheet is closed without saving.
+class _NotesSheet extends StatefulWidget {
+  final SavedProjectSummary project;
+  final String initial;
+
+  const _NotesSheet({required this.project, required this.initial});
+
+  @override
+  State<_NotesSheet> createState() => _NotesSheetState();
+}
+
+class _NotesSheetState extends State<_NotesSheet> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                'Notes',
+                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              Text(widget.project.projectName, style: text.bodySmall),
+              const SizedBox(height: AppTheme.space4),
+              TextField(
+                key: const Key('project_notes_field'),
+                controller: _controller,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 8,
+                maxLength: 2000,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  hintText: 'Advance taken in cash, glass comes on Friday…',
+                ),
+              ),
+              const SizedBox(height: AppTheme.space3),
+              Row(
+                children: <Widget>[
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const Spacer(),
+                  FilledButton.icon(
+                    key: const Key('project_notes_save'),
+                    onPressed: () =>
+                        Navigator.of(context).pop(_controller.text),
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

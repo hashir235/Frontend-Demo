@@ -4,10 +4,6 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
-import '../../tutorial/tutorial_controller.dart';
-import '../../tutorial/tutorial_overlay.dart';
-import '../../tutorial/tutorial_step.dart';
-import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/next_step_action.dart';
@@ -40,6 +36,10 @@ class RateReviewScreen extends StatefulWidget {
   final bool materialTableShowNextToBill;
   final bool materialTableShowPdfActions;
 
+  /// The rates, already fetched -- by Review's one press to Bill Inputs,
+  /// which works this step out on the way. Null to fetch them here.
+  final RateReview? initialReview;
+
   const RateReviewScreen({
     super.key,
     required this.session,
@@ -56,10 +56,80 @@ class RateReviewScreen extends StatefulWidget {
     this.materialTableTitle = 'Estimation Material Table',
     this.materialTableShowNextToBill = true,
     this.materialTableShowPdfActions = true,
+    this.initialReview,
   });
 
   @override
   State<RateReviewScreen> createState() => _RateReviewScreenState();
+}
+
+/// The overrides this screen sends on when nothing on it is changed: each
+/// pile's rate as the list has it, or as the shop last set it.
+///
+/// What Review's one press to Bill Inputs prices the job with, so a job taken
+/// straight to Bill Inputs comes out exactly as one stepped through here by
+/// hand.
+List<RateOverrideInput> rateOverridesAsShown(
+  RateReview review,
+  List<RateOverrideInput> saved,
+) => _overridesFrom(_editableRowsFor(review, saved));
+
+/// The rows the screen opens on.
+///
+/// Keyed on the whole identity, not the profile name: a job can hold M23
+/// twice, and a rate the user set for the 2mm one must not be pasted onto the
+/// 1.2mm one sitting above it.
+List<_EditableRateRow> _editableRowsFor(
+  RateReview review,
+  List<RateOverrideInput> saved,
+) {
+  final Map<String, double> overridesByRow = <String, double>{
+    for (final RateOverrideInput override in saved) override.key: override.rate,
+  };
+  return review.rows
+      .map(
+        (RateReviewRow row) => _EditableRateRow(
+          section: row.section,
+          gauge: row.gauge,
+          color: row.color,
+          totalFt: row.totalFt,
+          totalFtDisplay: row.totalFtDisplay,
+          rateText: _formatRate(overridesByRow[row.key] ?? row.rate),
+        ),
+      )
+      .toList();
+}
+
+/// Every row with a usable rate, as the material table is asked for.
+List<RateOverrideInput> _overridesFrom(List<_EditableRateRow> rows) {
+  final List<RateOverrideInput> overrides = <RateOverrideInput>[];
+  for (final _EditableRateRow row in rows) {
+    final double? parsed = double.tryParse(row.rateText.trim());
+    if (parsed == null || parsed <= 0) {
+      continue;
+    }
+    overrides.add(
+      RateOverrideInput(
+        section: row.section,
+        gauge: row.gauge,
+        color: row.color,
+        rate: parsed,
+      ),
+    );
+  }
+  return overrides;
+}
+
+String _formatRate(double value) {
+  final String fixed = value.toStringAsFixed(
+    value == value.truncateToDouble() ? 0 : 2,
+  );
+  if (!fixed.contains('.')) {
+    return fixed;
+  }
+  return fixed
+      .replaceFirst(RegExp(r'0+$'), '')
+      .replaceFirst(RegExp(r'\.$'), '');
 }
 
 class _RateReviewScreenState extends State<RateReviewScreen> {
@@ -78,7 +148,13 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
         colorValue: widget.colorValue,
       ),
     );
-    _loadRates();
+    final RateReview? ready = widget.initialReview;
+    if (ready != null) {
+      _editableRows = _editableRowsFor(ready, widget.session.rateOverrides);
+      _isLoading = false;
+    } else {
+      _loadRates();
+    }
   }
 
   Future<void> _loadRates() async {
@@ -98,27 +174,7 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
         return;
       }
       setState(() {
-        // Keyed on the whole identity, not the profile name: a job can hold
-        // M23 twice, and a rate the user set for the 2mm one must not be
-        // pasted onto the 1.2mm one sitting above it.
-        final Map<String, double> overridesByRow = <String, double>{
-          for (final RateOverrideInput override in widget.session.rateOverrides)
-            override.key: override.rate,
-        };
-        _editableRows = review.rows
-            .map(
-              (RateReviewRow row) => _EditableRateRow(
-                section: row.section,
-                gauge: row.gauge,
-                color: row.color,
-                totalFt: row.totalFt,
-                totalFtDisplay: row.totalFtDisplay,
-                rateText: _formatDecimal(
-                  overridesByRow[row.key] ?? row.rate,
-                ),
-              ),
-            )
-            .toList();
+        _editableRows = _editableRowsFor(review, widget.session.rateOverrides);
         _isLoading = false;
       });
     } on Exception catch (error) {
@@ -132,18 +188,6 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
     }
   }
 
-  static String _formatDecimal(double value) {
-    final String fixed = value.toStringAsFixed(
-      value == value.truncateToDouble() ? 0 : 2,
-    );
-    if (!fixed.contains('.')) {
-      return fixed;
-    }
-    return fixed
-        .replaceFirst(RegExp(r'0+$'), '')
-        .replaceFirst(RegExp(r'\.$'), '');
-  }
-
   void _updateRate(int index, String value) {
     setState(() {
       _editableRows = List<_EditableRateRow>.from(_editableRows);
@@ -152,22 +196,7 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
   }
 
   void _handleNextPressed() {
-    final List<RateOverrideInput> overrides = <RateOverrideInput>[];
-    for (final _EditableRateRow row in _editableRows) {
-      final double? parsed = double.tryParse(row.rateText.trim());
-      if (parsed == null || parsed <= 0) {
-        continue;
-      }
-      overrides.add(
-        RateOverrideInput(
-          section: row.section,
-          gauge: row.gauge,
-          color: row.color,
-          rate: parsed,
-        ),
-      );
-    }
-
+    final List<RateOverrideInput> overrides = _overridesFrom(_editableRows);
     widget.session.setRateOverrides(overrides);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -194,28 +223,15 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return TutorialOverlay(
-      screen: TutorialScreen.rateSetting,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Rate Setting'),
-          actions: <Widget>[
-            TutorialTarget(
-              id: 'rate.next',
-              child: NextStepAction(
-                onPressed: _isLoading
-                    ? null
-                    : () {
-                        TutorialController.instance.advanceAfterTap();
-                        _handleNextPressed();
-                      },
-              ),
-            ),
-          ],
-        ),
-        bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.rates.id),
-        body: AppScreenShell(child: _buildBody(context)),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Rate Setting'),
+        actions: <Widget>[
+          NextStepAction(onPressed: _isLoading ? null : _handleNextPressed),
+        ],
       ),
+      bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.rates.id),
+      body: AppScreenShell(child: _buildBody(context)),
     );
   }
 
@@ -315,61 +331,48 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          // The tour explains the first card only -- one id, one widget.
-          _maybeTourTarget(
-            id: 'rate.section',
-            enabled: index == 0,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                row.section,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              // The stock under the name. Two cards can read "M23" and
+              // carry different rates; this is what tells them apart.
+              if (row.materialLabel.isNotEmpty)
                 Text(
-                  row.section,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                // The stock under the name. Two cards can read "M23" and
-                // carry different rates; this is what tells them apart.
-                if (row.materialLabel.isNotEmpty)
-                  Text(
-                    row.materialLabel,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textSecondary,
-                    ),
+                  row.materialLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textSecondary,
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
           const SizedBox(height: AppTheme.space4),
           Row(
             children: <Widget>[
               Expanded(
-                child: _maybeTourTarget(
-                  id: 'rate.totalFt',
-                  enabled: index == 0,
-                  child: _ReadOnlyMetric(
-                    label: 'Total Length',
-                    value: row.totalFtDisplay,
-                  ),
+                child: _ReadOnlyMetric(
+                  label: 'Total Length',
+                  value: row.totalFtDisplay,
                 ),
               ),
               const SizedBox(width: AppTheme.space4),
               Expanded(
-                child: _maybeTourTarget(
-                  id: 'rate.value',
-                  enabled: index == 0,
-                  child: TextFormField(
-                    initialValue: row.rateText,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
-                    onChanged: (String value) => _updateRate(index, value),
-                    decoration: const InputDecoration(labelText: 'Rate'),
+                child: TextFormField(
+                  initialValue: row.rateText,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
+                  onChanged: (String value) => _updateRate(index, value),
+                  decoration: const InputDecoration(labelText: 'Rate'),
                 ),
               ),
             ],
@@ -377,16 +380,6 @@ class _RateReviewScreenState extends State<RateReviewScreen> {
         ],
       ),
     );
-  }
-
-  /// Wraps [child] in a tour target only on the card the tour points at.
-  Widget _maybeTourTarget({
-    required String id,
-    required bool enabled,
-    required Widget child,
-  }) {
-    if (!enabled) return child;
-    return TutorialTarget(id: id, child: child);
   }
 }
 
@@ -423,6 +416,11 @@ class _EditableRateRow {
   _EditableRateRow copyWith({String? rateText}) {
     return _EditableRateRow(
       section: section,
+      // The stock stays with an edited rate: dropped, the rate was sent on
+      // for no gauge and colour at all, and was not found again for its own
+      // pile the next time the screen opened.
+      gauge: gauge,
+      color: color,
       totalFt: totalFt,
       totalFtDisplay: totalFtDisplay,
       rateText: rateText ?? this.rateText,

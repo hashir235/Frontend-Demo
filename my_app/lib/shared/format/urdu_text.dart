@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 
-/// Urdu text styles for the guided tutorial.
+/// Urdu text styles, for the lines the app writes in Urdu.
 ///
 /// Two faces, on purpose. Nastaliq is the hand Urdu is actually written in and
 /// it makes the headings feel like Urdu rather than translated English -- but

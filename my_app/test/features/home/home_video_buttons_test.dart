@@ -7,7 +7,6 @@ import 'package:my_app/features/help_videos/tutorial_videos.dart';
 import 'package:my_app/features/help_videos/video_links_store.dart';
 import 'package:my_app/features/home/presentation/home_screen.dart';
 import 'package:my_app/features/subscription/data/subscription_api_client.dart';
-import 'package:my_app/features/tutorial/tutorial_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Every module card on Home carries the red "Watch" button for its whole
@@ -42,9 +41,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   }
 
-  setUp(() async {
+  setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    await TutorialController.instance.markSeen();
     VideoLinksStore.instance.setLinksForTest(<String, String>{});
   });
 

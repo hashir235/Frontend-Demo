@@ -11,7 +11,6 @@ import 'package:my_app/features/subscription/models/home_plan_look.dart';
 import 'package:my_app/features/subscription/models/subscription_models.dart';
 import 'package:my_app/features/subscription/presentation/plan_validity_card.dart';
 import 'package:my_app/features/subscription/state/plan_shade.dart';
-import 'package:my_app/features/tutorial/tutorial_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Home shows a shop's plan at its foot and takes the plan's colour: green
@@ -189,10 +188,8 @@ void main() {
       return color == Colors.transparent ? null : color;
     }
 
-    setUp(() async {
+    setUp(() {
       SharedPreferences.setMockInitialValues(<String, Object>{});
-      // Home would otherwise start the first-run tour over the test.
-      await TutorialController.instance.markSeen();
       // One shade for the whole app: the last test's must not carry over.
       PlanShade.instance.clear();
     });

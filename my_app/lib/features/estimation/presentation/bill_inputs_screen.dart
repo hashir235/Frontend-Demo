@@ -4,10 +4,6 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../flow_nav/models/flow_step.dart';
 import '../../flow_nav/presentation/flow_progress_bar.dart';
-import '../../tutorial/tutorial_controller.dart';
-import '../../tutorial/tutorial_overlay.dart';
-import '../../tutorial/tutorial_step.dart';
-import '../../tutorial/tutorial_target.dart';
 import '../../../shared/widgets/app_hero_header.dart';
 import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/next_step_action.dart';
@@ -404,170 +400,147 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return TutorialOverlay(
-      screen: TutorialScreen.billInputs,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Bill Inputs'),
-          actions: <Widget>[
-            TutorialTarget(
-              id: 'bill.next',
-              child: NextStepAction(
-                onPressed: () {
-                  TutorialController.instance.advanceAfterTap();
-                  _handleNextPressed();
-                },
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Bill Inputs'),
+        actions: <Widget>[
+          NextStepAction(onPressed: _handleNextPressed),
+        ],
+      ),
+      bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.billInputs.id),
+      body: AppScreenShell(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: <Widget>[
+              const AppHeroHeader(
+                eyebrow: 'BILLING',
+                title: 'Enter billing inputs',
+                videoKey: TutorialVideos.estimationBillInputs,
+                subtitle:
+                    'Keep the rate inputs tight, optional details controlled, and move directly into the final bill.',
               ),
-            ),
-          ],
-        ),
-        bottomNavigationBar: FlowProgressBar(stepId: FlowSteps.billInputs.id),
-        body: AppScreenShell(
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              children: <Widget>[
-                const AppHeroHeader(
-                  eyebrow: 'BILLING',
-                  title: 'Enter billing inputs',
-                  videoKey: TutorialVideos.estimationBillInputs,
-                  subtitle:
-                      'Keep the rate inputs tight, optional details controlled, and move directly into the final bill.',
-                ),
-                const SizedBox(height: AppTheme.space5),
-                ProjectMetaStrip(
-                  projectName: widget.projectName,
-                  projectLocation: widget.projectLocation,
-                  extras: <Widget>[
-                    _InfoChip(label: 'Gage', value: widget.gaugeLabel),
-                    _InfoChip(label: 'Colour', value: widget.colorLabel),
-                    _InfoChip(
-                      label: 'Aluminium',
-                      value: _formatAmount(widget.aluminiumTotal),
+              const SizedBox(height: AppTheme.space5),
+              ProjectMetaStrip(
+                projectName: widget.projectName,
+                projectLocation: widget.projectLocation,
+                extras: <Widget>[
+                  _InfoChip(label: 'Gage', value: widget.gaugeLabel),
+                  _InfoChip(label: 'Colour', value: widget.colorLabel),
+                  _InfoChip(
+                    label: 'Aluminium',
+                    value: _formatAmount(widget.aluminiumTotal),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.space6),
+              SectionSurfaceCard(
+                title: 'Mandatory Fields',
+                subtitle:
+                    'These values drive the actual bill calculation and are required.',
+                child: Column(
+                  children: <Widget>[
+                    if (!_pricesGlassPerColor)
+                      _buildNumberField(
+                        controller: _glassRateController,
+                        label: 'Glass Rate *',
+                        validator: _requiredNumberValidator,
+                      )
+                    else
+                      // One box per glass, each saying which glass and how
+                      // many feet that rate buys. The footage is in the
+                      // label because the rate is per foot: seeing "124.5 sq
+                      // ft" beside the box is what stops someone entering
+                      // the total for the lot.
+                      for (final GlassAreaSummary group in _glassGroups)
+                        _buildGlassRateField(group),
+                    _buildNumberField(
+                      controller: _laborRateController,
+                      label: 'Labor Rate *',
+                      validator: _requiredNumberValidator,
+                    ),
+                    if (!_pricesHardwarePerType)
+                      _buildNumberField(
+                        controller: _hardwareRateController,
+                        label: 'Hardware Rate *',
+                        validator: _requiredNumberValidator,
+                      )
+                    else ...<Widget>[
+                      // The count is in the label because the rate is per
+                      // window, not per line: seeing "x 7" next to the box
+                      // is what stops someone entering the total for all
+                      // seven.
+                      for (final MapEntry<String, int> entry
+                          in _windowTypeCounts)
+                        _buildNumberField(
+                          controller: _hardwareByType[entry.key]!,
+                          label:
+                              'Hardware Rate — ${entry.key}  × ${entry.value} *',
+                          validator: _requiredNumberValidator,
+                        ),
+                    ],
+                    _buildNumberField(
+                      controller: _discountController,
+                      label: 'Aluminium Discount % *',
+                      validator: _discountValidator,
                     ),
                   ],
                 ),
-                const SizedBox(height: AppTheme.space6),
-                SectionSurfaceCard(
-                  title: 'Mandatory Fields',
-                  subtitle:
-                      'These values drive the actual bill calculation and are required.',
-                  child: Column(
-                    children: <Widget>[
-                      if (!_pricesGlassPerColor)
-                        _buildNumberField(
-                          controller: _glassRateController,
-                          label: 'Glass Rate *',
-                          validator: _requiredNumberValidator,
-                          tourId: 'bill.glassRate',
-                        )
-                      else
-                        // One box per glass, each saying which glass and how
-                        // many feet that rate buys. The footage is in the
-                        // label because the rate is per foot: seeing "124.5 sq
-                        // ft" beside the box is what stops someone entering
-                        // the total for the lot.
-                        for (final GlassAreaSummary group in _glassGroups)
-                          _buildGlassRateField(group),
-                      _buildNumberField(
-                        controller: _laborRateController,
-                        label: 'Labor Rate *',
-                        validator: _requiredNumberValidator,
-                        tourId: 'bill.laborRate',
+              ),
+              const SizedBox(height: AppTheme.space5),
+              SectionSurfaceCard(
+                title: 'Optional Details',
+                subtitle:
+                    'Add customer and adjustment details only where they are needed.',
+                child: Column(
+                  children: <Widget>[
+                    _buildNumberField(
+                      controller: _extraChargesController,
+                      label: 'Extra Charges',
+                      validator: _optionalNumberValidator,
+                    ),
+                    _buildNumberField(
+                      controller: _advancePaidController,
+                      label: 'Advance Paid',
+                      validator: _optionalNumberValidator,
+                    ),
+                    // Only when the windows did not say. Glass is picked per
+                    // window now, so typing it again here could only
+                    // contradict what was actually chosen.
+                    if (!_pricesGlassPerColor)
+                      _buildTextField(
+                        onChanged: _onGlassColorChanged,
+                        controller: _glassColorController,
+                        label: 'Glass Color',
+                        inputFormatters: _glassColorInputFormatters,
                       ),
-                      if (!_pricesHardwarePerType)
-                        _buildNumberField(
-                          controller: _hardwareRateController,
-                          label: 'Hardware Rate *',
-                          validator: _requiredNumberValidator,
-                          tourId: 'bill.hardwareRate',
-                        )
-                      else ...<Widget>[
-                        // The count is in the label because the rate is per
-                        // window, not per line: seeing "x 7" next to the box
-                        // is what stops someone entering the total for all
-                        // seven.
-                        for (final MapEntry<String, int> entry
-                            in _windowTypeCounts)
-                          _buildNumberField(
-                            controller: _hardwareByType[entry.key]!,
-                            label:
-                                'Hardware Rate — ${entry.key}  × ${entry.value} *',
-                            validator: _requiredNumberValidator,
-                            tourId: 'bill.hardwareRate',
-                          ),
-                      ],
-                      _buildNumberField(
-                        controller: _discountController,
-                        label: 'Aluminium Discount % *',
-                        validator: _discountValidator,
-                        tourId: 'bill.discount',
-                      ),
-                    ],
-                  ),
+                    _buildTextField(
+                      controller: _aluminiumCompanyController,
+                      label: 'Aluminium Company',
+                      inputFormatters: _nameInputFormatters,
+                    ),
+                    _buildTextField(
+                      controller: _customerNameController,
+                      label: 'Customer Name',
+                      inputFormatters: _nameInputFormatters,
+                    ),
+                    _buildTextField(
+                      controller: _addressController,
+                      label: 'Address',
+                      maxLines: 2,
+                      inputFormatters: _addressInputFormatters,
+                    ),
+                    _buildTextField(
+                      controller: _phoneController,
+                      label: 'Phone Number',
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: _phoneInputFormatters,
+                      validator: _phoneValidator,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppTheme.space5),
-                SectionSurfaceCard(
-                  title: 'Optional Details',
-                  subtitle:
-                      'Add customer and adjustment details only where they are needed.',
-                  child: Column(
-                    children: <Widget>[
-                      _buildNumberField(
-                        controller: _extraChargesController,
-                        label: 'Extra Charges',
-                        validator: _optionalNumberValidator,
-                        tourId: 'bill.extraCharges',
-                      ),
-                      _buildNumberField(
-                        controller: _advancePaidController,
-                        label: 'Advance Paid',
-                        validator: _optionalNumberValidator,
-                        tourId: 'bill.advance',
-                      ),
-                      // Only when the windows did not say. Glass is picked per
-                      // window now, so typing it again here could only
-                      // contradict what was actually chosen.
-                      if (!_pricesGlassPerColor)
-                        _buildTextField(
-                          onChanged: _onGlassColorChanged,
-                          controller: _glassColorController,
-                          label: 'Glass Color',
-                          inputFormatters: _glassColorInputFormatters,
-                          tourId: 'bill.glassColor',
-                        ),
-                      _buildTextField(
-                        controller: _aluminiumCompanyController,
-                        label: 'Aluminium Company',
-                        inputFormatters: _nameInputFormatters,
-                        tourId: 'bill.company',
-                      ),
-                      _buildTextField(
-                        controller: _customerNameController,
-                        label: 'Customer Name',
-                        inputFormatters: _nameInputFormatters,
-                        tourId: 'bill.customer',
-                      ),
-                      _buildTextField(
-                        controller: _addressController,
-                        label: 'Address',
-                        maxLines: 2,
-                        inputFormatters: _addressInputFormatters,
-                        tourId: 'bill.address',
-                      ),
-                      _buildTextField(
-                        controller: _phoneController,
-                        label: 'Phone Number',
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: _phoneInputFormatters,
-                        validator: _phoneValidator,
-                        tourId: 'bill.phone',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -582,26 +555,23 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
   Widget _buildGlassRateField(GlassAreaSummary group) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space4),
-      child: _withTourTarget(
-        'bill.glassRate',
-        TextFormField(
-          controller: _glassByColor[group.color]!,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: _decimalInputFormatters,
-          validator: _requiredNumberValidator,
-          decoration: InputDecoration(
-            labelText:
-                'Glass Rate — ${group.color}  ·  '
-                '${_formatArea(group.areaSqFt)} ${widget.areaUnit} *',
-            prefixIcon: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.space4,
-                vertical: 12,
-              ),
-              child: GlassSwatch(color: group.color, size: 20),
+      child: TextFormField(
+        controller: _glassByColor[group.color]!,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: _decimalInputFormatters,
+        validator: _requiredNumberValidator,
+        decoration: InputDecoration(
+          labelText:
+              'Glass Rate — ${group.color}  ·  '
+              '${_formatArea(group.areaSqFt)} ${widget.areaUnit} *',
+          prefixIcon: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppTheme.space4,
+              vertical: 12,
             ),
-            prefixIconConstraints: const BoxConstraints(minWidth: 0),
+            child: GlassSwatch(color: group.color, size: 20),
           ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 0),
         ),
       ),
     );
@@ -615,20 +585,15 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     required TextEditingController controller,
     required String label,
     String? Function(String?)? validator,
-    // The tour explains every field here one by one, so each carries its own id.
-    String? tourId,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space4),
-      child: _withTourTarget(
-        tourId,
-        TextFormField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: _decimalInputFormatters,
-          validator: validator,
-          decoration: InputDecoration(labelText: label),
-        ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: _decimalInputFormatters,
+        validator: validator,
+        decoration: InputDecoration(labelText: label),
       ),
     );
   }
@@ -640,28 +605,21 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
-    String? tourId,
     ValueChanged<String>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space4),
-      child: _withTourTarget(
-        tourId,
-        TextFormField(
-          controller: controller,
-          maxLines: maxLines,
-          keyboardType: keyboardType,
-          inputFormatters: inputFormatters,
-          validator: validator,
-          onChanged: onChanged,
-          decoration: InputDecoration(labelText: label),
-        ),
+      child: TextFormField(
+        controller: controller,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        validator: validator,
+        onChanged: onChanged,
+        decoration: InputDecoration(labelText: label),
       ),
     );
   }
-
-  Widget _withTourTarget(String? id, Widget child) =>
-      id == null ? child : TutorialTarget(id: id, child: child);
 }
 
 class _InfoChip extends StatelessWidget {

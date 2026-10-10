@@ -23,11 +23,17 @@ class ProjectRepository {
   Future<List<SavedProjectSummary>> fetchRecentProjects({
     required EstimateFlow flow,
     int limit = 30,
+    bool details = false,
   }) {
     return _apiClient.fetchRecentProjects(
       context: _contextForFlow(flow),
       limit: limit,
+      details: details,
     );
+  }
+
+  Future<String> saveProjectNotes(String projectId, String notes) {
+    return _apiClient.saveProjectNotes(projectId: projectId, notes: notes);
   }
 
   Future<SavedProjectDetail> fetchProject(String projectId) {
