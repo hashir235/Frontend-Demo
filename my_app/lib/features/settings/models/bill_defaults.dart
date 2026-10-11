@@ -71,6 +71,11 @@ class BillDefaults {
   /// the rates.
   final bool? runningFeet;
 
+  /// The invoice figures this shop keeps off the PDF, as its account holds
+  /// them; null when the account has never had them saved. Saved on its own
+  /// the moment a switch is tapped, never with the rates.
+  final List<String>? invoicePrintHidden;
+
   const BillDefaults({
     this.labourRate = '',
     this.hardwareRate = '',
@@ -78,6 +83,7 @@ class BillDefaults {
     this.glass = const <String, String>{},
     this.hardware = const <String, String>{},
     this.runningFeet,
+    this.invoicePrintHidden,
   });
 
   /// The city whose workshops bill in running feet unless they switch it off.
@@ -139,6 +145,7 @@ class BillDefaults {
       glass: glass ?? this.glass,
       hardware: hardware ?? this.hardware,
       runningFeet: runningFeet,
+      invoicePrintHidden: invoicePrintHidden,
     );
   }
 
@@ -160,6 +167,12 @@ class BillDefaults {
           e.key: '${e.value}'.trim(),
       }),
       runningFeet: json['runningFeet'] is bool ? json['runningFeet'] as bool : null,
+      invoicePrintHidden: json['invoicePrintHidden'] is List
+          ? <String>[
+              for (final Object? name in json['invoicePrintHidden'] as List<dynamic>)
+                if (name is String) name,
+            ]
+          : null,
     );
   }
 

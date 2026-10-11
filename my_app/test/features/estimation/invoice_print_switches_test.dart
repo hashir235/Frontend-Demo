@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -5,20 +6,68 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:my_app/core/network/auth_http_client.dart';
 import 'package:my_app/features/estimation/data/billing_repository.dart';
 import 'package:my_app/features/estimation/models/bill_request.dart';
 import 'package:my_app/features/estimation/models/bill_snapshot.dart';
 import 'package:my_app/features/estimation/presentation/actual_bill_screen.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 import 'package:my_app/features/estimation/state/invoice_print_choices.dart';
+import 'package:my_app/features/settings/data/bill_defaults_api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Final Bill: every figure that prints on the PDF is a switch. Tapped off,
 /// it dims, stays off for the next bills, and the PDF is asked for without it.
 void main() {
+  /// The account on the server: what it holds (null for never saved), every
+  /// save sent to it, and whether it can be reached at all.
+  List<String>? account;
+  late List<List<String>> sent;
+  late bool online;
+
+  /// Holds a read of the account until the test lets it through.
+  Completer<void>? holdRead;
+
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     InvoicePrintChoices.instance.resetForTest();
+    account = null;
+    sent = <List<String>>[];
+    online = true;
+    holdRead = null;
+    InvoicePrintChoices.instance.clientFactory = () => BillDefaultsApiClient(
+          client: AuthHttpClient(
+            MockClient((http.Request request) async {
+              if (!online) throw http.ClientException('no signal');
+              final String path = request.url.path;
+              if (request.method == 'GET' && path.endsWith('/api/settings/bill-defaults')) {
+                await holdRead?.future;
+                return http.Response(
+                  jsonEncode(<String, dynamic>{
+                    'ok': true,
+                    'defaults': <String, dynamic>{'invoicePrintHidden': account},
+                  }),
+                  200,
+                );
+              }
+              if (request.method == 'PUT' && path.endsWith('/api/settings/invoice-print')) {
+                final List<String> hidden =
+                    ((jsonDecode(request.body) as Map<String, dynamic>)['hidden'] as List<dynamic>)
+                        .cast<String>();
+                sent.add(hidden);
+                account = hidden;
+                return http.Response(
+                  jsonEncode(<String, dynamic>{
+                    'ok': true,
+                    'defaults': <String, dynamic>{'invoicePrintHidden': hidden},
+                  }),
+                  200,
+                );
+              }
+              return http.Response('{}', 404);
+            }),
+          ),
+        );
   });
 
   InvoicePrintChoices choices() => InvoicePrintChoices.instance;
@@ -91,6 +140,91 @@ void main() {
       expect(choices().hidden, <String>['totals.laborCost']);
       await choices().toggle('customer.name');
       expect(choices().hidden, <String>['totals.laborCost']);
+    });
+  });
+
+  group('kept with the account', () {
+    test('a tap is sent to the account straight away', () async {
+      await choices().toggle(InvoiceFigure.totalLaborCost);
+      expect(sent.last, <String>[InvoiceFigure.totalLaborCost]);
+      await choices().toggle(InvoiceFigure.grandTotal);
+      expect(sent.last, <String>[InvoiceFigure.grandTotal, InvoiceFigure.totalLaborCost]);
+      expect(choices().isUnsent, isFalse);
+      await choices().printAll();
+      expect(sent.last, isEmpty, reason: 'printing everything is a choice too');
+    });
+
+    test('a new phone signing in takes the account\'s choices', () async {
+      account = <String>[InvoiceFigure.grandTotal, InvoiceFigure.windowHardwareRate];
+      await choices().syncWithAccount();
+      expect(choices().prints(InvoiceFigure.grandTotal), isFalse);
+      expect(choices().prints(InvoiceFigure.windowHardwareRate), isFalse);
+      expect(choices().prints(InvoiceFigure.totalLaborCost), isTrue);
+      expect(sent, isEmpty, reason: 'nothing sent back');
+      // And keeps them on the phone, for the next time it opens.
+      await settle();
+      await reopen();
+      expect(choices().hidden,
+          <String>[InvoiceFigure.grandTotal, InvoiceFigure.windowHardwareRate]);
+    });
+
+    test('an account that never had them takes this phone\'s', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'quick_al.invoice_hidden_figures': <String>['totals.laborCost'],
+      });
+      await reopen();
+      await choices().syncWithAccount();
+      expect(sent.single, <String>['totals.laborCost']);
+      expect(choices().prints(InvoiceFigure.totalLaborCost), isFalse);
+    });
+
+    test('no signal: kept on the phone, and sent at the next chance', () async {
+      online = false;
+      await choices().toggle(InvoiceFigure.advancePaid);
+      expect(choices().prints(InvoiceFigure.advancePaid), isFalse);
+      expect(choices().isUnsent, isTrue);
+      // Still unsent after the app is closed and opened again.
+      await settle();
+      await reopen();
+      expect(choices().isUnsent, isTrue);
+
+      // The account still holds an older choice; this phone's tap is newer.
+      account = <String>[InvoiceFigure.grandTotal];
+      online = true;
+      await choices().syncWithAccount();
+      expect(sent.single, <String>[InvoiceFigure.advancePaid]);
+      expect(choices().hidden, <String>[InvoiceFigure.advancePaid]);
+      expect(choices().isUnsent, isFalse);
+    });
+
+    test('a tap made while the account was being read stands', () async {
+      account = <String>[InvoiceFigure.grandTotal];
+      holdRead = Completer<void>();
+      final Future<void> syncing = choices().syncWithAccount();
+      await choices().toggle(InvoiceFigure.glassRate);
+      holdRead!.complete();
+      await syncing;
+      expect(choices().hidden, <String>[InvoiceFigure.glassRate]);
+      expect(account, <String>[InvoiceFigure.glassRate]);
+    });
+
+    test('signing out clears them from the phone for the next account', () async {
+      await choices().toggle(InvoiceFigure.totalLaborCost);
+      await choices().clearForSignOut();
+      expect(choices().hidden, isEmpty);
+      await settle();
+      await reopen();
+      expect(choices().hidden, isEmpty);
+      // The account keeps them: signing back in brings them back.
+      await choices().syncWithAccount();
+      expect(choices().hidden, <String>[InvoiceFigure.totalLaborCost]);
+    });
+
+    test('offline at sign-in: the phone\'s choices hold', () async {
+      await choices().toggle(InvoiceFigure.totalLaborCost);
+      online = false;
+      await choices().syncWithAccount();
+      expect(choices().hidden, <String>[InvoiceFigure.totalLaborCost]);
     });
   });
 

@@ -175,6 +175,9 @@ class WindowVariants {
       'SAHARA/ BROWN': 'Brown Sahara',
       'BLACK/ MULTI': 'Multi/BLK Ral +',
       'WOOD COAT': 'Wood Sahara +',
+      // Priced as champagne, named as on every other window.
+      'MILKY WHITE': 'Milky White',
+      'BLACK MATTE': 'Black Matte',
     },
     estimation: <String, List<OwnPiece>>{
       // The frame: both jambs, the head, the sill.

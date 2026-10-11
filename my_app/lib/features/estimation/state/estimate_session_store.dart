@@ -5,6 +5,7 @@ import '../models/estimate_flow_state.dart';
 import '../models/window_review_item.dart';
 import '../models/glass_color.dart';
 import '../models/window_material.dart';
+import '../models/window_variant.dart';
 import '../../formulas/model/piece_size.dart';
 import '../../formulas/model/window_sides.dart';
 import '../../settings/state/numbering_mode.dart';
@@ -374,7 +375,16 @@ class EstimateSessionStore extends ChangeNotifier {
     // stock is still in mind.
     // orElse: a window from a job that was never estimated can still have no
     // material of its own, and the picker needs something to open on.
-    return _items.last.material.orElse(WindowMaterial.initial);
+    final WindowReviewItem last = _items.last;
+    final WindowMaterial material = last.material.orElse(WindowMaterial.initial);
+    // A window made in a gauge of its own (Prime Economy, 0.9mm only) did not
+    // choose it, so the next window keeps the shop's usual gauge -- with the
+    // finish that was picked on it. Now that every window comes in 0.9mm too,
+    // nothing else would stop that gauge passing on unasked.
+    if (WindowVariants.ownOf(last.windowCode) != null) {
+      return material.copyWith(gauge: LastWindowMaterial.instance.value.gauge);
+    }
+    return material;
   }
 
   /// One material to stand for the job, for the few places that still want a

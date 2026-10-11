@@ -6,6 +6,7 @@ import '../../../core/network/auth_http_client.dart';
 import '../data/auth_api_client.dart';
 import '../data/auth_session_store.dart';
 import '../data/google_sign_in_service.dart';
+import '../../estimation/state/invoice_print_choices.dart';
 import '../../formulas/data/formula_book_loader.dart';
 import '../../subscription/state/plan_shade.dart';
 import '../models/auth_session_result.dart';
@@ -106,6 +107,8 @@ class AuthController extends ChangeNotifier {
       AuthSession.apply(session);
       _needsWorkshopSetup = session.needsWorkshopSetup;
       await _persistSession(session);
+      // The account's invoice print switches, wherever they were last set.
+      unawaited(InvoicePrintChoices.instance.syncWithAccount());
       _busy = false;
       notifyListeners();
       return true;
@@ -224,6 +227,8 @@ class AuthController extends ChangeNotifier {
     // not meet the last shop's notice -- or open in the last shop's colour.
     AccountBlock.instance.clear();
     PlanShade.instance.clear();
+    // Its invoice print switches are its own, kept with the account.
+    unawaited(InvoicePrintChoices.instance.clearForSignOut());
     _needsWorkshopSetup = false;
     _busy = false;
     notifyListeners();
@@ -259,6 +264,7 @@ class AuthController extends ChangeNotifier {
     AuthSession.clear();
     await _sessionStore.clear();
     PlanShade.instance.clear();
+    unawaited(InvoicePrintChoices.instance.clearForSignOut());
     _needsWorkshopSetup = false;
     _busy = false;
     notifyListeners();
@@ -284,6 +290,7 @@ class AuthController extends ChangeNotifier {
     unawaited(_sessionStore.clear());
     unawaited(_googleSignIn.signOut());
     PlanShade.instance.clear();
+    unawaited(InvoicePrintChoices.instance.clearForSignOut());
     _needsWorkshopSetup = false;
     _busy = false;
     _errorMessage =
@@ -312,6 +319,8 @@ class AuthController extends ChangeNotifier {
       AuthSession.apply(session);
       _needsWorkshopSetup = session.needsWorkshopSetup;
       await _persistSession(session);
+      // The account's invoice print switches, wherever they were last set.
+      unawaited(InvoicePrintChoices.instance.syncWithAccount());
       _busy = false;
       notifyListeners();
       return true;
@@ -374,6 +383,9 @@ class AuthController extends ChangeNotifier {
         // from the office -- the server's copy is taken when it is newer than
         // this device's, and left alone when it is not.
         await const FormulaBookLoader().syncFromServer();
+        // And its invoice print switches -- or, if a tap on this phone never
+        // reached the account, that tap goes up now.
+        unawaited(InvoicePrintChoices.instance.syncWithAccount());
       }
     } catch (_) {
       AuthSession.clear();

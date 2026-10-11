@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:my_app/core/downloads/pdf_download_workflow.dart';
 
@@ -67,6 +69,9 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
     super.initState();
     _repository = widget.repository ?? BillingRepository();
     _print.addListener(_onPrintChoicesChanged);
+    // The switches as the account last had them -- set on another phone,
+    // perhaps -- and any tap here that has not reached the account yet.
+    unawaited(_print.syncWithAccount());
     _loadBill();
   }
 

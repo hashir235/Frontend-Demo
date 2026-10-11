@@ -137,12 +137,15 @@ void main() {
       await tester.tap(find.byKey(const Key('review_apply_gauge')));
       await tester.pumpAndSettle();
 
-      for (final String gauge in <String>['0.9mm', '1.2mm', '1.6mm', '2mm']) {
+      for (final String gauge in <String>['0.9mm', '1mm', '1.2mm', '1.6mm', '2mm']) {
         expect(find.byKey(Key('apply_choice_$gauge')), findsOneWidget);
       }
+      // 1.2mm and 2mm: not Prime Economy, one window on each.
       expect(find.text('For 2 of 3 windows · On 1 of 3 now'), findsNWidgets(2));
-      expect(find.text('For 2 of 3 windows · On none now'), findsOneWidget);
-      expect(find.text('For 1 of 3 windows · On 1 of 3 now'), findsOneWidget);
+      // 1mm and 1.6mm: nobody on them yet.
+      expect(find.text('For 2 of 3 windows · On none now'), findsNWidgets(2));
+      // 0.9mm: every window comes in it now; Prime Economy is on it.
+      expect(find.text('On 1 of 3 now'), findsOneWidget);
     },
   );
 

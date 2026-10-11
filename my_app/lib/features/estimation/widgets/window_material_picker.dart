@@ -45,8 +45,8 @@ class WindowGaugePicker extends StatelessWidget {
   final WindowMaterial value;
   final ValueChanged<WindowMaterial> onChanged;
 
-  /// The gauges the window comes in: the rate list's three, unless it is
-  /// made in others (Prime Economy, in 0.9mm only).
+  /// The gauges the window comes in: all five, unless it is made in others
+  /// (Prime Economy, in 0.9mm only).
   final List<String> gauges;
 
   const WindowGaugePicker({

@@ -62,6 +62,22 @@ class BillDefaultsApiClient {
     );
   }
 
+  /// Saves which invoice figures this shop keeps off the PDF, on their own --
+  /// the whole set, so the last tap always wins.
+  Future<BillDefaults> setInvoicePrintHidden(List<String> hidden) async {
+    final http.Response response = await _client
+        .put(
+          Uri.parse('${ApiConfig.baseUrl}/api/settings/invoice-print'),
+          headers: const <String, String>{'Content-Type': 'application/json'},
+          body: jsonEncode(<String, Object?>{'hidden': hidden}),
+        )
+        .timeout(const Duration(seconds: 12));
+    final Map<String, dynamic> body = _decode(response);
+    return BillDefaults.fromJson(
+      (body['defaults'] as Map<String, dynamic>?) ?? const <String, dynamic>{},
+    );
+  }
+
   Map<String, dynamic> _decode(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw const BillDefaultsApiException(

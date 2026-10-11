@@ -245,9 +245,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// next job opens on it too, until somebody picks again.
   void _pickMaterial(WindowMaterial next) {
     setState(() => _material = next);
-    // A gauge only this window comes in (Prime Economy's 0.9mm) is no choice
-    // for the next ordinary window, so that one keeps the gauge it had; the
-    // finish carries over like any other pick.
+    // The gauge of a window made in its own (Prime Economy's 0.9mm) was not
+    // a choice anybody made, so the next ordinary window keeps the gauge it
+    // had; the finish carries over like any other pick.
     final WindowMaterial remembered = _ownWindow == null
         ? next
         : next.copyWith(gauge: LastWindowMaterial.instance.value.gauge);
@@ -264,10 +264,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// [material] in a gauge this window comes in.
   ///
   /// The material a new window opens on is the last window's, and that can
-  /// be a gauge this one is not made in: a Prime Economy window's 0.9mm on
-  /// an ordinary window would price every bar at nothing, the rate list
-  /// having no 0.9mm for it. So a window made in its own gauges opens on its
-  /// first, and any other on the shop's usual one.
+  /// be a gauge this one is not made in: a 2mm window before a Prime Economy
+  /// one, which comes in 0.9mm only. So a window made in its own gauges opens
+  /// on its first, and any other on the shop's usual one.
   WindowMaterial _fittedToWindow(WindowMaterial material) {
     final List<String> gauges = _gauges;
     if (gauges.contains(material.gauge)) return material;

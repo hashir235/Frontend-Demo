@@ -45,8 +45,11 @@ class OptionSwitch extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
+          // A stretched option is as wide as its share of the row whatever
+          // its padding, so the padding only takes room from the label: kept
+          // small, so five gauges read whole on a small phone.
           padding: EdgeInsets.symmetric(
-            horizontal: expand ? 8 : 16,
+            horizontal: expand ? 4 : 16,
             vertical: caption == null ? 11 : 8,
           ),
           decoration: BoxDecoration(
@@ -62,16 +65,18 @@ class OptionSwitch extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  color: selected
-                      ? AppTheme.royalBlue
-                      : AppTheme.textSecondary,
+              _fitted(
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: expand ? TextOverflow.visible : TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: selected
+                        ? AppTheme.royalBlue
+                        : AppTheme.textSecondary,
+                  ),
                 ),
               ),
               if (caption != null)
@@ -94,6 +99,13 @@ class OptionSwitch extends StatelessWidget {
 
     return expand ? SizedBox(width: double.infinity, child: button) : button;
   }
+
+  /// A label in a stretched option, shrunk a little when its share of the row
+  /// is narrower than the word -- five gauges on a small phone -- rather than
+  /// cut to "0.9…", which reads as a different gauge. Where it fits, it is
+  /// drawn exactly as before.
+  Widget _fitted(Widget label) =>
+      expand ? FittedBox(fit: BoxFit.scaleDown, child: label) : label;
 }
 
 /// A labelled row of [OptionSwitch]es.

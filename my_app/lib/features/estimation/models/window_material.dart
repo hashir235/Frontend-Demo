@@ -60,17 +60,25 @@ class WindowMaterial {
   String toString() => 'WindowMaterial($gauge, $color)';
 }
 
-/// The three gauges the rate list is priced in.
+/// The gauges a window can be made in, thinnest first.
+///
+/// The rate list prices three of them -- 1.2, 1.6 and 2mm. 0.9mm and 1mm are
+/// bought at the 1.2mm rate (Hashir, Oct 2026) and are offered so the bill
+/// can say what the window was really made in; the engine prices them from
+/// the 1.2mm row unless the list carries one of their own, as it does for
+/// Prime Economy's profiles in 0.9mm.
 class WindowGauges {
   const WindowGauges._();
 
+  static const String g09 = '0.9mm';
+  static const String g10 = '1mm';
   static const String g12 = '1.2mm';
   static const String g16 = '1.6mm';
   static const String g2 = '2mm';
 
-  static const List<String> all = <String>[g12, g16, g2];
+  static const List<String> all = <String>[g09, g10, g12, g16, g2];
 
-  /// The gauges window [windowCode] comes in: these three, unless it is made
+  /// The gauges window [windowCode] comes in: all of these, unless it is made
   /// in others (Prime Economy, in 0.9mm only).
   static List<String> forWindow(String windowCode) =>
       WindowVariants.ownOf(windowCode)?.gauges ?? all;
@@ -83,6 +91,11 @@ class WindowGauges {
 /// would price the job at nothing. The swatch is only for the eye: a shop
 /// picks colour by sight, and a row of identical grey chips reading "SAHARA/
 /// BROWN" and "BLACK/ MULTI" makes them read every time instead of glancing.
+///
+/// Milky White and Black Matte have no column of their own: they are bought
+/// at the champagne rate (Hashir, Oct 2026), and are offered so the bill
+/// prints the finish the window was made in. The engine prices them from the
+/// champagne column unless the list carries one of their own.
 class AluminiumColors {
   const AluminiumColors._();
 
@@ -91,6 +104,8 @@ class AluminiumColors {
   static const String sahara = 'SAHARA/ BROWN';
   static const String black = 'BLACK/ MULTI';
   static const String wood = 'WOOD COAT';
+  static const String milkyWhite = 'MILKY WHITE';
+  static const String blackMatte = 'BLACK MATTE';
 
   static const List<String> all = <String>[
     champagne,
@@ -98,6 +113,8 @@ class AluminiumColors {
     sahara,
     black,
     wood,
+    milkyWhite,
+    blackMatte,
   ];
 
   /// The full name, as the rates screen and the rate list write it.
@@ -113,6 +130,10 @@ class AluminiumColors {
         return 'BLACK/ MULTI';
       case wood:
         return 'WOOD COAT';
+      case milkyWhite:
+        return 'Milky White';
+      case blackMatte:
+        return 'Black Matte';
       default:
         return value;
     }
@@ -132,6 +153,10 @@ class AluminiumColors {
         return 'Black';
       case wood:
         return 'Wood';
+      case milkyWhite:
+        return 'Milky White';
+      case blackMatte:
+        return 'Black Matte';
       default:
         return value;
     }
@@ -150,17 +175,26 @@ class AluminiumColors {
         return const Color(0xFF2E2E2E);
       case wood:
         return const Color(0xFF6E4423);
+      // An off-white with a little warmth, so it does not read as an empty box
+      // on a white card.
+      case milkyWhite:
+        return const Color(0xFFF2EFE6);
+      // A flat, deeper black than Black/Multi's, which is drawn a shade lifted.
+      case blackMatte:
+        return const Color(0xFF1C1C1E);
       default:
         return const Color(0xFF9BA3AB);
     }
   }
 
-  /// Text that stays readable on top of [swatchFor]. Champagne and dull are
-  /// light enough to need dark text; the browns and black do not.
+  /// Text that stays readable on top of [swatchFor]. Champagne, dull and
+  /// milky white are light enough to need dark text; the browns and blacks do
+  /// not.
   static Color onSwatchFor(String value) {
     switch (value) {
       case champagne:
       case dull:
+      case milkyWhite:
         return const Color(0xFF1B2430);
       default:
         return Colors.white;
