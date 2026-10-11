@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-09-05T09:19:48.711360Z",
+  "generated": "2026-10-11T08:42:57.841482Z",
   "note": "Built from the engine's own output. Every formula here was checked to reproduce it at every sample point, before and after being tidied. Pieces name a formula by its place in \"formulas\".",
   "formulas": [
     "(h - 3.4 + cm) / feet",
@@ -14,7 +14,7 @@
     "((w - 15.5) / 2 + 8.5 + cm) / feet",
     "((w - 15.5) / 2 + cm) / feet",
     "(h - 4.3 + cm) / feet",
-    "((w - 17.2) / 2 + 9 + cm) / feet",
+    "((w - 15.5) / 2 + 7.6 + cm) / feet",
     "((w - 17.2) / 2 + cm) / feet",
     "((w - 15.5) / 2 + 5.5 + cm) / feet",
     "(((w - 20.32) / 2 - 5.08) / 2 + 8.5 + cm) / feet",
