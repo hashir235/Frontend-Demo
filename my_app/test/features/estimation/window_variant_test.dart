@@ -15,10 +15,12 @@ import 'package:my_app/features/formulas/data/window_cut_calculator.dart';
 import 'package:my_app/features/formulas/model/formula_overrides.dart';
 import 'package:my_app/features/formulas/model/formula_window_key.dart';
 
-/// The Prime (B frame) and Royal (BA frame) windows: each the sliding window
-/// it is made like, with DC30C and DC26C swapped for its own frame and every
-/// formula exactly the C profiles' -- never the collar (F) ones -- in the one
-/// collar type it comes in, collar 2, no collar on any side.
+/// The B/E and BA frame windows: each the sliding window it is made like,
+/// with its frame profiles swapped for its own and every formula exactly the
+/// swapped profile's. The B/E frame is built as the F/C one is -- E where a
+/// side has its collar, B where it has none -- in every collar; the BA frame
+/// comes in collar 2 only, no collar on any side, and so only ever swaps the
+/// C profiles.
 void main() {
   final FormulaCatalogue catalogue = FormulaCatalogue.fromJson(
     jsonDecode(File('assets/formulas/catalogue.json').readAsStringSync())
@@ -31,7 +33,12 @@ void main() {
       if (node.children.isEmpty) node else ...leaves(node.children),
   ];
 
-  const Map<String, String> bFrame = <String, String>{'DC30C': 'DC30B', 'DC26C': 'DC26B'};
+  const Map<String, String> bFrame = <String, String>{
+    'DC30F': 'DC30E',
+    'DC26F': 'DC26E',
+    'DC30C': 'DC30B',
+    'DC26C': 'DC26B',
+  };
   const Map<String, String> baFrame = <String, String>{'DC30C': 'DC30BA', 'DC26C': 'DC26BA'};
 
   final List<WindowVariant> bAndBa = WindowVariants.all
@@ -51,10 +58,15 @@ void main() {
     expect(bAndBa, hasLength(16));
     for (final WindowVariant v in bAndBa) {
       expect(v.baseCode.startsWith('M'), isFalse, reason: 'no M-section base');
-      expect(v.collars, <int>[2], reason: 'collar 2 only, as confirmed so far');
-      expect(v.sections, v.frame == 'B' ? bFrame : baFrame);
-      expect(v.sections.keys.any((String s) => s.endsWith('F')), isFalse,
-          reason: 'the collar profiles are never renamed onto these frames');
+      if (v.frame == 'B') {
+        expect(v.collars, isNull, reason: 'B/E: every collar of its base');
+        expect(v.sections, bFrame);
+      } else {
+        expect(v.collars, <int>[2], reason: 'BA: collar 2 only, as confirmed so far');
+        expect(v.sections, baFrame);
+        expect(v.sections.keys.any((String s) => s.endsWith('F')), isFalse,
+            reason: 'the collar profiles are never renamed onto the BA frame');
+      }
     }
     // Every one of them is in the library, once, and no plain window is a
     // variant by accident.
@@ -116,12 +128,12 @@ void main() {
     expect(group.title, 'Economy Sliding Window');
     expect(group.rows.first.title, 'PAK AL TECH');
     expect(group.rows.first.nodes.map((WindowType n) => n.label), <String>[
-      'Eco Sliding Window',
-      'Eco Sliding Window M_Section',
-      'Eco Panel Windows',
-      'Eco Panel Windows M_Section',
-      'Eco Corner Windows',
-      'Eco Corner Windows M_Section',
+      'EC Sliding Window',
+      'ET Sliding Window',
+      'EC Panel Windows',
+      'ET Panel Windows',
+      'EC Corner Windows',
+      'ET Corner Windows',
     ]);
   });
 
@@ -284,7 +296,7 @@ void main() {
     const OptimizationWindowRequest window = OptimizationWindowRequest(
       winNo: 1,
       windowCode: 'PF3B_win',
-      windowLabel: 'Prime Center Fix',
+      windowLabel: 'B/E Center Fix',
       collarIndex: 2,
       unitMode: 'inches',
       heightValue: '48',
@@ -312,13 +324,13 @@ void main() {
         )
         .toJson();
     expect(sent['windowCode'], 'PF3_win');
-    expect(sent['windowLabel'], 'Prime Center Fix', reason: 'its own name on the bill');
+    expect(sent['windowLabel'], 'B/E Center Fix', reason: 'its own name on the bill');
     expect((sent['computedPieces'] as List<dynamic>).single['section'], 'DC30B');
 
     const OptimizationWindowRequest plain = OptimizationWindowRequest(
       winNo: 2,
       windowCode: 'PF3_win',
-      windowLabel: 'Center Fix',
+      windowLabel: 'F/C Center Fix',
       collarIndex: 1,
       unitMode: 'inches',
       heightValue: '48',
@@ -343,8 +355,19 @@ void main() {
   group('the input screen', () {
     WindowType node(String code) => WindowCatalog.byCodeName(code)!;
 
-    test('B and BA: collar 2 only, drawn as the base\'s collar 2', () {
-      for (final WindowVariant variant in bAndBa) {
+    test('B/E: every collar of its base, picked as on the base', () {
+      for (final WindowVariant variant in bAndBa.where((WindowVariant v) => v.frame == 'B')) {
+        final CollarLayout own = CollarLayout.forWindow(variant.code)!;
+        final CollarLayout base = CollarLayout.forWindow(variant.baseCode)!;
+        expect(own.collars, base.collars);
+        expect(own.isFixed, isFalse);
+        expect(own.isWholeFrame, base.isWholeFrame);
+        expect(own.toggle(1, CollarSide.top), base.toggle(1, CollarSide.top));
+      }
+    });
+
+    test('BA: collar 2 only, drawn as the base\'s collar 2', () {
+      for (final WindowVariant variant in bAndBa.where((WindowVariant v) => v.frame == 'BA')) {
         final CollarLayout layout = CollarLayout.forWindow(variant.code)!;
         expect(layout.isFixed, isTrue);
         expect(layout.collars, <int>[2]);
@@ -360,13 +383,26 @@ void main() {
     test('the sidebar lists the variant\'s own frame; the drawing gets the base\'s names', () {
       final WindowInputHandler own = handlerForWindow(node('SB_win'));
       final WindowInputHandler base = handlerForWindow(node('S_win'));
-      expect(own.sectionsByCollar.keys, <int>[2]);
+      expect(own.sectionsByCollar.keys, base.sectionsByCollar.keys, reason: 'every collar');
       expect(own.sectionsForCollar(2), <String>['DC30B', 'DC26B', 'D29', 'M23', 'M24', 'M28']);
       expect(base.sectionsForCollar(2), <String>['DC30C', 'DC26C', 'D29', 'M23', 'M24', 'M28']);
+      // With a collar: E where F was, B where C was, nothing else moved.
+      for (int collar = 1; collar <= 14; collar++) {
+        expect(
+          own.sectionsForCollar(collar),
+          <String>[for (final String s in base.sectionsForCollar(collar)) bFrame[s] ?? s],
+          reason: 'collar $collar',
+        );
+      }
+      expect(own.sectionsForCollar(1), containsAll(<String>['DC30E', 'DC26E']));
+      expect(own.sectionsForCollar(1), isNot(contains('DC30F')));
 
       final Widget? drawing = own.overlayForCollar(2, 'DC30B');
       expect((drawing! as dynamic).selectedSection, 'DC30C');
       expect((drawing as dynamic).collarId, 2);
+      final Widget? withCollar = own.overlayForCollar(1, 'DC30E');
+      expect((withCollar! as dynamic).selectedSection, 'DC30F');
+      expect((withCollar as dynamic).collarId, 1);
 
       final WindowInputHandler corner = handlerForWindow(node('SCLBA_win'));
       expect(corner.usesSplitWidthInputs, isTrue, reason: 'a corner is still a corner');
@@ -407,8 +443,8 @@ void main() {
     test('each is drawn as the window it is made like', () {
       expect(WindowCatalog.drawnAs(node('PS4B_win')).codeName, 'PS4_win');
       final WindowType royalCorners = WindowCatalog.royalWindows
-          .firstWhere((WindowType n) => n.label == 'Royal Corner Windows');
-      expect(WindowCatalog.drawnAs(royalCorners).label, 'Sliding Corner Windows');
+          .firstWhere((WindowType n) => n.label == 'BA Corner Windows');
+      expect(WindowCatalog.drawnAs(royalCorners).label, 'F/C Corner Windows');
       expect(WindowCatalog.drawnAs(node('S_win')).codeName, 'S_win');
     });
   });

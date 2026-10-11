@@ -6,7 +6,6 @@ import 'package:my_app/features/estimation/widgets/window_card_strip.dart';
 import 'package:my_app/features/estimation/widgets/window_navigation_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../helpers/collar_taps.dart';
 
 /// The window library: "Sliding Windows" -- the plain frame, then the Prime
 /// (B frame) and Royal (BA frame) lines under the same heading -- and then
@@ -120,7 +119,7 @@ void main() {
     expect(tester.widget<Text>(card).data,
         'DC30F  ·  DC30C  ·  DC26F  ·  DC26C  ·  D29  ·  M23  ·  M24  ·  M28');
 
-    final double name = tester.getTopLeft(find.text('Sliding Window')).dy;
+    final double name = tester.getTopLeft(find.text('F/C Sliding Window')).dy;
     final double heading = tester.getTopLeft(find.text('Used Sections').first).dy;
     final double sections = tester.getTopLeft(card).dy;
     final double drawing = tester.getTopLeft(
@@ -132,18 +131,19 @@ void main() {
     expect(tester.takeException(), isNull, reason: 'nothing overflows on a phone');
   });
 
-  testWidgets('the Prime and Royal lines name their frame sections', (
+  testWidgets('the B/E and BA lines name their frame sections', (
     WidgetTester tester,
   ) async {
     await open(tester);
     await reach(tester, row('sliding_b'));
-    expect(find.text('Prime Sliding Window'), findsOneWidget);
+    expect(find.text('B/E Sliding Window'), findsOneWidget);
+    // E where a side has its collar, B where it has none, as F and C are.
     expect(
       tester.widget<Text>(find.byKey(const Key('used_sections_SB_win'))).data,
-      'DC30B  ·  DC26B  ·  D29  ·  M23  ·  M24  ·  M28',
+      'DC30E  ·  DC30B  ·  DC26E  ·  DC26B  ·  D29  ·  M23  ·  M24  ·  M28',
     );
     await reach(tester, row('sliding_ba'));
-    expect(find.text('Royal Sliding Window'), findsOneWidget);
+    expect(find.text('BA Sliding Window'), findsOneWidget);
     expect(
       tester.widget<Text>(find.byKey(const Key('used_sections_SBA_win'))).data,
       'DC30BA  ·  DC26BA  ·  D29  ·  M23  ·  M24  ·  M28',
@@ -198,27 +198,27 @@ void main() {
     );
   });
 
-  testWidgets('a Prime window opens on its own frame, without a collar', (
+  testWidgets('a B/E window opens on its own frame, in every collar', (
     WidgetTester tester,
   ) async {
     await open(tester);
     final Finder panels =
-        find.descendant(of: row('sliding_b'), matching: find.text('Prime Panel Windows'));
+        find.descendant(of: row('sliding_b'), matching: find.text('B/E Panel Windows'));
     await swipeTo(tester, 'sliding_b', panels);
     await tester.tap(panels);
     await tester.pumpAndSettle();
     expect(tester.widget<Text>(find.byKey(const Key('library_group_family'))).data,
-        'Prime Panel Windows');
+        'B/E Panel Windows');
     expect(await windowsIn(tester, 'family'), 3);
 
-    final Finder slide = find.text('Prime Center Slide');
+    final Finder slide = find.text('B/E Center Slide');
     await swipeTo(tester, 'family', slide);
     await tester.tap(slide);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('input_window_label')), findsOneWidget);
-    expect(shownCollar(tester), 2, reason: 'the one collar it comes in');
-    expect(find.text('This window has no collar on any side.'), findsOneWidget,
-        reason: 'the hint under the drawing says so');
+    // Collars are picked as on the F/C window: a tap on a side.
+    expect(find.text('Tap a side to remove or restore its collar'), findsOneWidget);
+    expect(find.text('This window has no collar on any side.'), findsNothing);
   });
 
   group('swiping', () {
@@ -303,8 +303,8 @@ void main() {
     double fromLine(Finder name) =>
         tester.getTopLeft(find.ancestor(of: name, matching: find.byType(WindowNavigationCard))).dy -
         tester.getTopLeft(row('sliding')).dy;
-    final double first = fromLine(find.text('Sliding Window'));
-    final Finder corner = find.text('Sliding Corner Windows M_Section');
+    final double first = fromLine(find.text('F/C Sliding Window'));
+    final Finder corner = find.text('M Corner Windows');
     await tester.scrollUntilVisible(corner, 150, scrollable: stripScroll('sliding'));
     expect(fromLine(corner), closeTo(first, 0.5),
         reason: 'the sixth card on the same line as the first');

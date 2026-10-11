@@ -35,11 +35,12 @@ class WindowNavigationCard extends StatelessWidget {
     final Color accent = node.hasChildren
         ? AppTheme.tealAccent
         : AppTheme.royalBlue;
-    final String resolvedCode = (node.codeName ?? '').trim();
-    final bool isMSectionCard =
-        node.label.contains('M_Section') ||
-        node.label.contains('M Section') ||
-        resolvedCode.startsWith('M');
+    // An M-section window, or a family of them, by its code rather than its
+    // name: the names went from "... M_Section" to "M ..." (Oct 2026), and a
+    // name is not a thing to key a colour on.
+    final String? firstCode =
+        node.hasChildren ? node.children.first.codeName : node.codeName;
+    final bool isMSectionCard = (firstCode ?? '').trim().startsWith('M');
     // The frame a variant is on, told apart at a glance by the drawing's
     // backdrop: the B frame warm, the BA frame lavender, Economy mint.
     final String? frame = WindowVariants.of(

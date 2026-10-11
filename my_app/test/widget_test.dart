@@ -116,7 +116,7 @@ void main() {
 
     expect(find.byKey(const Key('input_estimation_heading')), findsOneWidget);
     expect(find.byKey(const Key('input_window_label')), findsOneWidget);
-    expect(find.text('Sliding Window'), findsOneWidget);
+    expect(find.text('F/C Sliding Window'), findsOneWidget);
     expect(find.byKey(const Key('current_win_no_label')), findsOneWidget);
   });
 

@@ -41,7 +41,7 @@ class WindowCatalog {
   /// sliding corner windows, each with its M-section twin.
   static const List<WindowType> slidingWindows = <WindowType>[
     WindowType(
-      label: 'Sliding Window',
+      label: 'F/C Sliding Window',
       subtitle: 'Balanced day-to-day aluminium sliding system',
       graphicKey: 'sliding_basic',
       children: <WindowType>[],
@@ -49,7 +49,7 @@ class WindowCatalog {
       codeName: 'S_win',
     ),
     WindowType(
-      label: 'Sliding Window M_Section',
+      label: 'M Sliding Window',
       subtitle: 'Sliding window with M-section profile',
       graphicKey: 'sliding_basic',
       children: <WindowType>[],
@@ -57,12 +57,12 @@ class WindowCatalog {
       codeName: 'MS_win',
     ),
     WindowType(
-      label: 'Panel Windows',
+      label: 'F/C Panel Windows',
       subtitle: 'Center fix, center slide, and equal panel variants',
       graphicKey: 'panel_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Center Fix',
+          label: 'F/C Center Fix',
           subtitle: 'Three-panel layout with center fixed section',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -70,7 +70,7 @@ class WindowCatalog {
           codeName: 'PF3_win',
         ),
         WindowType(
-          label: 'Center Slide',
+          label: 'F/C Center Slide',
           subtitle: 'Three-panel layout with center sliding section',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -78,7 +78,7 @@ class WindowCatalog {
           codeName: 'PS4_win',
         ),
         WindowType(
-          label: 'Equal Panel',
+          label: 'F/C Equal Panel',
           subtitle: 'Even visual balance across the full panel set',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -89,12 +89,12 @@ class WindowCatalog {
       displayIndex: null,
     ),
     WindowType(
-      label: 'Panel Windows M_Section',
+      label: 'M Panel Windows',
       subtitle: 'M-section panel family for broader fabrication needs',
       graphicKey: 'panel_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Center Fix',
+          label: 'M Center Fix',
           subtitle: 'M-section center fix panel arrangement',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -102,7 +102,7 @@ class WindowCatalog {
           codeName: 'MPF3_win',
         ),
         WindowType(
-          label: 'Center Slide',
+          label: 'M Center Slide',
           subtitle: 'M-section center slide panel arrangement',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -110,7 +110,7 @@ class WindowCatalog {
           codeName: 'MPS4_win',
         ),
         WindowType(
-          label: 'Equal Panel',
+          label: 'M Equal Panel',
           subtitle: 'Equal panel arrangement with M-section profiles',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -121,12 +121,12 @@ class WindowCatalog {
       displayIndex: null,
     ),
     WindowType(
-      label: 'Sliding Corner Windows',
+      label: 'F/C Corner Windows',
       subtitle: 'Corner-focused layouts with multiple opening behaviors',
       graphicKey: 'corner_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Sliding Corner Center Fix',
+          label: 'F/C Corner Center Fix',
           subtitle: 'Corner system with center fixed panel',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -134,7 +134,7 @@ class WindowCatalog {
           codeName: 'SCF_win',
         ),
         WindowType(
-          label: 'Sliding Corner Center Slide',
+          label: 'F/C Corner Center Slide',
           subtitle: 'Corner system with center sliding panel',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -142,7 +142,7 @@ class WindowCatalog {
           codeName: 'SCS_win',
         ),
         WindowType(
-          label: 'Sliding Corner Left Fix',
+          label: 'F/C Corner Left Fix',
           subtitle: 'Corner system with left fixed panel',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -150,7 +150,7 @@ class WindowCatalog {
           codeName: 'SCL_win',
         ),
         WindowType(
-          label: 'Sliding Corner Right Fix',
+          label: 'F/C Corner Right Fix',
           subtitle: 'Corner system with right fixed panel',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -161,12 +161,12 @@ class WindowCatalog {
       displayIndex: null,
     ),
     WindowType(
-      label: 'Sliding Corner Windows M_Section',
+      label: 'M Corner Windows',
       subtitle: 'M-section corner layouts for heavier fabrication demands',
       graphicKey: 'corner_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Sliding Corner Center Fix',
+          label: 'M Corner Center Fix',
           subtitle: 'M-section corner with center fixed panel',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -174,7 +174,7 @@ class WindowCatalog {
           codeName: 'MSCF_win',
         ),
         WindowType(
-          label: 'Sliding Corner Center Slide',
+          label: 'M Corner Center Slide',
           subtitle: 'M-section corner with center sliding panel',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -182,7 +182,7 @@ class WindowCatalog {
           codeName: 'MSCS_win',
         ),
         WindowType(
-          label: 'Sliding Corner Left Fix',
+          label: 'M Corner Left Fix',
           subtitle: 'M-section corner with left fixed panel',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -190,7 +190,7 @@ class WindowCatalog {
           codeName: 'MSCL_win',
         ),
         WindowType(
-          label: 'Sliding Corner Right Fix',
+          label: 'M Corner Right Fix',
           subtitle: 'M-section corner with right fixed panel',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -202,41 +202,42 @@ class WindowCatalog {
     ),
   ];
 
-  /// The sliding windows again on the B frame -- DC30B and DC26B in place of
-  /// DC30C and DC26C, everything else the same. See [WindowVariants].
+  /// The sliding windows again on the B/E frame -- DC30E/DC30B and
+  /// DC26E/DC26B in place of DC30F/DC30C and DC26F/DC26C, every collar, and
+  /// everything else the same. See [WindowVariants].
   static const List<WindowType> primeWindows = <WindowType>[
     WindowType(
-      label: 'Prime Sliding Window',
-      subtitle: 'Sliding window on the DC30B / DC26B frame',
+      label: 'B/E Sliding Window',
+      subtitle: 'Sliding window on the B/E frame (DC30E/DC30B, DC26E/DC26B)',
       graphicKey: 'sliding_basic',
       children: <WindowType>[],
       displayIndex: 24,
       codeName: 'SB_win',
     ),
     WindowType(
-      label: 'Prime Panel Windows',
-      subtitle: 'Panel windows on the DC30B / DC26B frame',
+      label: 'B/E Panel Windows',
+      subtitle: 'Panel windows on the B/E frame (DC30E/DC30B, DC26E/DC26B)',
       graphicKey: 'panel_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Prime Center Fix',
-          subtitle: 'Center fix panel on the DC30B / DC26B frame',
+          label: 'B/E Center Fix',
+          subtitle: 'Center fix panel on the B/E frame (DC30E/DC30B, DC26E/DC26B)',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
           displayIndex: 25,
           codeName: 'PF3B_win',
         ),
         WindowType(
-          label: 'Prime Center Slide',
-          subtitle: 'Center slide panel on the DC30B / DC26B frame',
+          label: 'B/E Center Slide',
+          subtitle: 'Center slide panel on the B/E frame (DC30E/DC30B, DC26E/DC26B)',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
           displayIndex: 26,
           codeName: 'PS4B_win',
         ),
         WindowType(
-          label: 'Prime Equal Panel',
-          subtitle: 'Equal panel on the DC30B / DC26B frame',
+          label: 'B/E Equal Panel',
+          subtitle: 'Equal panel on the B/E frame (DC30E/DC30B, DC26E/DC26B)',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
           displayIndex: 27,
@@ -246,37 +247,37 @@ class WindowCatalog {
       displayIndex: null,
     ),
     WindowType(
-      label: 'Prime Corner Windows',
-      subtitle: 'Sliding corner windows on the DC30B / DC26B frame',
+      label: 'B/E Corner Windows',
+      subtitle: 'Sliding corner windows on the B/E frame (DC30E/DC30B, DC26E/DC26B)',
       graphicKey: 'corner_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Prime Corner Center Fix',
-          subtitle: 'Corner with center fixed panel, DC30B / DC26B frame',
+          label: 'B/E Corner Center Fix',
+          subtitle: 'Corner with center fixed panel, B/E frame (DC30E/DC30B, DC26E/DC26B)',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
           displayIndex: 28,
           codeName: 'SCFB_win',
         ),
         WindowType(
-          label: 'Prime Corner Center Slide',
-          subtitle: 'Corner with center sliding panel, DC30B / DC26B frame',
+          label: 'B/E Corner Center Slide',
+          subtitle: 'Corner with center sliding panel, B/E frame (DC30E/DC30B, DC26E/DC26B)',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
           displayIndex: 29,
           codeName: 'SCSB_win',
         ),
         WindowType(
-          label: 'Prime Corner Left Fix',
-          subtitle: 'Corner with left fixed panel, DC30B / DC26B frame',
+          label: 'B/E Corner Left Fix',
+          subtitle: 'Corner with left fixed panel, B/E frame (DC30E/DC30B, DC26E/DC26B)',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
           displayIndex: 30,
           codeName: 'SCLB_win',
         ),
         WindowType(
-          label: 'Prime Corner Right Fix',
-          subtitle: 'Corner with right fixed panel, DC30B / DC26B frame',
+          label: 'B/E Corner Right Fix',
+          subtitle: 'Corner with right fixed panel, B/E frame (DC30E/DC30B, DC26E/DC26B)',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
           displayIndex: 31,
@@ -290,7 +291,7 @@ class WindowCatalog {
   /// And on the BA frame: DC30BA and DC26BA.
   static const List<WindowType> royalWindows = <WindowType>[
     WindowType(
-      label: 'Royal Sliding Window',
+      label: 'BA Sliding Window',
       subtitle: 'Sliding window on the DC30BA / DC26BA frame',
       graphicKey: 'sliding_basic',
       children: <WindowType>[],
@@ -298,12 +299,12 @@ class WindowCatalog {
       codeName: 'SBA_win',
     ),
     WindowType(
-      label: 'Royal Panel Windows',
+      label: 'BA Panel Windows',
       subtitle: 'Panel windows on the DC30BA / DC26BA frame',
       graphicKey: 'panel_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Royal Center Fix',
+          label: 'BA Center Fix',
           subtitle: 'Center fix panel on the DC30BA / DC26BA frame',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -311,7 +312,7 @@ class WindowCatalog {
           codeName: 'PF3BA_win',
         ),
         WindowType(
-          label: 'Royal Center Slide',
+          label: 'BA Center Slide',
           subtitle: 'Center slide panel on the DC30BA / DC26BA frame',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -319,7 +320,7 @@ class WindowCatalog {
           codeName: 'PS4BA_win',
         ),
         WindowType(
-          label: 'Royal Equal Panel',
+          label: 'BA Equal Panel',
           subtitle: 'Equal panel on the DC30BA / DC26BA frame',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -330,12 +331,12 @@ class WindowCatalog {
       displayIndex: null,
     ),
     WindowType(
-      label: 'Royal Corner Windows',
+      label: 'BA Corner Windows',
       subtitle: 'Sliding corner windows on the DC30BA / DC26BA frame',
       graphicKey: 'corner_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Royal Corner Center Fix',
+          label: 'BA Corner Center Fix',
           subtitle: 'Corner with center fixed panel, DC30BA / DC26BA frame',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -343,7 +344,7 @@ class WindowCatalog {
           codeName: 'SCFBA_win',
         ),
         WindowType(
-          label: 'Royal Corner Center Slide',
+          label: 'BA Corner Center Slide',
           subtitle: 'Corner with center sliding panel, DC30BA / DC26BA frame',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -351,7 +352,7 @@ class WindowCatalog {
           codeName: 'SCSBA_win',
         ),
         WindowType(
-          label: 'Royal Corner Left Fix',
+          label: 'BA Corner Left Fix',
           subtitle: 'Corner with left fixed panel, DC30BA / DC26BA frame',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -359,7 +360,7 @@ class WindowCatalog {
           codeName: 'SCLBA_win',
         ),
         WindowType(
-          label: 'Royal Corner Right Fix',
+          label: 'BA Corner Right Fix',
           subtitle: 'Corner with right fixed panel, DC30BA / DC26BA frame',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -376,7 +377,7 @@ class WindowCatalog {
   /// Same drawings, collars and formulas. See [WindowVariants].
   static const List<WindowType> economyWindows = <WindowType>[
     WindowType(
-      label: 'Eco Sliding Window',
+      label: 'EC Sliding Window',
       subtitle: 'Sliding window on the Economy profiles',
       graphicKey: 'sliding_basic',
       children: <WindowType>[],
@@ -384,7 +385,7 @@ class WindowCatalog {
       codeName: 'SE_win',
     ),
     WindowType(
-      label: 'Eco Sliding Window M_Section',
+      label: 'ET Sliding Window',
       subtitle: 'M-section sliding window on the Economy ET profiles',
       graphicKey: 'sliding_basic',
       children: <WindowType>[],
@@ -392,12 +393,12 @@ class WindowCatalog {
       codeName: 'MSE_win',
     ),
     WindowType(
-      label: 'Eco Panel Windows',
+      label: 'EC Panel Windows',
       subtitle: 'Panel windows on the Economy profiles',
       graphicKey: 'panel_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Eco Center Fix',
+          label: 'EC Center Fix',
           subtitle: 'Center fix panel, Economy profiles',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -405,7 +406,7 @@ class WindowCatalog {
           codeName: 'PF3E_win',
         ),
         WindowType(
-          label: 'Eco Center Slide',
+          label: 'EC Center Slide',
           subtitle: 'Center slide panel, Economy profiles',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -413,7 +414,7 @@ class WindowCatalog {
           codeName: 'PS4E_win',
         ),
         WindowType(
-          label: 'Eco Equal Panel',
+          label: 'EC Equal Panel',
           subtitle: 'Equal panel, Economy profiles',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -424,12 +425,12 @@ class WindowCatalog {
       displayIndex: null,
     ),
     WindowType(
-      label: 'Eco Panel Windows M_Section',
+      label: 'ET Panel Windows',
       subtitle: 'M-section panel windows on the Economy ET profiles',
       graphicKey: 'panel_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Eco M Center Fix',
+          label: 'ET Center Fix',
           subtitle: 'M-section center fix, Economy',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -437,7 +438,7 @@ class WindowCatalog {
           codeName: 'MPF3E_win',
         ),
         WindowType(
-          label: 'Eco M Center Slide',
+          label: 'ET Center Slide',
           subtitle: 'M-section center slide, Economy',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -445,7 +446,7 @@ class WindowCatalog {
           codeName: 'MPS4E_win',
         ),
         WindowType(
-          label: 'Eco M Equal Panel',
+          label: 'ET Equal Panel',
           subtitle: 'M-section equal panel, Economy',
           graphicKey: 'panel_basic',
           children: <WindowType>[],
@@ -456,12 +457,12 @@ class WindowCatalog {
       displayIndex: null,
     ),
     WindowType(
-      label: 'Eco Corner Windows',
+      label: 'EC Corner Windows',
       subtitle: 'Sliding corner windows on the Economy profiles',
       graphicKey: 'corner_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Eco Corner Center Fix',
+          label: 'EC Corner Center Fix',
           subtitle: 'Corner with center fixed panel, Economy',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -469,7 +470,7 @@ class WindowCatalog {
           codeName: 'SCFE_win',
         ),
         WindowType(
-          label: 'Eco Corner Center Slide',
+          label: 'EC Corner Center Slide',
           subtitle: 'Corner with center sliding panel, Economy',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -477,7 +478,7 @@ class WindowCatalog {
           codeName: 'SCSE_win',
         ),
         WindowType(
-          label: 'Eco Corner Left Fix',
+          label: 'EC Corner Left Fix',
           subtitle: 'Corner with left fixed panel, Economy',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -485,7 +486,7 @@ class WindowCatalog {
           codeName: 'SCLE_win',
         ),
         WindowType(
-          label: 'Eco Corner Right Fix',
+          label: 'EC Corner Right Fix',
           subtitle: 'Corner with right fixed panel, Economy',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -496,12 +497,12 @@ class WindowCatalog {
       displayIndex: null,
     ),
     WindowType(
-      label: 'Eco Corner Windows M_Section',
+      label: 'ET Corner Windows',
       subtitle: 'M-section sliding corners on the Economy ET profiles',
       graphicKey: 'corner_basic',
       children: <WindowType>[
         WindowType(
-          label: 'Eco M Corner Center Fix',
+          label: 'ET Corner Center Fix',
           subtitle: 'M-section corner, center fixed, Economy',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -509,7 +510,7 @@ class WindowCatalog {
           codeName: 'MSCFE_win',
         ),
         WindowType(
-          label: 'Eco M Corner Center Slide',
+          label: 'ET Corner Center Slide',
           subtitle: 'M-section corner, center sliding, Economy',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -517,7 +518,7 @@ class WindowCatalog {
           codeName: 'MSCSE_win',
         ),
         WindowType(
-          label: 'Eco M Corner Left Fix',
+          label: 'ET Corner Left Fix',
           subtitle: 'M-section corner, left fixed, Economy',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -525,7 +526,7 @@ class WindowCatalog {
           codeName: 'MSCLE_win',
         ),
         WindowType(
-          label: 'Eco M Corner Right Fix',
+          label: 'ET Corner Right Fix',
           subtitle: 'M-section corner, right fixed, Economy',
           graphicKey: 'corner_basic',
           children: <WindowType>[],
@@ -542,7 +543,7 @@ class WindowCatalog {
   /// window, with no collar.
   static const List<WindowType> primeEconomyWindows = <WindowType>[
     WindowType(
-      label: 'Prime Eco Sliding Window',
+      label: 'EF Sliding Window',
       subtitle: 'Two-panel sliding window on the Prime EF profiles',
       graphicKey: 'sliding_basic',
       children: <WindowType>[],
@@ -686,9 +687,10 @@ class WindowCatalog {
   /// they are the same strings the bill groups its rows by, so a hardware rate
   /// entered against one of these lands on the bill line the customer reads.
   ///
-  /// De-duplicated: the M_Section variants of the panel and sliding-corner
-  /// windows carry the same labels as the plain ones, and one bill row covers
-  /// both, so one rate does too.
+  /// De-duplicated, should two windows ever share a name. Since the windows
+  /// were named by their frame's series (Oct 2026) none do: an M_Section
+  /// window is "M Center Fix", apart from the "F/C Center Fix", and is priced
+  /// apart -- see [renamedTypes] for how the old shared names carry over.
   ///
   /// Derived from the catalogue rather than written out again, so a window
   /// added above cannot be forgotten here.
@@ -707,6 +709,63 @@ class WindowCatalog {
     walk(root);
     return List<String>.unmodifiable(names);
   }
+
+  /// Window kinds renamed by their frame's series (Hashir, Oct 2026): old
+  /// name to new. A name a plain window shared with its M-section twin was
+  /// one bill line, and is two now -- so it leads to both.
+  ///
+  /// Kept because the names are keys: a hardware rate saved against "Prime
+  /// Sliding Window" has to reach the B/E Sliding Window it is now, and a job
+  /// saved before carries the old names on its windows.
+  static const Map<String, List<String>> renamedTypes = <String, List<String>>{
+    'Sliding Window': <String>['F/C Sliding Window'],
+    'Sliding Window M_Section': <String>['M Sliding Window'],
+    'Center Fix': <String>['F/C Center Fix', 'M Center Fix'],
+    'Center Slide': <String>['F/C Center Slide', 'M Center Slide'],
+    'Equal Panel': <String>['F/C Equal Panel', 'M Equal Panel'],
+    'Sliding Corner Center Fix': <String>['F/C Corner Center Fix', 'M Corner Center Fix'],
+    'Sliding Corner Center Slide': <String>['F/C Corner Center Slide', 'M Corner Center Slide'],
+    'Sliding Corner Left Fix': <String>['F/C Corner Left Fix', 'M Corner Left Fix'],
+    'Sliding Corner Right Fix': <String>['F/C Corner Right Fix', 'M Corner Right Fix'],
+    'Prime Sliding Window': <String>['B/E Sliding Window'],
+    'Prime Center Fix': <String>['B/E Center Fix'],
+    'Prime Center Slide': <String>['B/E Center Slide'],
+    'Prime Equal Panel': <String>['B/E Equal Panel'],
+    'Prime Corner Center Fix': <String>['B/E Corner Center Fix'],
+    'Prime Corner Center Slide': <String>['B/E Corner Center Slide'],
+    'Prime Corner Left Fix': <String>['B/E Corner Left Fix'],
+    'Prime Corner Right Fix': <String>['B/E Corner Right Fix'],
+    'Royal Sliding Window': <String>['BA Sliding Window'],
+    'Royal Center Fix': <String>['BA Center Fix'],
+    'Royal Center Slide': <String>['BA Center Slide'],
+    'Royal Equal Panel': <String>['BA Equal Panel'],
+    'Royal Corner Center Fix': <String>['BA Corner Center Fix'],
+    'Royal Corner Center Slide': <String>['BA Corner Center Slide'],
+    'Royal Corner Left Fix': <String>['BA Corner Left Fix'],
+    'Royal Corner Right Fix': <String>['BA Corner Right Fix'],
+    'Eco Sliding Window': <String>['EC Sliding Window'],
+    'Eco Sliding Window M_Section': <String>['ET Sliding Window'],
+    'Eco Center Fix': <String>['EC Center Fix'],
+    'Eco Center Slide': <String>['EC Center Slide'],
+    'Eco Equal Panel': <String>['EC Equal Panel'],
+    'Eco M Center Fix': <String>['ET Center Fix'],
+    'Eco M Center Slide': <String>['ET Center Slide'],
+    'Eco M Equal Panel': <String>['ET Equal Panel'],
+    'Eco Corner Center Fix': <String>['EC Corner Center Fix'],
+    'Eco Corner Center Slide': <String>['EC Corner Center Slide'],
+    'Eco Corner Left Fix': <String>['EC Corner Left Fix'],
+    'Eco Corner Right Fix': <String>['EC Corner Right Fix'],
+    'Eco M Corner Center Fix': <String>['ET Corner Center Fix'],
+    'Eco M Corner Center Slide': <String>['ET Corner Center Slide'],
+    'Eco M Corner Left Fix': <String>['ET Corner Left Fix'],
+    'Eco M Corner Right Fix': <String>['ET Corner Right Fix'],
+    'Prime Eco Sliding Window': <String>['EF Sliding Window'],
+  };
+
+  /// The names the window kind once called [typeName] goes by now: itself,
+  /// when it was never renamed.
+  static List<String> currentTypeNames(String typeName) =>
+      renamedTypes[typeName] ?? <String>[typeName];
 
   static WindowType? byDisplayIndex(int index) {
     return _findIn(root, index);

@@ -202,7 +202,7 @@ void main() {
       }
     }
     final WindowType panels = WindowCatalog.root.firstWhere(
-      (WindowType n) => n.label == 'Panel Windows',
+      (WindowType n) => n.label == 'F/C Panel Windows',
     );
     expect(
       WindowSections.forNode(panels, isFabrication: false).map((UsedSection s) => s.code),
@@ -218,17 +218,17 @@ void main() {
     expect(estimation[0].rows.map((WindowRow r) => r.id),
         <String>['sliding', 'sliding_b', 'sliding_ba']);
     expect(estimation[0].rows[0].nodes.map((WindowType n) => n.label), <String>[
-      'Sliding Window',
-      'Sliding Window M_Section',
-      'Panel Windows',
-      'Panel Windows M_Section',
-      'Sliding Corner Windows',
-      'Sliding Corner Windows M_Section',
+      'F/C Sliding Window',
+      'M Sliding Window',
+      'F/C Panel Windows',
+      'M Panel Windows',
+      'F/C Corner Windows',
+      'M Corner Windows',
     ]);
     expect(estimation[0].rows[1].nodes.map((WindowType n) => n.label),
-        <String>['Prime Sliding Window', 'Prime Panel Windows', 'Prime Corner Windows']);
+        <String>['B/E Sliding Window', 'B/E Panel Windows', 'B/E Corner Windows']);
     expect(estimation[0].rows[2].nodes.map((WindowType n) => n.label),
-        <String>['Royal Sliding Window', 'Royal Panel Windows', 'Royal Corner Windows']);
+        <String>['BA Sliding Window', 'BA Panel Windows', 'BA Corner Windows']);
     // Two lines of Economy windows, each under its maker's name.
     expect(estimation[1].rows.map((WindowRow r) => r.id),
         <String>['economy', 'economy_prime']);

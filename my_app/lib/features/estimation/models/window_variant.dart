@@ -1,11 +1,12 @@
 /// Windows that are another window with a different frame.
 ///
-/// A window cut from the DC30B / DC26B frame is a sliding window in every way
-/// but one: where the plain window's frame is DC30C and DC26C, this one's is
-/// DC30B and DC26B. Same drawing, same inner profiles, the same formulas --
-/// the ones DC30C and DC26C are cut by -- and the same glass. So it is not
-/// written out again anywhere. It is described here once, as its base window
-/// and what it changes, and everything else asks.
+/// A window cut from the B/E frame is a sliding window in every way but one:
+/// where the F/C window's frame is DC30F/DC30C and DC26F/DC26C, this one's is
+/// DC30E/DC30B and DC26E/DC26B. Same drawing, same collars, same inner
+/// profiles, the same formulas -- the ones the F/C profiles are cut by -- and
+/// the same glass. So it is not written out again anywhere. It is described
+/// here once, as its base window and what it changes, and everything else
+/// asks.
 ///
 /// Built to grow. The collars a variant comes in and the profiles it swaps
 /// are data, not code: when a variant turns out to come in more collars, its
@@ -45,11 +46,11 @@ class WindowVariant {
   /// The collar types it comes in, numbered as [baseCode] numbers them;
   /// null for every collar its base comes in.
   ///
-  /// The B and BA frames come without a collar on any side -- collar 2 --
-  /// as far as is known today. Whether they come in others is not confirmed,
-  /// so only that one is offered; a formula for a collar nobody has checked
-  /// would cut a frame nobody asked for. The Economy windows come in all of
-  /// their base's.
+  /// The BA frame comes without a collar on any side -- collar 2 -- as far as
+  /// is known today. Whether it comes in others is not confirmed, so only
+  /// that one is offered; a formula for a collar nobody has checked would cut
+  /// a frame nobody asked for. The B/E frame and the Economy windows come in
+  /// all of their base's.
   final List<int>? collars;
 
   /// Whether this window comes in collar [collar].
@@ -68,10 +69,10 @@ class WindowVariant {
   /// The profiles that differ from [baseCode]'s: its name for one, and this
   /// window's. Anything not named here is the same profile in both.
   ///
-  /// Only the plain frame (C) is mapped, deliberately: these frames are cut by
-  /// the C profiles' formulas, never the collar (F) ones. A collar added to
-  /// [collars] later brings F profiles with it, and those need their own
-  /// names here first.
+  /// A frame that comes only without a collar (BA) maps only the plain
+  /// profiles (C), deliberately: it is never cut from the collar (F) ones. A
+  /// collar added to [collars] later brings F profiles with it, and those
+  /// need their own names here first -- as the B/E frame's E profiles are.
   final Map<String, String> sections;
 
   /// This window's name for [baseSection].
@@ -335,8 +336,13 @@ class WindowVariants {
     ],
   ];
 
-  /// The B frame: DC30B at the top and sides, DC26B at the bottom.
+  /// The B/E frame, built the way the F/C frame is (Hashir, Oct 2026): E
+  /// where a side has its collar, as F is, and B where it has none, as C is
+  /// -- DC30E/DC30B at the top and sides, DC26E/DC26B at the bottom. Every
+  /// collar the base comes in, each cut by the F/C profile's own formula.
   static const Map<String, String> _bFrame = <String, String>{
+    'DC30F': 'DC30E',
+    'DC26F': 'DC26E',
     'DC30C': 'DC30B',
     'DC26C': 'DC26B',
   };
@@ -360,24 +366,31 @@ class WindowVariants {
     'SCR_win',
   ];
 
-  static List<WindowVariant> _frame(String suffix, Map<String, String> sections) =>
+  static List<WindowVariant> _frame(
+    String suffix,
+    Map<String, String> sections, {
+    required List<int>? collars,
+  }) =>
       <WindowVariant>[
         for (final String base in _slidingBases)
           WindowVariant(
             code: _codeOf(base, suffix),
             baseCode: base,
             frame: suffix,
-            collars: _noCollar,
+            collars: collars,
             sections: sections,
           ),
       ];
 
-  /// Every variant: the B frame, the BA frame, the Economy line, then the
+  /// Every variant: the B/E frame, the BA frame, the Economy line, then the
   /// Prime Economy one.
+  ///
+  /// The B/E frame keeps the codes the B frame was saved under ("SB_win"), so
+  /// every window already saved on it opens as it was.
   static final List<WindowVariant> all = List<WindowVariant>.unmodifiable(
     <WindowVariant>[
-      ..._frame('B', _bFrame),
-      ..._frame('BA', _baFrame),
+      ..._frame('B', _bFrame, collars: null),
+      ..._frame('BA', _baFrame, collars: _noCollar),
       ..._economyLine(),
       ..._primeEconomyLine,
     ],

@@ -80,8 +80,8 @@ void main() {
             <String>['PAK AL TECH', 'Prime Economy Sliding Windows']);
         expect(economy.rows.last.nodes.single.codeName, code);
       }
-      expect(WindowCatalog.byCodeName(code)!.label, 'Prime Eco Sliding Window');
-      expect(WindowCatalog.allTypeNames, contains('Prime Eco Sliding Window'),
+      expect(WindowCatalog.byCodeName(code)!.label, 'EF Sliding Window');
+      expect(WindowCatalog.allTypeNames, contains('EF Sliding Window'),
           reason: 'its own hardware rate on the bill');
     });
 
@@ -320,7 +320,7 @@ void main() {
   group('what the engine is sent', () {
     WindowReviewItem item({required bool net, required bool fabrication}) => WindowReviewItem(
       winNo: 1,
-      windowLabel: 'Prime Eco Sliding Window',
+      windowLabel: 'EF Sliding Window',
       windowCode: code,
       windowIndex: 56,
       collarIndex: 2,

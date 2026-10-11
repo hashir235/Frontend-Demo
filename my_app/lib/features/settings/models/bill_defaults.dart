@@ -1,3 +1,5 @@
+import '../../estimation/data/window_catalog.dart';
+
 /// The glass a workshop actually fits, as it is asked for at the counter.
 ///
 /// "Mercury" is the mirrored back; "Simple" is plain tinted. They are priced
@@ -111,9 +113,16 @@ class BillDefaults {
   /// Null rather than '' for the same reason as [rateForGlass]: the caller has
   /// to be able to tell "nothing saved, fall back" from "deliberately blank".
   String? rateForWindowType(String typeName) {
-    final String? value = hardware[typeName];
-    if (value == null || value.trim().isEmpty) return null;
-    return value;
+    // A job saved before the windows were renamed carries the old name; the
+    // rate is saved under the new one.
+    for (final String name in <String>[
+      typeName,
+      ...WindowCatalog.currentTypeNames(typeName),
+    ]) {
+      final String? value = hardware[name];
+      if (value != null && value.trim().isNotEmpty) return value;
+    }
+    return null;
   }
 
   BillDefaults copyWith({
@@ -146,12 +155,36 @@ class BillDefaults {
         for (final MapEntry<String, dynamic> e in rawGlass.entries)
           e.key: '${e.value}'.trim(),
       },
-      hardware: <String, String>{
+      hardware: _underCurrentNames(<String, String>{
         for (final MapEntry<String, dynamic> e in rawHardware.entries)
           e.key: '${e.value}'.trim(),
-      },
+      }),
       runningFeet: json['runningFeet'] is bool ? json['runningFeet'] as bool : null,
     );
+  }
+
+  /// Hardware rates saved under the window kinds' old names, moved to the
+  /// names they go by now (see [WindowCatalog.renamedTypes]).
+  ///
+  /// A rate saved under a new name is never overwritten by one under an old:
+  /// the new one was typed since. An old name that became two -- "Center Fix"
+  /// is "F/C Center Fix" and "M Center Fix" now -- gives its rate to both, as
+  /// it priced both before. Old names are dropped once moved, so the next
+  /// save writes the list under today's names only.
+  static Map<String, String> _underCurrentNames(Map<String, String> saved) {
+    final Map<String, String> current = <String, String>{
+      for (final MapEntry<String, String> e in saved.entries)
+        if (!WindowCatalog.renamedTypes.containsKey(e.key)) e.key: e.value,
+    };
+    for (final MapEntry<String, String> e in saved.entries) {
+      final List<String>? now = WindowCatalog.renamedTypes[e.key];
+      if (now == null || e.value.isEmpty) continue;
+      for (final String name in now) {
+        final String? already = current[name];
+        if (already == null || already.isEmpty) current[name] = e.value;
+      }
+    }
+    return current;
   }
 
   Map<String, Object?> toJson() {

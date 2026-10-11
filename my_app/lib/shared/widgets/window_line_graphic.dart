@@ -52,6 +52,29 @@ class _WindowLinePainter extends CustomPainter {
     required this.windowCode,
   });
 
+  /// The shape this window is drawn as, read from its code: what its label
+  /// used to say before the windows were named by their frame's series. A
+  /// window can be renamed without its drawing changing; a family, with no
+  /// code of its own, goes by its label as before.
+  static const Map<String, String> _shapeByCode = <String, String>{
+    'PF3_win': 'Center Fix',
+    'MPF3_win': 'Center Fix',
+    'PS4_win': 'Center Slide',
+    'MPS4_win': 'Center Slide',
+    'EF3_win': 'Equal Panel',
+    'MEF3_win': 'Equal Panel',
+    'SCF_win': 'Sliding Corner Center Fix',
+    'MSCF_win': 'Sliding Corner Center Fix',
+    'SCS_win': 'Sliding Corner Center Slide',
+    'MSCS_win': 'Sliding Corner Center Slide',
+    'SCL_win': 'Sliding Corner Left Fix',
+    'MSCL_win': 'Sliding Corner Left Fix',
+    'SCR_win': 'Sliding Corner Right Fix',
+    'MSCR_win': 'Sliding Corner Right Fix',
+  };
+
+  String get _shape => _shapeByCode[(windowCode ?? '').trim()] ?? windowLabel;
+
   @override
   void paint(Canvas canvas, Size size) {
     final Paint strokePaint = Paint()
@@ -185,7 +208,7 @@ class _WindowLinePainter extends CustomPainter {
       return;
     }
 
-    final _PanelPattern? pattern = _panelPatternFor(windowLabel);
+    final _PanelPattern? pattern = _panelPatternFor(_shape);
 
     if (pattern == null) {
       final double leftDividerX = frameRect.left + (frameRect.width * 0.25);
@@ -506,7 +529,7 @@ class _WindowLinePainter extends CustomPainter {
     }
 
     final _CornerPattern? pattern = _cornerPatternFor(
-      windowLabel,
+      _shape,
       cornerIndex,
       resolvedCode,
     );
@@ -554,14 +577,14 @@ class _WindowLinePainter extends CustomPainter {
       final bool isRightWing = centerX > topApex.dx;
       final double wingRotationDeg = isLeftWing ? 30 : (isRightWing ? -30 : 0);
       final double yOffset = _cornerSymbolYOffset(
-        windowLabel,
+        _shape,
         cornerIndex,
         resolvedCode,
         i,
         symbol,
       );
       final bool placeArrowBelowLetter =
-          (windowLabel == 'Sliding Corner Center Fix' &&
+          (_shape == 'Sliding Corner Center Fix' &&
               (i == 0 || i == pattern.symbols.length - 1)) ||
           (resolvedCode == 'MSCS_win' && symbol.contains('S')) ||
           (cornerIndex == 13 && symbol.contains('<-')) ||
@@ -569,7 +592,7 @@ class _WindowLinePainter extends CustomPainter {
       final double belowArrowYOffset =
           resolvedCode == 'MSCS_win' && symbol.contains('S') ? 10 : 11;
       final bool placeArrowAboveLetter =
-          windowLabel == 'Sliding Corner Center Slide' &&
+          _shape == 'Sliding Corner Center Slide' &&
           symbol.contains('S') &&
           resolvedCode != 'MSCS_win';
 
