@@ -32,8 +32,11 @@ class FormulaVariables {
   static const String feet = 'feet';
 
   /// What each measurement is, said plainly, for the line under a formula box.
-  static String describe(String name, {required bool isFabrication}) {
-    final String unit = isFabrication ? 'cm' : 'ft';
+  ///
+  /// [unit] says it in another unit than the formula is stored in -- inches,
+  /// for a window measured in them.
+  static String describe(String name, {required bool isFabrication, String? unit}) {
+    unit ??= isFabrication ? 'cm' : 'ft';
     switch (name) {
       case height:
         return 'window height ($unit)';
@@ -142,7 +145,10 @@ class FormulaSlot {
   Map<String, String> get _toStored => <String, String>{label: dimension};
 
   /// The formula as a fabricator reads it: `HL + 6`, not `(h + 6 + cm) / feet`.
-  String get display => _core.renameVariables(_toDisplay).toString();
+  String get display => displayExpression.toString();
+
+  /// [display] as arithmetic rather than text, for showing it in another unit.
+  FormulaExpression get displayExpression => _core.renameVariables(_toDisplay);
 
   /// The names this piece's formula may use, in display terms.
   ///
@@ -173,8 +179,29 @@ class FormulaSlot {
     if (!check.isUsable) {
       return FormulaEdit._(null, check.problem);
     }
+    return readDisplayExpression(check.expression!);
+  }
 
-    final FormulaExpression core = check.expression!.renameVariables(_toStored);
+  /// Arithmetic already read in display terms -- the piece's own label, the
+  /// formula's own unit -- turned back into the catalogue's names, or why it
+  /// cannot be.
+  ///
+  /// For a formula typed in inches, which is read by its own parser and
+  /// converted before it gets here.
+  FormulaEdit readDisplayExpression(FormulaExpression shown) {
+    final List<String> unknown = shown.variables
+        .where((String name) => !allowedDisplayVariables.contains(name))
+        .toList(growable: false);
+    if (unknown.isNotEmpty) {
+      return FormulaEdit._(
+        null,
+        unknown.length == 1
+            ? '${unknown.first} is not a measurement this window has.'
+            : '${unknown.join(', ')} are not measurements this window has.',
+      );
+    }
+
+    final FormulaExpression core = shown.renameVariables(_toStored);
     final _Envelope? envelope = _envelope;
     final FormulaExpression whole = envelope == null ? core : envelope.rebuild(core);
     return FormulaEdit._(whole.toString(), null);
@@ -296,6 +323,9 @@ class _Envelope {
 /// What came of reading an edited formula.
 class FormulaEdit {
   const FormulaEdit._(this.stored, this.problem);
+
+  /// A formula that cannot be saved, and why.
+  const FormulaEdit.refused(String this.problem) : stored = null;
 
   /// The formula in the catalogue's names, ready to save.
   final String? stored;

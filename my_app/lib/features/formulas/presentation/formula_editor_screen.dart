@@ -5,16 +5,19 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/format/cut_length.dart';
+import '../../estimation/presentation/input/size_entry_notation.dart';
 import '../../help_videos/help_video_button.dart';
 import '../../help_videos/tutorial_videos.dart';
 import '../../subscription/presentation/plan_tint.dart';
 import '../data/formula_book.dart';
 import '../model/formula_overrides.dart';
 import '../model/formula_expression.dart';
+import '../model/formula_inches.dart';
 import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';
 import '../model/piece_size.dart';
 import 'formula_field.dart';
+import 'formula_length_sheet.dart';
 
 /// Reads and edits the formulas for one window configuration.
 ///
@@ -35,6 +38,7 @@ class FormulaEditorScreen extends StatefulWidget {
     this.pieceSizes = const <PieceSize>[],
     this.onSaved,
     this.onPieceSizesSaved,
+    this.inchSuter = false,
   });
 
   /// Which window's formulas these are.
@@ -75,6 +79,13 @@ class FormulaEditorScreen extends StatefulWidget {
   /// own measurement.
   final void Function(List<PieceSize> sizes)? onPieceSizesSaved;
 
+  /// Whether this window was measured in inches and suter, and so has its
+  /// formulas and sizes shown, and typed, that way.
+  ///
+  /// Only the reading changes: the formulas are still kept in centimetres or
+  /// feet, and the sizes handed back in them.
+  final bool inchSuter;
+
   @override
   State<FormulaEditorScreen> createState() => _FormulaEditorScreenState();
 }
@@ -114,6 +125,22 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// Which formulas are being changed as text rather than tried as numbers.
   final Set<FormulaPieceRef> _editingFormula = <FormulaPieceRef>{};
 
+  /// The formula each piece was opened with, as stored.
+  ///
+  /// What "changed" is measured against. In inches two stored values can
+  /// read as the same half suter, so the text in a box coming back to what
+  /// it opened with does not on its own say the formula did.
+  final Map<FormulaPieceRef, String> _openedStored = <FormulaPieceRef, String>{};
+
+  /// Each piece read in inches and suter, for a window measured in them.
+  ///
+  /// Built on the formula last put in the box, so a number left as it is
+  /// reads back to its exact stored value. A piece is missing here when the
+  /// window is not in inches, or when its formula has no reading in inches
+  /// (`HL * HL`); that one piece stays in the unit it is stored in, sizes
+  /// and all, for as long as the screen is open.
+  final Map<FormulaPieceRef, InchFormula> _inches = <FormulaPieceRef, InchFormula>{};
+
   bool _saving = false;
 
   @override
@@ -123,17 +150,69 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     _sections = _sectionsOf(_draft);
     for (final EffectiveSection section in _sections) {
       for (final EffectiveFormula piece in section.pieces) {
-        final String shown = piece.slot.display;
+        final InchFormula? inches =
+            widget.inchSuter ? InchFormula.of(piece.slot) : null;
+        if (inches != null) _inches[piece.ref] = inches;
+
+        final String shown = inches?.text ?? piece.slot.display;
         _controllers[piece.ref] = TextEditingController(text: shown);
         _opened[piece.ref] = shown;
+        _openedStored[piece.ref] = piece.slot.stored;
 
         final PieceSize? own = _standingSizeFor(piece);
         final String size =
-            own == null ? _windowSizeFor(piece) : _sizeText(own.size);
+            own == null ? _windowSizeFor(piece) : _sizeTextFor(piece, own.size);
         _sizeControllers[piece.ref] = TextEditingController(text: size);
         _openedSizes[piece.ref] = size;
       }
     }
+  }
+
+  /// Whether this piece is shown in inches and suter.
+  bool _inInches(FormulaPieceRef ref) => _inches.containsKey(ref);
+
+  /// Reads what is typed in a piece's formula box, in whichever unit it is
+  /// shown in.
+  FormulaEdit _read(EffectiveFormula piece, String typed) {
+    final InchFormula? inches = _inches[piece.ref];
+    return inches == null ? piece.slot.readDisplay(typed) : inches.read(typed).edit;
+  }
+
+  /// The formula in a piece's box, number by number, when it is shown in
+  /// inches and can be read.
+  List<InchPart>? _inchPartsFor(FormulaPieceRef ref) {
+    final InchFormula? inches = _inches[ref];
+    if (inches == null) return null;
+    return inches.read(_controllers[ref]!.text).parts;
+  }
+
+  /// Whether a piece's formula is different from the one it opened with.
+  bool _formulaChanged(FormulaPieceRef ref) {
+    final String typed = _controllers[ref]!.text.trim();
+    if (typed == _opened[ref]) return false;
+    final EffectiveFormula? piece = _pieceFor(ref);
+    if (piece == null) return true;
+    final FormulaEdit edit = _read(piece, typed);
+    // Something that cannot be read is a change -- one that cannot be saved.
+    return !edit.isUsable || edit.stored != _openedStored[ref];
+  }
+
+  /// Puts [slot]'s formula in a piece's box, in the unit the piece is shown
+  /// in, and reads any later typing back against it.
+  ///
+  /// False -- and the box left as it was -- for a piece shown in inches when
+  /// the formula has no reading in inches. Quick AL's own formulas all have
+  /// one, so this is only a guard.
+  bool _putFormula(FormulaPieceRef ref, FormulaSlot slot) {
+    if (_inInches(ref)) {
+      final InchFormula? inches = InchFormula.of(slot);
+      if (inches == null) return false;
+      _inches[ref] = inches;
+      _controllers[ref]!.text = inches.text;
+      return true;
+    }
+    _controllers[ref]!.text = slot.display;
+    return true;
   }
 
   /// Every section this window's formulas cover.
@@ -151,6 +230,40 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
 
   static String _sizeText(double value) => CutLength.trimZeros(value, 2);
 
+  /// [value] -- in the formula's own unit -- as this piece's size box shows
+  /// it: `220.6` in centimetres, `86'' 7½'''` in inches, the way the
+  /// measuring screen writes a size.
+  String _sizeTextFor(EffectiveFormula piece, double value) {
+    if (!_inInches(piece.ref)) return _sizeText(value);
+    final InchLength length =
+        FormulaInchUnit(isFabrication: piece.slot.isFabrication).nearest(value);
+    final int halves = length.sixteenths % 16;
+    if (halves == 0) return SizeNotation.displayMerged('${length.inches}');
+    final String suter = '${halves ~/ 2}${halves.isOdd ? '½' : ''}';
+    return SizeNotation.displayMerged('${length.inches} $suter');
+  }
+
+  /// What is typed in this piece's size box, in the formula's own unit. Null
+  /// when it is not a size.
+  double? _typedSize(EffectiveFormula piece, String typed) {
+    final String text = typed.trim();
+    if (text.isEmpty) return null;
+    if (!_inInches(piece.ref)) return double.tryParse(text);
+    final SizeEntry entry = SizeNotation.readEntry(text);
+    final int? inches = int.tryParse(entry.whole);
+    if (inches == null) return null;
+    final int suter = entry.sub.isEmpty ? 0 : int.parse(entry.sub);
+    final InchLength length = InchLength(inches * 16 + suter * 2 + (entry.half ? 1 : 0));
+    return FormulaInchUnit(isFabrication: piece.slot.isFabrication).valueOf(length);
+  }
+
+  /// A size as it is said in a message: with its unit in centimetres or feet,
+  /// as it is in inches -- the marks already say which. The inch and its
+  /// suter are held together, so a line never ends on `86''` and starts the
+  /// next on `7'''`.
+  String _said(EffectiveFormula piece, String size) =>
+      _inInches(piece.ref) ? size.replaceAll(' ', '\u00A0') : '$size $_sizeUnit';
+
   /// The measurements this one piece is cut from, before anybody types over
   /// them: the window's, or its own side of the window.
   Map<String, double> _measurementsOf(EffectiveFormula piece) =>
@@ -161,7 +274,22 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   String _windowSizeFor(EffectiveFormula piece) {
     final double? value = _measurementsOf(piece)[piece.slot.dimension];
     if (value == null) return '';
-    return _sizeText(value);
+    return _sizeTextFor(piece, value);
+  }
+
+  /// The size standing in this piece's formula, in the formula's own unit:
+  /// the window's own while the box still reads as the window's, and what
+  /// was typed once it does not. Null when the box holds no size.
+  ///
+  /// The box shows the window to two decimals, or to the half suter, and the
+  /// window can measure finer than that; reading the box back would cut to
+  /// the rounded figure a piece nobody touched.
+  double? _sizeInBox(EffectiveFormula piece) {
+    final String typed = _sizeControllers[piece.ref]?.text.trim() ?? '';
+    if (typed.isEmpty) return null;
+    final double? window = _measurementsOf(piece)[piece.slot.dimension];
+    if (window != null && typed == _windowSizeFor(piece)) return window;
+    return _typedSize(piece, typed);
   }
 
   /// The size this piece was already given, if it still applies to the window
@@ -195,22 +323,22 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     if (typed.isEmpty) {
       return 'Type a size, or tap the window size to put it back.';
     }
-    final double? value = double.tryParse(typed);
+    final double? value = _sizeInBox(piece);
     if (value == null) return '"$typed" is not a size.';
     if (value <= 0) return 'A size has to be more than 0.';
     if (value > window * 2) {
-      return '$typed $_sizeUnit is more than double this window '
-          '(${_sizeText(window)} $_sizeUnit). Check the number.';
+      return '${_said(piece, typed)} is more than double this window '
+          '(${_said(piece, _windowSizeFor(piece))}). Check the number.';
     }
 
-    final FormulaEdit edit = slot.readDisplay(_controllers[piece.ref]?.text ?? '');
+    final FormulaEdit edit = _read(piece, _controllers[piece.ref]?.text ?? '');
     final FormulaSlot formula = edit.isUsable ? slot.withStored(edit.stored!) : slot;
     final FormulaResult result = formula.cutLengthFor(
       <String, double>{...measurements, slot.dimension: value},
     );
     if (!result.isUsable) {
-      return 'At $typed $_sizeUnit this piece comes out at nothing. The size '
-          'has to be bigger than the formula takes off.';
+      return 'At ${_said(piece, typed)} this piece comes out at nothing. The '
+          'size has to be bigger than the formula takes off.';
     }
     return null;
   }
@@ -222,7 +350,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     if (window == null) return false;
     final String typed = _sizeControllers[piece.ref]?.text.trim() ?? '';
     if (typed == _windowSizeFor(piece)) return false;
-    final double? value = double.tryParse(typed);
+    final double? value = _typedSize(piece, typed);
     if (value == null) return typed.isNotEmpty;
     return (value - window).abs() > 0.0005;
   }
@@ -234,15 +362,16 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
       for (final EffectiveFormula piece in section.pieces) {
         if (!_hasOwnSize(piece)) continue;
         final String typed = _sizeControllers[piece.ref]!.text.trim();
-        final double? value = double.tryParse(typed);
+        final double? value = _typedSize(piece, typed);
         if (value == null) continue;
 
         // A size the box was opened on keeps its exact value. The box shows
-        // two decimals, and saving what it shows would nudge a size set to
-        // more precision than that every time the screen was opened.
+        // two decimals, or the half suter, and saving what it shows would
+        // nudge a size set finer than that every time the screen was opened.
         final PieceSize? standing = _standingSizeFor(piece);
-        final double size =
-            standing != null && typed == _sizeText(standing.size) ? standing.size : value;
+        final double size = standing != null && typed == _sizeTextFor(piece, standing.size)
+            ? standing.size
+            : value;
 
         sizes.add(PieceSize(
           ref: piece.ref,
@@ -283,12 +412,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     super.dispose();
   }
 
-  bool get _hasFormulaEdits {
-    for (final MapEntry<FormulaPieceRef, TextEditingController> entry in _controllers.entries) {
-      if (entry.value.text.trim() != _opened[entry.key]) return true;
-    }
-    return false;
-  }
+  bool get _hasFormulaEdits => _controllers.keys.any(_formulaChanged);
 
   /// Anything typed that would be lost by leaving -- a formula or a size.
   bool get _hasEdits {
@@ -357,7 +481,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   void _onTyped(FormulaPieceRef ref, String text) {
     final EffectiveFormula? piece = _pieceFor(ref);
     if (piece == null) return;
-    final FormulaEdit edit = piece.slot.readDisplay(text);
+    final FormulaEdit edit = _read(piece, text);
     setState(() {
       if (edit.isUsable) {
         _problems.remove(ref);
@@ -414,22 +538,85 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     if (measurements[slot.dimension] == null) return null;
 
     final String typed = _controllers[ref]?.text ?? slot.display;
-    final FormulaEdit edit = slot.readDisplay(typed);
+    final FormulaEdit edit = _read(piece, typed);
     if (!edit.isUsable) return null;
 
     final FormulaResult result =
         slot.withStored(edit.stored!).cutLengthFor(measurements);
     if (!result.isUsable) return _Preview.problem(result.problem!);
 
-    // Glass comes out in centimetres and aluminium in feet, because that is
-    // what each is measured and cut in. Reading one as the other would show an
-    // 88cm pane as 88 feet, which is the sort of number somebody acts on.
-    final double value = result.asCutLength!;
-    final CutLength length = slot.measuresInCentimetres
-        ? CutLength.fromCm(value)
-        : CutLength.fromFeet(value);
+    // Inches first when that is what the formula is shown in, so the number
+    // under a formula lines up with the numbers in it.
+    return _Preview.sizes(
+      _cutLength(slot, result.asCutLength!).readings(
+        centimetresFirst: slot.isFabrication && !_inInches(ref),
+      ),
+    );
+  }
 
-    return _Preview.sizes(length.readings(centimetresFirst: slot.isFabrication));
+  /// A cut size, as a length.
+  ///
+  /// Glass comes out in centimetres and aluminium in feet, because that is
+  /// what each is measured and cut in. Reading one as the other would show an
+  /// 88cm pane as 88 feet, which is the sort of number somebody acts on.
+  static CutLength _cutLength(FormulaSlot slot, double value) =>
+      slot.measuresInCentimetres ? CutLength.fromCm(value) : CutLength.fromFeet(value);
+
+  /// What this piece would be cut to with [typed] as its formula, for the
+  /// box that sets one length in it. Null when the window has not been
+  /// measured, so there is nothing to work it out on.
+  LengthSheetCut? _cutWith(EffectiveFormula piece, String typed) {
+    final Map<String, double> measurements = _measurementsFor(piece);
+    if (measurements[piece.slot.dimension] == null) return null;
+    final FormulaEdit edit = _read(piece, typed);
+    if (!edit.isUsable) return LengthSheetCut.problem(edit.problem!);
+    final FormulaResult result =
+        piece.slot.withStored(edit.stored!).cutLengthFor(measurements);
+    if (!result.isUsable) {
+      return const LengthSheetCut.problem(
+        'At this number the piece comes out at nothing.',
+      );
+    }
+    final CutLength length = _cutLength(piece.slot, result.asCutLength!);
+    return LengthSheetCut.size(inches: length.inInchSuter, centimetres: '${length.inCm} cm');
+  }
+
+  /// Opens one length of a formula shown in inches for setting on its own.
+  ///
+  /// The way most formulas are adjusted: one deduction a suter or two off,
+  /// the arithmetic around it left alone. The box shows what the piece will
+  /// be cut to as the number is moved, and the formula only changes when the
+  /// new number is taken.
+  Future<void> _setLength(FormulaPieceRef ref, int index) async {
+    final EffectiveFormula? piece = _pieceFor(ref);
+    final InchFormula? inches = _inches[ref];
+    if (piece == null || inches == null) return;
+    final TextEditingController controller = _controllers[ref]!;
+    final List<InchPart>? parts = inches.read(controller.text).parts;
+    if (parts == null) return;
+    InchLengthPart? part;
+    for (final InchLengthPart each in parts.whereType<InchLengthPart>()) {
+      if (each.index == index) part = each;
+    }
+    if (part == null) return;
+
+    final double? kept = part.kept;
+    final InchLength? chosen = await showFormulaLengthSheet(
+      context: context,
+      label: piece.slot.label,
+      current: part.length,
+      keptAs: part.approximate && kept != null ? inches.unit.say(kept) : null,
+      formulaWith: (InchLength length) =>
+          inches.replaceLength(controller.text, index, length),
+      cutWith: (InchLength length) =>
+          _cutWith(piece, inches.replaceLength(controller.text, index, length)),
+    );
+    if (chosen == null || !mounted) return;
+
+    final String text = inches.replaceLength(controller.text, index, chosen);
+    if (text == controller.text) return;
+    controller.text = text;
+    _onTyped(ref, text);
   }
 
   /// The measurements this one piece is worked out against.
@@ -440,8 +627,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
   /// no other piece and no other window.
   Map<String, double> _measurementsFor(EffectiveFormula piece) {
     final Map<String, double> measurements = _measurementsOf(piece);
-    final String typed = _sizeControllers[piece.ref]?.text.trim() ?? '';
-    final double? asked = typed.isEmpty ? null : double.tryParse(typed);
+    final double? asked = _sizeInBox(piece);
     if (asked == null) return measurements;
     return <String, double>{...measurements, piece.slot.dimension: asked};
   }
@@ -458,7 +644,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
 
     final FormulaSlot original = piece.slot.withStored(shipped);
     setState(() {
-      _controllers[ref]!.text = original.display;
+      if (!_putFormula(ref, original)) return;
       _problems.remove(ref);
       // Checked against the formula just put back, which is what the box
       // above now holds.
@@ -484,7 +670,7 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
       _sizeProblems.clear();
       for (final EffectiveSection section in refreshed) {
         for (final EffectiveFormula piece in section.pieces) {
-          _controllers[piece.ref]!.text = piece.slot.display;
+          _putFormula(piece.ref, piece.slot);
           _sizeControllers[piece.ref]!.text = _windowSizeFor(piece);
         }
       }
@@ -498,9 +684,9 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
     final List<_PendingEdit> pending = <_PendingEdit>[];
     for (final EffectiveSection section in _sections) {
       for (final EffectiveFormula piece in section.pieces) {
+        if (!_formulaChanged(piece.ref)) continue;
         final String typed = _controllers[piece.ref]!.text.trim();
-        if (typed == _opened[piece.ref]) continue;
-        final FormulaEdit edit = piece.slot.readDisplay(typed);
+        final FormulaEdit edit = _read(piece, typed);
         if (!edit.isUsable) return;
         pending.add(_PendingEdit(
           ref: piece.ref,
@@ -711,6 +897,9 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
                         isFabrication: widget.windowKey.context == 'fabrication',
                         applied: _appliedAutomatically,
                         hasMeasurements: widget.measurements.isNotEmpty,
+                        inchSuter: _inches.isNotEmpty,
+                        hasApproximate: _inches.values
+                            .any((InchFormula inches) => inches.hasApproximate),
                       ),
                       const SizedBox(height: 16),
                       for (final EffectiveSection section in _sections) ...<Widget>[
@@ -724,11 +913,17 @@ class _FormulaEditorScreenState extends State<FormulaEditorScreen> {
                           problemFor: (FormulaPieceRef ref) => _problems[ref],
                           sizeProblemFor: (FormulaPieceRef ref) => _sizeProblems[ref],
                           ownSizeFor: (EffectiveFormula piece) => _hasOwnSize(piece)
-                              ? '${_windowSizeFor(piece)} $_sizeUnit'
+                              ? _said(piece, _windowSizeFor(piece))
                               : null,
                           previewFor: _preview,
-                          isEdited: (FormulaPieceRef ref) =>
-                              _controllers[ref]!.text.trim() != _opened[ref],
+                          isEdited: _formulaChanged,
+                          inInches: _inInches,
+                          // The window is in inches but this one formula has
+                          // no reading in them, so it is shown as stored.
+                          notInInches: (FormulaPieceRef ref) =>
+                              widget.inchSuter && !_inInches(ref),
+                          inchPartsFor: _inchPartsFor,
+                          onLengthTap: _setLength,
                           onTyped: _onTyped,
                           onSizeTyped: (FormulaPieceRef ref, String _) =>
                               _onSizeTyped(ref),
@@ -785,6 +980,8 @@ class _Introduction extends StatelessWidget {
     required this.isFabrication,
     required this.applied,
     required this.hasMeasurements,
+    required this.inchSuter,
+    required this.hasApproximate,
   });
 
   final bool isFabrication;
@@ -796,6 +993,13 @@ class _Introduction extends StatelessWidget {
   /// say something about.
   final bool hasMeasurements;
 
+  /// Whether the formulas are shown in inches and suter.
+  final bool inchSuter;
+
+  /// Whether any number on the screen is only the nearest half suter to
+  /// what is kept.
+  final bool hasApproximate;
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -804,9 +1008,9 @@ class _Introduction extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.royalBlue.withValues(alpha: 0.06),
+        color: formulaInk.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.royalBlue.withValues(alpha: 0.18)),
+        border: Border.all(color: formulaInk.withValues(alpha: 0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -814,7 +1018,7 @@ class _Introduction extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Icon(Icons.functions_rounded, size: 20, color: AppTheme.royalBlue),
+              Icon(Icons.functions_rounded, size: 20, color: formulaInk),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -829,13 +1033,32 @@ class _Introduction extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Divider(height: 1, color: AppTheme.royalBlue.withValues(alpha: 0.16)),
+          Divider(height: 1, color: formulaInk.withValues(alpha: 0.16)),
           const SizedBox(height: 11),
-          _Note(
-            icon: Icons.straighten_rounded,
-            text: 'Write in $unit. If you measured this window in inches, '
-                'Quick AL converts it before the formula runs.',
-          ),
+          if (inchSuter)
+            const _Note(
+              icon: Icons.straighten_rounded,
+              text: "In inch and suter, as this window was measured: 2'' is "
+                  "two inches, 3''' three suter. Tap a number in a formula to "
+                  'change it.',
+            )
+          else
+            _Note(
+              icon: Icons.straighten_rounded,
+              text: 'Write in $unit. If you measured this window in inches, '
+                  'Quick AL converts it before the formula runs.',
+            ),
+          // Without this a fitter checking a cut by hand would take 1'' 5'''
+          // for exactly that, and wonder why the cut size is a hair off.
+          if (inchSuter && hasApproximate) ...<Widget>[
+            const SizedBox(height: 9),
+            _Note(
+              glyph: '≈',
+              text: 'marks a number Quick AL keeps in $unit, shown to the '
+                  'nearest ½ suter. It is cut to its exact size until you '
+                  'change it.',
+            ),
+          ],
           // The two things on this screen that can change reach different
           // distances, and mixing them up cuts the wrong windows: said once,
           // plainly, before either is touched.
@@ -860,9 +1083,15 @@ class _Introduction extends StatelessWidget {
 
 /// One short line of small print, with an icon to hang it on.
 class _Note extends StatelessWidget {
-  const _Note({required this.icon, required this.text});
+  const _Note({this.icon, this.glyph, required this.text})
+      : assert(icon != null || glyph != null);
 
-  final IconData icon;
+  final IconData? icon;
+
+  /// A character in the icon's place, for a mark the note is about -- the ≈
+  /// it explains, drawn as it is drawn in the formulas.
+  final String? glyph;
+
   final String text;
 
   @override
@@ -871,7 +1100,22 @@ class _Note extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Icon(icon, size: 15, color: AppTheme.slate),
+        if (icon != null)
+          Icon(icon, size: 15, color: AppTheme.slate)
+        else
+          SizedBox(
+            width: 15,
+            child: Text(
+              glyph!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.2,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.slate,
+              ),
+            ),
+          ),
         const SizedBox(width: 9),
         Expanded(
           child: Text(
@@ -900,6 +1144,10 @@ class _SectionBlock extends StatelessWidget {
     required this.ownSizeFor,
     required this.previewFor,
     required this.isEdited,
+    required this.inInches,
+    required this.notInInches,
+    required this.inchPartsFor,
+    required this.onLengthTap,
     required this.onTyped,
     required this.onSizeTyped,
     required this.onToggleEditing,
@@ -908,6 +1156,10 @@ class _SectionBlock extends StatelessWidget {
   });
 
   final EffectiveSection section;
+  final bool Function(FormulaPieceRef) inInches;
+  final bool Function(FormulaPieceRef) notInInches;
+  final List<InchPart>? Function(FormulaPieceRef) inchPartsFor;
+  final void Function(FormulaPieceRef, int) onLengthTap;
   final TextEditingController Function(FormulaPieceRef) controllerFor;
   final TextEditingController Function(FormulaPieceRef) sizeControllerFor;
   final bool Function(FormulaPieceRef) editingFormulaFor;
@@ -1000,6 +1252,10 @@ class _SectionBlock extends StatelessWidget {
                   windowSizeWhenOwn: ownSizeFor(section.pieces[i]),
                   preview: previewFor(section.pieces[i].ref, section.pieces[i].slot),
                   edited: isEdited(section.pieces[i].ref),
+                  inInches: inInches(section.pieces[i].ref),
+                  notInInches: notInInches(section.pieces[i].ref),
+                  inchParts: inchPartsFor(section.pieces[i].ref),
+                  onLengthTap: (int index) => onLengthTap(section.pieces[i].ref, index),
                   onTyped: (String text) => onTyped(section.pieces[i].ref, text),
                   onSizeTyped: (String text) => onSizeTyped(section.pieces[i].ref, text),
                   onToggleEditing: () => onToggleEditing(section.pieces[i].ref),
@@ -1044,6 +1300,10 @@ class _PieceRow extends StatelessWidget {
     required this.windowSizeWhenOwn,
     required this.preview,
     required this.edited,
+    required this.inInches,
+    required this.notInInches,
+    required this.inchParts,
+    required this.onLengthTap,
     required this.onTyped,
     required this.onSizeTyped,
     required this.onToggleEditing,
@@ -1052,6 +1312,16 @@ class _PieceRow extends StatelessWidget {
   });
 
   final EffectiveFormula piece;
+
+  /// Whether this piece's formula and size are shown in inches and suter.
+  final bool inInches;
+
+  /// True when the window is in inches but this formula has no reading in
+  /// them, and is shown as it is stored instead.
+  final bool notInInches;
+
+  final List<InchPart>? inchParts;
+  final ValueChanged<int> onLengthTap;
   final String? ordinal;
   final TextEditingController controller;
   final TextEditingController sizeController;
@@ -1085,14 +1355,14 @@ class _PieceRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.royalBlue.withValues(alpha: 0.10),
+                  color: formulaInk.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(7),
-                  border: Border.all(color: AppTheme.royalBlue.withValues(alpha: 0.22)),
+                  border: Border.all(color: formulaInk.withValues(alpha: 0.22)),
                 ),
                 child: Text(
                   piece.slot.label,
                   style: theme.textTheme.labelLarge?.copyWith(
-                    color: AppTheme.royalBlue,
+                    color: formulaInk,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1143,9 +1413,28 @@ class _PieceRow extends StatelessWidget {
             onFormulaChanged: onTyped,
             onSizeChanged: onSizeTyped,
             onToggleEditing: onToggleEditing,
+            inchSuter: inInches,
+            inchParts: inchParts,
+            onLengthTap: onLengthTap,
           ),
           const SizedBox(height: 8),
-          _Legend(slot: piece.slot),
+          _Legend(
+            slot: piece.slot,
+            inInches: inInches,
+            approximate: inchParts?.any(
+                  (InchPart part) => part is InchLengthPart && part.approximate,
+                ) ??
+                false,
+          ),
+          if (notInInches) ...<Widget>[
+            const SizedBox(height: 8),
+            _Note(
+              icon: Icons.info_outline_rounded,
+              text: 'Shown in ${piece.slot.isFabrication ? 'centimetres' : 'feet'}: '
+                  'this formula multiplies or divides by a measurement, so it '
+                  'has no reading in inches.',
+            ),
+          ],
           if (windowSizeWhenOwn != null) ...<Widget>[
             const SizedBox(height: 10),
             _OwnSizeNote(windowSize: windowSizeWhenOwn!, onPutBack: onResetSize),
@@ -1325,36 +1614,59 @@ class _OwnSizeNote extends StatelessWidget {
 
 /// What each name in the formula above stands for.
 class _Legend extends StatelessWidget {
-  const _Legend({required this.slot});
+  const _Legend({
+    required this.slot,
+    required this.inInches,
+    required this.approximate,
+  });
 
   final FormulaSlot slot;
+
+  /// Whether the formula above is shown in inches.
+  final bool inInches;
+
+  /// Whether a number in it is only the nearest half suter.
+  final bool approximate;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final Map<String, String> lines = slot.legend;
+    final Map<String, String> lines = inInches
+        ? <String, String>{
+            slot.label: FormulaVariables.describe(
+              slot.dimension,
+              isFabrication: slot.isFabrication,
+              unit: 'inches',
+            ),
+          }
+        : slot.legend;
     return Wrap(
       spacing: 14,
       runSpacing: 4,
       children: <Widget>[
         for (final MapEntry<String, String> line in lines.entries)
-          RichText(
-            text: TextSpan(
-              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.slate),
-              children: <InlineSpan>[
-                TextSpan(
-                  text: line.key,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.royalBlue,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                TextSpan(text: ' = ${line.value}'),
-              ],
+          _line(theme, line.key, line.value),
+        if (approximate) _line(theme, '≈', 'nearest ½ suter', name: AppTheme.slate),
+      ],
+    );
+  }
+
+  Widget _line(ThemeData theme, String key, String meaning, {Color? name}) {
+    return RichText(
+      text: TextSpan(
+        style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.slate),
+        children: <InlineSpan>[
+          TextSpan(
+            text: key,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: name ?? formulaInk,
+              letterSpacing: 0.3,
             ),
           ),
-      ],
+          TextSpan(text: ' = $meaning'),
+        ],
+      ),
     );
   }
 }
@@ -1370,7 +1682,7 @@ class _ScopeOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Material(
-      color: AppTheme.royalBlue.withValues(alpha: 0.06),
+      color: formulaInk.withValues(alpha: 0.06),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -1384,7 +1696,7 @@ class _ScopeOption extends StatelessWidget {
                 title,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.royalBlue,
+                  color: formulaInk,
                 ),
               ),
               const SizedBox(height: 3),

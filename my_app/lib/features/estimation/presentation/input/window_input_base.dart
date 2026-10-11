@@ -875,6 +875,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                     sides: sizing.sides,
                   ),
           pieceSizes: _pieceSizes,
+          // A window measured in inches has its formulas read, and adjusted,
+          // in inches and suter too -- the unit the fitter is thinking in.
+          inchSuter: _unitMode == UnitMode.inches,
           onSaved: _saveFormulas,
           // Kept on this screen until the window is saved -- they belong to
           // the window, and there is no window yet to put them on.
