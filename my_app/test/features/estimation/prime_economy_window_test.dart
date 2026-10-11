@@ -16,6 +16,9 @@ import 'package:my_app/features/estimation/models/window_variant.dart';
 import 'package:my_app/features/estimation/presentation/input/input_registry.dart';
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 import 'package:my_app/features/estimation/state/last_window_material.dart';
+import 'package:my_app/features/estimation/widgets/collar_side_picker.dart';
+import 'package:my_app/features/estimation/widgets/prime_economy_sliding_overlay.dart';
+import 'package:my_app/features/estimation/widgets/sliding_section_overlay.dart';
 import 'package:my_app/features/formulas/data/formula_book.dart';
 import 'package:my_app/features/formulas/data/formula_book_loader.dart';
 import 'package:my_app/features/formulas/data/formula_catalogue.dart';
@@ -91,8 +94,28 @@ void main() {
       }
     });
 
-    test('no collar to pick', () {
-      expect(CollarLayout.forWindow(code), isNull);
+    test('every one of its profiles lights a part of the drawing', () {
+      final OwnWindow own = WindowVariants.ownOf(code)!;
+      for (final String section in own.sections) {
+        expect(
+          PrimeEconomySlidingOverlay.partsBySection[section],
+          isNotEmpty,
+          reason: section,
+        );
+      }
+      // The rails are two profiles here, where the sliding window's M24 is
+      // one: each lights its own half.
+      expect(PrimeEconomySlidingOverlay.partsBySection['EF25'], <SlidingPart>{SlidingPart.topRails});
+      expect(PrimeEconomySlidingOverlay.partsBySection['EF24'], <SlidingPart>{SlidingPart.bottomRails});
+    });
+
+    test("the sliding window's collar 2: one collar, none on any side", () {
+      // Shown on the sliding window's card, as its collar 2 (Hashir, Oct
+      // 2026), and nothing to pick on it.
+      final CollarLayout layout = CollarLayout.forWindow(code)!;
+      expect(layout.isFixed, isTrue);
+      expect(layout.collars, <int>[2]);
+      expect(layout.sidesWithCollar(2), isEmpty);
     });
   });
 
@@ -423,10 +446,19 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('plain drawing, no collar, 0.9mm only, Prime names', (WidgetTester tester) async {
+    testWidgets("the sliding window's collar 2 card, 0.9mm only, Prime names", (
+      WidgetTester tester,
+    ) async {
       await open(tester, code);
+      // Drawn as the sliding window without a collar, on the same card, with
+      // its number and the line under it that says why nothing can be picked.
       expect(find.byKey(const Key('prime_economy_drawing')), findsOneWidget);
-      expect(find.textContaining('Collar'), findsNothing, reason: 'no collar badge or hint');
+      expect(find.byType(CollarSidePicker), findsOneWidget);
+      final SlidingSectionOverlay drawing =
+          tester.widget<SlidingSectionOverlay>(find.byKey(const Key('prime_economy_drawing')));
+      expect(drawing.collarId, 2);
+      expect(find.text('Collar 2'), findsOneWidget);
+      expect(find.text('This window has no collar on any side.'), findsOneWidget);
       expect(find.text('0.9mm'), findsOneWidget);
       expect(find.text('1.2mm'), findsNothing);
       expect(find.text('2mm'), findsNothing);

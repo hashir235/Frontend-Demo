@@ -106,12 +106,12 @@ class CollarLayout {
   /// not know.
   ///
   /// A variant window (see [WindowVariants]) has its base window's layout,
-  /// offering only the collars it comes in.
+  /// offering only the collars it comes in. That includes a window cut to
+  /// formulas of its own: the Prime Economy sliding window is the sliding
+  /// window's collar 2 -- no collar on any side -- and is shown on the same
+  /// card, drawn the same way (Hashir, Oct 2026).
   static CollarLayout? forWindow(String windowCode) {
     final WindowVariant? variant = WindowVariants.of(windowCode);
-    // A window cut to formulas of its own has no collar to pick: it is
-    // drawn plain, one line all round.
-    if (variant?.own != null) return null;
     if (variant != null) {
       final CollarLayout? base = forWindow(variant.baseCode);
       final List<int>? only = variant.collars;

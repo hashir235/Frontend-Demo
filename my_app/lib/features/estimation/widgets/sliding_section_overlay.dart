@@ -10,17 +10,58 @@ class _ZoneSpec {
   const _ZoneSpec(this.section, this.rect);
 }
 
+/// One part of the sliding window's drawing, for a window whose profiles do
+/// not line up one to one with the sliding window's own.
+///
+/// The drawing lights its lines by the sliding window's profile names, and a
+/// profile there can cover more than one part -- M24 is every rail, top and
+/// bottom. A window cut from other profiles (Prime Economy's EF25 is the top
+/// rails only) names the parts it means instead.
+enum SlidingPart {
+  /// The frame's head: WT.
+  head,
+
+  /// The frame's sill: WB.
+  sill,
+
+  /// The frame's left side: HL.
+  leftJamb,
+
+  /// The frame's right side: HR.
+  rightJamb,
+
+  /// Both panels' top rails.
+  topRails,
+
+  /// Both panels' bottom rails.
+  bottomRails,
+
+  /// The two outer stiles, against the frame.
+  outerStiles,
+
+  /// The two stiles that meet at the centre.
+  centreStiles,
+
+  /// The net, over the left panel.
+  net,
+}
+
 class _SlidingPainter extends CustomPainter {
   final String? selectedSection;
   final Map<String, String> sectionAliases;
   final int? collarId;
   final List<_ZoneSpec> zones;
 
+  /// The parts to light instead of [selectedSection]'s, or null to light by
+  /// the section.
+  final Set<SlidingPart>? litParts;
+
   const _SlidingPainter({
     required this.selectedSection,
     required this.sectionAliases,
     required this.collarId,
     required this.zones,
+    this.litParts,
   });
 
   @override
@@ -257,16 +298,38 @@ class _SlidingPainter extends CustomPainter {
     const double fontSize = 12;
     final double labelGap = size.height * 0.012;
     final double sideGap = labelGap + size.width * 0.01;
-    final bool highlightDc30F = effectiveSection == 'DC30F';
-    final bool highlightDc30C = effectiveSection == 'DC30C';
+    // Lit by parts: the frame by its labels alone, as the frame profiles are
+    // on a window with no collar, and every other part as its own profile
+    // would light it -- the rails split into top and bottom.
+    final Set<SlidingPart>? parts = litParts;
+    final bool byParts = parts != null;
+    final bool highlightDc30F = !byParts && effectiveSection == 'DC30F';
+    final bool highlightDc30C = !byParts && effectiveSection == 'DC30C';
     final bool highlightDc26 =
-        effectiveSection == 'DC26C' || effectiveSection == 'DC26F';
-    final bool highlightM23 = effectiveSection == 'M23';
-    final bool highlightM24 = effectiveSection == 'M24';
-    final bool highlightM28 = effectiveSection == 'M28';
-    final bool highlightD29 = effectiveSection == 'D29';
-    final bool onlyHighlights = effectiveSection != null;
+        !byParts && (effectiveSection == 'DC26C' || effectiveSection == 'DC26F');
+    final bool highlightM23 = byParts
+        ? parts.contains(SlidingPart.outerStiles)
+        : effectiveSection == 'M23';
+    final bool highlightTopRails = byParts
+        ? parts.contains(SlidingPart.topRails)
+        : effectiveSection == 'M24';
+    final bool highlightBottomRails = byParts
+        ? parts.contains(SlidingPart.bottomRails)
+        : effectiveSection == 'M24';
+    final bool highlightM24 = highlightTopRails || highlightBottomRails;
+    final bool highlightM28 = byParts
+        ? parts.contains(SlidingPart.centreStiles)
+        : effectiveSection == 'M28';
+    final bool highlightD29 = byParts
+        ? parts.contains(SlidingPart.net)
+        : effectiveSection == 'D29';
+    final bool onlyHighlights =
+        byParts ? parts.isNotEmpty : effectiveSection != null;
     final Set<String> highlightLabels = {
+      if (byParts && parts.contains(SlidingPart.head)) 'WT',
+      if (byParts && parts.contains(SlidingPart.sill)) 'WB',
+      if (byParts && parts.contains(SlidingPart.leftJamb)) 'HL',
+      if (byParts && parts.contains(SlidingPart.rightJamb)) 'HR',
       if (highlightDc30F &&
           collarId != 6 &&
           collarId != 7 &&
@@ -977,13 +1040,16 @@ class _SlidingPainter extends CustomPainter {
       );
     }
 
-    // M24 highlight set (inner top + bottom + W labels)
-    if (highlightM24) {
+    // M24 highlight set (inner top + bottom + W labels) -- or just the top or
+    // the bottom, for a window whose top and bottom rails are two profiles.
+    if (highlightTopRails) {
       canvas.drawLine(
         Offset(innerRect.left, innerRect.top),
         Offset(innerRect.right, innerRect.top),
         highlightPaint,
       );
+    }
+    if (highlightBottomRails) {
       canvas.drawLine(
         Offset(innerRect.left, innerRect.bottom),
         Offset(innerRect.right, innerRect.bottom),
@@ -1233,9 +1299,11 @@ class _SlidingPainter extends CustomPainter {
 
     void paintPanelLabels(Rect panel, {required bool isLeftPanel}) {
       // Top W
-      final bool highlightW = highlightM24 || (highlightD29 && isLeftPanel);
-      if (!onlyHighlights || highlightW) {
-        final TextPainter tpWTop = highlightW
+      final bool netHere = highlightD29 && isLeftPanel;
+      final bool highlightWTop = highlightTopRails || netHere;
+      final bool highlightWBottom = highlightBottomRails || netHere;
+      if (!onlyHighlights || highlightWTop) {
+        final TextPainter tpWTop = highlightWTop
             ? (TextPainter(
                 text: const TextSpan(
                   text: 'W',
@@ -1288,8 +1356,8 @@ class _SlidingPainter extends CustomPainter {
         tpHInner.paint(canvas, Offset(hInnerX, hY));
       }
       // Bottom W
-      if (!onlyHighlights || highlightW) {
-        final TextPainter tpWBottom = highlightW
+      if (!onlyHighlights || highlightWBottom) {
+        final TextPainter tpWBottom = highlightWBottom
             ? (TextPainter(
                 text: const TextSpan(
                   text: 'W',
@@ -1345,7 +1413,14 @@ class _SlidingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SlidingPainter oldDelegate) {
-    return oldDelegate.selectedSection != selectedSection;
+    return oldDelegate.selectedSection != selectedSection ||
+        oldDelegate.collarId != collarId ||
+        !_sameParts(oldDelegate.litParts, litParts);
+  }
+
+  static bool _sameParts(Set<SlidingPart>? a, Set<SlidingPart>? b) {
+    if (a == null || b == null) return a == b;
+    return a.length == b.length && a.containsAll(b);
   }
 }
 
@@ -1354,11 +1429,16 @@ class SlidingSectionOverlay extends StatelessWidget implements CollarFrameDrawin
   final Map<String, String> sectionAliases;
   final int? collarId;
 
+  /// The parts to light, for a window whose profiles do not match the
+  /// sliding window's own. When set, [selectedSection] is not read.
+  final Set<SlidingPart>? litParts;
+
   const SlidingSectionOverlay({
     super.key,
     required this.selectedSection,
     this.sectionAliases = const {},
     this.collarId,
+    this.litParts,
   });
 
   List<_ZoneSpec> _zones() {
@@ -1437,6 +1517,7 @@ class SlidingSectionOverlay extends StatelessWidget implements CollarFrameDrawin
         sectionAliases: sectionAliases,
         collarId: collarId,
         zones: _zones(),
+        litParts: litParts,
       ),
       child: const SizedBox.expand(),
     );

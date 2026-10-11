@@ -2417,15 +2417,15 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                     },
                   ),
                 // The badge sits over the top edge of the card; a tap there
-                // is meant for the top side under it. A window with no
-                // collar system has no collar number to show.
-                if (_ownWindow == null)
-                  Positioned(
-                    top: -18,
-                    child: IgnorePointer(
-                      child: _CollarArchBadge(number: _selectedCollar),
-                    ),
+                // is meant for the top side under it. The Prime Economy
+                // window shows one too: it is the sliding window's collar 2,
+                // and is shown as the Prime and Royal frames are.
+                Positioned(
+                  top: -18,
+                  child: IgnorePointer(
+                    child: _CollarArchBadge(number: _selectedCollar),
                   ),
+                ),
               ],
             ),
             const SizedBox(height: 8),
