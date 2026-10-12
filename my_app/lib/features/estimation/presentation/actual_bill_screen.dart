@@ -17,6 +17,7 @@ import '../data/billing_repository.dart';
 import '../models/bill_request.dart';
 import '../models/bill_snapshot.dart';
 import '../models/estimate_flow_state.dart';
+import '../models/extra_charge.dart';
 import '../state/estimate_session_store.dart';
 import '../state/invoice_print_choices.dart';
 import '../../help_videos/tutorial_videos.dart';
@@ -117,6 +118,13 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
             snapshot.rates.aluminiumDiscountPercent,
           ),
           extraCharges: _formatNumber(snapshot.totals.extraCharges),
+          // A server that does not keep the lines yet sends back only the
+          // total; the lines as typed are kept, so going back loses nothing.
+          extraChargeLines: extraChargeDraftsOf(
+            snapshot.extraChargeItems.isNotEmpty
+                ? snapshot.extraChargeItems
+                : widget.request.extraChargeItems,
+          ),
           advancePaid: _formatNumber(snapshot.totals.advancePaid),
           glassColor: snapshot.glassColor,
           aluminiumCompany: snapshot.aluminiumCompany,
@@ -166,6 +174,33 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
   String _displayText(String value) {
     final String trimmed = value.trim();
     return trimmed.isEmpty ? '--' : trimmed;
+  }
+
+  /// Every gauge the job is made in, or the one (Hashir, Oct 2026).
+  String _gaugeText(BillSnapshot snapshot) =>
+      _displayText(snapshot.gaugesShown.join(', '));
+
+  /// Extra charges as the PDF prints them: a line each under what it is
+  /// for, or the one total for a bill whose charges came as one figure.
+  List<_BillLine> _extraChargeLines(BillSnapshot snapshot) {
+    final String? figure = _onBill(snapshot, InvoiceFigure.extraCharges);
+    if (snapshot.extraChargeItems.isEmpty) {
+      return <_BillLine>[
+        _BillLine(
+          'Extra Charges',
+          _formatNumber(snapshot.totals.extraCharges),
+          figure: figure,
+        ),
+      ];
+    }
+    return <_BillLine>[
+      for (final ExtraCharge item in snapshot.extraChargeItems)
+        _BillLine(
+          item.labelOr('Extra Charges'),
+          _formatNumber(item.amount),
+          figure: figure,
+        ),
+    ];
   }
 
   double _netAmountPerSqFt(BillSnapshot snapshot) {
@@ -386,7 +421,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
           projectName: snapshot.project.name,
           projectLocation: snapshot.project.location,
           extras: <Widget>[
-            _MetaChip(label: 'Gage', value: _displayText(snapshot.gauge)),
+            _MetaChip(label: 'Gage', value: _gaugeText(snapshot)),
             _MetaChip(
               label: 'Aluminium',
               value: _displayText(snapshot.aluminiumColor),
@@ -488,7 +523,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
           context,
           title: 'Input Details',
           lines: <_BillLine>[
-            _BillLine('Gage', _displayText(snapshot.gauge)),
+            _BillLine('Gage', _gaugeText(snapshot)),
             _BillLine('Aluminium Color', _displayText(snapshot.aluminiumColor)),
             _BillLine('Glass Color', _displayText(snapshot.glassColor)),
             _BillLine(
@@ -680,11 +715,7 @@ class _ActualBillScreenState extends State<ActualBillScreen> {
               _formatNumber(snapshot.totals.aluminiumAfterDiscount),
               figure: _onBill(snapshot, InvoiceFigure.aluminiumAfterDiscount),
             ),
-            _BillLine(
-              'Extra Charges',
-              _formatNumber(snapshot.totals.extraCharges),
-              figure: _onBill(snapshot, InvoiceFigure.extraCharges),
-            ),
+            ..._extraChargeLines(snapshot),
             _BillLine(
               'Advance Paid',
               _formatNumber(snapshot.totals.advancePaid),

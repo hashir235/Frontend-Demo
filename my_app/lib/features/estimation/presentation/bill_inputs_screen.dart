@@ -11,6 +11,7 @@ import '../../../shared/widgets/project_meta_strip.dart';
 import '../../../shared/widgets/section_surface_card.dart';
 import '../models/bill_request.dart';
 import '../models/cost_table.dart';
+import '../models/extra_charge.dart';
 import '../widgets/glass_color_picker.dart';
 import '../models/window_review_item.dart';
 import '../../settings/data/bill_defaults_api_client.dart';
@@ -19,6 +20,24 @@ import '../models/estimate_flow_state.dart';
 import '../state/estimate_session_store.dart';
 import 'actual_bill_screen.dart';
 import '../../help_videos/tutorial_videos.dart';
+
+/// The two boxes of one extra charge line.
+class _ExtraChargeRow {
+  _ExtraChargeRow({String description = '', String amount = ''})
+    : description = TextEditingController(text: description),
+      amount = TextEditingController(text: amount);
+
+  final TextEditingController description;
+  final TextEditingController amount;
+
+  bool get isEmpty =>
+      description.text.trim().isEmpty && amount.text.trim().isEmpty;
+
+  void dispose() {
+    description.dispose();
+    amount.dispose();
+  }
+}
 
 class BillInputsScreen extends StatefulWidget {
   final EstimateSessionStore session;
@@ -99,6 +118,15 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
 
   bool get _pricesGlassPerColor => _glassGroups.isNotEmpty;
 
+  /// Every gauge the job is made in, for the header here and the bill. Read
+  /// once, like the window kinds.
+  late final List<String> _gauges = widget.session.gaugesUsed;
+
+  /// How the header names them: all of them, or the one passed in for a job
+  /// with no windows to read them from.
+  String get _gaugeText =>
+      _gauges.isEmpty ? widget.gaugeLabel : _gauges.join(', ');
+
   List<MapEntry<String, int>> _countWindowTypes() {
     final Map<String, int> counts = <String, int>{};
     for (final WindowReviewItem item in widget.session.items) {
@@ -110,7 +138,12 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
   final TextEditingController _aluminiumCompanyController =
       TextEditingController();
   final TextEditingController _discountController = TextEditingController();
-  final TextEditingController _extraChargesController = TextEditingController();
+
+  /// Extra charges, a line each with what it is for (Hashir, Oct 2026): a
+  /// customer asks what an extra figure is, and "Transport" answers it where
+  /// a lump does not. Always at least one line.
+  final List<_ExtraChargeRow> _extraRows = <_ExtraChargeRow>[];
+
   final TextEditingController _advancePaidController = TextEditingController();
   final TextEditingController _customerNameController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
@@ -149,6 +182,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     }
     _loadSavedRates();
     final EstimateBillDraft? draft = widget.session.billDraft;
+    _extraRows.addAll(_extraRowsFrom(draft));
     if (draft == null) {
       return;
     }
@@ -156,13 +190,66 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     _laborRateController.text = draft.laborRatePerSqFt;
     _hardwareRateController.text = draft.hardwareRatePerWindow;
     _discountController.text = draft.aluminiumDiscountPercent;
-    _extraChargesController.text = draft.extraCharges;
     _advancePaidController.text = draft.advancePaid;
     _glassColorController.text = draft.glassColor;
     _aluminiumCompanyController.text = draft.aluminiumCompany;
     _customerNameController.text = draft.customerName;
     _phoneController.text = draft.customerPhone;
     _addressController.text = draft.customerAddress;
+  }
+
+  /// The extra charge lines this bill had, or one empty line to start. A bill
+  /// whose extra charges were one figure, made before the lines, comes back
+  /// as one line with that amount and nothing yet to say what it was for.
+  static List<_ExtraChargeRow> _extraRowsFrom(EstimateBillDraft? draft) {
+    final List<ExtraChargeDraft> lines = (draft?.extraChargeLines ??
+            const <ExtraChargeDraft>[])
+        .where((ExtraChargeDraft line) => !line.isEmpty)
+        .toList(growable: false);
+    if (lines.isNotEmpty) {
+      return <_ExtraChargeRow>[
+        for (final ExtraChargeDraft line in lines)
+          _ExtraChargeRow(description: line.description, amount: line.amount),
+      ];
+    }
+    final String total = draft?.extraCharges.trim() ?? '';
+    if ((double.tryParse(total) ?? 0) > 0) {
+      return <_ExtraChargeRow>[_ExtraChargeRow(amount: total)];
+    }
+    return <_ExtraChargeRow>[_ExtraChargeRow()];
+  }
+
+  void _addExtraRow() {
+    if (_extraRows.length >= ExtraCharge.maxLines) return;
+    setState(() => _extraRows.add(_ExtraChargeRow()));
+  }
+
+  void _removeExtraRow(_ExtraChargeRow row) {
+    setState(() => _extraRows.remove(row));
+    // Its boxes are still on screen until this frame is drawn without them.
+    WidgetsBinding.instance.addPostFrameCallback((_) => row.dispose());
+  }
+
+  /// The lines that are charges: those with an amount.
+  List<ExtraCharge> get _extraCharges => <ExtraCharge>[
+    for (final _ExtraChargeRow row in _extraRows)
+      if ((double.tryParse(row.amount.text.trim()) ?? 0) > 0)
+        ExtraCharge(
+          description: row.description.text.trim(),
+          amount: double.parse(row.amount.text.trim()),
+        ),
+  ];
+
+  /// A line's amount. Optional, but a line that says what it is for needs
+  /// one -- otherwise it would quietly never reach the bill.
+  String? _extraAmountValidator(_ExtraChargeRow row, String? value) {
+    final String? base = _optionalNumberValidator(value);
+    if (base != null) return base;
+    final double amount = double.tryParse((value ?? '').trim()) ?? 0;
+    if (row.description.text.trim().isNotEmpty && amount <= 0) {
+      return 'Enter the amount';
+    }
+    return null;
   }
 
   /// Fills in the rates the user saved in Settings, so they are not retyped on
@@ -238,7 +325,9 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
     _glassColorController.dispose();
     _aluminiumCompanyController.dispose();
     _discountController.dispose();
-    _extraChargesController.dispose();
+    for (final _ExtraChargeRow row in _extraRows) {
+      row.dispose();
+    }
     _advancePaidController.dispose();
     _customerNameController.dispose();
     _addressController.dispose();
@@ -328,12 +417,22 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       return;
     }
 
+    final List<ExtraCharge> extraCharges = _extraCharges;
+    final double extraTotal = ExtraCharge.totalOf(extraCharges);
     final EstimateBillDraft draft = EstimateBillDraft(
       glassRatePerSqFt: _glassRateController.text.trim(),
       laborRatePerSqFt: _laborRateController.text.trim(),
       hardwareRatePerWindow: _hardwareRateController.text.trim(),
       aluminiumDiscountPercent: _discountController.text.trim(),
-      extraCharges: _extraChargesController.text.trim(),
+      extraCharges: extraCharges.isEmpty ? '' : _formatAmount(extraTotal),
+      extraChargeLines: <ExtraChargeDraft>[
+        for (final _ExtraChargeRow row in _extraRows)
+          if (!row.isEmpty)
+            ExtraChargeDraft(
+              description: row.description.text.trim(),
+              amount: row.amount.text.trim(),
+            ),
+      ],
       advancePaid: _advancePaidController.text.trim(),
       glassColor: _glassColorController.text.trim(),
       aluminiumCompany: _aluminiumCompanyController.text.trim(),
@@ -371,9 +470,11 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
       },
       aluminiumDiscountPercent: _parseRequiredNumber(_discountController),
       aluminiumTotal: widget.aluminiumTotal,
-      extraCharges: _parseOptionalNumber(_extraChargesController),
+      extraCharges: extraTotal,
+      extraChargeItems: extraCharges,
       advancePaid: _parseOptionalNumber(_advancePaidController),
       gauge: widget.gaugeValue,
+      gauges: _gauges,
       aluminiumColor: widget.colorValue,
       // The bill's heading still names the glass. With several on one job the
       // heading names them all rather than picking one to stand for the rest;
@@ -425,7 +526,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
                 projectName: widget.projectName,
                 projectLocation: widget.projectLocation,
                 extras: <Widget>[
-                  _InfoChip(label: 'Gage', value: widget.gaugeLabel),
+                  _InfoChip(label: 'Gage', value: _gaugeText),
                   _InfoChip(label: 'Colour', value: widget.colorLabel),
                   _InfoChip(
                     label: 'Aluminium',
@@ -494,11 +595,7 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
                     'Add customer and adjustment details only where they are needed.',
                 child: Column(
                   children: <Widget>[
-                    _buildNumberField(
-                      controller: _extraChargesController,
-                      label: 'Extra Charges',
-                      validator: _optionalNumberValidator,
-                    ),
+                    _buildExtraCharges(context),
                     _buildNumberField(
                       controller: _advancePaidController,
                       label: 'Advance Paid',
@@ -573,6 +670,113 @@ class _BillInputsScreenState extends State<BillInputsScreen> {
           ),
           prefixIconConstraints: const BoxConstraints(minWidth: 0),
         ),
+      ),
+    );
+  }
+
+  /// Extra charges, a line each: what it is for, and how much. The bill and
+  /// its PDF print every line under its own name; the total is what they
+  /// come to.
+  Widget _buildExtraCharges(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    final List<ExtraCharge> charges = _extraCharges;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.space4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Extra Charges',
+            style: text.titleSmall?.copyWith(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: AppTheme.space2),
+          Text(
+            'Say what each one is for: transport, silicon, extra glass or '
+            'section. Every line prints on the bill.',
+            style: text.bodySmall?.copyWith(color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: AppTheme.space4),
+          for (final _ExtraChargeRow row in _extraRows)
+            _buildExtraChargeRow(row),
+          Row(
+            children: <Widget>[
+              TextButton.icon(
+                key: const Key('bill_add_extra_charge'),
+                onPressed: _extraRows.length < ExtraCharge.maxLines
+                    ? _addExtraRow
+                    : null,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add extra charge'),
+              ),
+              if (charges.length > 1)
+                Expanded(
+                  child: Text(
+                    'Total: ${_formatAmount(ExtraCharge.totalOf(charges))}',
+                    key: const Key('bill_extra_charges_total'),
+                    textAlign: TextAlign.right,
+                    style: text.bodyMedium?.copyWith(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// One line: what it is for across the full width, where a few words fit
+  /// on a small phone, and the amount under it.
+  Widget _buildExtraChargeRow(_ExtraChargeRow row) {
+    return Padding(
+      key: ObjectKey(row),
+      padding: const EdgeInsets.only(bottom: AppTheme.space5),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              children: <Widget>[
+                TextFormField(
+                  controller: row.description,
+                  textCapitalization: TextCapitalization.sentences,
+                  inputFormatters: <TextInputFormatter>[
+                    LengthLimitingTextInputFormatter(
+                      ExtraCharge.maxDescriptionLength,
+                    ),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'What is it for?',
+                    hintText: 'e.g. Transport',
+                  ),
+                ),
+                const SizedBox(height: AppTheme.space3),
+                TextFormField(
+                  controller: row.amount,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: _decimalInputFormatters,
+                  validator: (String? value) =>
+                      _extraAmountValidator(row, value),
+                  // The total under the lines follows as amounts are typed.
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(labelText: 'Amount'),
+                ),
+              ],
+            ),
+          ),
+          if (_extraRows.length > 1)
+            IconButton(
+              tooltip: 'Remove',
+              onPressed: () => _removeExtraRow(row),
+              icon: const Icon(Icons.close_rounded),
+            ),
+        ],
       ),
     );
   }

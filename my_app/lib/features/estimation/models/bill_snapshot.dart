@@ -1,4 +1,5 @@
 import 'area_method.dart';
+import 'extra_charge.dart';
 
 class BillCustomer {
   final String name;
@@ -192,7 +193,15 @@ class BillGlassSummary {
 class BillSnapshot {
   final bool ok;
   final List<String> errors;
+
+  /// The one gauge the request carried for the whole job. What the bill
+  /// prints is [gaugesShown].
   final String gauge;
+
+  /// Every gauge the job's windows are made in, thinnest first. Empty on a
+  /// bill made before they were kept with it.
+  final List<String> gauges;
+
   final String aluminiumColor;
   final String glassColor;
   final String aluminiumCompany;
@@ -209,13 +218,26 @@ class BillSnapshot {
   /// "running" for a bill made in running feet, '' for square feet.
   final String areaMethod;
 
+  /// What [BillTotals.extraCharges] is made of, each line saying what it is
+  /// for. Empty when there are none, or when they came as one figure.
+  final List<ExtraCharge> extraChargeItems;
+
   /// "Rn.ft" or "sq.ft", for beside every figure of feet on this bill.
   String get areaUnit => areaUnitFor(areaMethod);
+
+  /// The gauges to print: all of them, or the one the request carried on a
+  /// bill made before they were kept.
+  List<String> get gaugesShown {
+    if (gauges.isNotEmpty) return gauges;
+    final String one = gauge.trim();
+    return one.isEmpty ? const <String>[] : <String>[one];
+  }
 
   const BillSnapshot({
     required this.ok,
     required this.errors,
     required this.gauge,
+    this.gauges = const <String>[],
     required this.aluminiumColor,
     required this.glassColor,
     this.aluminiumCompany = '',
@@ -227,6 +249,7 @@ class BillSnapshot {
     required this.windowSummary,
     this.glassSummary = const <BillGlassSummary>[],
     this.areaMethod = '',
+    this.extraChargeItems = const <ExtraCharge>[],
   });
 
   factory BillSnapshot.fromJson(Map<String, dynamic> json) {
@@ -239,6 +262,11 @@ class BillSnapshot {
           .map((dynamic item) => item.toString())
           .toList(),
       gauge: json['gauge'] as String? ?? '',
+      gauges: (json['gauges'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<String>()
+          .map((String g) => g.trim())
+          .where((String g) => g.isNotEmpty)
+          .toList(),
       aluminiumColor: json['aluminiumColor'] as String? ?? '',
       glassColor: json['glassColor'] as String? ?? '',
       aluminiumCompany: json['aluminiumCompany'] as String? ?? '',
@@ -267,6 +295,7 @@ class BillSnapshot {
               .map(BillGlassSummary.fromJson)
               .toList(),
       areaMethod: json['areaMethod'] as String? ?? '',
+      extraChargeItems: ExtraCharge.listFromJson(json['extraChargeItems']),
     );
   }
 }

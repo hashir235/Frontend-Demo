@@ -1,3 +1,5 @@
+import 'extra_charge.dart';
+
 class BillRequest {
   final String? projectId;
   final double glassRatePerSqFt;
@@ -18,8 +20,22 @@ class BillRequest {
   final double aluminiumDiscountPercent;
   final double aluminiumTotal;
   final double extraCharges;
+
+  /// What [extraCharges] is made of, line by line, each saying what it is
+  /// for. They add up to [extraCharges]. Empty when there are none, and for
+  /// a bill whose charges came as one figure.
+  final List<ExtraCharge> extraChargeItems;
+
   final double advancePaid;
+
+  /// One gauge for the job, as the engine has always been sent. The bill
+  /// prints [gauges].
   final String gauge;
+
+  /// Every gauge the job's windows are made in, thinnest first; the bill and
+  /// its PDF list them all, or the one.
+  final List<String> gauges;
+
   final String aluminiumColor;
   final String glassColor;
   final String aluminiumCompany;
@@ -39,8 +55,10 @@ class BillRequest {
     required this.aluminiumDiscountPercent,
     required this.aluminiumTotal,
     required this.extraCharges,
+    this.extraChargeItems = const <ExtraCharge>[],
     required this.advancePaid,
     required this.gauge,
+    this.gauges = const <String>[],
     required this.aluminiumColor,
     required this.glassColor,
     this.aluminiumCompany = '',
@@ -65,8 +83,15 @@ class BillRequest {
       'aluminiumDiscountPercent': aluminiumDiscountPercent,
       'aluminiumTotal': aluminiumTotal,
       'extraCharges': extraCharges,
+      // The engine works with the total; the server keeps these with the
+      // bill, for the screen and the PDF.
+      if (extraChargeItems.isNotEmpty)
+        'extraChargeItems': <Map<String, Object?>>[
+          for (final ExtraCharge item in extraChargeItems) item.toJson(),
+        ],
       'advancePaid': advancePaid,
       'gauge': gauge,
+      if (gauges.isNotEmpty) 'gauges': gauges,
       'aluminiumColor': aluminiumColor,
       'glassColor': glassColor,
       'aluminiumCompany': aluminiumCompany,

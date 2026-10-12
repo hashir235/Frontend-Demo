@@ -1,4 +1,5 @@
 import 'cost_table.dart';
+import 'extra_charge.dart';
 
 class EstimateMaterialSelection {
   final String gaugeValue;
@@ -20,12 +21,31 @@ class EstimateMaterialSelection {
   }
 }
 
+/// One extra charge line as typed on Bill Inputs: what it is for, and the
+/// amount as the box holds it.
+class ExtraChargeDraft {
+  final String description;
+  final String amount;
+
+  const ExtraChargeDraft({this.description = '', this.amount = ''});
+
+  bool get isEmpty => description.trim().isEmpty && amount.trim().isEmpty;
+}
+
 class EstimateBillDraft {
   final String glassRatePerSqFt;
   final String laborRatePerSqFt;
   final String hardwareRatePerWindow;
   final String aluminiumDiscountPercent;
+
+  /// The extra charges' total. Kept for a bill whose charges came as one
+  /// figure: Bill Inputs shows it as one line when [extraChargeLines] is
+  /// empty.
   final String extraCharges;
+
+  /// The extra charges line by line, each with what it is for.
+  final List<ExtraChargeDraft> extraChargeLines;
+
   final String advancePaid;
   final String glassColor;
   final String aluminiumCompany;
@@ -39,6 +59,7 @@ class EstimateBillDraft {
     this.hardwareRatePerWindow = '',
     this.aluminiumDiscountPercent = '',
     this.extraCharges = '',
+    this.extraChargeLines = const <ExtraChargeDraft>[],
     this.advancePaid = '',
     this.glassColor = '',
     this.aluminiumCompany = '',
@@ -53,6 +74,7 @@ class EstimateBillDraft {
       hardwareRatePerWindow.trim().isNotEmpty ||
       aluminiumDiscountPercent.trim().isNotEmpty ||
       extraCharges.trim().isNotEmpty ||
+      extraChargeLines.any((ExtraChargeDraft line) => !line.isEmpty) ||
       advancePaid.trim().isNotEmpty ||
       glassColor.trim().isNotEmpty ||
       aluminiumCompany.trim().isNotEmpty ||
@@ -66,6 +88,7 @@ class EstimateBillDraft {
     String? hardwareRatePerWindow,
     String? aluminiumDiscountPercent,
     String? extraCharges,
+    List<ExtraChargeDraft>? extraChargeLines,
     String? advancePaid,
     String? glassColor,
     String? aluminiumCompany,
@@ -81,6 +104,7 @@ class EstimateBillDraft {
       aluminiumDiscountPercent:
           aluminiumDiscountPercent ?? this.aluminiumDiscountPercent,
       extraCharges: extraCharges ?? this.extraCharges,
+      extraChargeLines: extraChargeLines ?? this.extraChargeLines,
       advancePaid: advancePaid ?? this.advancePaid,
       glassColor: glassColor ?? this.glassColor,
       aluminiumCompany: aluminiumCompany ?? this.aluminiumCompany,
@@ -164,6 +188,9 @@ EstimateBillDraft? estimateBillDraftFromProjectOutputs(
       rates?['aluminiumDiscountPercent'],
     ),
     extraCharges: _formatNumericValue(totals?['extraCharges']),
+    extraChargeLines: extraChargeDraftsOf(
+      ExtraCharge.listFromJson(billResult['extraChargeItems']),
+    ),
     advancePaid: _formatNumericValue(totals?['advancePaid']),
     glassColor: _normalizeString(billResult['glassColor']),
     aluminiumCompany: _normalizeString(billResult['aluminiumCompany']),
@@ -173,6 +200,18 @@ EstimateBillDraft? estimateBillDraftFromProjectOutputs(
   );
 
   return draft.hasAnyValue ? draft : null;
+}
+
+/// [items] as Bill Inputs shows them again, amounts written the way the
+/// other boxes are.
+List<ExtraChargeDraft> extraChargeDraftsOf(List<ExtraCharge> items) {
+  return <ExtraChargeDraft>[
+    for (final ExtraCharge item in items)
+      ExtraChargeDraft(
+        description: item.description,
+        amount: _formatNumericValue(item.amount),
+      ),
+  ];
 }
 
 Map<String, dynamic>? _asMap(Object? value) {

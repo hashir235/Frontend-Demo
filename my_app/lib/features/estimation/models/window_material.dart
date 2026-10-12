@@ -82,6 +82,21 @@ class WindowGauges {
   /// in others (Prime Economy, in 0.9mm only).
   static List<String> forWindow(String windowCode) =>
       WindowVariants.ownOf(windowCode)?.gauges ?? all;
+
+  /// [gauges] once each, thinnest first: how a bill lists the gauges a job
+  /// is made in. One the list does not know goes after the rest, in the
+  /// order it came.
+  static List<String> inOrder(Iterable<String> gauges) {
+    final List<String> seen = <String>[];
+    for (final String gauge in gauges) {
+      final String g = gauge.trim();
+      if (g.isNotEmpty && !seen.contains(g)) seen.add(g);
+    }
+    return <String>[
+      ...all.where(seen.contains),
+      ...seen.where((String g) => !all.contains(g)),
+    ];
+  }
 }
 
 /// The finishes, and what each one looks like.

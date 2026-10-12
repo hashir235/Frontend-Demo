@@ -412,4 +412,17 @@ class EstimateSessionStore extends ChangeNotifier {
     }
     return out;
   }
+
+  /// Every gauge the job's windows are made in, once each, thinnest first:
+  /// what the bill prints, one gauge or all of them (Hashir, Oct 2026).
+  ///
+  /// A window with no gauge of its own is made in the job-wide one the
+  /// request carries, [representativeMaterial]'s, so it is counted as that.
+  List<String> get gaugesUsed {
+    final String fallback = representativeMaterial.gauge;
+    return WindowGauges.inOrder(<String>[
+      for (final WindowReviewItem item in items)
+        item.material.gauge.trim().isEmpty ? fallback : item.material.gauge,
+    ]);
+  }
 }
