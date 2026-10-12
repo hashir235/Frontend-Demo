@@ -94,12 +94,13 @@ typedef OwnPiece = ({String label, String formula});
 
 /// What a window cut to formulas of its own does its own way.
 ///
-/// The first is the Prime Economy sliding window (Hashir, Oct 2026): a plain
-/// two-panel sliding window on Prime's EF profiles, with no collar. To the
-/// engine it is the sliding window at collar 2, which works out its area and
-/// names its cuts; every length is the app's, from the formulas here. In
-/// fabrication it takes no glass yet -- its glass formula is still to come --
-/// so none is listed and none is cut.
+/// The first was the Prime Economy sliding window (Hashir, Oct 2026): a plain
+/// two-panel sliding window on Prime's EF profiles, with no collar. The DELIX
+/// sliding window is the second, built the same way. To the engine each is
+/// the sliding window at collar 2, which works out its area and names its
+/// cuts; every length is the app's, from the formulas here. In fabrication
+/// neither takes glass yet -- their glass formulas are still to come -- so
+/// none is listed and none is cut.
 class OwnWindow {
   const OwnWindow({
     required this.sections,
@@ -107,7 +108,7 @@ class OwnWindow {
     required this.estimation,
     required this.fabrication,
     required this.gauges,
-    required this.colorNames,
+    this.colorNames = const <String, String>{},
     this.netSection,
   });
 
@@ -136,7 +137,11 @@ class OwnWindow {
 
   /// The finishes under its maker's names, keyed by the rate-list column
   /// each is priced from -- which is the colour's own value everywhere.
+  /// Empty for a window that goes by the usual names (DELIX).
   final Map<String, String> colorNames;
+
+  /// Whether its finishes go by its maker's names rather than the usual ones.
+  bool get hasOwnColorNames => colorNames.isNotEmpty;
 
   /// [color] as this maker names it.
   String colorNameFor(String color) => colorNames[color] ?? color;
@@ -256,6 +261,114 @@ class WindowVariants {
       collars: <int>[2],
       sections: <String, String>{},
       own: _primeEconomy,
+    ),
+  ];
+
+  // DELIX's sizes in suter, in centimetres:
+  //   4 suter            = 1/2"  = 1.27cm
+  //   1 inch             = 1"    = 2.54cm
+  //   1 inch 4 suter     = 1.5"  = 3.81cm
+  //   5 inch 6 suter     = 5.75" = 14.605cm
+
+  /// The DELIX sliding window (Hashir, Oct 2026): two panels, no collar,
+  /// 0.9mm only -- and only this one design, no three-panel or corner.
+  ///
+  /// Its frame is three profiles: D30 at the sides, D27 the head, D26A the
+  /// sill. Inside, M23 is each panel's outer stile and M28 the two meeting
+  /// at the centre, D25 the top rails and M24 the bottom ones, and D29 the
+  /// net. M23, M24, M28 and D29 are the profiles every sliding window uses,
+  /// priced from the same rows (Hashir).
+  ///
+  /// Estimation cuts it as the Prime Economy window is cut, and as the plain
+  /// sliding window with no collar: heights to the height, head and sill to
+  /// the width, rails and net to half of it, each with the margin of the
+  /// profile in the same place on that window.
+  ///
+  /// Fabrication is Hashir's final sizes: D30 as measured; D27 and D26A 4
+  /// suter short of the width; M23 and M28 1 inch short of the height; D25
+  /// and M24 half of the width less 5 inch 6 suter; D29 1 inch 4 suter short
+  /// of the height, and half the width as it is.
+  static const OwnWindow _delix = OwnWindow(
+    sections: <String>['D30', 'D27', 'D26A', 'M23', 'M28', 'D25', 'M24', 'D29'],
+    frame: <String>{'D30', 'D27', 'D26A'},
+    netSection: 'D29',
+    gauges: <String>['0.9mm'],
+    estimation: <String, List<OwnPiece>>{
+      // The frame: both jambs, the head, the sill.
+      'D30': <OwnPiece>[
+        (label: 'HL', formula: 'h + cm_DC30C'),
+        (label: 'HR', formula: 'h + cm_DC30C'),
+      ],
+      'D27': <OwnPiece>[(label: 'WT', formula: 'w + cm_DC30C')],
+      'D26A': <OwnPiece>[(label: 'WB', formula: 'w + cm_DC26C')],
+      // The outer stiles, left and right; the two meeting at the centre.
+      'M23': <OwnPiece>[
+        (label: 'H', formula: 'h + cm_M23'),
+        (label: 'H', formula: 'h + cm_M23'),
+      ],
+      'M28': <OwnPiece>[
+        (label: 'H', formula: 'h + cm_M28'),
+        (label: 'H', formula: 'h + cm_M28'),
+      ],
+      // Each panel's top rail, then each one's bottom rail.
+      'D25': <OwnPiece>[
+        (label: 'W1', formula: 'w / 2 + cm_M24'),
+        (label: 'W2', formula: 'w / 2 + cm_M24'),
+      ],
+      'M24': <OwnPiece>[
+        (label: 'W3', formula: 'w / 2 + cm_M24'),
+        (label: 'W4', formula: 'w / 2 + cm_M24'),
+      ],
+      // The net over one panel: two heights and two half-widths.
+      'D29': <OwnPiece>[
+        (label: 'HL', formula: 'h + cm_D29'),
+        (label: 'HR', formula: 'h + cm_D29'),
+        (label: 'WT', formula: 'w / 2 + cm_D29'),
+        (label: 'WB', formula: 'w / 2 + cm_D29'),
+      ],
+    },
+    fabrication: <String, List<OwnPiece>>{
+      'D30': <OwnPiece>[
+        (label: 'HL', formula: '(h + cm) / feet'),
+        (label: 'HR', formula: '(h + cm) / feet'),
+      ],
+      'D27': <OwnPiece>[(label: 'WT', formula: '(w - 1.27 + cm) / feet')],
+      'D26A': <OwnPiece>[(label: 'WB', formula: '(w - 1.27 + cm) / feet')],
+      'M23': <OwnPiece>[
+        (label: 'H', formula: '(h - 2.54 + cm) / feet'),
+        (label: 'H', formula: '(h - 2.54 + cm) / feet'),
+      ],
+      'M28': <OwnPiece>[
+        (label: 'H', formula: '(h - 2.54 + cm) / feet'),
+        (label: 'H', formula: '(h - 2.54 + cm) / feet'),
+      ],
+      'D25': <OwnPiece>[
+        (label: 'W1', formula: '((w - 14.605) / 2 + cm) / feet'),
+        (label: 'W2', formula: '((w - 14.605) / 2 + cm) / feet'),
+      ],
+      'M24': <OwnPiece>[
+        (label: 'W3', formula: '((w - 14.605) / 2 + cm) / feet'),
+        (label: 'W4', formula: '((w - 14.605) / 2 + cm) / feet'),
+      ],
+      'D29': <OwnPiece>[
+        (label: 'HL', formula: '(h - 3.81 + cm) / feet'),
+        (label: 'HR', formula: '(h - 3.81 + cm) / feet'),
+        (label: 'WT', formula: '(w / 2 + cm) / feet'),
+        (label: 'WB', formula: '(w / 2 + cm) / feet'),
+      ],
+    },
+  );
+
+  /// The DELIX line: the two-panel sliding window, and nothing else.
+  static const List<WindowVariant> _delixLine = <WindowVariant>[
+    WindowVariant(
+      code: 'SDX_win',
+      baseCode: 'S_win',
+      frame: 'DX',
+      // No collar, as the Prime Economy window: the engine's collar 2.
+      collars: <int>[2],
+      sections: <String, String>{},
+      own: _delix,
     ),
   ];
 
@@ -385,8 +498,8 @@ class WindowVariants {
           ),
       ];
 
-  /// Every variant: the B/E frame, the BA frame, the Economy line, then the
-  /// Prime Economy one.
+  /// Every variant: the B/E frame, the BA frame, the Economy line, the Prime
+  /// Economy one, then DELIX.
   ///
   /// The B/E frame keeps the codes the B frame was saved under ("SB_win"), so
   /// every window already saved on it opens as it was.
@@ -396,6 +509,7 @@ class WindowVariants {
       ..._frame('BA', _baFrame, collars: _noCollar),
       ..._economyLine(),
       ..._primeEconomyLine,
+      ..._delixLine,
     ],
   );
 

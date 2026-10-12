@@ -2,6 +2,7 @@
 library;
 
 import '../../estimation/models/door_strip.dart';
+import '../../estimation/models/window_variant.dart';
 import '../model/formula_expression.dart';
 import '../model/formula_slot.dart';
 import '../model/formula_window_key.dart';
@@ -242,6 +243,14 @@ class WindowCutCalculator {
     final Set<String> frameSections =
         sides == null ? const <String>{} : book.catalogue.frameSectionsFor(key.windowKey);
 
+    // A window cut to formulas of its own lists its rails its own way: the
+    // DELIX window's M24 are its bottom rails alone, its top ones are D25. The
+    // top-and-bottom rule reads a wall's M24 top ones first, as the ordinary
+    // windows list them, so it would cut one of DELIX's bottom rails to the
+    // top. Such a window keeps the smaller for every rail, as the Prime
+    // Economy one always has.
+    final bool cutsOwnWay = WindowVariants.ownOf(request.appWindowCode) != null;
+
     final List<CutPiece> pieces = <CutPiece>[];
     for (final EffectiveSection section in sections) {
       if (request.leaveOut.contains(section.section)) continue;
@@ -249,10 +258,12 @@ class WindowCutCalculator {
       final bool isFrame = frameSections.contains(section.section);
       // Only with the switch on, only for the M24 rails, only when measured
       // side by side -- everything else takes the path it always did.
-      final List<Map<String, double>?> railSizes =
-          request.m24TopAndBottom && sides != null && m24Sections.contains(section.section)
-              ? _m24TopAndBottom(section.pieces, sides)
-              : const <Map<String, double>?>[];
+      final List<Map<String, double>?> railSizes = request.m24TopAndBottom &&
+              sides != null &&
+              !cutsOwnWay &&
+              m24Sections.contains(section.section)
+          ? _m24TopAndBottom(section.pieces, sides)
+          : const <Map<String, double>?>[];
       for (int index = 0; index < section.pieces.length; index++) {
         final EffectiveFormula piece = section.pieces[index];
         final FormulaSlot slot = piece.slot;

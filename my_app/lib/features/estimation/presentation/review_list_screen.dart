@@ -341,8 +341,8 @@ class ReviewListScreen extends StatelessWidget {
     Color accentColor,
     Color codeColor,
   ) {
-    // A window cut to formulas of its own (Prime Economy) has no collar to
-    // speak of, and its finishes go by its maker's names.
+    // A window cut to formulas of its own (Prime Economy, DELIX) has no collar
+    // to speak of, and its finishes may go by its maker's names.
     final OwnWindow? own = WindowVariants.ownOf(item.windowCode);
     final List<Widget> chips = <Widget>[
       _buildMetaChip(
@@ -363,7 +363,9 @@ class ReviewListScreen extends StatelessWidget {
       // anyone checks their own work before it goes to the saw.
       WindowMaterialChip(
         material: item.material,
-        colorName: own?.colorNameFor(item.material.color),
+        colorName: own != null && own.hasOwnColorNames
+            ? own.colorNameFor(item.material.color)
+            : null,
       ),
       // The glass, beside the aluminium, because it was picked on the same
       // screen and is priced and cut on its own. Reading down this list is how

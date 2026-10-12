@@ -89,10 +89,14 @@ class VariantInputHandler extends WindowInputHandler {
 
   @override
   Widget? overlayForCollar(int collarIndex, String? selectedSection) {
-    // Its own drawing, plain, under its own profiles' names. The Prime
-    // Economy sliding window is the only window cut to formulas of its own.
+    // Its own drawing, plain, under its own profiles' names. Every window cut
+    // to formulas of its own (Prime Economy, DELIX) is a two-panel sliding
+    // window with no collar.
     if (own != null) {
-      return PrimeEconomySlidingOverlay(selectedSection: selectedSection);
+      return OwnSlidingOverlay(
+        windowCode: variant.code,
+        selectedSection: selectedSection,
+      );
     }
     return base.overlayForCollar(
       collarIndex,

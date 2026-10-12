@@ -17,7 +17,7 @@ import 'package:my_app/features/estimation/presentation/input/input_registry.dar
 import 'package:my_app/features/estimation/state/estimate_session_store.dart';
 import 'package:my_app/features/estimation/state/last_window_material.dart';
 import 'package:my_app/features/estimation/widgets/collar_side_picker.dart';
-import 'package:my_app/features/estimation/widgets/prime_economy_sliding_overlay.dart';
+import 'package:my_app/features/estimation/widgets/own_sliding_overlay.dart';
 import 'package:my_app/features/estimation/widgets/sliding_section_overlay.dart';
 import 'package:my_app/features/formulas/data/formula_book.dart';
 import 'package:my_app/features/formulas/data/formula_book_loader.dart';
@@ -98,15 +98,15 @@ void main() {
       final OwnWindow own = WindowVariants.ownOf(code)!;
       for (final String section in own.sections) {
         expect(
-          PrimeEconomySlidingOverlay.partsBySection[section],
+          OwnSlidingOverlay.partsFor(code)[section],
           isNotEmpty,
           reason: section,
         );
       }
       // The rails are two profiles here, where the sliding window's M24 is
       // one: each lights its own half.
-      expect(PrimeEconomySlidingOverlay.partsBySection['EF25'], <SlidingPart>{SlidingPart.topRails});
-      expect(PrimeEconomySlidingOverlay.partsBySection['EF24'], <SlidingPart>{SlidingPart.bottomRails});
+      expect(OwnSlidingOverlay.partsFor(code)['EF25'], <SlidingPart>{SlidingPart.topRails});
+      expect(OwnSlidingOverlay.partsFor(code)['EF24'], <SlidingPart>{SlidingPart.bottomRails});
     });
 
     test("the sliding window's collar 2: one collar, none on any side", () {
@@ -452,10 +452,10 @@ void main() {
       await open(tester, code);
       // Drawn as the sliding window without a collar, on the same card, with
       // its number and the line under it that says why nothing can be picked.
-      expect(find.byKey(const Key('prime_economy_drawing')), findsOneWidget);
+      expect(find.byKey(const Key('own_sliding_drawing')), findsOneWidget);
       expect(find.byType(CollarSidePicker), findsOneWidget);
       final SlidingSectionOverlay drawing =
-          tester.widget<SlidingSectionOverlay>(find.byKey(const Key('prime_economy_drawing')));
+          tester.widget<SlidingSectionOverlay>(find.byKey(const Key('own_sliding_drawing')));
       expect(drawing.collarId, 2);
       expect(find.text('Collar 2'), findsOneWidget);
       expect(find.text('This window has no collar on any side.'), findsOneWidget);
@@ -471,7 +471,7 @@ void main() {
       await open(tester, code, fabrication: true);
       expect(find.text('Latch'), findsNothing);
       expect(find.text('U'), findsNothing);
-      expect(find.byKey(const Key('prime_economy_drawing')), findsOneWidget);
+      expect(find.byKey(const Key('own_sliding_drawing')), findsOneWidget);
     });
 
     testWidgets('D29 is off for a new window, and saved off', (WidgetTester tester) async {

@@ -213,8 +213,12 @@ void main() {
 
   test('the library rows: sliding windows, then box type windows', () {
     final List<WindowGroup> estimation = WindowCatalog.groupsForFlow(isFabrication: false);
-    expect(estimation.map((WindowGroup g) => g.title),
-        <String>['Sliding Windows', 'Economy Sliding Window', 'Box type Windows']);
+    expect(estimation.map((WindowGroup g) => g.title), <String>[
+      'Sliding Windows',
+      'Economy Sliding Window',
+      'DELIX Windows',
+      'Box type Windows',
+    ]);
     expect(estimation[0].rows.map((WindowRow r) => r.id),
         <String>['sliding', 'sliding_b', 'sliding_ba']);
     expect(estimation[0].rows[0].nodes.map((WindowType n) => n.label), <String>[
@@ -238,15 +242,18 @@ void main() {
     expect(estimation[1].rows[1].nodes, WindowCatalog.primeEconomyWindows);
     expect(estimation[0].rows.every((WindowRow r) => r.title == null), isTrue,
         reason: 'the sliding windows\' lines keep no headings of their own');
-    expect(estimation[2].nodes.map((WindowType n) => n.label),
+    // DELIX: one window, a section of its own.
+    expect(estimation[2].nodes, WindowCatalog.delixWindows);
+    expect(estimation[3].nodes.map((WindowType n) => n.label),
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door', 'Arch']);
 
     final List<WindowGroup> fabrication = WindowCatalog.groupsForFlow(isFabrication: true);
     expect(fabrication[0].nodes.length, 12);
-    // Prime Economy is in fabrication too.
+    // Prime Economy is in fabrication too, and DELIX.
     expect(fabrication[1].nodes.length, 7);
     expect(fabrication[1].rows[1].nodes, WindowCatalog.primeEconomyWindows);
-    expect(fabrication[2].nodes.map((WindowType n) => n.label),
+    expect(fabrication[2].nodes, WindowCatalog.delixWindows);
+    expect(fabrication[3].nodes.map((WindowType n) => n.label),
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door']);
 
     // Nothing lost or doubled in the split.

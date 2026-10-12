@@ -3889,8 +3889,11 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                           child: AluminiumColorPicker(
                             value: _material,
                             // A maker's own names for the finishes, where
-                            // this window is made by one (Prime Economy).
-                            nameFor: _ownWindow?.colorNameFor,
+                            // this window is made by one (Prime Economy);
+                            // the usual names otherwise (DELIX too).
+                            nameFor: (_ownWindow?.hasOwnColorNames ?? false)
+                                ? _ownWindow!.colorNameFor
+                                : null,
                             onChanged: _pickMaterial,
                           ),
                         ),
