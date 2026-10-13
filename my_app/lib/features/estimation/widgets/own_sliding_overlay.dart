@@ -4,7 +4,7 @@ import 'collar_frame_drawing.dart';
 import 'sliding_section_overlay.dart';
 
 /// The drawing of a two-panel sliding window cut to formulas of its own --
-/// the Prime Economy (EF) window and the DELIX one.
+/// the Prime Economy (EF) window and the DELUXE one.
 ///
 /// Each is the sliding window without a collar -- collar type 2, on the F
 /// series -- so it is drawn exactly as that one is (Hashir, Oct 2026). Only
@@ -42,7 +42,7 @@ class OwnSlidingOverlay extends StatelessWidget implements CollarFrameDrawing {
       'EF28': <SlidingPart>{SlidingPart.centreStiles},
       'D29': <SlidingPart>{SlidingPart.net},
     },
-    // DELIX: D30 the sides, D27 the head, D26A the sill, M23 the outer
+    // DELUXE: D30 the sides, D27 the head, D26A the sill, M23 the outer
     // stiles, M28 the two at the centre, D25 the top rails, M24 the bottom
     // ones, D29 the net.
     'SDX_win': <String, Set<SlidingPart>>{

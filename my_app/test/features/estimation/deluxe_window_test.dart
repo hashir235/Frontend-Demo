@@ -32,11 +32,11 @@ import 'package:my_app/features/settings/models/estimation_settings.dart';
 import 'package:my_app/features/settings/models/fabrication_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// The DELIX sliding window (Hashir, Oct 2026): a plain two-panel sliding
+/// The DELUXE sliding window (Hashir, Oct 2026): a plain two-panel sliding
 /// window with no collar, 0.9mm only, D29 only when switched on, and in
-/// fabrication Hashir's final sizes -- given in inches and suter -- with no
-/// glass yet. Its frame is D30, D27 and D26A; inside it M23, M28, D25 and M24,
-/// the first three priced as on every sliding window.
+/// fabrication Hashir's final sizes -- given in inches and suter -- and its
+/// two panes of glass. Its frame is D30, D27 and D26A; inside it M23, M28,
+/// D25 and M24, the first three priced as on every sliding window.
 void main() {
   final FormulaCatalogue catalogue = FormulaCatalogue.fromJson(
     jsonDecode(File('assets/formulas/catalogue.json').readAsStringSync())
@@ -77,14 +77,14 @@ void main() {
         final List<WindowGroup> groups =
             WindowCatalog.groupsForFlow(isFabrication: fabrication);
         expect(groups.map((WindowGroup g) => g.id),
-            <String>['sliding', 'economy', 'delix', 'box']);
-        final WindowGroup delix = groups.firstWhere((WindowGroup g) => g.id == 'delix');
-        expect(delix.title, 'DELIX Windows');
-        expect(delix.rows.single.nodes.single.codeName, code);
+            <String>['sliding', 'economy', 'deluxe', 'box']);
+        final WindowGroup deluxe = groups.firstWhere((WindowGroup g) => g.id == 'deluxe');
+        expect(deluxe.title, 'DELUXE Windows');
+        expect(deluxe.rows.single.nodes.single.codeName, code);
       }
-      expect(WindowCatalog.byCodeName(code)!.label, 'DELIX Sliding Window');
+      expect(WindowCatalog.byCodeName(code)!.label, 'DELUXE Sliding Window');
       expect(WindowCatalog.byDisplayIndex(57)!.codeName, code);
-      expect(WindowCatalog.allTypeNames, contains('DELIX Sliding Window'),
+      expect(WindowCatalog.allTypeNames, contains('DELUXE Sliding Window'),
           reason: 'its own hardware rate on the bill');
     });
 
@@ -288,16 +288,77 @@ void main() {
       }
     });
 
-    test('no glass yet: its glass formula is still to come', () {
+    test("two panes of glass: H - 4'' 2''', ((W - 5'' 6''') / 2) + 2'''", () {
+      expect((4 + 2 / 8) * 2.54, closeTo(10.795, 1e-12), reason: '4 inch 2 suter');
+      expect(2 / 8 * 2.54, closeTo(0.635, 1e-12), reason: '2 suter');
+
       final WindowCutList list = cut();
-      expect(list.glass, isEmpty);
+      expect(list.glass, hasLength(2));
+      for (final GlassPiece pane in list.glass) {
+        expect(pane.heightCm, closeTo(120 - 10.795, 1e-9));
+        expect(pane.widthCm, closeTo((150 - 14.605) / 2 + 0.635, 1e-9));
+      }
+      // No cutting margin on glass: the blade's allowance is aluminium's.
+      final WindowCutList withMargin = cut(margin: 0.5);
+      expect(withMargin.glass.first.heightCm, closeTo(120 - 10.795, 1e-9));
+
+      // In the formula book as two panes, H and W, so a workshop can change
+      // them on the formula screen like any other glass.
       final FormulaWindowKey key = FormulaWindowKey.of(
         context: 'fabrication',
         appWindowCode: code,
         dimensions: catalogue.dimensionsFor('fabrication/$code'),
         collarIndex: 2,
       )!;
-      expect(book.glassFor(key), isEmpty);
+      final List<EffectiveSection> panes = book.glassFor(key);
+      expect(panes.map((EffectiveSection p) => p.section), <String>['glass1', 'glass2']);
+      expect(
+        panes.first.pieces.map((EffectiveFormula f) => f.slot.label),
+        <String>['H', 'W'],
+      );
+    });
+
+    test('measured in inches, the same glass', () {
+      final WindowCutList inches = cut(unitMode: 'inches', height: '48', width: '60');
+      final WindowCutList cm = cut(height: '121.92', width: '152.4');
+      expect(inches.glass, hasLength(2));
+      for (int i = 0; i < 2; i++) {
+        expect(inches.glass[i].heightCm, closeTo(cm.glass[i].heightCm, 1e-9));
+        expect(inches.glass[i].widthCm, closeTo(cm.glass[i].widthCm, 1e-9));
+      }
+      // 48" - 4 1/4" = 43 3/4"; (60" - 5 3/4") / 2 + 1/4" = 27 3/8".
+      expect(inches.glass.first.heightCm, closeTo(43.75 * 2.54, 1e-9));
+      expect(inches.glass.first.widthCm, closeTo(27.375 * 2.54, 1e-9));
+    });
+
+    test('the Prime Economy window still takes no glass', () {
+      final WindowCutList list = calculator.compute(
+        const WindowCutRequest(
+          isFabrication: true,
+          appWindowCode: 'SPE_win',
+          collarIndex: 2,
+          unitMode: 'feet',
+          heightValue: '120',
+          widthValue: '150',
+        ),
+        margins: <String, double>{'cm': 0},
+      );
+      expect(list.glass, isEmpty);
+    });
+
+    test('estimation cuts no glass here, as for every window', () {
+      final WindowCutList list = calculator.compute(
+        const WindowCutRequest(
+          isFabrication: false,
+          appWindowCode: code,
+          collarIndex: 2,
+          unitMode: 'inches',
+          heightValue: '48',
+          widthValue: '60',
+        ),
+        margins: <String, double>{},
+      );
+      expect(list.glass, isEmpty);
     });
 
     test('no lock and no rubber decide it: one set of formulas', () {
@@ -360,7 +421,7 @@ void main() {
   group('what the engine is sent', () {
     WindowReviewItem item({required bool net, required bool fabrication}) => WindowReviewItem(
       winNo: 1,
-      windowLabel: 'DELIX Sliding Window',
+      windowLabel: 'DELUXE Sliding Window',
       windowCode: code,
       windowIndex: 57,
       collarIndex: 2,
@@ -406,10 +467,19 @@ void main() {
         expect(pieces.map((Map<String, Object?> p) => p['section']).toSet(),
             <String>{'D30', 'D27', 'D26A', 'M23', 'M28', 'D25', 'M24'},
             reason: 'D29 off: not cut');
-        // Sent, and empty: the engine then cuts no glass for it, rather than
-        // the sliding window's own.
-        expect(json['computedGlass'], isEmpty);
+        // Always sent, so the engine never cuts the sliding window's own
+        // glass for it: its two panes in fabrication, none in estimation.
         expect(json.containsKey('computedGlass'), isTrue);
+        final List<Map<String, Object?>> glass = sent.windows.single.computedGlass!;
+        if (fabrication) {
+          expect(glass, hasLength(2));
+          for (final Map<String, Object?> pane in glass) {
+            expect(pane['heightCm'] as double, closeTo(120 - 10.795, 1e-9));
+            expect(pane['widthCm'] as double, closeTo((150 - 14.605) / 2 + 0.635, 1e-9));
+          }
+        } else {
+          expect(glass, isEmpty);
+        }
       });
 
       test('$flow: D29 switched on is cut', () async {
@@ -541,7 +611,7 @@ void main() {
       await save(tester);
       final WindowReviewItem saved = session.items.single;
       expect(saved.windowCode, code);
-      expect(saved.windowLabel, 'DELIX Sliding Window');
+      expect(saved.windowLabel, 'DELUXE Sliding Window');
       expect(saved.collarIndex, 2);
       expect(saved.addNet, isFalse);
       expect(saved.material.gauge, '0.9mm');

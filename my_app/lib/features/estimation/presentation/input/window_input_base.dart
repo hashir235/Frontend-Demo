@@ -330,7 +330,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
       _isFabricationFlow && _isLockSupportedWindow;
 
   /// The rubber decides the glass, so it is asked in fabrication -- except on
-  /// a window that takes no glass there yet (Prime Economy).
+  /// a window cut to formulas of its own, whose glass (DELUXE's) is one size
+  /// whatever the rubber, or is still to come (Prime Economy).
   bool get _showsRubberSelector => _isFabricationFlow && _ownWindow == null;
 
   bool get _allowsHandalLockType => !_isCenterSlideLockWindow;
@@ -3890,7 +3891,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
                             value: _material,
                             // A maker's own names for the finishes, where
                             // this window is made by one (Prime Economy);
-                            // the usual names otherwise (DELIX too).
+                            // the usual names otherwise (DELUXE too).
                             nameFor: (_ownWindow?.hasOwnColorNames ?? false)
                                 ? _ownWindow!.colorNameFor
                                 : null,

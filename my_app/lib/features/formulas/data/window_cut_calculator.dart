@@ -244,9 +244,9 @@ class WindowCutCalculator {
         sides == null ? const <String>{} : book.catalogue.frameSectionsFor(key.windowKey);
 
     // A window cut to formulas of its own lists its rails its own way: the
-    // DELIX window's M24 are its bottom rails alone, its top ones are D25. The
+    // DELUXE window's M24 are its bottom rails alone, its top ones are D25. The
     // top-and-bottom rule reads a wall's M24 top ones first, as the ordinary
-    // windows list them, so it would cut one of DELIX's bottom rails to the
+    // windows list them, so it would cut one of DELUXE's bottom rails to the
     // top. Such a window keeps the smaller for every rail, as the Prime
     // Economy one always has.
     final bool cutsOwnWay = WindowVariants.ownOf(request.appWindowCode) != null;

@@ -341,7 +341,7 @@ class ReviewListScreen extends StatelessWidget {
     Color accentColor,
     Color codeColor,
   ) {
-    // A window cut to formulas of its own (Prime Economy, DELIX) has no collar
+    // A window cut to formulas of its own (Prime Economy, DELUXE) has no collar
     // to speak of, and its finishes may go by its maker's names.
     final OwnWindow? own = WindowVariants.ownOf(item.windowCode);
     final List<Widget> chips = <Widget>[

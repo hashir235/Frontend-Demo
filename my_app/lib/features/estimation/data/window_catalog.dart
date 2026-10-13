@@ -552,13 +552,13 @@ class WindowCatalog {
     ),
   ];
 
-  /// The DELIX line, cut to formulas of its own (see [OwnWindow]): the plain
+  /// The DELUXE line, cut to formulas of its own (see [OwnWindow]): the plain
   /// two-panel sliding window with no collar, and only that (Hashir, Oct
   /// 2026).
-  static const List<WindowType> delixWindows = <WindowType>[
+  static const List<WindowType> deluxeWindows = <WindowType>[
     WindowType(
-      label: 'DELIX Sliding Window',
-      subtitle: 'Two-panel sliding window on the DELIX profiles',
+      label: 'DELUXE Sliding Window',
+      subtitle: 'Two-panel sliding window on the DELUXE profiles',
       graphicKey: 'sliding_basic',
       children: <WindowType>[],
       displayIndex: 57,
@@ -650,7 +650,7 @@ class WindowCatalog {
     ...royalWindows,
     ...economyWindows,
     ...primeEconomyWindows,
-    ...delixWindows,
+    ...deluxeWindows,
     ...boxTypeWindows,
   ];
 
@@ -689,9 +689,9 @@ class WindowCatalog {
         ],
       ),
       WindowGroup(
-        id: 'delix',
-        title: 'DELIX Windows',
-        rows: <WindowRow>[WindowRow(id: 'delix', nodes: forFlow(delixWindows))],
+        id: 'deluxe',
+        title: 'DELUXE Windows',
+        rows: <WindowRow>[WindowRow(id: 'deluxe', nodes: forFlow(deluxeWindows))],
       ),
       WindowGroup(
         id: 'box',

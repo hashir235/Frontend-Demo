@@ -122,12 +122,14 @@ class FormulaCatalogue {
     for (final WindowVariant variant in WindowVariants.all) {
       final OwnWindow? own = variant.own;
       if (own != null) {
-        // Its own formulas, at the one collar it comes in, in both flows; no
-        // glass, so none is listed and none is cut.
+        // Its own formulas, at the one collar it comes in, in both flows. Its
+        // own glass in fabrication, the only flow that cuts glass; a window
+        // with no glass formula yet lists none, and none is cut.
         for (final String context in <String>['estimation', 'fabrication']) {
           final String key = '$context/${variant.code}';
+          final List<int> collars = variant.collars ?? const <int>[2];
           windows[key] = <String, Map<String, List<dynamic>>>{
-            for (final int collar in variant.collars ?? const <int>[2])
+            for (final int collar in collars)
               'collarType=$collar': <String, List<dynamic>>{
                 for (final MapEntry<String, List<OwnPiece>> section
                     in own.formulasFor(context).entries)
@@ -137,6 +139,18 @@ class FormulaCatalogue {
                   ],
               },
           };
+          if (context == 'fabrication' && own.glass.isNotEmpty) {
+            glass[key] = <String, List<dynamic>>{
+              for (final int collar in collars)
+                'collarType=$collar': <dynamic>[
+                  for (final OwnPane pane in own.glass)
+                    <String, dynamic>{
+                      'h': indexOf(pane.height),
+                      'w': indexOf(pane.width),
+                    },
+                ],
+            };
+          }
           ownFrames[key] = own.frame;
         }
         continue;

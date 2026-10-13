@@ -92,15 +92,20 @@ class WindowVariant {
 /// calls it, and the sum that cuts it, written as the catalogue writes one.
 typedef OwnPiece = ({String label, String formula});
 
+/// One pane of glass a window cut to formulas of its own takes in
+/// fabrication: its height and its width, in centimetres, written as the
+/// catalogue writes a pane ("h - 14.2").
+typedef OwnPane = ({String height, String width});
+
 /// What a window cut to formulas of its own does its own way.
 ///
 /// The first was the Prime Economy sliding window (Hashir, Oct 2026): a plain
-/// two-panel sliding window on Prime's EF profiles, with no collar. The DELIX
+/// two-panel sliding window on Prime's EF profiles, with no collar. The DELUXE
 /// sliding window is the second, built the same way. To the engine each is
 /// the sliding window at collar 2, which works out its area and names its
-/// cuts; every length is the app's, from the formulas here. In fabrication
-/// neither takes glass yet -- their glass formulas are still to come -- so
-/// none is listed and none is cut.
+/// cuts; every length is the app's, from the formulas here, and so is every
+/// pane of glass. A window whose glass formula is still to come (Prime
+/// Economy) lists none, and none is cut.
 class OwnWindow {
   const OwnWindow({
     required this.sections,
@@ -108,9 +113,14 @@ class OwnWindow {
     required this.estimation,
     required this.fabrication,
     required this.gauges,
+    this.glass = const <OwnPane>[],
     this.colorNames = const <String, String>{},
     this.netSection,
   });
+
+  /// Its panes of glass in fabrication, in cutting order; empty while its
+  /// glass formula is still to come.
+  final List<OwnPane> glass;
 
   /// Its profiles, in the order the sidebar lists them.
   final List<String> sections;
@@ -137,7 +147,7 @@ class OwnWindow {
 
   /// The finishes under its maker's names, keyed by the rate-list column
   /// each is priced from -- which is the colour's own value everywhere.
-  /// Empty for a window that goes by the usual names (DELIX).
+  /// Empty for a window that goes by the usual names (DELUXE).
   final Map<String, String> colorNames;
 
   /// Whether its finishes go by its maker's names rather than the usual ones.
@@ -264,13 +274,15 @@ class WindowVariants {
     ),
   ];
 
-  // DELIX's sizes in suter, in centimetres:
+  // DELUXE's sizes in suter, in centimetres:
+  //   2 suter            = 1/4"  = 0.635cm
   //   4 suter            = 1/2"  = 1.27cm
   //   1 inch             = 1"    = 2.54cm
   //   1 inch 4 suter     = 1.5"  = 3.81cm
+  //   4 inch 2 suter     = 4.25" = 10.795cm
   //   5 inch 6 suter     = 5.75" = 14.605cm
 
-  /// The DELIX sliding window (Hashir, Oct 2026): two panels, no collar,
+  /// The DELUXE sliding window (Hashir, Oct 2026): two panels, no collar,
   /// 0.9mm only -- and only this one design, no three-panel or corner.
   ///
   /// Its frame is three profiles: D30 at the sides, D27 the head, D26A the
@@ -288,11 +300,18 @@ class WindowVariants {
   /// suter short of the width; M23 and M28 1 inch short of the height; D25
   /// and M24 half of the width less 5 inch 6 suter; D29 1 inch 4 suter short
   /// of the height, and half the width as it is.
-  static const OwnWindow _delix = OwnWindow(
+  ///
+  /// Two panes of glass, one per panel (Hashir): 4 inch 2 suter short of the
+  /// height, and half of the width less 5 inch 6 suter, with 2 suter added.
+  static const OwnWindow _deluxe = OwnWindow(
     sections: <String>['D30', 'D27', 'D26A', 'M23', 'M28', 'D25', 'M24', 'D29'],
     frame: <String>{'D30', 'D27', 'D26A'},
     netSection: 'D29',
     gauges: <String>['0.9mm'],
+    glass: <OwnPane>[
+      (height: 'h - 10.795', width: '(w - 14.605) / 2 + 0.635'),
+      (height: 'h - 10.795', width: '(w - 14.605) / 2 + 0.635'),
+    ],
     estimation: <String, List<OwnPiece>>{
       // The frame: both jambs, the head, the sill.
       'D30': <OwnPiece>[
@@ -359,8 +378,8 @@ class WindowVariants {
     },
   );
 
-  /// The DELIX line: the two-panel sliding window, and nothing else.
-  static const List<WindowVariant> _delixLine = <WindowVariant>[
+  /// The DELUXE line: the two-panel sliding window, and nothing else.
+  static const List<WindowVariant> _deluxeLine = <WindowVariant>[
     WindowVariant(
       code: 'SDX_win',
       baseCode: 'S_win',
@@ -368,7 +387,7 @@ class WindowVariants {
       // No collar, as the Prime Economy window: the engine's collar 2.
       collars: <int>[2],
       sections: <String, String>{},
-      own: _delix,
+      own: _deluxe,
     ),
   ];
 
@@ -499,7 +518,7 @@ class WindowVariants {
       ];
 
   /// Every variant: the B/E frame, the BA frame, the Economy line, the Prime
-  /// Economy one, then DELIX.
+  /// Economy one, then DELUXE.
   ///
   /// The B/E frame keeps the codes the B frame was saved under ("SB_win"), so
   /// every window already saved on it opens as it was.
@@ -509,7 +528,7 @@ class WindowVariants {
       ..._frame('BA', _baFrame, collars: _noCollar),
       ..._economyLine(),
       ..._primeEconomyLine,
-      ..._delixLine,
+      ..._deluxeLine,
     ],
   );
 

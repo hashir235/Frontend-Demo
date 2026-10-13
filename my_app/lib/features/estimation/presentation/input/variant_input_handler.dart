@@ -90,7 +90,7 @@ class VariantInputHandler extends WindowInputHandler {
   @override
   Widget? overlayForCollar(int collarIndex, String? selectedSection) {
     // Its own drawing, plain, under its own profiles' names. Every window cut
-    // to formulas of its own (Prime Economy, DELIX) is a two-panel sliding
+    // to formulas of its own (Prime Economy, DELUXE) is a two-panel sliding
     // window with no collar.
     if (own != null) {
       return OwnSlidingOverlay(
