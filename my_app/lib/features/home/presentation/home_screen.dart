@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_screen_shell.dart';
 import '../../../shared/widgets/metric_card.dart';
 import '../../../shared/widgets/primary_card_button.dart';
 import '../../../shared/widgets/section_surface_card.dart';
+import '../../../shared/widgets/whatsapp_contact_button.dart';
 import '../../estimation/presentation/estimation_menu_screen.dart';
 import '../../fabrication/presentation/fabrication_menu_screen.dart';
 import '../../flow_nav/models/flow_step.dart';
@@ -146,6 +147,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       appBar: AppBar(
         title: const Text('Quick AL'),
         actions: <Widget>[
+          // One tap to a WhatsApp chat with the office (Hashir, Oct 2026).
+          // Up here so it is seen on every visit; small, so the work below
+          // keeps the room.
+          const WhatsAppContactButton(),
+          const SizedBox(width: 2),
           ListenableBuilder(
             listenable: _notificationsController,
             builder: (BuildContext context, _) {

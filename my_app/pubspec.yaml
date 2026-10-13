@@ -1,4 +1,4 @@
-﻿name: my_app
+name: my_app
 description: "A new Flutter project."
 publish_to: 'none'
 version: 1.18.15+68
@@ -39,6 +39,9 @@ dependencies:
   # Android WebView blocks their cookies by default, which leaves the Pay
   # button permanently disabled.
   webview_flutter_android: ^4.12.0
+  # The WhatsApp logo on Home's Contact button; Material has no brand icons.
+  # Release builds keep only the glyphs used.
+  font_awesome_flutter: ^11.0.0
 
 dev_dependencies:
   flutter_test:
