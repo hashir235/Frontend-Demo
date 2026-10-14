@@ -1871,8 +1871,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: const Text(
           'For openings that are not square: the top, the bottom and each side '
           'get their own box. A side left empty is taken as the one facing it. '
-          'Only the frame is cut to the wider edge — everything inside it is '
-          'cut to the smaller. Fabrication only.',
+          'Top and bottom (or left and right) up to 2 suter apart: the whole '
+          'window is cut to the smaller. More than 2 suter apart: the frame, '
+          'the top and bottom rails and the outer stiles are each cut to their '
+          'own side; the glass and the centre stiles to the smaller. '
+          'Fabrication only.',
         ),
       ),
     );
@@ -2102,10 +2105,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: 'Cut M24 in fours',
           note:
               "A window's four M24 of one length come as four bars with the "
-              'same cuts, marked x 4. Measured side by side with the top and '
-              'bottom half an inch (4 suter) or more apart: the top rails are '
-              'cut to the top, the bottom rails to the bottom, in twos. Also '
-              'EC24, ET24 and ET24A.',
+              'same cuts, marked x 4. A window whose top and bottom were cut '
+              'to their own sizes (more than 2 suter apart) has two lengths, '
+              'and comes in twos. Also EC24, ET24 and ET24A.',
           value: _fabricationQuadCuttingM24,
           onChanged: (bool value) => _switchPairCutting(
             section: 'M24',
@@ -2119,9 +2121,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           textDirection: TextDirection.rtl,
           child: Text(
             'M24 آن کریں تو ہر کھڑکی کی چار ایک جیسی M24 چار لینتھوں میں ایک '
-            'ساتھ کٹیں گی (x 4)۔ اوپر اور نیچے کے سائز میں 4 سوتر یا زیادہ فرق '
-            'ہو تو اوپر والی اوپر کے سائز سے، نیچے والی نیچے کے سائز سے، دو دو '
-            'میں کٹیں گی۔',
+            'ساتھ کٹیں گی (x 4)۔ اوپر اور نیچے کے سائز میں 2 سوتر سے زیادہ فرق '
+            'ہو تو اوپر والی اوپر کے سائز سے، نیچے والی نیچے کے سائز سے کٹتی '
+            'ہیں، اس لیے دو دو میں کٹیں گی۔',
             style: UrduText.caption(),
           ),
         ),

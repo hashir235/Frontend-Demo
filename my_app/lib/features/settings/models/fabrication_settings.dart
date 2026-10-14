@@ -23,10 +23,10 @@ class FabricationSettingsModel {
   final bool pairCuttingD29;
 
   /// Cut M24 four bars at a time: a window's own M24 of one length in fours,
-  /// what is left in twos. With it on, a window measured side by side whose
-  /// top and bottom differ by half an inch or more has its top rails cut to
-  /// the top and its bottom rails to the bottom. Off unless the workshop turns
-  /// it on.
+  /// what is left in twos. Off unless the workshop turns it on. (A window
+  /// measured side by side with its top and bottom more than 2 suter apart
+  /// has its top rails cut to the top and its bottom rails to the bottom
+  /// whether this is on or not -- see `SideMeasurements.isApart`.)
   final bool quadCuttingM24;
 
   const FabricationSettingsModel({

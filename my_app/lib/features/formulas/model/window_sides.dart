@@ -6,10 +6,13 @@ import 'window_measurements.dart';
 /// The sides of a window, named as its frame names them.
 ///
 /// A wall is never quite square. The top of an opening can be half an inch
-/// wider than its bottom, and a fabricator who has measured both wants the
-/// frame cut to what they measured -- the head to the top, the sill to the
-/// bottom -- while everything inside the frame is cut to the smaller of the
-/// two, because a sash cut to the wider one will not go in.
+/// wider than its bottom. Up to 2 suter apart, a side and the one facing it
+/// are one size -- the smaller -- for the whole window. Further apart than
+/// that, each is cut to its own (Hashir, Oct 2026): the frame's head to the
+/// top and its sill to the bottom, and inside it every piece that belongs to
+/// one side -- the top rails, the bottom rails, the stile at the left or the
+/// right. What belongs to neither, the glass and the stiles meeting at the
+/// centre, keeps the smaller, so it still goes in.
 ///
 /// The names are the frame's own piece labels, so nothing has to be translated
 /// between what is typed and what is cut: WT is the head, WB the sill, HL and
@@ -26,6 +29,12 @@ class WindowSide {
   static const String topRight = 'WT_r';
   static const String bottomLeft = 'WB_l';
   static const String bottomRight = 'WB_r';
+
+  /// How far apart a side and the one facing it must be before each is cut
+  /// to its own: more than 2 suter, in the centimetres fabrication works in
+  /// (Hashir, Oct 2026). Up to that, 2 suter itself included, the pair is one
+  /// size: the smaller.
+  static const double apartCm = 0.635;
 
   /// Every side this feature knows, in the order they are read out.
   static const List<String> all = <String>[
@@ -244,8 +253,22 @@ class SideMeasurements {
   /// Each side's own measurement, blanks already taken from the side facing.
   final Map<String, double> bySide;
 
-  /// What everything inside the frame is cut to: the smaller of each pair.
+  /// The smaller of each pair: what a piece is cut to unless it is cut to a
+  /// side of its own.
   final Map<String, double> inner;
+
+  /// Whether [side] and the side facing it are more than [WindowSide.apartCm]
+  /// apart, so that each is cut to its own. Closer than that -- or with no
+  /// side facing it -- the pair is one size, the smaller.
+  bool isApart(String side) {
+    final double? own = bySide[side];
+    final String? facing = WindowSide.facing[side];
+    final double? theirs = facing == null ? null : bySide[facing];
+    if (own == null || theirs == null) return false;
+    // A hair of rounding either way: 2 suter typed in inches comes to 0.635cm
+    // give or take the last bit of a double, and is the smaller.
+    return (own - theirs).abs() > WindowSide.apartCm + 1e-9;
+  }
 
   /// Why the sides could not be read, if they could not.
   static String? lastProblem;

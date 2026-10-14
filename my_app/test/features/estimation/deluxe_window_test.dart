@@ -201,7 +201,6 @@ void main() {
       double margin = 0,
       Set<String> leaveOut = const <String>{},
       SideSizes sides = const SideSizes.empty(),
-      bool m24InFours = false,
     }) =>
         calculator.compute(
           WindowCutRequest(
@@ -213,7 +212,6 @@ void main() {
             widthValue: width,
             leaveOut: leaveOut,
             sideSizes: sides,
-            m24TopAndBottom: m24InFours,
           ),
           margins: <String, double>{'cm': margin},
         );
@@ -366,7 +364,7 @@ void main() {
       expect(catalogue.dimensionsFor('estimation/$code'), <String>{'collarType'});
     });
 
-    test('a window measured side by side cuts its frame to each side', () {
+    test('measured side by side, more than 2 suter apart: each side its own', () {
       expect(catalogue.frameSectionsFor('fabrication/$code'),
           <String>{'D30', 'D27', 'D26A'});
       final WindowCutList list = cut(
@@ -375,33 +373,55 @@ void main() {
         }),
       );
       expect(list.problems, isEmpty);
-      double one(String section, String label) => list.pieces
-          .firstWhere((CutPiece p) => p.section == section && p.label == label)
-          .lengthFt * feet;
-      expect(one('D27', 'WT'), closeTo(150 - 1.27, 1e-9));
-      expect(one('D26A', 'WB'), closeTo(148 - 1.27, 1e-9));
-      expect(one('D30', 'HL'), closeTo(120, 1e-9));
-      expect(one('D30', 'HR'), closeTo(119, 1e-9));
+      List<double> all(String section, [String? label]) => <double>[
+        for (final CutPiece p in list.pieces)
+          if (p.section == section && (label == null || p.label == label))
+            p.lengthFt * feet,
+      ];
+      // The frame.
+      expect(all('D27', 'WT').single, closeTo(150 - 1.27, 1e-9));
+      expect(all('D26A', 'WB').single, closeTo(148 - 1.27, 1e-9));
+      expect(all('D30', 'HL').single, closeTo(120, 1e-9));
+      expect(all('D30', 'HR').single, closeTo(119, 1e-9));
+      // Its top rails (D25) to the top, its bottom rails (M24) to the bottom.
+      for (final double rail in all('D25')) {
+        expect(rail, closeTo((150 - 14.605) / 2, 1e-9));
+      }
+      for (final double rail in all('M24')) {
+        expect(rail, closeTo((148 - 14.605) / 2, 1e-9));
+      }
+      // Its outer stiles: the left one to the left, the right to the right.
+      expect(all('M23'), <Matcher>[
+        closeTo(120 - 2.54, 1e-9),
+        closeTo(119 - 2.54, 1e-9),
+      ]);
+      // The stiles meeting at the centre: the smaller height.
+      for (final double stile in all('M28')) {
+        expect(stile, closeTo(119 - 2.54, 1e-9));
+      }
+      // The net, by its labels.
+      expect(all('D29', 'HL').single, closeTo(120 - 3.81, 1e-9));
+      expect(all('D29', 'HR').single, closeTo(119 - 3.81, 1e-9));
+      expect(all('D29', 'WT').single, closeTo(150 / 2, 1e-9));
+      expect(all('D29', 'WB').single, closeTo(148 / 2, 1e-9));
+      // The glass: the smaller of each.
+      for (final GlassPiece pane in list.glass) {
+        expect(pane.heightCm, closeTo(119 - 10.795, 1e-9));
+        expect(pane.widthCm, closeTo((148 - 14.605) / 2 + 0.635, 1e-9));
+      }
     });
 
-    test('"Cut M24 in fours" leaves its bottom rails both at the smaller', () {
-      // Its M24 are its bottom rails alone; the rule that cuts a wall's first
-      // M24 to the top would put one of them at the wrong width.
-      const SideSizes apart = SideSizes(<String, String>{
-        'WT': '150', 'WB': '148', 'HL': '120', 'HR': '120',
-      });
-      final WindowCutList on = cut(sides: apart, m24InFours: true);
-      final WindowCutList off = cut(sides: apart);
-      expect(on.problems, isEmpty);
-      final List<CutPiece> rails =
-          on.pieces.where((CutPiece p) => p.section == 'M24').toList();
-      expect(rails.map((CutPiece p) => p.label), <String>['W3', 'W4']);
-      for (final CutPiece rail in rails) {
-        expect(rail.lengthFt * feet, closeTo((148 - 14.605) / 2, 1e-9));
-      }
+    test('up to 2 suter apart: the smaller, for the whole window', () {
+      final WindowCutList apartByTwoSuter = cut(
+        sides: const SideSizes(<String, String>{
+          'WT': '150.635', 'WB': '150', 'HL': '120', 'HR': '120.5',
+        }),
+      );
+      final WindowCutList plain = cut(height: '120', width: '150');
+      expect(apartByTwoSuter.problems, isEmpty);
       expect(
-        on.pieces.map((CutPiece p) => '${p.section} ${p.label} ${p.lengthFt}'),
-        off.pieces.map((CutPiece p) => '${p.section} ${p.label} ${p.lengthFt}'),
+        apartByTwoSuter.pieces.map((CutPiece p) => '${p.section} ${p.label} ${p.lengthFt.toStringAsFixed(9)}'),
+        plain.pieces.map((CutPiece p) => '${p.section} ${p.label} ${p.lengthFt.toStringAsFixed(9)}'),
       );
     });
 

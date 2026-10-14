@@ -25,6 +25,7 @@ import 'package:my_app/features/formulas/data/formula_catalogue.dart';
 import 'package:my_app/features/formulas/data/window_cut_calculator.dart';
 import 'package:my_app/features/formulas/model/formula_overrides.dart';
 import 'package:my_app/features/formulas/model/formula_window_key.dart';
+import 'package:my_app/features/formulas/model/window_sides.dart';
 import 'package:my_app/features/settings/data/estimation_settings_repository.dart';
 import 'package:my_app/features/settings/data/fabrication_settings_repository.dart';
 import 'package:my_app/features/settings/models/estimation_settings.dart';
@@ -302,6 +303,35 @@ void main() {
     test('a window measured side by side cuts its frame to each side', () {
       expect(catalogue.frameSectionsFor('fabrication/$code'),
           <String>{'EF30', 'EF27', 'EF26A'});
+    });
+
+    test('more than 2 suter apart: its rails and outer stiles take their side', () {
+      final WindowCutList list = calculator.compute(
+        const WindowCutRequest(
+          isFabrication: true,
+          appWindowCode: code,
+          collarIndex: 2,
+          unitMode: 'feet',
+          heightValue: '119',
+          widthValue: '148',
+          sideSizes: SideSizes(<String, String>{
+            'WT': '150', 'WB': '148', 'HL': '120', 'HR': '119',
+          }),
+        ),
+        margins: const <String, double>{'cm': 0},
+      );
+      expect(list.problems, isEmpty);
+      List<double> all(String section) => <double>[
+        for (final CutPiece p in list.pieces)
+          if (p.section == section) p.lengthFt * feet,
+      ];
+      expect(all('EF25'), everyElement(closeTo((150 - 8.255) / 2, 1e-9)), reason: 'top rails');
+      expect(all('EF24'), everyElement(closeTo((148 - 8.255) / 2, 1e-9)), reason: 'bottom rails');
+      expect(all('EF22'), <Matcher>[
+        closeTo(120 - 2.2225, 1e-9),
+        closeTo(119 - 2.2225, 1e-9),
+      ], reason: 'left stile, right stile');
+      expect(all('EF28'), everyElement(closeTo(119 - 2.2225, 1e-9)), reason: 'centre: the smaller');
     });
 
     test('D29 left out when off, everything else the same', () {

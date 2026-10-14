@@ -113,10 +113,21 @@ class OwnWindow {
     required this.estimation,
     required this.fabrication,
     required this.gauges,
+    required this.topRails,
+    required this.bottomRails,
+    required this.outerStiles,
     this.glass = const <OwnPane>[],
     this.colorNames = const <String, String>{},
     this.netSection,
   });
+
+  /// The profiles of its panels' top rails, bottom rails and outer stiles
+  /// (one at the left of the window, one at the right). A window measured
+  /// side by side with a side more than 2 suter from the one facing it cuts
+  /// each of these to its own side; its own names give no other way to tell.
+  final String topRails;
+  final String bottomRails;
+  final String outerStiles;
 
   /// Its panes of glass in fabrication, in cutting order; empty while its
   /// glass formula is still to come.
@@ -182,6 +193,9 @@ class WindowVariants {
   static const OwnWindow _primeEconomy = OwnWindow(
     sections: <String>['EF30', 'EF27', 'EF26A', 'EF25', 'EF24', 'EF22', 'EF28', 'D29'],
     frame: <String>{'EF30', 'EF27', 'EF26A'},
+    topRails: 'EF25',
+    bottomRails: 'EF24',
+    outerStiles: 'EF22',
     netSection: 'D29',
     gauges: <String>['0.9mm'],
     colorNames: <String, String>{
@@ -306,6 +320,9 @@ class WindowVariants {
   static const OwnWindow _deluxe = OwnWindow(
     sections: <String>['D30', 'D27', 'D26A', 'M23', 'M28', 'D25', 'M24', 'D29'],
     frame: <String>{'D30', 'D27', 'D26A'},
+    topRails: 'D25',
+    bottomRails: 'M24',
+    outerStiles: 'M23',
     netSection: 'D29',
     gauges: <String>['0.9mm'],
     glass: <OwnPane>[
