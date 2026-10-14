@@ -20,7 +20,12 @@ class WindowRow {
 /// under it. The sliding windows have three lines -- the plain frame, the B
 /// frame and the BA frame -- under the one heading.
 class WindowGroup {
-  const WindowGroup({required this.id, required this.title, required this.rows});
+  const WindowGroup({
+    required this.id,
+    required this.title,
+    required this.rows,
+    this.comingSoon,
+  });
 
   /// A stable name for keys and tests: "sliding", "box".
   final String id;
@@ -29,6 +34,11 @@ class WindowGroup {
   final String title;
 
   final List<WindowRow> rows;
+
+  /// For a kind of window announced before it is made (Double Glaze): what
+  /// is said under its heading in place of windows. Null for every group
+  /// that has them.
+  final String? comingSoon;
 
   /// Every window in the group, line by line.
   List<WindowType> get nodes => <WindowType>[
@@ -643,6 +653,96 @@ class WindowCatalog {
     ),
   ];
 
+  /// The fix windows and doors on the D51 frame (Hashir, Oct 2026): the D54
+  /// windows with D51A and D51F in place of D54A and D54F, nothing else
+  /// changed.
+  static const List<WindowType> d51Windows = <WindowType>[
+    WindowType(
+      label: 'D51 Fix Window',
+      subtitle: 'Fix window on the D51 frame (D51A, D51F)',
+      graphicKey: 'fix_basic',
+      children: <WindowType>[],
+      displayIndex: 58,
+      codeName: 'F_win_D51',
+    ),
+    WindowType(
+      label: 'D51 Corner Fix',
+      subtitle: 'Corner fix on the D51 frame (D51A, D51F)',
+      graphicKey: 'fix_basic',
+      children: <WindowType>[],
+      displayIndex: 59,
+      codeName: 'FC_win_D51',
+    ),
+    WindowType(
+      label: 'D51 Door',
+      subtitle: 'Single and double doors on the D51 frame (D51A, D51F)',
+      graphicKey: 'door_basic',
+      children: <WindowType>[
+        WindowType(
+          label: 'D51 Single Door',
+          subtitle: 'Single-leaf door on the D51 frame',
+          graphicKey: 'door_basic',
+          children: <WindowType>[],
+          displayIndex: 60,
+          codeName: 'Single_Door_D51',
+        ),
+        WindowType(
+          label: 'D51 Double Door',
+          subtitle: 'Double-leaf door on the D51 frame',
+          graphicKey: 'door_basic',
+          children: <WindowType>[],
+          displayIndex: 61,
+          codeName: 'Double_Door_D51',
+        ),
+      ],
+      displayIndex: null,
+    ),
+  ];
+
+  /// The same on the D42 frame: D42A and D42F.
+  static const List<WindowType> d42Windows = <WindowType>[
+    WindowType(
+      label: 'D42 Fix Window',
+      subtitle: 'Fix window on the D42 frame (D42A, D42F)',
+      graphicKey: 'fix_basic',
+      children: <WindowType>[],
+      displayIndex: 62,
+      codeName: 'F_win_D42',
+    ),
+    WindowType(
+      label: 'D42 Corner Fix',
+      subtitle: 'Corner fix on the D42 frame (D42A, D42F)',
+      graphicKey: 'fix_basic',
+      children: <WindowType>[],
+      displayIndex: 63,
+      codeName: 'FC_win_D42',
+    ),
+    WindowType(
+      label: 'D42 Door',
+      subtitle: 'Single and double doors on the D42 frame (D42A, D42F)',
+      graphicKey: 'door_basic',
+      children: <WindowType>[
+        WindowType(
+          label: 'D42 Single Door',
+          subtitle: 'Single-leaf door on the D42 frame',
+          graphicKey: 'door_basic',
+          children: <WindowType>[],
+          displayIndex: 64,
+          codeName: 'Single_Door_D42',
+        ),
+        WindowType(
+          label: 'D42 Double Door',
+          subtitle: 'Double-leaf door on the D42 frame',
+          graphicKey: 'door_basic',
+          children: <WindowType>[],
+          displayIndex: 65,
+          codeName: 'Double_Door_D42',
+        ),
+      ],
+      displayIndex: null,
+    ),
+  ];
+
   /// Every window, in library order.
   static const List<WindowType> root = <WindowType>[
     ...slidingWindows,
@@ -652,6 +752,8 @@ class WindowCatalog {
     ...primeEconomyWindows,
     ...deluxeWindows,
     ...boxTypeWindows,
+    ...d51Windows,
+    ...d42Windows,
   ];
 
   /// The library's rows for a flow. Fabrication has no arches.
@@ -693,10 +795,23 @@ class WindowCatalog {
         title: 'DELUXE Windows',
         rows: <WindowRow>[WindowRow(id: 'deluxe', nodes: forFlow(deluxeWindows))],
       ),
+      // The D54 windows first, as they always were, then the same fix
+      // windows and doors on the D51 and D42 frames, a line each.
       WindowGroup(
         id: 'box',
         title: 'Box type Windows',
-        rows: <WindowRow>[WindowRow(id: 'box', nodes: forFlow(boxTypeWindows))],
+        rows: <WindowRow>[
+          WindowRow(id: 'box', nodes: forFlow(boxTypeWindows)),
+          WindowRow(id: 'box_d51', title: 'D51 Series', nodes: forFlow(d51Windows)),
+          WindowRow(id: 'box_d42', title: 'D42 Series', nodes: forFlow(d42Windows)),
+        ],
+      ),
+      // Announced, not made yet (Hashir, Oct 2026).
+      const WindowGroup(
+        id: 'double_glaze',
+        title: 'Double Glaze',
+        rows: <WindowRow>[],
+        comingSoon: 'Coming soon',
       ),
     ];
   }

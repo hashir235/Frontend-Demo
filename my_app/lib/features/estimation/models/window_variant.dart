@@ -518,6 +518,44 @@ class WindowVariants {
     'SCR_win',
   ];
 
+  /// The box windows the D51 and D42 frames come in (Hashir, Oct 2026): the
+  /// fix window, the corner fix and both doors -- not the openable.
+  static const List<String> _boxBases = <String>[
+    'F_win',
+    'FC_win',
+    'Single_Door',
+    'Double_Door',
+  ];
+
+  /// The D51 frame: D51A where the window has D54A, D51F where it has D54F.
+  /// Everything else -- the drawing, the collars, the formulas -- is the
+  /// D54 window's.
+  static const Map<String, String> _d51Frame = <String, String>{
+    'D54A': 'D51A',
+    'D54F': 'D51F',
+  };
+
+  /// The D42 frame: D42A and D42F in the same places.
+  static const Map<String, String> _d42Frame = <String, String>{
+    'D54A': 'D42A',
+    'D54F': 'D42F',
+  };
+
+  /// A box window on another frame, every collar its base comes in. Coded
+  /// as the base with the series after it -- "F_win_D51", "Single_Door_D42"
+  /// -- since the doors' codes have no "_win" to put it before.
+  static List<WindowVariant> _boxFrame(String series, Map<String, String> sections) =>
+      <WindowVariant>[
+        for (final String base in _boxBases)
+          WindowVariant(
+            code: '${base}_$series',
+            baseCode: base,
+            frame: series,
+            collars: null,
+            sections: sections,
+          ),
+      ];
+
   static List<WindowVariant> _frame(
     String suffix,
     Map<String, String> sections, {
@@ -535,7 +573,7 @@ class WindowVariants {
       ];
 
   /// Every variant: the B/E frame, the BA frame, the Economy line, the Prime
-  /// Economy one, then DELUXE.
+  /// Economy one, DELUXE, then the box windows on the D51 and D42 frames.
   ///
   /// The B/E frame keeps the codes the B frame was saved under ("SB_win"), so
   /// every window already saved on it opens as it was.
@@ -546,6 +584,8 @@ class WindowVariants {
       ..._economyLine(),
       ..._primeEconomyLine,
       ..._deluxeLine,
+      ..._boxFrame('D51', _d51Frame),
+      ..._boxFrame('D42', _d42Frame),
     ],
   );
 

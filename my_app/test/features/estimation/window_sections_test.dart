@@ -218,6 +218,7 @@ void main() {
       'Economy Sliding Window',
       'DELUXE Windows',
       'Box type Windows',
+      'Double Glaze',
     ]);
     expect(estimation[0].rows.map((WindowRow r) => r.id),
         <String>['sliding', 'sliding_b', 'sliding_ba']);
@@ -244,8 +245,16 @@ void main() {
         reason: 'the sliding windows\' lines keep no headings of their own');
     // DELUXE: one window, a section of its own.
     expect(estimation[2].nodes, WindowCatalog.deluxeWindows);
-    expect(estimation[3].nodes.map((WindowType n) => n.label),
+    // Box type: the D54 windows, then the D51 and D42 lines.
+    expect(estimation[3].rows.map((WindowRow r) => r.id),
+        <String>['box', 'box_d51', 'box_d42']);
+    expect(estimation[3].rows.first.nodes.map((WindowType n) => n.label),
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door', 'Arch']);
+    expect(estimation[3].rows[1].nodes, WindowCatalog.d51Windows);
+    expect(estimation[3].rows[2].nodes, WindowCatalog.d42Windows);
+    // Double Glaze: announced, nothing in it yet.
+    expect(estimation[4].nodes, isEmpty);
+    expect(estimation[4].comingSoon, 'Coming soon');
 
     final List<WindowGroup> fabrication = WindowCatalog.groupsForFlow(isFabrication: true);
     expect(fabrication[0].nodes.length, 12);
@@ -253,8 +262,10 @@ void main() {
     expect(fabrication[1].nodes.length, 7);
     expect(fabrication[1].rows[1].nodes, WindowCatalog.primeEconomyWindows);
     expect(fabrication[2].nodes, WindowCatalog.deluxeWindows);
-    expect(fabrication[3].nodes.map((WindowType n) => n.label),
+    expect(fabrication[3].rows.first.nodes.map((WindowType n) => n.label),
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door']);
+    expect(fabrication[3].rows[1].nodes, WindowCatalog.d51Windows);
+    expect(fabrication[3].rows[2].nodes, WindowCatalog.d42Windows);
 
     // Nothing lost or doubled in the split.
     expect(

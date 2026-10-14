@@ -379,8 +379,18 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   /// inch-tape resolution) is exactly right here.
   bool get _isEstimationCmMode =>
       !_isFabricationFlow && _unitMode == UnitMode.cm;
-  bool get _showsDoorSectionToggles =>
-      _handler is DoorSingleInputHandler || _handler is DoorDoubleInputHandler;
+  /// The door's handler -- the double door's is the single's with a second
+  /// leaf -- or null for a window that is no door. A door on the D51 or D42
+  /// frame is a door too: its switches (D46, D52) live on the door handler
+  /// inside the variant's.
+  DoorSingleInputHandler? get _doorHandler {
+    final WindowInputHandler handler = _handler;
+    final WindowInputHandler inner =
+        handler is VariantInputHandler ? handler.base : handler;
+    return inner is DoorSingleInputHandler ? inner : null;
+  }
+
+  bool get _showsDoorSectionToggles => _doorHandler != null;
   bool get _showsOpenableNetToggle =>
       _handler is OpenableInputHandler || _ownWindow?.netSection != null;
 
@@ -396,24 +406,16 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
   bool get _showsBackCollarOption =>
       _showsDoorSectionToggles && _isFabricationFlow;
 
-  bool get _doorD46Enabled {
-    if (_handler is DoorSingleInputHandler) {
-      return _handler.d46Enabled;
-    }
-    if (_handler is DoorDoubleInputHandler) {
-      return _handler.d46Enabled;
-    }
-    return false;
-  }
+  bool get _doorD46Enabled => _doorHandler?.d46Enabled ?? false;
 
-  bool get _doorD52Enabled {
-    if (_handler is DoorSingleInputHandler) {
-      return _handler.d52Enabled;
-    }
-    if (_handler is DoorDoubleInputHandler) {
-      return _handler.d52Enabled;
-    }
-    return false;
+  bool get _doorD52Enabled => _doorHandler?.d52Enabled ?? false;
+
+  /// Puts the door's D46 and D52 switches, where they are given.
+  void _applyDoorSwitches({bool? d46, bool? d52}) {
+    final DoorSingleInputHandler? door = _doorHandler;
+    if (door == null) return;
+    if (d46 != null) door.d46Enabled = d46;
+    if (d52 != null) door.d52Enabled = d52;
   }
 
   void _setDoorD46Enabled(bool enabled) {
@@ -422,11 +424,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
 
     setState(() {
-      if (_handler is DoorSingleInputHandler) {
-        _handler.d46Enabled = enabled;
-      } else if (_handler is DoorDoubleInputHandler) {
-        _handler.d46Enabled = enabled;
-      }
+      _applyDoorSwitches(d46: enabled);
       if (!enabled && _selectedSectionCode == 'D46') {
         _selectedSectionCode = null;
       }
@@ -440,11 +438,7 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     }
 
     setState(() {
-      if (_handler is DoorSingleInputHandler) {
-        _handler.d52Enabled = enabled;
-      } else if (_handler is DoorDoubleInputHandler) {
-        _handler.d52Enabled = enabled;
-      }
+      _applyDoorSwitches(d52: enabled);
       if (!enabled && _selectedSectionCode == 'D52') {
         _selectedSectionCode = null;
       }
@@ -959,21 +953,10 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
           _selectedCollar = _offeredCollar(storedCollar);
         }
         if (_showsDoorSectionToggles) {
-          if (_handler is DoorSingleInputHandler) {
-            if (preferencesState.addBottom != null) {
-              _handler.d46Enabled = preferencesState.addBottom!;
-            }
-            if (preferencesState.addTee != null) {
-              _handler.d52Enabled = preferencesState.addTee!;
-            }
-          } else if (_handler is DoorDoubleInputHandler) {
-            if (preferencesState.addBottom != null) {
-              _handler.d46Enabled = preferencesState.addBottom!;
-            }
-            if (preferencesState.addTee != null) {
-              _handler.d52Enabled = preferencesState.addTee!;
-            }
-          }
+          _applyDoorSwitches(
+            d46: preferencesState.addBottom,
+            d52: preferencesState.addTee,
+          );
         }
         if (_showsOpenableNetToggle && preferencesState.addNet != null) {
           _applyNetEnabled(preferencesState.addNet!);
@@ -1027,12 +1010,8 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
 
     _backCollarCm = editingItem.backCollarCm;
 
-    if (_handler is DoorSingleInputHandler) {
-      _handler.d46Enabled = editingItem.addBottom;
-      _handler.d52Enabled = editingItem.addTee;
-    } else if (_handler is DoorDoubleInputHandler) {
-      _handler.d46Enabled = editingItem.addBottom;
-      _handler.d52Enabled = editingItem.addTee;
+    if (_showsDoorSectionToggles) {
+      _applyDoorSwitches(d46: editingItem.addBottom, d52: editingItem.addTee);
     } else if (_handler is OpenableInputHandler) {
       _handler.netEnabled = editingItem.addNet;
     } else if (_showsOpenableNetToggle) {

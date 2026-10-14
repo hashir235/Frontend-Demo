@@ -5,6 +5,8 @@
 /// glass's height. A fabricator picks one strip profile for a door, or none.
 library;
 
+import 'window_variant.dart';
+
 /// One strip profile and how much height one piece of it covers.
 class DoorStrip {
   const DoorStrip(this.section, this.widthMm);
@@ -46,7 +48,11 @@ class DoorStrips {
     return null;
   }
 
-  /// Whether a window with this code can take strips: the doors.
-  static bool offeredOn(String? windowCode) =>
-      windowCode == 'Single_Door' || windowCode == 'Double_Door';
+  /// Whether a window with this code can take strips: the doors, on any
+  /// frame.
+  static bool offeredOn(String? windowCode) {
+    if (windowCode == null) return false;
+    final String base = WindowVariants.baseCode(windowCode);
+    return base == 'Single_Door' || base == 'Double_Door';
+  }
 }

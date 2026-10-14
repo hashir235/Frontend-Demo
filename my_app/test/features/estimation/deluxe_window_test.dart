@@ -77,7 +77,7 @@ void main() {
         final List<WindowGroup> groups =
             WindowCatalog.groupsForFlow(isFabrication: fabrication);
         expect(groups.map((WindowGroup g) => g.id),
-            <String>['sliding', 'economy', 'deluxe', 'box']);
+            <String>['sliding', 'economy', 'deluxe', 'box', 'double_glaze']);
         final WindowGroup deluxe = groups.firstWhere((WindowGroup g) => g.id == 'deluxe');
         expect(deluxe.title, 'DELUXE Windows');
         expect(deluxe.rows.single.nodes.single.codeName, code);

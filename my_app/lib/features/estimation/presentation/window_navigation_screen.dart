@@ -184,6 +184,35 @@ class _WindowNavigationScreenState extends State<WindowNavigationScreen> {
             ],
           ),
           const SizedBox(height: AppTheme.space4),
+          // A kind announced before it is made: said, and nothing to tap.
+          if (kind.comingSoon != null)
+            Container(
+              key: Key('library_coming_soon_${kind.id}'),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.space5,
+                vertical: AppTheme.space6,
+              ),
+              decoration: AppTheme.softPanelDecoration(radius: AppTheme.radiusMd),
+              child: Row(
+                children: <Widget>[
+                  const Icon(
+                    Icons.hourglass_top_rounded,
+                    color: AppTheme.deepTeal,
+                  ),
+                  const SizedBox(width: AppTheme.space4),
+                  Expanded(
+                    child: Text(
+                      kind.comingSoon!,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           for (int row = 0; row < kind.rows.length; row++) ...<Widget>[
             if (row > 0) ...<Widget>[
               const SizedBox(height: AppTheme.space5),
