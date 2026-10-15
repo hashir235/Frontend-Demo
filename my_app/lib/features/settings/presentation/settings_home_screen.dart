@@ -1871,11 +1871,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: const Text(
           'For openings that are not square: the top, the bottom and each side '
           'get their own box. A side left empty is taken as the one facing it. '
-          'Top and bottom (or left and right) up to 2 suter apart: the whole '
-          'window is cut to the smaller. More than 2 suter apart: the frame, '
-          'the top and bottom rails and the outer stiles are each cut to their '
-          'own side; the glass and the centre stiles to the smaller. '
-          'Fabrication only.',
+          'The frame is always cut to each side as measured. Inside it, top '
+          'and bottom (or left and right) up to 2 suter apart are cut to the '
+          'smaller; more than 2 suter apart, the top and bottom rails and the '
+          'outer stiles take their own side. The glass and the centre stiles '
+          'always take the smaller. Fabrication only.',
         ),
       ),
     );

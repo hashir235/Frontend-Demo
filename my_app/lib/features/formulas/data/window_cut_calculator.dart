@@ -234,12 +234,15 @@ class WindowCutCalculator {
       ...margins,
     };
 
-    // Measured side by side, a piece is cut to a side of its own only when
-    // that side is more than 2 suter from the one facing it (Hashir, Oct
-    // 2026); otherwise to the smaller of the pair, already standing in
-    // [variables]. Which side a piece belongs to, if any, is worked out per
-    // profile: the frame's pieces and anything named for a side by their
-    // labels, the rails and the outer stiles by where they sit.
+    // Measured side by side (Hashir, Oct 2026), the frame is cut to each
+    // side exactly as measured, however close the pair. Inside it, a piece
+    // that belongs to one side is cut to it only when that side is more than
+    // 2 suter from the one facing it; otherwise to the smaller of the pair,
+    // already standing in [variables]. Which side a piece belongs to, if any,
+    // is worked out per profile: the frame's pieces and anything named for a
+    // side by their labels, the rails and the outer stiles by where they sit.
+    final Set<String> frameSections =
+        sides == null ? const <String>{} : book.catalogue.frameSectionsFor(key.windowKey);
     final OwnWindow? ownWindow = WindowVariants.ownOf(request.appWindowCode);
     final String? engineWindow = _engineWindowOf(request);
 
@@ -247,6 +250,7 @@ class WindowCutCalculator {
     for (final EffectiveSection section in sections) {
       if (request.leaveOut.contains(section.section)) continue;
       final String name = sectionAliases[section.section] ?? section.section;
+      final bool isFrame = frameSections.contains(section.section);
       final List<String?> pieceSides = sides == null
           ? const <String?>[]
           : _sidesOf(section, own: ownWindow, engineWindow: engineWindow);
@@ -266,6 +270,7 @@ class WindowCutCalculator {
           variables,
           sides,
           index < pieceSides.length ? pieceSides[index] : null,
+          isFrame: isFrame,
         );
         final ({Map<String, double>? variables, String? problem}) own =
             _variablesFor(piece, forPiece, request.pieceSizes);
@@ -392,9 +397,9 @@ class WindowCutCalculator {
   }
 
   /// The measurements one piece is cut from when the window was measured side
-  /// by side: its own [side]'s, when it has one and that side is more than 2
-  /// suter from the one facing it; otherwise the smaller of the pair, which
-  /// [variables] already hold.
+  /// by side: its own [side]'s -- always for a piece of the frame, and for a
+  /// piece inside it when that side is more than 2 suter from the one facing
+  /// it; otherwise the smaller of the pair, which [variables] already hold.
   ///
   /// A side this window was not measured on keeps the smaller too, which is
   /// the safe way round: too small can be packed out, too big cannot be put
@@ -402,9 +407,11 @@ class WindowCutCalculator {
   static Map<String, double> _withSide(
     Map<String, double> variables,
     SideMeasurements? sides,
-    String? side,
-  ) {
-    if (sides == null || side == null || !sides.isApart(side)) return variables;
+    String? side, {
+    required bool isFrame,
+  }) {
+    if (sides == null || side == null) return variables;
+    if (!isFrame && !sides.isApart(side)) return variables;
     final double? own = sides.bySide[side];
     final String? dimension = WindowSide.dimension[side];
     if (own == null || dimension == null) return variables;

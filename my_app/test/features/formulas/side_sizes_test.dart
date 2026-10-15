@@ -240,21 +240,45 @@ void main() {
       expect(moved, contains(stiles.last), reason: 'the right stile');
     });
 
-    test('up to 2 suter apart: the whole window takes the smaller, frame and all', () {
+    test('up to 2 suter apart: the frame still takes each side, the inside the smaller', () {
       final WindowCutCalculator calculator = WindowCutCalculator(book());
       final Map<String, double> plain =
           lengths(calculator.compute(window(), margins: margins));
-      for (final Map<String, String> sides in <Map<String, String>>[
-        // Half a centimetre apart, top and bottom, and the sides.
-        <String, String>{'WT': '44.5', 'WB': '45', 'HL': '54.5', 'HR': '55'},
-        // Exactly 2 suter apart.
-        <String, String>{'WT': '44.5', 'WB': '45.135', 'HL': '55.135', 'HR': '54.5'},
-      ]) {
-        final WindowCutList cut =
-            calculator.compute(window(sides: SideSizes(sides)), margins: margins);
-        expect(cut.problems, isEmpty);
-        expect(lengths(cut), plain, reason: '$sides');
+      final Map<String, double> wide =
+          lengths(calculator.compute(window(width: '45'), margins: margins));
+      final Map<String, double> tall =
+          lengths(calculator.compute(window(height: '55'), margins: margins));
+
+      // Half a centimetre apart, top and bottom, and the sides: the sill and
+      // the right jamb take theirs, nothing inside the frame moves.
+      final Map<String, double> half = lengths(calculator.compute(
+        window(
+          sides: const SideSizes(<String, String>{
+            'WT': '44.5', 'WB': '45', 'HL': '54.5', 'HR': '55',
+          }),
+        ),
+        margins: margins,
+      ));
+      expect(movedFrom(half, plain).toSet(), <String>{'DC26C WB', 'DC30C HR'});
+      for (final String piece in half.keys) {
+        if (piece.startsWith('DC26C WB')) {
+          expect(half[piece], closeTo(wide[piece]!, 1e-12), reason: piece);
+        }
+        if (piece.startsWith('DC30C HR')) {
+          expect(half[piece], closeTo(tall[piece]!, 1e-12), reason: piece);
+        }
       }
+
+      // Exactly 2 suter apart: the same -- the frame only.
+      final Map<String, double> twoSuter = lengths(calculator.compute(
+        window(
+          sides: const SideSizes(<String, String>{
+            'WT': '44.5', 'WB': '45.135', 'HL': '55.135', 'HR': '54.5',
+          }),
+        ),
+        margins: margins,
+      ));
+      expect(movedFrom(twoSuter, plain).toSet(), <String>{'DC26C WB', 'DC30C HL'});
 
       // The same in inches: 17" and 17" 2 suter.
       WindowCutRequest inches(SideSizes sides) => WindowCutRequest(
@@ -270,23 +294,63 @@ void main() {
       );
       final Map<String, double> plainInches =
           lengths(calculator.compute(inches(const SideSizes.empty()), margins: margins));
+      // 17" 2 suter: the head and the right jamb, and nothing inside.
       expect(
-        lengths(calculator.compute(
-          inches(const SideSizes(<String, String>{
-            'WT': '17.2', 'WB': '17', 'HL': '21', 'HR': '21.2',
-          })),
-          margins: margins,
-        )),
-        plainInches,
+        movedFrom(
+          lengths(calculator.compute(
+            inches(const SideSizes(<String, String>{
+              'WT': '17.2', 'WB': '17', 'HL': '21', 'HR': '21.2',
+            })),
+            margins: margins,
+          )),
+          plainInches,
+        ).toSet(),
+        <String>{'DC30C WT', 'DC30C HR'},
       );
-      // 17" 3 suter: apart, and the head moves.
+      // 17" 3 suter: apart, so the top rails and the net's top go with the
+      // head.
       final Map<String, double> threeSuter = lengths(calculator.compute(
         inches(const SideSizes(<String, String>{
           'WT': '17.3', 'WB': '17', 'HL': '21', 'HR': '21',
         })),
         margins: margins,
       ));
-      expect(movedFrom(threeSuter, plainInches), contains('DC30C WT'));
+      expect(movedFrom(threeSuter, plainInches).toSet(),
+          containsAll(<String>['DC30C WT', 'M24 W1', 'M24 W2']));
+    });
+
+    test("the shop's example: top 46\" 6 suter, bottom 47\" 3 suter, each as it is", () {
+      final WindowCutCalculator calculator = WindowCutCalculator(book());
+      WindowCutRequest inches({SideSizes sides = const SideSizes.empty(), String width = '46.6'}) =>
+          WindowCutRequest(
+            isFabrication: true,
+            appWindowCode: 'S_win',
+            collarIndex: 2,
+            unitMode: 'inches',
+            heightValue: '50',
+            widthValue: width,
+            lockType: 1,
+            rubberType: 'F',
+            sideSizes: sides,
+          );
+      final Map<String, double> cut = lengths(calculator.compute(
+        inches(sides: const SideSizes(<String, String>{
+          'WT': '46.6', 'WB': '47.3', 'HL': '50', 'HR': '50',
+        })),
+        margins: margins,
+      ));
+      final Map<String, double> atTop =
+          lengths(calculator.compute(inches(width: '46.6'), margins: margins));
+      final Map<String, double> atBottom =
+          lengths(calculator.compute(inches(width: '47.3'), margins: margins));
+      for (final String piece in cut.keys) {
+        if (piece.startsWith('DC30C WT')) {
+          expect(cut[piece], closeTo(atTop[piece]!, 1e-12), reason: 'head at 46" 6 suter');
+        }
+        if (piece.startsWith('DC26C WB')) {
+          expect(cut[piece], closeTo(atBottom[piece]!, 1e-12), reason: 'sill at 47" 3 suter');
+        }
+      }
     });
 
     test("a three-panel window's M23 and M28 keep the smaller height", () {

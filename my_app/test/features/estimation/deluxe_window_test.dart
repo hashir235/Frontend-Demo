@@ -411,7 +411,7 @@ void main() {
       }
     });
 
-    test('up to 2 suter apart: the smaller, for the whole window', () {
+    test('up to 2 suter apart: the frame each side, everything inside the smaller', () {
       final WindowCutList apartByTwoSuter = cut(
         sides: const SideSizes(<String, String>{
           'WT': '150.635', 'WB': '150', 'HL': '120', 'HR': '120.5',
@@ -419,10 +419,18 @@ void main() {
       );
       final WindowCutList plain = cut(height: '120', width: '150');
       expect(apartByTwoSuter.problems, isEmpty);
-      expect(
-        apartByTwoSuter.pieces.map((CutPiece p) => '${p.section} ${p.label} ${p.lengthFt.toStringAsFixed(9)}'),
-        plain.pieces.map((CutPiece p) => '${p.section} ${p.label} ${p.lengthFt.toStringAsFixed(9)}'),
-      );
+      String key(CutPiece p) => '${p.section} ${p.label}';
+      for (int i = 0; i < plain.pieces.length; i++) {
+        final CutPiece mine = apartByTwoSuter.pieces[i];
+        final CutPiece theirs = plain.pieces[i];
+        expect(key(mine), key(theirs));
+        final double expected = switch (key(mine)) {
+          'D27 WT' => (150.635 - 1.27) / feet,
+          'D30 HR' => 120.5 / feet,
+          _ => theirs.lengthFt,
+        };
+        expect(mine.lengthFt, closeTo(expected, 1e-9), reason: key(mine));
+      }
     });
 
     test('D29 left out when off, everything else the same', () {

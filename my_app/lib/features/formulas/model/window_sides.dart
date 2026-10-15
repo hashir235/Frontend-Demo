@@ -6,13 +6,14 @@ import 'window_measurements.dart';
 /// The sides of a window, named as its frame names them.
 ///
 /// A wall is never quite square. The top of an opening can be half an inch
-/// wider than its bottom. Up to 2 suter apart, a side and the one facing it
-/// are one size -- the smaller -- for the whole window. Further apart than
-/// that, each is cut to its own (Hashir, Oct 2026): the frame's head to the
-/// top and its sill to the bottom, and inside it every piece that belongs to
-/// one side -- the top rails, the bottom rails, the stile at the left or the
-/// right. What belongs to neither, the glass and the stiles meeting at the
-/// centre, keeps the smaller, so it still goes in.
+/// wider than its bottom. The frame is always cut to what was measured, side
+/// by side: the head to the top, the sill to the bottom, each jamb to its own
+/// (Hashir, Oct 2026). Inside the frame, a side and the one facing it up to
+/// 2 suter apart are one size, the smaller; further apart than that, every
+/// piece that belongs to one side -- the top rails, the bottom rails, the
+/// stile at the left or the right -- is cut to it. What belongs to neither,
+/// the glass and the stiles meeting at the centre, keeps the smaller, so it
+/// still goes in.
 ///
 /// The names are the frame's own piece labels, so nothing has to be translated
 /// between what is typed and what is cut: WT is the head, WB the sill, HL and
@@ -30,10 +31,11 @@ class WindowSide {
   static const String bottomLeft = 'WB_l';
   static const String bottomRight = 'WB_r';
 
-  /// How far apart a side and the one facing it must be before each is cut
-  /// to its own: more than 2 suter, in the centimetres fabrication works in
-  /// (Hashir, Oct 2026). Up to that, 2 suter itself included, the pair is one
-  /// size: the smaller.
+  /// How far apart a side and the one facing it must be before the pieces
+  /// inside the frame are cut to each: more than 2 suter, in the centimetres
+  /// fabrication works in (Hashir, Oct 2026). Up to that, 2 suter itself
+  /// included, the pair is one size for them: the smaller. The frame does not
+  /// wait for this; it is always cut to each side.
   static const double apartCm = 0.635;
 
   /// Every side this feature knows, in the order they are read out.
