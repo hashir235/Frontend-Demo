@@ -108,8 +108,8 @@ class WindowSections {
     'SCS_win': _sliding,
     'SCL_win': _sliding,
     'SCR_win': _sliding,
-    // The engine cuts a D29 in this one M-section corner window, and in
-    // fabrication in the left-fix one instead -- listed as the engine has it.
+    // Estimation counts a D29 in this one M-section corner window -- listed as
+    // the engine has it. Fabrication cuts none in any of them.
     'MSCF_win': <UsedSection>[..._slidingM, UsedSection('D29')],
     'MSCS_win': _slidingM,
     'MSCL_win': _slidingM,
@@ -136,8 +136,9 @@ class WindowSections {
 
   /// Where fabrication's sections differ from estimation's.
   static const Map<String, List<UsedSection>> _fabrication = <String, List<UsedSection>>{
+    // The M series takes no D29. The left-fix corner window used to cut four
+    // pieces of it, a slip from copying the DC one (fixed Oct 2026).
     'MSCF_win': _slidingM,
-    'MSCL_win': <UsedSection>[..._slidingM, UsedSection('D29')],
   };
 
   /// The sections window [code] is cut from, in list order; empty for a
