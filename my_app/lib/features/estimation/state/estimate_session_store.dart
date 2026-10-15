@@ -105,6 +105,37 @@ class EstimateSessionStore extends ChangeNotifier {
     }
   }
 
+  Future<void> _lastWindowsSave = Future<void>.value();
+  Future<void>? _waitingWindowsSave;
+
+  /// Saves this job's windows one after another, never two at once.
+  ///
+  /// Every save sends the whole list, and the server keeps whichever list
+  /// arrives last. Each screen used to save on its own, so a window added a
+  /// moment before another was edited sent two lists at once -- and when the
+  /// older one landed second it quietly put the edit back (Oct 2026, seen in
+  /// the server's log as a full list followed a second later by an empty
+  /// one). Now a save waits for the one before it and reads the windows only
+  /// when its turn comes, so the last list saved is always the latest.
+  ///
+  /// A save asked for while another is already waiting is that one: it will
+  /// read these windows too.
+  Future<void> saveWindowsInTurn(
+    Future<void> Function(List<WindowReviewItem> windows) save,
+  ) {
+    final Future<void>? waiting = _waitingWindowsSave;
+    if (waiting != null) return waiting;
+    late final Future<void> mine;
+    mine = _lastWindowsSave.then((_) {
+      if (identical(_waitingWindowsSave, mine)) _waitingWindowsSave = null;
+      return save(items);
+    });
+    _waitingWindowsSave = mine;
+    // The next save waits for this one whether it worked or not.
+    _lastWindowsSave = mine.then<void>((_) {}, onError: (Object _) {});
+    return mine;
+  }
+
   /// Aluminium fabrication. Deliberately false for [EstimateFlow.glass]: glass
   /// never runs the window pipeline, so anything gated on this stays off there.
   bool get isFabrication => flow == EstimateFlow.fabrication;

@@ -1,4 +1,5 @@
 import '../models/saved_project.dart';
+import '../models/window_review_item.dart';
 import '../state/estimate_session_store.dart';
 import 'project_api_client.dart';
 
@@ -47,14 +48,19 @@ class ProjectRepository {
   /// Saves the session's windows into its project -- waiting for the project
   /// first when it is new and still being written, so a window saved in the
   /// first seconds after Create is not lost.
+  ///
+  /// In turn with every other save of this job, and with the windows as they
+  /// are when its turn comes: see [EstimateSessionStore.saveWindowsInTurn].
   Future<void> syncSession(EstimateSessionStore session) async {
     final String? projectId = session.projectId ?? await session.ensureProject();
     if (projectId == null || projectId.isEmpty) {
       return;
     }
-    await _apiClient.saveProjectWindows(
-      projectId: projectId,
-      windows: session.items,
+    await session.saveWindowsInTurn(
+      (List<WindowReviewItem> windows) => _apiClient.saveProjectWindows(
+        projectId: projectId,
+        windows: windows,
+      ),
     );
   }
 

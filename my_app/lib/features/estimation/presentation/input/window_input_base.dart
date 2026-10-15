@@ -2243,6 +2243,9 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     if (widget.isEditMode) {
       final WindowReviewItem updated = widget.editingItem!.copyWith(
         winNo: winNo,
+        // A switchable profile turned while editing (ET24 / ET24A) is a
+        // different code. It used to be left as saved, so the switch was lost.
+        windowCode: windowCode,
         collarIndex: _selectedCollar,
         unitMode: storedUnitMode,
         heightValue: heightValue,
