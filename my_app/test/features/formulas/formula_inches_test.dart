@@ -126,7 +126,7 @@ void main() {
     });
 
     test('reads in inches, and reads back to exactly what was stored', () {
-      expect(formulas, hasLength(183));
+      expect(formulas, hasLength(184));
       for (final String stored in formulas) {
         final FormulaSlot slot = slotFor(stored);
         final InchFormula? inches = InchFormula.of(slot);
