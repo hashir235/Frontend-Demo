@@ -341,14 +341,17 @@ class ReviewListScreen extends StatelessWidget {
     Color accentColor,
     Color codeColor,
   ) {
-    // A window cut to formulas of its own (Prime Economy, DELUXE) has no collar
-    // to speak of, and its finishes may go by its maker's names.
+    // A window cut to formulas of its own at one collar (Prime Economy,
+    // DELUXE) has no collar to speak of, and its finishes may go by its
+    // maker's names. Double Glaze comes in every collar, and says which.
     final OwnWindow? own = WindowVariants.ownOf(item.windowCode);
+    final bool noCollar =
+        own != null && WindowVariants.of(item.windowCode)?.collars?.length == 1;
     final List<Widget> chips = <Widget>[
       _buildMetaChip(
         context,
         icon: Icons.grid_view_rounded,
-        label: own != null ? 'No collar' : 'Collar ${item.collarIndex}',
+        label: noCollar ? 'No collar' : 'Collar ${item.collarIndex}',
         accentColor: accentColor,
       ),
       _buildMetaChip(

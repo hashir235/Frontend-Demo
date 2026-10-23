@@ -22,7 +22,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// The fix windows and doors on the D51 and D42 frames (Hashir, Oct 2026):
 /// the D54 windows exactly, with D51A/D42A where D54A goes and D51F/D42F
 /// where D54F goes. Fix Window, Corner Fix, Single Door, Double Door -- not
-/// the openable. And a Double Glaze heading, coming soon.
+/// the openable. And a Double Glaze heading -- coming soon at first, its
+/// sliding window since.
 void main() {
   final FormulaCatalogue catalogue = FormulaCatalogue.fromJson(
     jsonDecode(File('assets/formulas/catalogue.json').readAsStringSync())
@@ -121,12 +122,13 @@ void main() {
         final WindowGroup glaze = groups.last;
         expect(glaze.id, 'double_glaze');
         expect(glaze.title, 'Double Glaze');
-        expect(glaze.comingSoon, 'Coming soon');
-        expect(glaze.nodes, isEmpty);
+        // Made since (Oct 2026): its sliding window, no longer coming soon.
+        expect(glaze.comingSoon, isNull);
+        expect(glaze.nodes.map((WindowType n) => n.codeName), <String>['SDG_win']);
       }
     });
 
-    testWidgets('Double Glaze says coming soon, with nothing to open', (
+    testWidgets('Double Glaze opens on its sliding window', (
       WidgetTester tester,
     ) async {
       SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -151,10 +153,11 @@ void main() {
       expect(find.byKey(const Key('library_row_box_d51')), findsOneWidget);
       await scrollTo(find.byKey(const Key('library_row_box_d42')));
       expect(find.byKey(const Key('library_row_box_d42')), findsOneWidget);
-      final Finder soon = find.byKey(const Key('library_coming_soon_double_glaze'));
-      await scrollTo(soon);
-      expect(find.descendant(of: soon, matching: find.text('Coming soon')), findsOneWidget);
-      expect(find.byKey(const Key('library_group_double_glaze')), findsOneWidget);
+      await scrollTo(find.byKey(const Key('library_group_double_glaze')));
+      final Finder card = find.text('Double Glaze Sliding Window');
+      await scrollTo(card);
+      expect(card, findsOneWidget);
+      expect(find.byKey(const Key('library_coming_soon_double_glaze')), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

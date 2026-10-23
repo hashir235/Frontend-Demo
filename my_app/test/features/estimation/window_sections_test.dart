@@ -32,6 +32,23 @@ void main() {
     final WindowVariant? variant = WindowVariants.of(code);
     // A window cut to formulas of its own: those, at its one collar.
     final OwnWindow? own = variant?.own;
+    if (variant != null && own != null && variant.sections.isNotEmpty) {
+      // Its own formulas inside a frame of its base's: the base's frame at
+      // each collar under this window's names.
+      final Map<String, Map<String, dynamic>>? base = configsOf(variant.baseCode, context);
+      if (base == null) return null;
+      return <String, Map<String, dynamic>>{
+        for (final MapEntry<String, Map<String, dynamic>> config in base.entries)
+          config.key.split('|').firstWhere((String p) => p.startsWith('collarType=')):
+              <String, dynamic>{
+            for (final String section in config.value.keys)
+              if (variant.sections.containsKey(section)) variant.sections[section]!: true,
+            for (final MapEntry<String, List<OwnPiece>> section
+                in own.formulasFor(context).entries)
+              section.key: section.value,
+          },
+      };
+    }
     if (variant != null && own != null) {
       return <String, Map<String, dynamic>>{
         for (final int collar in variant.collars!)
@@ -252,9 +269,9 @@ void main() {
         <String>['Fix Window', 'Corner Fix', 'Openable', 'Door', 'Arch']);
     expect(estimation[3].rows[1].nodes, WindowCatalog.d51Windows);
     expect(estimation[3].rows[2].nodes, WindowCatalog.d42Windows);
-    // Double Glaze: announced, nothing in it yet.
-    expect(estimation[4].nodes, isEmpty);
-    expect(estimation[4].comingSoon, 'Coming soon');
+    // Double Glaze: its sliding window, no longer "coming soon".
+    expect(estimation[4].nodes, WindowCatalog.doubleGlazeWindows);
+    expect(estimation[4].comingSoon, isNull);
 
     final List<WindowGroup> fabrication = WindowCatalog.groupsForFlow(isFabrication: true);
     expect(fabrication[0].nodes.length, 12);

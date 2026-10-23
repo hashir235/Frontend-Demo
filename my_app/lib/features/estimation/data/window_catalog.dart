@@ -576,6 +576,20 @@ class WindowCatalog {
     ),
   ];
 
+  /// The Double Glaze line, cut to formulas of its own (see [OwnWindow]) on a
+  /// DG26F/DG26 frame in every collar the sliding window comes in (Hashir,
+  /// Oct 2026). One window so far: the two-panel sliding one.
+  static const List<WindowType> doubleGlazeWindows = <WindowType>[
+    WindowType(
+      label: 'Double Glaze Sliding Window',
+      subtitle: 'Two-panel sliding window on the DG profiles',
+      graphicKey: 'sliding_basic',
+      children: <WindowType>[],
+      displayIndex: 66,
+      codeName: 'SDG_win',
+    ),
+  ];
+
   /// Windows built as a box: fixed frame all round -- fix, corner fix,
   /// openable, doors and arches.
   static const List<WindowType> boxTypeWindows = <WindowType>[
@@ -754,6 +768,7 @@ class WindowCatalog {
     ...boxTypeWindows,
     ...d51Windows,
     ...d42Windows,
+    ...doubleGlazeWindows,
   ];
 
   /// The library's rows for a flow. Fabrication has no arches.
@@ -806,12 +821,12 @@ class WindowCatalog {
           WindowRow(id: 'box_d42', title: 'D42 Series', nodes: forFlow(d42Windows)),
         ],
       ),
-      // Announced, not made yet (Hashir, Oct 2026).
-      const WindowGroup(
+      WindowGroup(
         id: 'double_glaze',
         title: 'Double Glaze',
-        rows: <WindowRow>[],
-        comingSoon: 'Coming soon',
+        rows: <WindowRow>[
+          WindowRow(id: 'double_glaze', nodes: forFlow(doubleGlazeWindows)),
+        ],
       ),
     ];
   }

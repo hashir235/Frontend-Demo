@@ -122,15 +122,27 @@ class FormulaCatalogue {
     for (final WindowVariant variant in WindowVariants.all) {
       final OwnWindow? own = variant.own;
       if (own != null) {
-        // Its own formulas, at the one collar it comes in, in both flows. Its
+        // Its own formulas, at each collar it comes in, in both flows. Its
         // own glass in fabrication, the only flow that cuts glass; a window
         // with no glass formula yet lists none, and none is cut.
+        //
+        // A window with a frame of its base's (Double Glaze) comes in every
+        // collar the base does, and takes the base's frame at each, renamed:
+        // two base profiles may become one, and then its pieces follow one
+        // another, the base's order kept.
         for (final String context in <String>['estimation', 'fabrication']) {
           final String key = '$context/${variant.code}';
-          final List<int> collars = variant.collars ?? const <int>[2];
+          final Map<int, Map<String, List<dynamic>>> baseFrames =
+              variant.sections.isEmpty
+                  ? const <int, Map<String, List<dynamic>>>{}
+                  : _framesByCollar(windows, variant, context);
+          final List<int> collars = variant.sections.isEmpty
+              ? (variant.collars ?? const <int>[2])
+              : (baseFrames.keys.where(variant.offersCollar).toList()..sort());
           windows[key] = <String, Map<String, List<dynamic>>>{
             for (final int collar in collars)
               'collarType=$collar': <String, List<dynamic>>{
+                ...?baseFrames[collar],
                 for (final MapEntry<String, List<OwnPiece>> section
                     in own.formulasFor(context).entries)
                   section.key: <dynamic>[
@@ -200,6 +212,40 @@ class FormulaCatalogue {
         for (final MapEntry<String, Set<String>> entry in ownFrames.entries)
           entry.key: Set<String>.unmodifiable(entry.value),
       });
+  }
+
+  /// The frame of [variant]'s base at each of its collars, under [variant]'s
+  /// names: only the base's profiles that [variant] renames, which are its
+  /// frame. Read from the base's first configuration at each collar -- the
+  /// frame is the same whatever the lock or rubber.
+  static Map<int, Map<String, List<dynamic>>> _framesByCollar(
+    Map<String, Map<String, Map<String, List<dynamic>>>> windows,
+    WindowVariant variant,
+    String context,
+  ) {
+    final ({String window, String? dimension, String? value})? base =
+        FormulaWindowKey.engineWindowFor(variant.baseCode, context);
+    final Map<String, Map<String, List<dynamic>>>? configs =
+        base == null ? null : windows['$context/${base.window}'];
+    final Map<int, Map<String, List<dynamic>>> frames = <int, Map<String, List<dynamic>>>{};
+    if (configs == null) return frames;
+    configs.forEach((String configKey, Map<String, List<dynamic>> sections) {
+      final Map<String, String> parts = <String, String>{
+        for (final String part in configKey.split('|'))
+          part.split('=').first: part.split('=').last,
+      };
+      if (base!.dimension != null && parts[base.dimension] != base.value) return;
+      final int? collar = int.tryParse(parts['collarType'] ?? '');
+      if (collar == null || frames.containsKey(collar)) return;
+      final Map<String, List<dynamic>> frame = <String, List<dynamic>>{};
+      sections.forEach((String section, List<dynamic> pieces) {
+        final String? renamed = variant.sections[section];
+        if (renamed == null) return;
+        (frame[renamed] ??= <dynamic>[]).addAll(pieces);
+      });
+      frames[collar] = frame;
+    });
+    return frames;
   }
 
   /// What a window's configuration is made of -- collarType, lockType and the

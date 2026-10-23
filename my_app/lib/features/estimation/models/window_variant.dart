@@ -25,7 +25,13 @@ class WindowVariant {
     this.alternateCode,
     this.isAlternate = false,
     this.own,
+    this.defaultCollar,
   });
+
+  /// The collar a new window of this kind opens on, or null for the usual
+  /// one. The Double Glaze window opens on collar 2, none on any side: what
+  /// most of Pakistan fits (Hashir, Oct 2026).
+  final int? defaultCollar;
 
   /// Set for a window that is its base's only on the outside -- the engine
   /// it is handed to, the screen it is entered on -- and cut to formulas of
@@ -106,16 +112,21 @@ typedef OwnPane = ({String height, String width});
 /// cuts; every length is the app's, from the formulas here, and so is every
 /// pane of glass. A window whose glass formula is still to come (Prime
 /// Economy) lists none, and none is cut.
+///
+/// The Double Glaze window comes in every collar its base does. Its frame is
+/// the base's, renamed as a frame variant's is (its [WindowVariant.sections])
+/// and cut by the base's own formulas at each collar; only what is inside the
+/// frame is written here.
 class OwnWindow {
   const OwnWindow({
     required this.sections,
     required this.frame,
     required this.estimation,
     required this.fabrication,
-    required this.gauges,
-    required this.topRails,
-    required this.bottomRails,
-    required this.outerStiles,
+    this.gauges,
+    this.topRails,
+    this.bottomRails,
+    this.outerStiles,
     this.glass = const <OwnPane>[],
     this.colorNames = const <String, String>{},
     this.netSection,
@@ -125,9 +136,13 @@ class OwnWindow {
   /// (one at the left of the window, one at the right). A window measured
   /// side by side with a side more than 2 suter from the one facing it cuts
   /// each of these to its own side; its own names give no other way to tell.
-  final String topRails;
-  final String bottomRails;
-  final String outerStiles;
+  ///
+  /// Null where one profile is several of these at once (Double Glaze's
+  /// DG23): its pieces then say their side by their labels -- HL and HR the
+  /// outer stiles, WT and WB the rails -- as D29's do.
+  final String? topRails;
+  final String? bottomRails;
+  final String? outerStiles;
 
   /// Its panes of glass in fabrication, in cutting order; empty while its
   /// glass formula is still to come.
@@ -153,8 +168,9 @@ class OwnWindow {
   /// on the window as its addNet; null when every profile is always cut.
   final String? netSection;
 
-  /// The gauges it comes in, written as the rate list writes them.
-  final List<String> gauges;
+  /// The gauges it comes in, written as the rate list writes them; null for
+  /// every gauge.
+  final List<String>? gauges;
 
   /// The finishes under its maker's names, keyed by the rate-list column
   /// each is priced from -- which is the colour's own value everywhere.
@@ -408,6 +424,105 @@ class WindowVariants {
     ),
   ];
 
+  // Double Glaze's sizes in suter, in centimetres:
+  //   1 inch 7 suter     = 1.875" = 4.7625cm
+  //   2 inch 3 suter     = 2.375" = 6.0325cm
+
+  /// The Double Glaze sliding window (Hashir, Oct 2026): two panels on the DG
+  /// profiles, in every collar the sliding window comes in.
+  ///
+  /// The frame is DG26F on a side with a collar and DG26 on a side without,
+  /// cut as the sliding window's F and C frame is: a collar side 6cm longer,
+  /// as DC26F is, a plain side as measured. That comes from the sliding
+  /// window's own formulas at each collar (see [_doubleGlazeFrame]).
+  ///
+  /// Inside, DG23 is every piece M23, M24 and M28 are on the sliding window:
+  /// the two outer stiles (HL, HR) and the two meeting at the centre (H),
+  /// 2 inch 3 suter short of the height; and each panel's top and bottom
+  /// rail (WT, WB), (W + 1 inch 7 suter) / 2. DG28 is a strip a shop may add
+  /// to the two centre DG23s, cut as long as they are -- off unless switched
+  /// on, as few fit it. DG29 is the net, height and half-width as they are
+  /// until its own formula comes. No glass yet.
+  ///
+  /// Estimation cuts it as every window cut to formulas of its own is cut:
+  /// heights to the height, rails and net to half the width, each with the
+  /// margin of the profile in the same place on the sliding window.
+  static const OwnWindow _doubleGlaze = OwnWindow(
+    sections: <String>['DG26F', 'DG26', 'DG23', 'DG28', 'DG29'],
+    frame: <String>{'DG26F', 'DG26'},
+    netSection: 'DG28',
+    estimation: <String, List<OwnPiece>>{
+      // The outer stiles, the two at the centre, then each panel's top rail
+      // and each one's bottom rail.
+      'DG23': <OwnPiece>[
+        (label: 'HL', formula: 'h + cm_M23'),
+        (label: 'HR', formula: 'h + cm_M23'),
+        (label: 'H', formula: 'h + cm_M28'),
+        (label: 'H', formula: 'h + cm_M28'),
+        (label: 'WT', formula: 'w / 2 + cm_M24'),
+        (label: 'WT', formula: 'w / 2 + cm_M24'),
+        (label: 'WB', formula: 'w / 2 + cm_M24'),
+        (label: 'WB', formula: 'w / 2 + cm_M24'),
+      ],
+      'DG28': <OwnPiece>[
+        (label: 'H', formula: 'h + cm_M28'),
+        (label: 'H', formula: 'h + cm_M28'),
+      ],
+      // The net over one panel: two heights and two half-widths.
+      'DG29': <OwnPiece>[
+        (label: 'HL', formula: 'h + cm_D29'),
+        (label: 'HR', formula: 'h + cm_D29'),
+        (label: 'WT', formula: 'w / 2 + cm_D29'),
+        (label: 'WB', formula: 'w / 2 + cm_D29'),
+      ],
+    },
+    fabrication: <String, List<OwnPiece>>{
+      'DG23': <OwnPiece>[
+        (label: 'HL', formula: '(h - 6.0325 + cm) / feet'),
+        (label: 'HR', formula: '(h - 6.0325 + cm) / feet'),
+        (label: 'H', formula: '(h - 6.0325 + cm) / feet'),
+        (label: 'H', formula: '(h - 6.0325 + cm) / feet'),
+        (label: 'WT', formula: '((w + 4.7625) / 2 + cm) / feet'),
+        (label: 'WT', formula: '((w + 4.7625) / 2 + cm) / feet'),
+        (label: 'WB', formula: '((w + 4.7625) / 2 + cm) / feet'),
+        (label: 'WB', formula: '((w + 4.7625) / 2 + cm) / feet'),
+      ],
+      'DG28': <OwnPiece>[
+        (label: 'H', formula: '(h - 6.0325 + cm) / feet'),
+        (label: 'H', formula: '(h - 6.0325 + cm) / feet'),
+      ],
+      'DG29': <OwnPiece>[
+        (label: 'HL', formula: '(h + cm) / feet'),
+        (label: 'HR', formula: '(h + cm) / feet'),
+        (label: 'WT', formula: '(w / 2 + cm) / feet'),
+        (label: 'WB', formula: '(w / 2 + cm) / feet'),
+      ],
+    },
+  );
+
+  /// The Double Glaze frame: DG26F where the sliding window has its collar
+  /// profiles, DG26 where it has its plain ones -- top, sides and bottom
+  /// alike.
+  static const Map<String, String> _doubleGlazeFrame = <String, String>{
+    'DC30F': 'DG26F',
+    'DC26F': 'DG26F',
+    'DC30C': 'DG26',
+    'DC26C': 'DG26',
+  };
+
+  /// The Double Glaze line: the two-panel sliding window so far.
+  static const List<WindowVariant> _doubleGlazeLine = <WindowVariant>[
+    WindowVariant(
+      code: 'SDG_win',
+      baseCode: 'S_win',
+      frame: 'DG',
+      collars: null,
+      sections: _doubleGlazeFrame,
+      own: _doubleGlaze,
+      defaultCollar: 2,
+    ),
+  ];
+
   static const List<int> _noCollar = <int>[2];
 
   /// The Economy frame and profiles, on the plain sliding windows.
@@ -573,7 +688,8 @@ class WindowVariants {
       ];
 
   /// Every variant: the B/E frame, the BA frame, the Economy line, the Prime
-  /// Economy one, DELUXE, then the box windows on the D51 and D42 frames.
+  /// Economy one, DELUXE, the box windows on the D51 and D42 frames, then
+  /// Double Glaze.
   ///
   /// The B/E frame keeps the codes the B frame was saved under ("SB_win"), so
   /// every window already saved on it opens as it was.
@@ -586,6 +702,7 @@ class WindowVariants {
       ..._deluxeLine,
       ..._boxFrame('D51', _d51Frame),
       ..._boxFrame('D42', _d42Frame),
+      ..._doubleGlazeLine,
     ],
   );
 

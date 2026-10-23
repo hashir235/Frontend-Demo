@@ -45,9 +45,29 @@ class VariantInputHandler extends WindowInputHandler {
   @override
   int get collarCount => base.collarCount;
 
+  /// Whether this window's frame is its base's, renamed, at each of the
+  /// base's collars (Double Glaze) rather than its own at one collar.
+  bool get _ownWithBaseFrame => own != null && variant.sections.isNotEmpty;
+
   @override
   Map<int, List<String>> get sectionsByCollar {
     final OwnWindow? mine = own;
+    if (mine != null && _ownWithBaseFrame) {
+      // At each collar, the frame profiles that collar has (a collar on
+      // every side has no DG26), then everything inside the frame -- the
+      // switched one only while it is on.
+      return <int, List<String>>{
+        for (final MapEntry<int, List<String>> entry in base.sectionsByCollar.entries)
+          if (variant.offersCollar(entry.key))
+            entry.key: <String>[
+              for (final String section in mine.sections)
+                if (mine.frame.contains(section)
+                    ? entry.value.any((String b) => variant.sections[b] == section)
+                    : (section != mine.netSection || netEnabled))
+                  section,
+            ],
+      };
+    }
     if (mine != null) {
       // Its own profiles at the one collar it comes in, the net only while
       // it is switched on.
@@ -89,13 +109,14 @@ class VariantInputHandler extends WindowInputHandler {
 
   @override
   Widget? overlayForCollar(int collarIndex, String? selectedSection) {
-    // Its own drawing, plain, under its own profiles' names. Every window cut
-    // to formulas of its own (Prime Economy, DELUXE) is a two-panel sliding
-    // window with no collar.
+    // Its own drawing under its own profiles' names. Every window cut to
+    // formulas of its own is a two-panel sliding window: with no collar
+    // (Prime Economy, DELUXE), or at the collar picked (Double Glaze).
     if (own != null) {
       return OwnSlidingOverlay(
         windowCode: variant.code,
         selectedSection: selectedSection,
+        collar: _ownWithBaseFrame ? collarIndex : OwnSlidingOverlay.drawnAsCollar,
       );
     }
     return base.overlayForCollar(

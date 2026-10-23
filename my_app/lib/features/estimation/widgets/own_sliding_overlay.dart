@@ -1,30 +1,67 @@
 import 'package:flutter/material.dart';
 
+import '../models/collar_layout.dart';
 import 'collar_frame_drawing.dart';
 import 'sliding_section_overlay.dart';
 
 /// The drawing of a two-panel sliding window cut to formulas of its own --
-/// the Prime Economy (EF) window and the DELUXE one.
+/// the Prime Economy (EF) window, the DELUXE one and the Double Glaze one.
 ///
-/// Each is the sliding window without a collar -- collar type 2, on the F
-/// series -- so it is drawn exactly as that one is (Hashir, Oct 2026). Only
-/// the profiles differ, and each lights the part of the drawing it is cut
-/// for.
+/// The first two are the sliding window without a collar -- collar type 2,
+/// on the F series -- so they are drawn exactly as that one is (Hashir, Oct
+/// 2026). Double Glaze is drawn at the collar picked. Only the profiles
+/// differ, and each lights the part of the drawing it is cut for.
 class OwnSlidingOverlay extends StatelessWidget implements CollarFrameDrawing {
   const OwnSlidingOverlay({
     super.key,
     required this.windowCode,
     required this.selectedSection,
+    this.collar = drawnAsCollar,
   });
 
-  /// The window drawn: "SPE_win", "SDX_win".
+  /// The window drawn: "SPE_win", "SDX_win", "SDG_win".
   final String windowCode;
 
   /// The profile picked in the sidebar, or null for none.
   final String? selectedSection;
 
-  /// The collar it is drawn as: none on any side.
+  /// The collar it is drawn at.
+  final int collar;
+
+  /// The collar a window that has no other is drawn as: none on any side.
   static const int drawnAsCollar = 2;
+
+  /// The parts of the Double Glaze window each of its profiles lights at
+  /// [collar]: DG26F the sides of the frame with a collar, DG26 the sides
+  /// without; DG23 everything M23, M24 and M28 are on a sliding window.
+  static Map<String, Set<SlidingPart>> doubleGlazeParts(int collar) {
+    const Map<CollarSide, SlidingPart> frameParts = <CollarSide, SlidingPart>{
+      CollarSide.top: SlidingPart.head,
+      CollarSide.bottom: SlidingPart.sill,
+      CollarSide.left: SlidingPart.leftJamb,
+      CollarSide.right: SlidingPart.rightJamb,
+    };
+    final Set<CollarSide> collared =
+        CollarLayout.forWindow('S_win')?.sidesWithCollar(collar) ?? const <CollarSide>{};
+    return <String, Set<SlidingPart>>{
+      'DG26F': <SlidingPart>{
+        for (final MapEntry<CollarSide, SlidingPart> side in frameParts.entries)
+          if (collared.contains(side.key)) side.value,
+      },
+      'DG26': <SlidingPart>{
+        for (final MapEntry<CollarSide, SlidingPart> side in frameParts.entries)
+          if (!collared.contains(side.key)) side.value,
+      },
+      'DG23': <SlidingPart>{
+        SlidingPart.outerStiles,
+        SlidingPart.centreStiles,
+        SlidingPart.topRails,
+        SlidingPart.bottomRails,
+      },
+      'DG28': <SlidingPart>{SlidingPart.centreStiles},
+      'DG29': <SlidingPart>{SlidingPart.net},
+    };
+  }
 
   /// The parts of the drawing each window's profiles are cut for.
   static const Map<String, Map<String, Set<SlidingPart>>> partsByWindow =
@@ -57,10 +94,15 @@ class OwnSlidingOverlay extends StatelessWidget implements CollarFrameDrawing {
     },
   };
 
-  /// The parts [windowCode]'s profiles light; empty for a window not drawn
-  /// here.
-  static Map<String, Set<SlidingPart>> partsFor(String windowCode) =>
-      partsByWindow[windowCode] ?? const <String, Set<SlidingPart>>{};
+  /// The parts [windowCode]'s profiles light at [collar]; empty for a window
+  /// not drawn here.
+  static Map<String, Set<SlidingPart>> partsFor(
+    String windowCode, {
+    int collar = drawnAsCollar,
+  }) {
+    if (windowCode == 'SDG_win') return doubleGlazeParts(collar);
+    return partsByWindow[windowCode] ?? const <String, Set<SlidingPart>>{};
+  }
 
   /// Where the frame is drawn: where the sliding window draws its own.
   static Rect frameIn(Size size) => SlidingSectionOverlay.frameIn(size);
@@ -74,12 +116,12 @@ class OwnSlidingOverlay extends StatelessWidget implements CollarFrameDrawing {
     return SlidingSectionOverlay(
       key: const Key('own_sliding_drawing'),
       selectedSection: null,
-      collarId: drawnAsCollar,
+      collarId: collar,
       // Nothing picked: the whole drawing, every label. A profile it does not
       // have lights nothing, rather than something it is not.
       litParts: picked == null
           ? null
-          : (partsFor(windowCode)[picked] ?? const <SlidingPart>{}),
+          : (partsFor(windowCode, collar: collar)[picked] ?? const <SlidingPart>{}),
     );
   }
 }

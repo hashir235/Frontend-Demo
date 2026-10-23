@@ -1166,7 +1166,13 @@ class _WindowInputScreenState extends State<WindowInputScreen> {
     _unitMode =
         widget.editingItem?.unitMode ??
         (_isFabricationFlow ? UnitMode.feet : UnitMode.inches);
-    _selectedCollar = _offeredCollar(widget.editingItem?.collarIndex ?? 1);
+    // A new window opens on its kind's own first collar: collar 2, none on
+    // any side, for Double Glaze; collar 1 for the rest.
+    _selectedCollar = _offeredCollar(
+      widget.editingItem?.collarIndex ??
+          WindowVariants.of(_codeInUse)?.defaultCollar ??
+          1,
+    );
     final WindowReviewItem? editingItem = widget.editingItem;
     _heightController.text = editingItem?.heightValue ?? '';
     if (_usesSplitWidthInputs) {
