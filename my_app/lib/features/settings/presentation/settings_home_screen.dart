@@ -2410,12 +2410,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           'The unit your cutting report shows sizes in, whether a window was '
           'typed in cm or in inches.',
       children: <Widget>[
-        Container(
+        // A Material, not a coloured box, so a tap's ripple shows on the tiles.
+        Material(
           key: const Key('cutting_report_unit_options'),
-          decoration: BoxDecoration(
-            color: AppTheme.ice.withValues(alpha: 0.72),
+          color: AppTheme.ice.withValues(alpha: 0.72),
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
+            side: BorderSide(color: AppTheme.violet.withValues(alpha: 0.10)),
           ),
           child: RadioGroup<CuttingReportUnit>(
             groupValue: _cuttingReportUnit,
