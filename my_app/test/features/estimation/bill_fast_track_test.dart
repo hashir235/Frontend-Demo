@@ -352,7 +352,7 @@ class _Optimizer extends OptimizationRepository {
     List<WindowReviewItem> items, {
     String? projectId,
     String context = 'estimation',
-    String displayUnit = 'ft',
+    String? displayUnit,
     required String projectName,
     required String projectLocation,
   }) async {

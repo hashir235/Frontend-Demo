@@ -5,6 +5,7 @@ import '../../settings/data/estimation_settings_repository.dart';
 import '../../settings/data/fabrication_settings_repository.dart';
 import '../../settings/models/estimation_settings.dart';
 import '../../settings/models/fabrication_settings.dart';
+import '../../settings/state/app_settings.dart';
 import '../models/cutting_report.dart';
 import '../models/optimization_request.dart';
 import '../models/section_recalculation.dart';
@@ -49,7 +50,7 @@ class OptimizationRepository {
     List<WindowReviewItem> items, {
     String? projectId,
     String context = 'estimation',
-    String displayUnit = 'ft',
+    String? displayUnit,
     required String projectName,
     required String projectLocation,
   }) async {
@@ -57,7 +58,13 @@ class OptimizationRepository {
       items,
       projectId: projectId,
       context: context,
-      displayUnit: displayUnit,
+      // Fabrication's report is in the unit chosen in Settings, whatever unit
+      // each window was typed in; with none chosen ("ft") the engine reads it
+      // off the windows, as it always has.
+      displayUnit: displayUnit ??
+          (context.toLowerCase() == 'fabrication'
+              ? AppSettings.instance.cuttingReportUnit.requestValue
+              : 'ft'),
       projectName: projectName,
       projectLocation: projectLocation,
     );

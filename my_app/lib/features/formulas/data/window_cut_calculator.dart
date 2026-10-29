@@ -26,6 +26,13 @@ const Set<String> m23Sections = <String>{'M23', 'EC23', 'ET23'};
 /// they are not, and keep the smaller height (Hashir, Oct 2026).
 const Set<String> _twoPanelWindows = <String>{'S_win', 'SM_win'};
 
+/// The engine's fix windows -- the fix window and the corner fix, on every
+/// frame (D54, D51, D42). Measured side by side, every piece of one that
+/// belongs to a side is cut to that side exactly as measured, however close
+/// the side facing it: the bead as the frame is (Hashir, Oct 2026). Top
+/// 34.4cm and bottom 37cm is a 34.4 top and a 37 bottom, not two of either.
+const Set<String> _fixWindows = <String>{'F_win', 'FC_win'};
+
 /// One length of aluminium to be cut.
 class CutPiece {
   const CutPiece({
@@ -245,12 +252,16 @@ class WindowCutCalculator {
         sides == null ? const <String>{} : book.catalogue.frameSectionsFor(key.windowKey);
     final OwnWindow? ownWindow = WindowVariants.ownOf(request.appWindowCode);
     final String? engineWindow = _engineWindowOf(request);
+    // A fix window's every side-labelled piece is cut as measured, as a frame
+    // is; see [_fixWindows].
+    final bool everySideAsMeasured = _fixWindows.contains(engineWindow);
 
     final List<CutPiece> pieces = <CutPiece>[];
     for (final EffectiveSection section in sections) {
       if (request.leaveOut.contains(section.section)) continue;
       final String name = sectionAliases[section.section] ?? section.section;
-      final bool isFrame = frameSections.contains(section.section);
+      final bool isFrame =
+          everySideAsMeasured || frameSections.contains(section.section);
       final List<String?> pieceSides = sides == null
           ? const <String?>[]
           : _sidesOf(section, own: ownWindow, engineWindow: engineWindow);

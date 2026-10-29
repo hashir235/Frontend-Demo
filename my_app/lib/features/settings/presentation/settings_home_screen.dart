@@ -85,6 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late NumberingMode _mode;
   late SizeInputMode _sizeInputMode;
   late bool _perSideSizes;
+  late CuttingReportUnit _cuttingReportUnit;
 
   /// null = categories ka menu khula ha; warna wo section jo khula ha.
   String? _openSectionId;
@@ -350,6 +351,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _mode = AppSettings.instance.numberingMode;
     _sizeInputMode = AppSettings.instance.sizeInputMode;
     _perSideSizes = AppSettings.instance.perSideSizes;
+    _cuttingReportUnit = AppSettings.instance.cuttingReportUnit;
     _billingSettingsRepository = BillingSettingsRepository();
     _estimationSettingsRepository = EstimationSettingsRepository();
     _fabricationSettingsRepository = FabricationSettingsRepository();
@@ -479,6 +481,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _mode = AppSettings.instance.numberingMode;
       _sizeInputMode = AppSettings.instance.sizeInputMode;
       _perSideSizes = AppSettings.instance.perSideSizes;
+      _cuttingReportUnit = AppSettings.instance.cuttingReportUnit;
     });
   }
 
@@ -2358,6 +2361,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
+                  _buildCuttingReportUnitCluster(context),
                   _buildSectionLengthsCluster(
                     context,
                     controllers: _fabricationSectionLengthControllers,
@@ -2392,6 +2396,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  /// The unit every fabrication cutting report is shown in (Hashir, Oct
+  /// 2026). Kept on this phone the moment it is picked, like the other
+  /// choices here -- no Save needed.
+  Widget _buildCuttingReportUnitCluster(BuildContext context) {
+    return _buildSettingsCluster(
+      context,
+      title: 'Cutting Report Unit',
+      subtitle:
+          'The unit your cutting report shows sizes in, whether a window was '
+          'typed in cm or in inches.',
+      children: <Widget>[
+        Container(
+          key: const Key('cutting_report_unit_options'),
+          decoration: BoxDecoration(
+            color: AppTheme.ice.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppTheme.violet.withValues(alpha: 0.10)),
+          ),
+          child: RadioGroup<CuttingReportUnit>(
+            groupValue: _cuttingReportUnit,
+            onChanged: (CuttingReportUnit? value) {
+              if (value != null) {
+                AppSettings.instance.setCuttingReportUnit(value);
+              }
+            },
+            child: const Column(
+              children: <Widget>[
+                RadioListTile<CuttingReportUnit>(
+                  key: Key('cutting_report_unit_none'),
+                  value: CuttingReportUnit.none,
+                  title: Text('None (default)'),
+                  subtitle: Text(
+                    'As the windows were typed: inches when most were in '
+                    'inches, otherwise cm.',
+                  ),
+                ),
+                Divider(height: 1),
+                RadioListTile<CuttingReportUnit>(
+                  key: Key('cutting_report_unit_cm'),
+                  value: CuttingReportUnit.cm,
+                  title: Text('cm'),
+                  subtitle: Text('Every size in centimetres.'),
+                ),
+                Divider(height: 1),
+                RadioListTile<CuttingReportUnit>(
+                  key: Key('cutting_report_unit_inch'),
+                  value: CuttingReportUnit.inch,
+                  title: Text('Inch'),
+                  subtitle: Text("Every size in inches and suter: 34'' 4'''."),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -34,7 +34,7 @@ class FabricationMockOptimizationRepository extends OptimizationRepository {
     List<WindowReviewItem> items, {
     String? projectId,
     String context = 'estimation',
-    String displayUnit = 'ft',
+    String? displayUnit,
     required String projectName,
     required String projectLocation,
   }) async {
@@ -131,7 +131,7 @@ class FabricationMockOptimizationRepository extends OptimizationRepository {
     return CuttingReport(
       ok: true,
       context: 'fabrication',
-      displayUnit: displayUnit,
+      displayUnit: displayUnit ?? 'ft',
       errors: const <String>[],
       sections: <CuttingReportSection>[
         makeSection('Top', topCuts, 12.0),

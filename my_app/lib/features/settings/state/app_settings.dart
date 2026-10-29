@@ -6,6 +6,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'numbering_mode.dart';
 import 'size_input_mode.dart';
 
+/// The unit a fabrication cutting report is shown in.
+enum CuttingReportUnit {
+  /// As the windows were typed: inch-suter when most were in inches.
+  none,
+  cm,
+  inch;
+
+  /// What the engine is asked for: "ft" means "not chosen" to it in
+  /// fabrication, and is what every app sent before this.
+  String get requestValue => switch (this) {
+    CuttingReportUnit.none => 'ft',
+    CuttingReportUnit.cm => 'cm',
+    CuttingReportUnit.inch => 'inch_sutter',
+  };
+}
+
 class AppSettings extends ChangeNotifier {
   AppSettings._internal();
 
@@ -47,6 +63,11 @@ class AppSettings extends ChangeNotifier {
       _glassSheetWidthFt = prefs.getString(_glassSheetWidthKey) ?? '7';
       _glassSheetHeightFt = prefs.getString(_glassSheetHeightKey) ?? '12';
       _allowGlassRotation = prefs.getBool(_allowGlassRotationKey) ?? true;
+      _cuttingReportUnit = _byName(
+        CuttingReportUnit.values,
+        prefs.getString(_cuttingReportUnitKey),
+        CuttingReportUnit.none,
+      );
     } catch (_) {
       // A phone that cannot read preferences still gets the usual boxes.
       resetForTest();
@@ -101,6 +122,7 @@ class AppSettings extends ChangeNotifier {
     _glassSheetWidthFt = '7';
     _glassSheetHeightFt = '12';
     _allowGlassRotation = true;
+    _cuttingReportUnit = CuttingReportUnit.none;
   }
 
   // Every choice below is kept on the phone the moment it is made and read
@@ -114,6 +136,7 @@ class AppSettings extends ChangeNotifier {
   static const String _glassSheetWidthKey = 'quick_al.glass_sheet.width_ft';
   static const String _glassSheetHeightKey = 'quick_al.glass_sheet.height_ft';
   static const String _allowGlassRotationKey = 'quick_al.glass_sheet.rotation';
+  static const String _cuttingReportUnitKey = 'quick_al.fabrication.report_unit';
 
   static T _byName<T extends Enum>(List<T> values, String? name, T fallback) {
     for (final T value in values) {
@@ -192,6 +215,21 @@ class AppSettings extends ChangeNotifier {
     if (_allowGlassRotation == value) return;
     _allowGlassRotation = value;
     _keep((SharedPreferences prefs) => prefs.setBool(_allowGlassRotationKey, value));
+  }
+
+  /// Fabrication: the unit every cutting report is shown in, whatever unit
+  /// each window was typed in (Hashir, Oct 2026). [CuttingReportUnit.none]
+  /// leaves it to the windows, as it always was: inch-suter when most were
+  /// typed in inches, centimetres otherwise.
+  CuttingReportUnit _cuttingReportUnit = CuttingReportUnit.none;
+
+  CuttingReportUnit get cuttingReportUnit => _cuttingReportUnit;
+
+  void setCuttingReportUnit(CuttingReportUnit unit) {
+    if (_cuttingReportUnit == unit) return;
+    _cuttingReportUnit = unit;
+    notifyListeners();
+    _keep((SharedPreferences prefs) => prefs.setString(_cuttingReportUnitKey, unit.name));
   }
 
   /// Writes a choice to the phone in the background. It already holds in
